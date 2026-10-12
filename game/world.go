@@ -264,11 +264,8 @@ func (u *worldUI) nonConsoleKeyboardInputBlockedExcept(ctx client.Context, excep
 		u.repairItem.IsOpen() ||
 		u.weaponRefine.IsOpen() ||
 		u.petEggWindow.IsOpen() ||
-		open(&u.petInfoWindow.Window) ||
-		open(&u.homunculusInfo.Window) ||
-		u.homunculusSkill.IsOpen() ||
-		open(&u.mercenaryInfo.Window) ||
-		u.mercenarySkill.IsOpen() ||
+		(except != &u.petInfoWindow.Window && u.petInfoWindow.KeyboardShortcutsBlocked()) ||
+		(except != &u.homunculusInfo.Window && u.homunculusInfo.KeyboardShortcutsBlocked()) ||
 		u.changeCartWindow.IsOpen() ||
 		u.itemWindows.KeyboardShortcutsBlocked() ||
 		u.shopWindow.KeyboardShortcutsBlocked() ||
@@ -868,7 +865,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if !dead && m.openPlayerContextFromInput(ctx, now) {
 		return nil, nil
 	}
-	if !m.petSlotMachine.active && !m.npcCutinPointerBlocked(ctx) && !m.ui.escapeMenu.IsOpen() && !m.ui.interactionModalOpen() && !m.ui.settingsWindow.IsOpen() && !m.ui.identifyWindow.IsOpen() && !m.ui.petEggWindow.IsOpen() && !m.ui.petInfoWindow.IsOpen() && !m.ui.petConfirm.IsOpen() && !m.ui.homunculusInfo.IsOpen() && !m.ui.homunculusSkill.IsOpen() && !m.ui.homunculusConfirm.IsOpen() && !m.ui.mercenaryInfo.IsOpen() && !m.ui.mercenarySkill.IsOpen() && !m.ui.mercenaryConfirm.IsOpen() {
+	if !m.mapPointerBlocked(ctx) && !m.ui.escapeMenu.IsOpen() && !m.ui.interactionModalOpen() && !m.ui.settingsWindow.IsOpen() && !m.ui.identifyWindow.IsOpen() && !m.ui.petEggWindow.IsOpen() && !m.ui.petConfirm.IsOpen() && !m.ui.homunculusConfirm.IsOpen() && !m.ui.mercenaryConfirm.IsOpen() {
 		m.updateCameraRotation(ctx)
 	}
 	if !dead && m.ui.escapeMenu.IsOpen() {
