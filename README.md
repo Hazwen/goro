@@ -227,7 +227,8 @@ Useful options:
 
 These are tutorials on how to setup a development environment.
 
-- [Server setup](docs/rathena-setup.md)
+- [rAthena server setup](docs/rathena-setup.md)
+- [Hercules server setup](docs/hercules-setup.md)
 - [Client setup](docs/client-setup.md)
 - [Homunculus and mercenary support](docs/companions-20080910.md)
 - [Lua bot scripting](docs/bot-scripting.md)
