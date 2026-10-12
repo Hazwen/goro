@@ -287,6 +287,7 @@ func (m *WorldMode) upsertNetworkActor(ctx client.Context, entry network.ActorEn
 		m.clearActorAction(ctx, entry.ID)
 	}
 	upsertNetworkActor(ctx, entry)
+	m.syncActorSpiritEffects(ctx, entry.ID)
 	m.syncActorEntryLevel99Aura(ctx, entry.ID)
 	m.requestActorGuildEmblem(ctx, entry.GuildID, entry.EmblemVersion)
 	if !entry.HasState {
