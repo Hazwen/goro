@@ -461,10 +461,3 @@ func freezeActionFamily(actor worldstate.Actor) int {
 	}
 	return spriteActionIdle
 }
-
-func readyFightActionFamily(actor worldstate.Actor) int {
-	if res.HasPlayerJobToken(int(actor.Job)) {
-		return spriteActionPCReadyFight
-	}
-	return spriteActionIdle
-}
