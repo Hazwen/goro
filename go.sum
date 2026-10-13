@@ -36,8 +36,6 @@ github.com/godexture/godec/plugins/format-mp3 v0.0.0-20260621142744-bd77e78cfab1
 github.com/godexture/godec/plugins/format-mp3 v0.0.0-20260621142744-bd77e78cfab1/go.mod h1:iIbKuLJVeEb+e/9aMLn1krlIbzUtGAfI/Q5Da7bnPp0=
 github.com/godexture/godec/plugins/metadata-id3 v0.0.0-20260621142744-bd77e78cfab1 h1:zBh2VfTqVdLS1muYh42uMQKSCjh+CDBZf7sYcPVEQkQ=
 github.com/godexture/godec/plugins/metadata-id3 v0.0.0-20260621142744-bd77e78cfab1/go.mod h1:kgagB03HQ/GNRRIVE0vQBMovoQudEIRlEujmkpghNz0=
-github.com/gogpu/gogpu v0.54.0 h1:b+eaNxrbkMm8CT2qnObG9bLXbF0Xe0XixTZ9migzhlw=
-github.com/gogpu/gogpu v0.54.0/go.mod h1:V6+0B+iXxgiQkdlRJvUyjiYrGRDoooxYNgw9qTCZN8w=
 github.com/gogpu/gpucontext v0.31.3 h1:SMnYOQgr+s5issi1R/Oezbo8lV5Lb6HWUZ4HujFgrZA=
 github.com/gogpu/gpucontext v0.31.3/go.mod h1:pnyWQA9lpvESPAKoqzKlsg3pDMFSkxdjonu4gWvnNtA=
 github.com/gogpu/gputypes v0.8.0 h1:Iw4g9lqydTcAFKKQWfgbUpdY6WxObGtjf9SuRkzYMJw=
@@ -50,6 +48,8 @@ github.com/jfreymuth/pulse v0.1.1 h1:9WLNBNCijmtZ14ZJpatgJPu/NjwAl3TIKItSFnTh+9A
 github.com/jfreymuth/pulse v0.1.1/go.mod h1:cpYspI6YljhkUf1WLXLLDmeaaPFc3CnGLjDZf9dZ4no=
 github.com/kivutar/gg v0.52.4-0.20261005130553-221e1f996c41 h1:twFQuvTAJ/ypuNngQBq6odRkoQ8W6GlXRQ5EdLsncIo=
 github.com/kivutar/gg v0.52.4-0.20261005130553-221e1f996c41/go.mod h1:76qRbhwszTfk1McnBiCPtnx1ewpR7C6+mfZoxmD5RUU=
+github.com/kivutar/gogpu v0.44.4-0.20261013062404-8f41e35a7382 h1:UHNGqu4ii6GUcry9T2pJtMfgV/j7MEQp7HwimestGbw=
+github.com/kivutar/gogpu v0.44.4-0.20261013062404-8f41e35a7382/go.mod h1:V6+0B+iXxgiQkdlRJvUyjiYrGRDoooxYNgw9qTCZN8w=
 github.com/kivutar/ui v0.1.55-0.20261005130553-0d602144928c h1:1MeHC+r6buTJ0cLG0K0mye3nCk6tR/1VVPe0hVUmO3g=
 github.com/kivutar/ui v0.1.55-0.20261005130553-0d602144928c/go.mod h1:FUJbZho6XeDp0xTuDuXFqcJgZ0nmyb4W5oCyF+24qBs=
 github.com/kivutar/wgpu v0.34.4-0.20261009223552-9757f595a6f7 h1:OmKVq5CEwoEe2LWUgIyaCyzjgFr1sRUUQhAFc6l///A=
