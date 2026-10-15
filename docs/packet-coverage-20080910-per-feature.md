@@ -114,7 +114,7 @@
   - [x] Wizard and mercenary Sense monster information: 0x018C
   - [x] Sage autospell choice list and selection: 0x01CD, 0x01CE
   - [x] Novice dori-dori command, head motion, and recovery bonus: 0x01E7
-  - [ ] Novice explosion spirits: 0x01ED
+  - [x] Super Novice prayer: localized public-chat history recognition and 0x01ED request; EXP eligibility remains server-side
   - [x] Star Gladiator feel save confirmation: 0x0253, 0x0254
   - [x] Token of Siegfried self-revival: 0x0292
 

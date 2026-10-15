@@ -72,7 +72,7 @@ This means the legacy mail system, not a newer RODEX-only implementation. See
 - [x] Implement the Sage Auto Spell choice list and send selection packet `0x01CE`.
 - [x] Turn the Star Gladiator place/Feel request into the original confirmation flow instead of only logging it, then send `0x0254`.
 - [x] Implement the original `/doridori` client behavior and packet `0x01E7`.
-- [ ] Verify whether the 2008 Novice Explosion Spirits request (`0x01ED`) needs a distinct client action, then implement it if applicable.
+- [x] Recognize the original Super Novice public-chat prayer and send `0x01ED`; the server checks EXP and grants Fury.
 - [x] Implement Token of Siegfried self-revival through the 2008 auto-revive request (`0x0292`).
 - [ ] Add end-to-end tests ensuring these skills cannot silently stall while waiting for a client response.
 

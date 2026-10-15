@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/network"
@@ -50,7 +51,36 @@ func SendChat(ctx Context, input string) error {
 		return ctx.Network.SendWhisper(target, message)
 	}
 
-	return ctx.Network.SendGlobalChat(name, input)
+	return SendGlobalChat(ctx, input)
+}
+
+// SendGlobalChat sends ordinary chat, including messages in a chat room.
+func SendGlobalChat(ctx Context, message string) error {
+	if ctx.Network == nil {
+		return fmt.Errorf("not connected")
+	}
+	message = strings.TrimSpace(message)
+	if err := ctx.Network.SendGlobalChat(chatSenderName(ctx), message); err != nil {
+		return err
+	}
+	return sendSuperNovicePrayer(ctx, message, time.Now())
+}
+
+func sendSuperNovicePrayer(ctx Context, message string, now time.Time) error {
+	s := ctx.Session
+	if s == nil {
+		return nil
+	}
+	s.SuperNovicePrayer.Record(message, now)
+	if s.Dead || (s.Selected.Job != db.JobSuperNovice && s.Selected.Job != db.JobSuperNoviceB) || ctx.Resources == nil {
+		return nil
+	}
+	first, _ := ctx.Resources.MsgString(790)
+	last, _ := ctx.Resources.MsgString(793)
+	if s.SuperNovicePrayer.Matches(first, last, now) {
+		return ctx.Network.SendSuperNovicePrayer()
+	}
+	return nil
 }
 
 // SetSitting requests a sit or stand action and updates the local player state.
