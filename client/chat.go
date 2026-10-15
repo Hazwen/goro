@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 )
 
@@ -63,7 +64,10 @@ func SendGlobalChat(ctx Context, message string) error {
 	if err := ctx.Network.SendGlobalChat(chatSenderName(ctx), message); err != nil {
 		return err
 	}
-	return sendSuperNovicePrayer(ctx, message, time.Now())
+	if err := sendSuperNovicePrayer(ctx, message, time.Now()); err != nil {
+		glog.Warnf("send Super Novice prayer failed: %v", err)
+	}
+	return nil
 }
 
 func sendSuperNovicePrayer(ctx Context, message string, now time.Time) error {
