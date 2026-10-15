@@ -411,6 +411,9 @@ func (m *WorldMode) Name() string {
 }
 
 func (m *WorldMode) Enter(ctx client.Context) Mode {
+	if ctx.Session != nil {
+		ctx.Session.SuperNovicePrayer = session.SuperNovicePrayer{}
+	}
 	m.releaseMapTextures()
 	now := time.Now()
 	m.bindNPCDialogLifecycle()
