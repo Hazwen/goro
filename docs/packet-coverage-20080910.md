@@ -391,7 +391,7 @@ email check.
 | `0x01CD` | S->C | implemented | `0x01cd` | `30` | `-` | skill_packets.go, packet.go |
 | `0x01CE` | C->S | implemented | `HEADER_CZ_SELECTAUTOSPELL` | `sizeof( PACKET_CZ_SELECTAUTOSPELL )` | `clif_parse_AutoSpell` | skill_packets.go |
 | `0x01CF` | S->C | referenced | `0x01cf` | `28` | `-` | packet.go |
-| `0x01D0` | S->C | referenced | `0x01d0` | `8` | `-` | packet.go |
+| `0x01D0` | S->C | implemented | `HEADER_ZC_SPIRITS` | `8` | `-` | effect_packets.go, packet.go |
 | `0x01D5` | C->S | implemented | `HEADER_CZ_INPUT_EDITDLGSTR` | `-1` | `clif_parse_NpcStringInput` | npc_packets.go |
 | `0x01D7` | S->C | referenced | `0x01d7` | `11` | `-` | actor_packets.go, packet.go |
 | `0x01D8` | S->C | referenced | `0x01d8` | `54` | `-` | actor_packets.go, packet.go |
@@ -403,7 +403,7 @@ email check.
 | `0x01DE` | S->C | referenced | `0x01de` | `33` | `-` | actor_packets.go, packet.go |
 | `0x01DF` | C->S | missing | `0x01df` | `6` | `clif_parse_GMReqAccountName` | - |
 | `0x01E0` | S->C | untracked | `0x01e0` | `30` | `-` | - |
-| `0x01E1` | S->C | untracked | `0x01e1` | `8` | `-` | - |
+| `0x01E1` | S->C | implemented | `HEADER_ZC_SPIRITS2` | `8` | `-` | effect_packets.go, packet.go |
 | `0x01E2` | S->C | untracked | `0x01e2` | `34` | `-` | - |
 | `0x01E3` | S->C | untracked | `0x01e3` | `14` | `-` | - |
 | `0x01E4` | S->C | untracked | `0x01e4` | `2` | `-` | - |
