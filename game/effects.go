@@ -1077,14 +1077,7 @@ func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify
 		return
 	}
 	m.faceSkillSource(ctx, notify.SourceID, notify.TargetID, 0, 0)
-	duration := defaultAttackAnimationDuration
-	switch notify.SkillID {
-	case db.SkillMOBladestop:
-		duration = 3 * time.Second
-	case db.SkillMOSteelbody:
-		duration = 20 * time.Millisecond
-	}
-	m.startSkillActionAnimation(ctx, notify.SourceID, source, skillAction(notify.SkillID), now, duration)
+	m.startSkillActionAnimation(ctx, notify.SourceID, source, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
 }
 
 func (m *WorldMode) startSkillCastSourceAnimation(ctx client.Context, notify network.SkillCastNotify, duration time.Duration, now time.Time) {
@@ -1865,6 +1858,7 @@ type skillActionSpec struct {
 	hasFrame bool
 	length   int
 	speed    time.Duration
+	duration time.Duration
 	play     bool
 	repeat   bool
 	delay    time.Duration
@@ -1957,6 +1951,9 @@ func (s skillActionSpec) actionFamilyForActorWithResources(manager *res.Manager,
 func (s skillActionSpec) actorAnimationForActorWithResources(manager *res.Manager, actor worldstate.Actor, started time.Time, duration time.Duration) actorAnimation {
 	if !s.defined {
 		s = defaultSkillActionSpec
+	}
+	if s.duration > 0 {
+		duration = s.duration
 	}
 	if s.delay > 0 && !started.IsZero() {
 		started = started.Add(s.delay)

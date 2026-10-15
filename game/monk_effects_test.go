@@ -319,8 +319,8 @@ func TestMonkSkillResultsUseDedicatedPoses(t *testing.T) {
 		family, frame int
 		play          bool
 	}{
-		{db.SkillMOInvestigate, spriteActionPCSkill, 4, false},
-		{db.SkillMOFingeroffensive, spriteActionPCSkill, 4, false},
+		{db.SkillMOInvestigate, spriteActionPCSkill, 3, true},
+		{db.SkillMOFingeroffensive, spriteActionPCSkill, 3, true},
 		{db.SkillMOChaincombo, spriteActionPCSkill, 5, false},
 		{db.SkillMOCombofinish, spriteActionPCSkill, 1, true},
 		{db.SkillMOTripleattack, spriteActionPCAttack3, 0, true},
@@ -332,8 +332,42 @@ func TestMonkSkillResultsUseDedicatedPoses(t *testing.T) {
 		if anim.actionFamily != tc.family || anim.frameOffset != tc.frame || anim.play != tc.play {
 			t.Fatalf("skill %d pose = %+v", tc.skill, anim)
 		}
-		if _, active := m.actorAnimation(150000, anim.started.Add(time.Second)); active {
+		if _, active := m.actorAnimation(150000, anim.started.Add(2*time.Second)); active {
 			t.Fatalf("skill %d pose never released", tc.skill)
+		}
+	}
+}
+
+func TestMonkTwoFrameSkillsKeepTheirOriginalTiming(t *testing.T) {
+	for _, skillID := range []uint16{db.SkillMOInvestigate, db.SkillMOFingeroffensive} {
+		for _, sourceSpeed := range []int32{80, 2000} {
+			ctx := monkEffectContext()
+			m := &WorldMode{}
+			m.applyActorActionNotify(ctx, network.ActorActionNotify{
+				SourceID: 2000000, TargetID: 300, SkillID: skillID, SourceSpeed: sourceSpeed,
+				Action: network.ActorActionSkill, HitCount: 1, Damage: 100,
+			})
+			started := m.actorAnims[150000].started
+			action := res.ACTAction{DelayMS: 100, Animations: make([]res.ACTAnimation, 8)}
+			for _, tc := range []struct {
+				elapsed time.Duration
+				frame   int
+			}{
+				{0, 3}, {150 * time.Millisecond, 3}, {170 * time.Millisecond, 4}, {1099 * time.Millisecond, 4},
+			} {
+				anim, active := m.actorAnimation(150000, started.Add(tc.elapsed))
+				if !active {
+					t.Fatalf("skill %d ended at %s with source speed %d", skillID, tc.elapsed, sourceSpeed)
+				}
+				state := spriteState{}
+				applyActorAnimationToSpriteState(&state, anim, true)
+				if frame := bodyMotionForState(action, state, started, started.Add(tc.elapsed)); frame != tc.frame {
+					t.Fatalf("skill %d at %s: frame=%d, want %d", skillID, tc.elapsed, frame, tc.frame)
+				}
+			}
+			if _, active := m.actorAnimation(150000, started.Add(1100*time.Millisecond)); active {
+				t.Fatalf("skill %d did not release its pose after 1100ms", skillID)
+			}
 		}
 	}
 }
