@@ -127,6 +127,45 @@ func TestSpiritEffectsSurviveLoginAndActorRefresh(t *testing.T) {
 	}
 }
 
+func TestMonkBuffsFollowActorEntrySnapshots(t *testing.T) {
+	for _, job := range []int16{db.JobMonk, db.JobSuperNovice} {
+		ctx := monkEffectContext()
+		delete(ctx.World.Actors, 300)
+		m := &WorldMode{}
+		data := make([]byte, 60)
+		binary.LittleEndian.PutUint32(data[2:], 300)
+		binary.LittleEndian.PutUint16(data[16:], uint16(job))
+		applyEntry := func(state uint32) {
+			t.Helper()
+			binary.LittleEndian.PutUint32(data[44:], state)
+			entry, ok, err := network.ParseActorEntry(network.Packet{ID: 0x02EE, Data: data})
+			if err != nil || !ok {
+				t.Fatalf("parse entry: ok=%t err=%v", ok, err)
+			}
+			m.upsertNetworkActor(ctx, entry)
+		}
+		assertAuras := func(active bool) {
+			t.Helper()
+			for _, id := range []int{effectGumgang, effectSteelBody} {
+				if m.hasActiveWorldEffect(id, 300, time.Now().Add(time.Hour)) != active {
+					t.Fatalf("job %d effect %d active != %t", job, id, active)
+				}
+			}
+		}
+		applyEntry(db.Opt3Explosionspirits | db.Opt3Steelbody)
+		assertAuras(true)
+		original := append([]worldEffect(nil), m.worldEffects...)
+		applyEntry(db.Opt3Explosionspirits | db.Opt3Steelbody)
+		m.upsertNetworkActor(ctx, network.ActorEntry{ID: 300, Moving: true, ToX: 15, ToY: 20})
+		assertAuras(true)
+		if !reflect.DeepEqual(m.worldEffects, original) {
+			t.Fatal("actor refresh restarted the auras")
+		}
+		applyEntry(0)
+		assertAuras(false)
+	}
+}
+
 func TestRuwachUsesSightSoundOncePerActivation(t *testing.T) {
 	ctx := monkEffectContext()
 	m := &WorldMode{}

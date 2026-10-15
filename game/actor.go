@@ -256,12 +256,15 @@ func upsertNetworkActor(ctx client.Context, entry network.ActorEntry) {
 		BodyState:        entry.BodyState,
 		HealthState:      entry.HealthState,
 		EffectState:      entry.EffectState,
+		Opt3State:        entry.Opt3State,
 		HasState:         entry.HasState,
 		Level:            entry.Level,
 		HasLevel:         entry.HasLevel,
 	}
 	if existing, ok := ctx.World.Actors[entry.ID]; ok {
-		actor.Opt3State = existing.Opt3State
+		if !entry.HasOpt3State {
+			actor.Opt3State = existing.Opt3State
+		}
 		if !actor.HasObjectType {
 			actor.ObjectType = existing.ObjectType
 			actor.HasObjectType = existing.HasObjectType
