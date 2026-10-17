@@ -14,9 +14,9 @@ jobs:
       GOOS: windows
       GOARCH: amd64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -32,7 +32,7 @@ jobs:
       - name: Compiler
         run: go build -trimpath -ldflags="-s -w -H=windowsgui" -o goro.exe .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: goro-windows
           path: goro.exe
