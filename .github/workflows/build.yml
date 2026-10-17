@@ -1,0 +1,28 @@
+name: Build Windows exe
+
+on:
+  push:
+    branches: [Ysholm]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Compile
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+        run: go build -tags nofakecgo -o goro.exe .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goro-windows
+          path: goro.exe
