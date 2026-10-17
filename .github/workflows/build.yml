@@ -8,19 +8,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: "0"
+      GOFLAGS: "-tags=nofakecgo"
+      GOOS: windows
+      GOARCH: amd64
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
 
-      - name: Compile
-        env:
-          GOOS: windows
-          GOARCH: amd64
-          CGO_ENABLED: "0"
-        run: go build -tags nofakecgo -o goro.exe .
+      - name: Generer l'icone Windows
+        run: >-
+          GOOS=linux GOARCH=amd64
+          go run github.com/akavel/rsrc@936343600d578fb5da472acf6987ed76935a389b
+          -arch amd64
+          -ico packaging/windows/goro.ico
+          -o rsrc_windows_amd64.syso
+
+      - name: Compiler
+        run: go build -trimpath -ldflags="-s -w -H=windowsgui" -o goro.exe .
 
       - uses: actions/upload-artifact@v4
         with:
