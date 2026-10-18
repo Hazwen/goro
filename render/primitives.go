@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/gogpu/ui/fontdata"
+	"github.com/gogpu/ui/widget"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/font/opentype"
@@ -112,9 +113,18 @@ func DrawUISpeechBubble(dst *Frame, text string, centerX, bottomY, maxWidth floa
 	})
 }
 
-func DrawUITooltipBox(dst *Frame, text string, centerX, belowY, aboveY, maxWidth float64, maxLines int) {
+func DrawUITooltipBox(dst *Frame, text string, centerX, belowY, aboveY, maxWidth float64, maxLines int, colorCodes bool) {
 	if dst == nil || text == "" {
 		return
+	}
+	style := consoleOverlayTextBoxStyle()
+	style.maxLines = maxLines
+	style.colorCodes = colorCodes
+	if colorCodes {
+		style.background = widget.RGBA8(255, 255, 255, 255)
+		style.foreground = widget.RGBA8(0, 0, 0, 255)
+		style.border = widget.RGBA8(180, 180, 180, 255)
+		style.radius = 3
 	}
 	dst.uiTextBoxes = append(dst.uiTextBoxes, UITextBoxCommand{
 		Text:     text,
@@ -124,6 +134,7 @@ func DrawUITooltipBox(dst *Frame, text string, centerX, belowY, aboveY, maxWidth
 		Anchor:   UITextBoxAnchorTooltipCenter,
 		MaxWidth: maxWidth,
 		MaxLines: maxLines,
+		style:    style,
 	})
 }
 
