@@ -361,11 +361,6 @@ const (
 )
 
 const (
-	effectBottomDissonance = 277
-	effectBottomUglyDance  = 290
-)
-
-const (
 	effectSoulBreaker       = 361
 	effectLevel99Aura1      = 362
 	effectPressure          = 365
@@ -1808,10 +1803,6 @@ func buildItemEffects() map[uint16]itemEffectSpec {
 	return effects
 }
 
-func itemUseEffectIDs(itemID uint16) []int {
-	return itemUseEffectSpec(itemID).effectIDs
-}
-
 func itemUseEffectSpec(itemID uint16) itemEffectSpec {
 	return itemEffectSpecs[itemID]
 }
@@ -1911,10 +1902,6 @@ func cloneSkillActionSpec(spec *skillActionSpec) *skillActionSpec {
 	clone := *spec
 	clone.next = cloneSkillActionSpec(spec.next)
 	return &clone
-}
-
-func (s skillActionSpec) actionFamilyForActor(actor worldstate.Actor) int {
-	return s.actionFamilyForActorWithResources(nil, actor)
 }
 
 func (s skillActionSpec) actionFamilyForActorWithResources(manager *res.Manager, actor worldstate.Actor) int {
@@ -2489,7 +2476,7 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 	}
 }
 
-func (m *WorldMode) drawWorldEffects(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) {
+func (m *WorldMode) drawWorldEffects(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time, beforeEntities bool) {
 	if len(m.worldEffects) == 0 || screen == nil || ctx.World == nil {
 		return
 	}
@@ -2502,9 +2489,16 @@ func (m *WorldMode) drawWorldEffects(screen *render.Frame, ctx client.Context, p
 		if effect.expired(now) {
 			continue
 		}
-		spec, ok := worldEffectSpecForID(effect.effectID)
+		spec, ok := m.effectSpecs[effect.effectID]
 		if !ok {
-			continue
+			spec, ok = worldEffectSpecForID(effect.effectID)
+			if !ok {
+				continue
+			}
+			if m.effectSpecs == nil {
+				m.effectSpecs = make(map[int]worldEffectSpec)
+			}
+			m.effectSpecs[effect.effectID] = spec
 		}
 		if now.Before(effect.starts) {
 			active = append(active, effect)
@@ -2518,6 +2512,9 @@ func (m *WorldMode) drawWorldEffects(screen *render.Frame, ctx client.Context, p
 		active = append(active, effect)
 		anchor := effectWorldAnchor(ctx, effect, now)
 		for index, component := range spec.components {
+			if component.renderBefore != beforeEntities {
+				continue
+			}
 			if effect.persistent {
 				component.repeat = true
 			}

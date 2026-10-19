@@ -68,10 +68,6 @@ func actionAnimationDuration(action res.ACTAction, fallback time.Duration) time.
 	return duration
 }
 
-func combatHitDelayFromAction(action res.ACTAction, duration time.Duration) time.Duration {
-	return combatMotionDelayFromAction(action, duration, firstActionSoundMotion(action))
-}
-
 func combatMotionDelayFromAction(action res.ACTAction, duration time.Duration, motion int) time.Duration {
 	if duration <= 0 {
 		return 0
@@ -214,7 +210,6 @@ type actorLife struct {
 	hunger    int
 	maxHunger int
 	hasHunger bool
-	updatedAt time.Time
 }
 
 type actorCastBar struct {
@@ -1011,9 +1006,8 @@ func (m *WorldMode) applyActorHPUpdate(update network.ActorHPUpdate) {
 		m.actorLife = make(map[uint32]actorLife)
 	}
 	m.actorLife[update.ID] = actorLife{
-		hp:        hp,
-		maxHP:     update.MaxHP,
-		updatedAt: time.Now(),
+		hp:    hp,
+		maxHP: update.MaxHP,
 	}
 	glog.Debugf("actor hp id=%d hp=%d max_hp=%d tiny=%t", update.ID, hp, update.MaxHP, update.Tiny)
 }
@@ -1328,10 +1322,6 @@ func (m *WorldMode) actorAnimation(id uint32, now time.Time) (actorAnimation, bo
 	return anim, true
 }
 
-func attackActionFamilyForActor(actor world.Actor) int {
-	return attackActionFamilyForActorWithResources(nil, actor)
-}
-
 func attackActionFamilyForActorWithResources(manager *res.Manager, actor world.Actor) int {
 	if actorIsMercenary(actor) {
 		return mercenaryAttackActionFamily(int(actor.Job), actor.Sex, int(actor.Weapon))
@@ -1550,16 +1540,6 @@ func normalAttackTargetWithinRange(playerX, playerY, targetX, targetY, attackRan
 	dx := absInt(playerX - targetX)
 	dy := absInt(playerY - targetY)
 	return dx*dx+dy*dy <= attackRange*attackRange
-}
-
-func attackApproachCell(ctx client.Context, actor world.Actor, attackRange int) (int, int, bool) {
-	playerX, playerY := currentPlayerCell(ctx, time.Now())
-	return attackApproachCellFrom(ctx, playerX, playerY, actor, attackRange)
-}
-
-func attackApproachCellFrom(ctx client.Context, sourceX, sourceY int, actor world.Actor, attackRange int) (int, int, bool) {
-	targetX, targetY := actorCurrentCell(actor, time.Now())
-	return normalAttackApproachCellFromTarget(ctx, sourceX, sourceY, targetX, targetY, attackRange)
 }
 
 func normalAttackApproachCellFromTarget(ctx client.Context, sourceX, sourceY, targetX, targetY int, attackRange int) (int, int, bool) {
@@ -1824,7 +1804,6 @@ func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
 		if m.actorLife != nil {
 			if life, ok := m.actorLife[id]; ok {
 				life.hp = 0
-				life.updatedAt = now
 				m.actorLife[id] = life
 			}
 		}
