@@ -398,17 +398,25 @@ const (
 	effectSoulBurn          = 406
 	effectSoulChange        = 407
 	effectSoulBreaker2      = 409
+	effectReflectBody       = 419
 	effectBabyBody          = 420
 	effectBabyBody2         = 421
 	effectGiantBody         = 422
 	effectGiantBody2        = 423
+	effectAsuraBody         = 424
+	effectFourWayBody       = 425
 	effectQuakeBody         = 426
+	effectAsuraBodyMonster  = 427
+	effectHitLine4          = 429
+	effectHitLine6          = 431
 	effectAssumptio2        = 440
+	effectBlueCasting       = 441
 	effectStopEffect        = 444
 	effectJumpBody          = 445
 )
 
 const (
+	effectTaeReady         = 449
 	effectDarkGrandCross   = 450
 	effectDarkSoulStrike   = 451
 	effectDarkJupitelHit   = 452
@@ -416,6 +424,7 @@ const (
 	effectDarkCasting      = 454
 	effectNPCPowerUp       = 456
 	effectJumpKick         = 457
+	effectStormKick4       = 462
 	effectBeginAsura1      = 467
 	effectBeginAsura2      = 468
 	effectBeginAsura3      = 469
@@ -428,6 +437,7 @@ const (
 	effectEDP              = 493
 	effectPreserve         = 496
 	effectCastSpin         = 501
+	effectSoulLink         = 503
 	effectChookgi2         = 504
 	effectMapae            = effectItemAccel
 	effectItemPokJuk       = effectFirecracker
@@ -451,9 +461,15 @@ const (
 	effectTarotCard13      = 535
 	effectTarotCard14      = 536
 	effectAcidDemon        = 537
+	effectBabyBodyBack     = 540
+	effectBlueBody         = 542
 	effectHated            = 543
+	effectSmaReady         = 546
 	effectStin             = 547
+	effectBlueHit          = 549
+	effectQuakeBody3       = 550
 	effectStin2            = 553
+	effectHitTexture       = 554
 	effectStin3            = 555
 	effectScreenQuake      = 563
 	effectHfliMoon1        = 565
@@ -723,6 +739,11 @@ type worldEffect struct {
 	targetID                             uint32
 	actorDirection                       int
 	actorOrigin                          modelPoint3
+	projectileDirection                  modelPoint3
+	esma                                 *esmaProjectile
+	buffParticles                        *soulLinkerParticles
+	soulLights                           *soulLights
+	blueCasting                          *blueCasting
 	hasActorTransform                    bool
 	x                                    int
 	y                                    int
@@ -970,6 +991,9 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	m.applySkillNameBubble(ctx, notify.SourceID, notify.SkillID, now)
 	m.startSkillNoDamageSourceAnimation(ctx, notify, now)
 	m.applyFalconSkillNoDamageNotify(ctx, notify, now)
+	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
+		m.scheduleSoundAtActor(now, notify.TargetID, sound)
+	}
 	m.addSkillBeginEffectsAt(ctx, notify.SkillID, notify.SourceID, notify.TargetID, now)
 	if notify.SkillID == db.SkillTKSevenwind && notify.Amount >= 1 && notify.Amount <= 7 {
 		effectID := effectBeginAsura1 + int(notify.Amount) - 1
@@ -980,7 +1004,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	for _, effectID := range skillEffectIDs(notify.SkillID) {
 		actorID := notify.TargetID
 		// The status packet may already have installed the persistent aura.
-		if effectID == effectSteelBody {
+		if effectID == effectSteelBody || effectID == effectAsuraBody || effectID == effectBabyBody {
 			if isLocalActor(ctx, actorID) {
 				actorID = localSkillTarget(ctx)
 			}
@@ -1007,6 +1031,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 			glog.Debugf("skill success self effect skill=%d src=%d target=%d effect=%d amount=%d", notify.SkillID, notify.SourceID, notify.TargetID, effectID, notify.Amount)
 		}
 	}
+	m.applySoulLinkerMonsterSkill(ctx, notify)
 }
 
 func (m *WorldMode) applySkillCastNotify(ctx client.Context, notify network.SkillCastNotify) {
@@ -1254,7 +1279,11 @@ func (m *WorldMode) applySpecialEffectNotify(ctx client.Context, notify network.
 		m.replaceCraftingResultEffect(ctx, notify, effectID, spec)
 		return
 	}
-	if m.addWorldEffectIfMissing(ctx, effectID, notify.AID) {
+	// Each Kaupe dodge is a separate hit, even while an earlier dodge fades.
+	if effectID != effectStormKick4 && m.hasActiveWorldEffect(effectID, notify.AID, time.Now()) {
+		return
+	}
+	if m.addWorldEffect(ctx, effectID, notify.AID) {
 		glog.Debugf("special effect actor=%d special=%d effect=%d sfx=%v", notify.AID, notify.EffectID, effectID, spec.sfx)
 	}
 }
@@ -1428,6 +1457,10 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		m.applyWorldEffectSideEffects(ctx, worldEffect{effectID: effectID, actorID: actorID}, starts)
 		return false
 	}
+	// SAINTCASTING keeps a visible startup flare even for very short casts.
+	if effectID == effectBlueCasting && durationOverride > 0 {
+		durationOverride = max(durationOverride, 56*db.EffectFrameDuration)
+	}
 	duration := spec.duration
 	for _, component := range spec.components {
 		componentDuration := m.worldEffectResolvedComponentDuration(ctx, spec, component)
@@ -1450,6 +1483,20 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		starts:   starts,
 		expires:  starts.Add(duration),
 		duration: durationOverride,
+	}
+	if effectID == effectStin || effectID == effectStin3 || effectID == effectStin2 {
+		initSoulLinkerProjectile(ctx, &effect)
+	}
+	if effectID == effectHated || effectID == effectKaizel || effectID == effectSmaReady {
+		effect.buffParticles = &soulLinkerParticles{}
+	}
+	if effectID == effectSoulLink || effectID == effectStormKick4 {
+		effect.soulLights = &soulLights{}
+		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
+		effect.hasActorTransform = true
+	}
+	if effectID == effectBlueCasting {
+		effect.blueCasting = &blueCasting{}
 	}
 	m.worldEffects = append(m.worldEffects, effect)
 	m.scheduleWorldEffectSound(starts, spec, effect)
@@ -1662,6 +1709,9 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		return
 	}
 	effectID := skillCastAuraEffectID(property)
+	if db.IsSoulLinkerActiveSkill(skillID) {
+		effectID = effectBlueCasting
+	}
 	if effectID <= 0 {
 		return
 	}
@@ -2009,6 +2059,9 @@ func importedSkillEffectSpec(skillID uint16) skillEffectSpec {
 }
 
 func importedSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
+	if db.IsSoulLinkSkill(skillID) {
+		return skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true, frame: 3, duration: 2 * time.Second}, true
+	}
 	if spec, ok := monkSkillActionSpec(skillID); ok {
 		return spec, true
 	}
@@ -2471,6 +2524,24 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncHitParticles
 	case "BlessingCircle":
 		return effectFuncBlessingCircle
+	case "SoulLink":
+		return effectFuncSoulLink
+	case "KaupeDodge":
+		return effectFuncKaupeDodge
+	case "BlueCasting":
+		return effectFuncBlueCasting
+	case "Estin":
+		return effectFuncEstin
+	case "Estun", "SoulLinkerParticles":
+		return effectFuncSoulLinkerParticles
+	case "Esma":
+		return effectFuncEsma
+	case "Kaizel":
+		return effectFuncKaizel
+	case "EsmaHitTexture":
+		return effectFuncEsmaHitTexture
+	case "SoulLinkerHitLines":
+		return effectFuncSoulLinkerHitLines
 	default:
 		return effectFuncUnknown
 	}

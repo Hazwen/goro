@@ -30,6 +30,15 @@ const (
 	effectFuncHitRing
 	effectFuncHitParticles
 	effectFuncBlessingCircle
+	effectFuncEstin
+	effectFuncSoulLinkerParticles
+	effectFuncSoulLinkerHitLines
+	effectFuncEsma
+	effectFuncKaizel
+	effectFuncEsmaHitTexture
+	effectFuncSoulLink
+	effectFuncKaupeDodge
+	effectFuncBlueCasting
 )
 
 const (
@@ -71,6 +80,24 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawHitParticlesEffect(screen, ctx, projection, component, effect, componentIndex, worldX, worldY, worldZ, now)
 	case effectFuncBlessingCircle:
 		m.drawBlessingCircleEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncSoulLink:
+		m.drawSoulLinkEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncKaupeDodge:
+		m.drawSoulLights(screen, ctx, projection, component, effect, now)
+	case effectFuncBlueCasting:
+		m.drawBlueCastingEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncEstin:
+		m.drawEstinEffect(screen, ctx, component, effect, now)
+	case effectFuncSoulLinkerParticles:
+		m.drawSoulLinkerParticles(screen, ctx, projection, component, effect, now)
+	case effectFuncEsma:
+		m.drawEsmaEffect(screen, ctx, component, effect, now)
+	case effectFuncKaizel:
+		m.drawKaizelEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncEsmaHitTexture:
+		m.drawEsmaHitTexture(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncSoulLinkerHitLines:
+		m.drawSoulLinkerHitLines(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	default:
 	}
 }
