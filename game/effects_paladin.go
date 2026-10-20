@@ -27,6 +27,8 @@ type shieldFlight struct {
 	tick, phase    int
 	heading, slope float64
 	distance       float64
+	oneWay         bool
+	deflection     float64
 }
 
 type shieldChainFlight struct {
@@ -62,13 +64,30 @@ func initShieldBoomerang(ctx client.Context, effect *worldEffect) {
 	if distance > 0 {
 		effect.shield.slope = .4 * delta.y / distance
 	}
+	// TANJI uses the same native primitive, with a delayed, one-way flight.
+	if effect.effectID == effectTanji {
+		effect.shield.tick = -15
+		effect.shield.oneWay = true
+		effect.shield.deflection = degreesToRadians(float64(hitEffectRandom(*effect, 0, 45)))
+		if hitEffectRandom(*effect, 1, 2) == 0 {
+			effect.shield.deflection *= -1
+		}
+		effect.shield.images[0].alpha = 5
+		effect.shield.images[0].angle = math.Pi / 4
+	}
 }
 
 func (flight *shieldFlight) advance(tick int, caster modelPoint3) {
 	for flight.tick < min(tick, 499) {
 		flight.tick++
+		if flight.tick <= 0 {
+			continue
+		}
 		current := &flight.images[0]
-		if flight.tick%3 == 0 {
+		if flight.oneWay && flight.tick <= 10 {
+			current.alpha = min(255, current.alpha+25)
+		}
+		if flight.oneWay || flight.tick%3 == 0 {
 			flight.images[3] = flight.images[2]
 			flight.images[3].alpha = max(0, flight.images[3].alpha-25)
 			flight.images[2] = flight.images[1]
@@ -81,6 +100,10 @@ func (flight *shieldFlight) advance(tick int, caster modelPoint3) {
 		case 0:
 			if .4*float64(flight.tick) > flight.distance {
 				flight.phase = 1
+				if flight.oneWay {
+					flight.phase = 2
+					flight.heading += flight.deflection
+				}
 			}
 			current.position.y += flight.slope
 		case 1:
@@ -96,8 +119,12 @@ func (flight *shieldFlight) advance(tick int, caster modelPoint3) {
 			current.alpha = max(0, current.alpha-12)
 			current.position.y -= flight.slope
 		}
-		current.position.x += .4 * math.Cos(flight.heading)
-		current.position.z += .4 * math.Sin(flight.heading)
+		speed := .4
+		if flight.oneWay && flight.phase == 2 {
+			speed *= 3
+		}
+		current.position.x += speed * math.Cos(flight.heading)
+		current.position.z += speed * math.Sin(flight.heading)
 	}
 }
 
@@ -115,9 +142,18 @@ func (m *WorldMode) drawShieldBoomerangEffect(screen *render.Frame, ctx client.C
 	if texture == nil || effect.shield == nil {
 		return
 	}
-	effect.shield.advance(int(now.Sub(effect.starts)/db.EffectFrameDuration)+1, effectWorldAnchor(ctx, effect, now))
+	tick := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
+	size := 7 * math.Sqrt2 / 5
+	if effect.shield.oneWay {
+		tick -= 15
+		size = effect.size
+		if size == 0 {
+			size = 2 * math.Sqrt2 / 5
+		}
+	}
+	effect.shield.advance(tick, effectWorldAnchor(ctx, effect, now))
 	for _, particle := range effect.shield.images {
-		drawShieldImage(screen, projection, texture, particle, 7*math.Sqrt2/5, false)
+		drawShieldImage(screen, projection, texture, particle, size, effect.shield.oneWay)
 	}
 }
 

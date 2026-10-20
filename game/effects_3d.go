@@ -391,3 +391,12 @@ func appendEffectQuad(vertices *[]render.Vertex3D, indices *[]uint16, texture *r
 	}
 	*indices = append(*indices, base, base+1, base+2, base, base+2, base+3)
 }
+
+// The native PP_INTIMIDATE and PP_TEIHIT1 rotate in XY, then XZ.
+// Native Y points down; our Y points up. Distances here use native units.
+func effectParticlePoint(x, y, pitch, yaw float64) modelPoint3 {
+	s, c := math.Sincos(pitch)
+	rx, ry := c*x-s*y, s*x+c*y
+	s, c = math.Sincos(yaw)
+	return modelPoint3{x: c * rx / 5, y: -ry / 5, z: s * rx / 5}
+}

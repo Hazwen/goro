@@ -626,6 +626,8 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
+	case db.SkillMOTripleattack, db.SkillMOInvestigate, db.SkillMOFingeroffensive, db.SkillMOExtremityfist, db.SkillMOChaincombo, db.SkillMOBalkyoung:
+		return true
 	case db.SkillLKSpiralpierce, db.SkillLKHeadcrush, db.SkillLKJointbeat:
 		return true
 	case db.SkillCRShieldcharge, db.SkillCRShieldboomerang, db.SkillCRHolycross, db.SkillCRGrandcross, db.SkillPaPressure, db.SkillPaSacrifice, db.SkillPaShieldchain,
@@ -759,13 +761,16 @@ func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActio
 	if spec.effectTiming == db.SkillEffectAtActionStart {
 		starts = actionAt
 	}
+	for _, sound := range db.SkillEffects[action.SkillID].SFX {
+		m.scheduleSoundAtActor(actionAt, action.SourceID, sound)
+	}
 	for _, effectID := range spec.effectIDs {
 		if m.addWorldEffectBetweenAt(ctx, effectID, action.TargetID, action.SourceID, starts) {
 			m.worldEffects[len(m.worldEffects)-1].serverTick = action.ServerTick
 			if effectID == effectTanji {
-				// TANJI uses a square of radius 2 + 0.4 * skill level.
-				level := minInt(5, maxInt(1, int(action.SkillLevel)))
-				m.worldEffects[len(m.worldEffects)-1].size = math.Sqrt2 * (2 + 0.4*float64(level)) / 5
+				// LaunchSkillSpecialEffect receives the hit count (spheres used).
+				count := minInt(5, actionVisualHitCount(action))
+				m.worldEffects[len(m.worldEffects)-1].size = math.Sqrt2 * (2 + 0.4*float64(count)) / 5
 			}
 			glog.Debugf("skill effect skill=%d src=%d target=%d effect=%d", action.SkillID, action.SourceID, action.TargetID, effectID)
 		}
@@ -840,6 +845,9 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 		effectStarts := starts.Add(multiHitDelay * time.Duration(i))
 		for _, effectID := range effectIDs {
 			if effectID == effectBowlingBash && i > 0 {
+				continue
+			}
+			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
 				continue
 			}
 			if m.addWorldEffectAt(ctx, effectID, action.TargetID, effectStarts) {

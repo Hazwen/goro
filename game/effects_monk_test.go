@@ -306,8 +306,9 @@ func TestMonkSkillResultsUseDedicatedPoses(t *testing.T) {
 		{db.SkillMOInvestigate, spriteActionPCSkill, 3, true},
 		{db.SkillMOFingeroffensive, spriteActionPCSkill, 3, true},
 		{db.SkillMOChaincombo, spriteActionPCSkill, 5, false},
-		{db.SkillMOCombofinish, spriteActionPCSkill, 1, true},
-		{db.SkillMOTripleattack, spriteActionPCAttack3, 0, true},
+		{db.SkillMOCombofinish, spriteActionPCAttack2, 3, true},
+		{db.SkillMOTripleattack, spriteActionPCAttack1, 0, true},
+		{db.SkillMOExplosionspirits, spriteActionPCSkill, 1, true},
 	} {
 		ctx := monkEffectContext()
 		m := &WorldMode{}
@@ -372,19 +373,321 @@ func TestBladeStopWaitingPoseExpires(t *testing.T) {
 	}
 }
 
-func TestThrowSpiritSphereSizeUsesSkillLevel(t *testing.T) {
+func TestThrowSpiritSphereSizeUsesSphereCount(t *testing.T) {
 	ctx := monkEffectContext()
 	m := &WorldMode{}
 	starts := time.Now()
-	for _, level := range []uint16{1, 5} {
-		m.addSkillEffect(ctx, network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillMOFingeroffensive, SkillLevel: level}, starts, starts)
+	for _, count := range []uint16{1, 5} {
+		m.addSkillEffect(ctx, network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillMOFingeroffensive, SkillLevel: 5, HitCount: count}, starts, starts)
 	}
-	spec, _ := worldEffectSpecForID(effectTanji)
-	component := spec.components[0]
-	small, _ := effect3DSize(component, m.worldEffects[0], 0, 0.5, 0)
-	large, _ := effect3DSize(component, m.worldEffects[1], 0, 0.5, 0)
+	small, large := m.worldEffects[0].size, m.worldEffects[1].size
 	if math.Abs(large/small-4.0/2.4) > 1e-6 {
-		t.Fatalf("sphere sizes = %g, %g; want original level scaling", small, large)
+		t.Fatalf("sphere sizes = %g, %g; want scaling by the number of spheres used", small, large)
+	}
+}
+
+func TestMonkAttackEffectsStartAtRelease(t *testing.T) {
+	for _, tc := range []struct {
+		skill  uint16
+		target []int
+		caster []int
+	}{
+		{db.SkillMOTripleattack, nil, []int{effectTripleAttack}},
+		{db.SkillMOInvestigate, []int{effectChimto}, []int{effectTeiHit2}},
+		{db.SkillMOFingeroffensive, nil, []int{effectTanji}},
+		{db.SkillMOExtremityfist, []int{effectTeiHit1X}, []int{effectQuake}},
+		{db.SkillMOChaincombo, []int{effectTeiHit1, effectChainCombo}, []int{effectGumgang3}},
+		{db.SkillMOCombofinish, nil, []int{effectGumgang3, effectHitLine, effectQuake}},
+	} {
+		ctx := monkEffectContext()
+		m := &WorldMode{}
+		release := time.Unix(100, 0)
+		hit := release.Add(800 * time.Millisecond)
+		action := network.ActorActionNotify{SkillID: tc.skill, SourceID: 2000000, TargetID: 300, SkillLevel: 5, Damage: 100, HitCount: 3}
+		m.addSkillEffect(ctx, action, release, hit)
+		if len(m.worldEffects) != len(tc.target)+len(tc.caster) {
+			t.Fatalf("skill %d effects = %+v", tc.skill, m.worldEffects)
+		}
+		for _, effect := range m.worldEffects {
+			wantActor := uint32(0)
+			for _, id := range tc.target {
+				if effect.effectID == id {
+					wantActor = 300
+				}
+			}
+			for _, id := range tc.caster {
+				if effect.effectID == id {
+					wantActor = 2000000
+				}
+			}
+			if wantActor == 0 || effect.actorID != wantActor || !effect.starts.Equal(release) {
+				t.Fatalf("skill %d misplaced or delayed effect: %+v", tc.skill, effect)
+			}
+		}
+		if tc.skill == db.SkillMOChaincombo {
+			if len(m.scheduledSounds) != 1 || m.scheduledSounds[0].paths[0] != "effect\\mon_연환.wav" {
+				t.Fatalf("Chain Combo sounds = %+v; must not play Fury", m.scheduledSounds)
+			}
+		}
+		if tc.skill == db.SkillMOTripleattack {
+			if len(m.scheduledSounds) != 3 {
+				t.Fatalf("Triple Attack sounds = %+v", m.scheduledSounds)
+			}
+			for i, sound := range m.scheduledSounds {
+				want := "effect\\ef_hit2.wav"
+				if i == 1 {
+					want = "effect\\ef_hit4.wav"
+				}
+				if sound.paths[0] != want || !sound.at.Equal(release.Add(time.Duration(10*(i+1))*db.EffectFrameDuration)) {
+					t.Fatalf("Triple Attack sound %d: %+v", i, sound)
+				}
+			}
+		}
+	}
+}
+
+func TestThrowSpiritSphereFliesFromCasterAndDoesNotReturn(t *testing.T) {
+	ctx := monkEffectContext()
+	target := ctx.World.Actors[300]
+	target.X = 20
+	ctx.World.Actors[300] = target
+	makeFlight := func() *shieldFlight {
+		m := &WorldMode{}
+		m.addWorldEffectBetweenAt(ctx, effectTanji, 300, 2000000, time.Unix(100, 0))
+		effect := m.worldEffects[0]
+		if effect.actorID != 2000000 || effect.targetID != 300 {
+			t.Fatalf("reversed sphere ownership: %+v", effect)
+		}
+		return effect.shield
+	}
+	flight := makeFlight()
+	origin := flight.images[0].position
+	flight.advance(0, origin)
+	if flight.images[0].position != origin || flight.images[0].alpha != 5 {
+		t.Fatal("sphere moved during its 15-tick startup")
+	}
+	flight.advance(10, origin)
+	if math.Abs(flight.images[0].position.x-origin.x-4) > 1e-9 || flight.images[0].alpha != 255 {
+		t.Fatalf("sphere at process 10 = %+v", flight.images)
+	}
+	for i := 1; i < 4; i++ {
+		if flight.images[i].alpha <= 0 || flight.images[i].position.x >= flight.images[i-1].position.x {
+			t.Fatalf("sphere trail missing or ahead of projectile: %+v", flight.images)
+		}
+	}
+	flight.advance(26, origin)
+	if flight.phase != 2 || flight.images[0].position.x < 20.5 {
+		t.Fatalf("sphere did not pass the target: %+v", flight)
+	}
+	x := flight.images[0].position.x
+	flight.advance(60, origin)
+	for _, image := range flight.images {
+		if image.alpha != 0 || image.position.x <= x {
+			t.Fatalf("sphere returned or failed to fade: %+v", flight)
+		}
+	}
+	// Skipping draws must preserve the native tick simulation.
+	skipped := makeFlight()
+	skipped.advance(60, origin)
+	if *flight != *skipped {
+		t.Fatal("sphere flight depends on rendering rate")
+	}
+}
+
+func TestMonkAttackActivationSounds(t *testing.T) {
+	for _, tc := range []struct {
+		skill uint16
+		sound string
+	}{
+		{db.SkillMOExtremityfist, "effect\\mon_아수라 패황권.wav"},
+		{db.SkillMOCombofinish, "effect\\mon_금강불괴.wav"},
+	} {
+		for _, damage := range []int32{100, 0, -1} {
+			ctx := monkEffectContext()
+			m := &WorldMode{}
+			action := network.ActorActionNotify{
+				SourceID: 2000000, TargetID: 300, SkillID: tc.skill, SkillLevel: 5,
+				SourceSpeed: 800, Damage: damage, HitCount: 3, Action: network.ActorActionSkill,
+			}
+			m.applyActorActionNotify(ctx, action)
+			start := m.actorAnims[150000].started
+			count := 0
+			for _, sound := range m.scheduledSounds {
+				if reflect.DeepEqual(sound.paths, []string{tc.sound}) {
+					count++
+					if sound.actorID != action.SourceID || !sound.at.Equal(start) {
+						t.Fatalf("skill %d activation sound must play at the caster on release: %+v", tc.skill, sound)
+					}
+				}
+			}
+			if count != 1 {
+				t.Fatalf("skill %d damage %d: got %d activation sounds, want one", tc.skill, damage, count)
+			}
+			if tc.skill == db.SkillMOExtremityfist {
+				m = &WorldMode{}
+				action.Action = 5
+				m.applyActorActionNotify(ctx, action)
+				for _, sound := range m.scheduledSounds {
+					if reflect.DeepEqual(sound.paths, []string{tc.sound}) {
+						t.Fatal("splash packet replayed Asura's activation sound")
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestMonkAttackBlendModes(t *testing.T) {
+	ctx := monkEffectContext()
+	ctx.Resources = &res.Manager{}
+	start := time.Unix(100, 0)
+	projection := newSceneProjectionForTarget(800, 600, 12.5, 20.5, 0)
+	for _, tc := range []struct {
+		id, tick int
+		blends   []render.Blend
+	}{
+		{effectTeiHit1, 45, []render.Blend{render.BlendLighter}},
+		{effectTeiHit1X, 45, []render.Blend{render.BlendLighter}},
+		{effectHitLine, 30, []render.Blend{render.BlendLighter}},
+		{effectTripleAttack, 10, []render.Blend{render.BlendSourceOver, render.BlendLighter}},
+	} {
+		spec, _ := worldEffectSpecForID(tc.id)
+		m := &WorldMode{textures: map[string]*render.Image{
+			"__effectfile_" + spec.components[0].textureFile + "|blackkey=true": render.NewImage(8, 8),
+		}}
+		m.addWorldEffectBetweenAt(ctx, tc.id, 300, 2000000, start)
+		frame := render.NewFrame(800, 600)
+		m.drawWorldEffects(frame, ctx, projection, start.Add(time.Duration(tc.tick)*db.EffectFrameDuration), false)
+		commands := reflect.ValueOf(frame).Elem().FieldByName("worldCommands")
+		if commands.Len() != len(tc.blends) {
+			t.Fatalf("effect %d: got %d draws, want %d", tc.id, commands.Len(), len(tc.blends))
+		}
+		for i, want := range tc.blends {
+			got := render.Blend(commands.Index(i).FieldByName("Options").FieldByName("Blend").Int())
+			if got != want {
+				t.Fatalf("effect %d layer %d: blend %d, want %d", tc.id, i, got, want)
+			}
+		}
+	}
+}
+
+func TestMonkParticlePhasesAndGeometry(t *testing.T) {
+	effect := worldEffect{starts: time.Unix(100, 0), projectileDirection: modelPoint3{x: 1}}
+	for _, id := range []int{effectTeiHit1, effectTeiHit1X} {
+		effect.effectID = id
+		for i := 0; i < 96; i++ {
+			for _, tc := range []struct{ age, alpha int }{{10, 0}, {11, 15}, {20, 150}, {21, 145}, {50, 0}} {
+				frame := tc.age + 9 + hitEffectRandom(effect, i*3, 25)
+				corners, tint := monkRay(effect, i, frame)
+				if int(tint.A) != tc.alpha {
+					t.Fatalf("ray %d age %d alpha=%d, want %d", i, tc.age, tint.A, tc.alpha)
+				}
+				for _, p := range corners {
+					if !isFinite(p.x) || !isFinite(p.y) || !isFinite(p.z) {
+						t.Fatal("non-finite ray geometry")
+					}
+				}
+			}
+		}
+	}
+	effect.effectID = effectTripleAttack
+	for i := 0; i < 8; i++ {
+		for _, tc := range []struct{ age, alpha int }{{0, 0}, {1, 8}, {5, 40}, {6, 36}, {15, 0}} {
+			frame := tc.age - 1 + i/4 + hitEffectRandom(effect, i*6, 20)
+			from, to, alpha := tripleAttackLine(effect, i, frame)
+			if alpha != tc.alpha || to.x <= from.x || to.y != from.y || from.y < 1.6 || from.y >= 2.4 {
+				t.Fatalf("triple attack line %d age %d: %v -> %v, alpha %d", i, tc.age, from, to, alpha)
+			}
+		}
+	}
+	previous := 0.0
+	for age := 1; age < 100; age++ {
+		p := hitLinePoint(age, 10, 0)
+		if p.x < previous || p.y < -1e-9 || p.z != 0 {
+			t.Fatalf("Combo Finish trail doubled back or went underground: %v", p)
+		}
+		previous = p.x
+	}
+}
+
+func TestMonkParticleCounts(t *testing.T) {
+	for _, tc := range []struct {
+		id, count int
+		adapter   effectFuncAdapter
+	}{
+		{effectTeiHit1, 80, effectFuncMonkRays},
+		{effectTeiHit1X, 96, effectFuncMonkRays},
+		{effectTeiHit2, 20, effectFuncImpactParticles},
+		{effectBackStab, 80, effectFuncImpactParticles},
+	} {
+		spec, ok := worldEffectSpecForID(tc.id)
+		if !ok || len(spec.components) != 1 || spec.components[0].funcAdapter != tc.adapter || spec.components[0].duplicate != tc.count {
+			t.Fatalf("effect %d must render %d native particles using adapter %d", tc.id, tc.count, tc.adapter)
+		}
+		if tc.id != effectBackStab && len(spec.sfx) != 0 {
+			t.Fatalf("impact effect %d must not add a skill activation sound", tc.id)
+		}
+	}
+}
+
+func TestMonkImpactMarkersAndSplash(t *testing.T) {
+	ctx := monkEffectContext()
+	starts := time.Unix(100, 0)
+	for _, tc := range []struct {
+		skill uint16
+		want  map[int]int
+	}{
+		{db.SkillMOTripleattack, map[int]int{effectHit1: 3}},
+		{db.SkillMOInvestigate, map[int]int{effectHit1: 3}},
+		{db.SkillMOFingeroffensive, map[int]int{effectHit1: 3, effectBashHit: 1}},
+		{db.SkillMOExtremityfist, map[int]int{effectHit1: 3}},
+		{db.SkillMOChaincombo, map[int]int{effectHit1: 3, effectSonicBlowHit: 3}},
+		{db.SkillMOCombofinish, map[int]int{effectHit1: 3, effectBashHit: 1}},
+		{db.SkillMOBalkyoung, map[int]int{effectHit3: 3}},
+	} {
+		action := network.ActorActionNotify{SkillID: tc.skill, SourceID: 2000000, TargetID: 300, Damage: 100, HitCount: 3}
+		m := &WorldMode{}
+		m.addSkillHitEffect(ctx, action, starts)
+		got := make(map[int]int)
+		for _, effect := range m.worldEffects {
+			if effect.actorID != 300 {
+				t.Fatalf("skill %d impact on wrong actor", tc.skill)
+			}
+			got[effect.effectID]++
+		}
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Fatalf("skill %d hit markers = %v, want %v", tc.skill, got, tc.want)
+		}
+		action.Action = 5
+		m = &WorldMode{}
+		m.addSkillEffect(ctx, action, starts, starts)
+		m.addSkillHitEffect(ctx, action, starts)
+		// The original explicitly exempts Combo Finish from ACTION_SPLASH suppression.
+		if (len(m.worldEffects) > 0) != (tc.skill == db.SkillMOCombofinish) {
+			t.Fatalf("skill %d splash effects = %+v", tc.skill, m.worldEffects)
+		}
+	}
+}
+
+func TestMonkAttackEffectsRenderWithClientAssets(t *testing.T) {
+	ctx := monkEffectContext()
+	ctx.Resources = realDataManager(t)
+	starts := time.Unix(100, 0)
+	projection := newSceneProjectionForTarget(800, 600, 12.5, 20.5, 0)
+	for _, tc := range []struct{ id, tick int }{
+		{effectTeiHit1, 45}, {effectTeiHit1X, 45}, {effectTeiHit2, 49},
+		{effectTripleAttack, 10}, {effectHitLine, 30}, {effectTanji, 24},
+	} {
+		m := &WorldMode{}
+		if !m.addWorldEffectBetweenAt(ctx, tc.id, 300, 2000000, starts) {
+			t.Fatalf("missing effect %d", tc.id)
+		}
+		frame := render.NewFrame(800, 600)
+		m.drawWorldEffects(frame, ctx, projection, starts.Add(time.Duration(tc.tick)*db.EffectFrameDuration), false)
+		value := reflect.ValueOf(frame).Elem()
+		if value.FieldByName("worldBillboards").Len()+value.FieldByName("worldCommands").Len() == 0 || len(m.textureMiss) != 0 {
+			t.Fatalf("effect %d drew nothing or has missing assets: %v", tc.id, m.textureMiss)
+		}
 	}
 }
 

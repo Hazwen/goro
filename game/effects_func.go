@@ -44,7 +44,7 @@ const (
 	effectFuncGrimtooth
 	effectFuncPoisonParticles
 	effectFuncRogueBurst
-	effectFuncBackStab
+	effectFuncImpactParticles
 	effectFuncBash
 	effectFuncBashHit
 	effectFuncEndure
@@ -63,6 +63,9 @@ const (
 	effectFuncGospelCross
 	effectFuncSpiralPierce
 	effectFuncAgility
+	effectFuncMonkRays
+	effectFuncTripleAttack
+	effectFuncHitLine
 )
 
 const (
@@ -72,6 +75,12 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncMonkRays:
+		m.drawMonkRays(screen, ctx, component, effect, now)
+	case effectFuncTripleAttack:
+		m.drawTripleAttack(screen, ctx, component, effect, now)
+	case effectFuncHitLine:
+		m.drawHitLine(screen, ctx, component, effect, now)
 	case effectFuncAgility:
 		m.drawAgilityEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncSpiralPierce:
@@ -111,8 +120,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawMagnumBreakEffect(screen, ctx, component, effect, now)
 	case effectFuncRogueBurst:
 		m.drawRogueBurst(screen, ctx, component, effect, now)
-	case effectFuncBackStab:
-		m.drawBackStabEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncImpactParticles:
+		m.drawImpactParticles(screen, ctx, projection, component, effect, now)
 	case effectFuncVenomKnife:
 		m.drawVenomKnifeEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncSonicBlow:

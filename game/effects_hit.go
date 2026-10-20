@@ -1,10 +1,12 @@
 package game
 
 import (
+	"image/color"
 	"math"
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/render"
 )
 
@@ -139,6 +141,55 @@ func (m *WorldMode) drawHitParticlesEffect(screen *render.Frame, ctx client.Cont
 			drawSpriteBillboardTintAlphaWorld3DWithOptions(screen, projection, billboard,
 				x+position.x, y+position.z, z+position.y, size*effectPixelRatio, 0, alpha, 1,
 				effectComponentTint(component, 1), options)
+		}
+	}
+}
+
+func initImpactParticles(ctx client.Context, effect *worldEffect) {
+	destination := effectWorldAnchor(ctx, *effect, effect.starts)
+	origin := destination
+	if _, ok, _ := actorForCombatID(ctx, effect.targetID); effect.targetID != 0 && ok {
+		origin = effectWorldAnchor(ctx, worldEffect{actorID: effect.targetID}, effect.starts)
+		effect.actorID, effect.targetID = effect.targetID, effect.actorID
+		effect.x, effect.y, _ = effectAnchor(ctx, effect.actorID)
+	}
+	effect.actorOrigin = destination
+	effect.actorOrigin.y += 1.6
+	effect.projectileDirection = sub3(destination, origin)
+	effect.hasActorTransform = true
+}
+
+func impactParticle(effect worldEffect, index, frame int) (position modelPoint3, size, angle float64, alpha int) {
+	salt := index * 5
+	age := frame + 1 - 40 + hitEffectRandom(effect, salt, 10)
+	alpha = max(0, 15*clampInt(age-1, 0, 9)-3*max(0, age-10))
+	if alpha == 0 {
+		return
+	}
+	direction := math.Atan2(effect.projectileDirection.z, effect.projectileDirection.x)
+	direction += degreesToRadians(float64(hitEffectRandom(effect, salt+1, 60) - 30))
+	speed := (.75 + .01*float64(hitEffectRandom(effect, salt+2, 50))) / 5
+	position = add3(effect.actorOrigin, modelPoint3{
+		x: math.Cos(direction) * speed * float64(age),
+		z: math.Sin(direction) * speed * float64(age),
+		y: (1 - .01*float64(hitEffectRandom(effect, salt+3, 200))) * float64(age) / 5,
+	})
+	size = (.1 + .05*float64(hitEffectRandom(effect, salt+4, 16))) / 5 * math.Sqrt2
+	angle = degreesToRadians(float64(-5*age + 45))
+	return
+}
+
+func (m *WorldMode) drawImpactParticles(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
+	for i := 0; i < component.duplicate; i++ {
+		position, size, angle, alpha := impactParticle(effect, i, frame)
+		if alpha > 0 {
+			drawTexturedEffectBillboardRotatedXY(screen, projection, texture,
+				position.x, position.z, position.y, size, size, angle, color.RGBA{130, 130, 250, uint8(alpha)}, true)
 		}
 	}
 }

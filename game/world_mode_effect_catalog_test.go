@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 684 {
-		t.Fatalf("implemented effects = %d, want 684", coverage.Implemented)
+	if coverage.Implemented != 686 {
+		t.Fatalf("implemented effects = %d, want 686", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 112.68 || coverage.ActivePercent > 112.69 {
-		t.Fatalf("active coverage = %.3f, want about 112.68", coverage.ActivePercent)
+	if coverage.ActivePercent < 113.01 || coverage.ActivePercent > 113.02 {
+		t.Fatalf("active coverage = %.3f, want about 113.01", coverage.ActivePercent)
 	}
 }
 
@@ -1628,47 +1628,6 @@ func TestRobrowserSpecialEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.
 	}
 
 	for _, tc := range []struct {
-		name      string
-		id        int
-		texture   string
-		wav       string
-		duplicate int
-		delay     time.Duration
-	}{
-		{"EF_TEIHIT1", effectTeiHit1, "effect/alpha_center.tga", "effect\\mon_폭기.wav", 12, 250 * time.Millisecond},
-		{"EF_TEIHIT1X", effectTeiHit1X, "effect/lens1.tga", "effect\\mon_아수라 패황권.wav", 24, 100 * time.Millisecond},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 1 || spec.duration != 550*time.Millisecond+tc.delay {
-			t.Fatalf("%s spec = %+v ok=%t", tc.name, spec, ok)
-		}
-		component := spec.components[0]
-		if component.kind != effectComponent3D || component.textureFile != tc.texture || component.duration != 550*time.Millisecond || component.delay != tc.delay || component.duplicate != tc.duplicate || component.alphaMax != 0.8 || !component.fadeIn || !component.fadeOut || component.posXEndRand != 40 || component.posYEndRand != 40 || component.sizeStartX != effectTableSize(10) || component.sizeStartY != effectTableSize(150) || component.sizeEndX != effectTableSize(10) || component.sizeEndY != effectTableSize(150) || component.blendMode != 2 || !component.blendAdditive || !component.attachedEntity || !component.overlay || !component.rotateToTarget || !component.rotateWithCamera {
-			t.Fatalf("%s component = %+v", tc.name, component)
-		}
-		if tc.wav == "" {
-			if len(spec.sfx) != 0 {
-				t.Fatalf("%s sfx = %v, want none", tc.name, spec.sfx)
-			}
-			continue
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
-			t.Fatalf("%s sfx = %v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
-
-	tanji, ok := worldEffectSpecForID(effectTanji)
-	if !ok || len(tanji.components) != 1 || tanji.duration != 150*time.Millisecond {
-		t.Fatalf("EF_TANJI spec = %+v ok=%t", tanji, ok)
-	}
-	if len(tanji.sfx) != 1 || tanji.sfx[0] != "effect\\mon_탄지신통.wav" {
-		t.Fatalf("EF_TANJI sfx = %v", tanji.sfx)
-	}
-	if component := tanji.components[0]; component.kind != effectComponent3D || component.textureFile != "effect/blue_ivy.bmp" || component.duration != 150*time.Millisecond || component.alphaMax != 1 || component.blendMode != 2 || !component.blendAdditive || !component.toSrc || !component.rotateToTarget || !component.rotateWithCamera || component.angleStart != 90 || component.angleEnd != 90 || component.posZ != 1 || component.sizeStart != effectTableSize(50) || !component.attachedEntity {
-		t.Fatalf("EF_TANJI component = %+v", component)
-	}
-
-	for _, tc := range []struct {
 		name     string
 		id       int
 		funcName string
@@ -1718,23 +1677,6 @@ func TestRobrowserSimpleEffectsThreeHundredToThreeFiftyMatchTableRows(t *testing
 	}
 	if len(colorPaper.sfx) != 1 || colorPaper.sfx[0] != "effect\\wedding.wav" {
 		t.Fatalf("EF_COLORPAPER sfx = %#v", colorPaper.sfx)
-	}
-
-	for _, tc := range []struct {
-		name   string
-		id     int
-		sfx    []string
-		delays []time.Duration
-	}{
-		{"EF_TRIPLEATTACK", effectTripleAttack, []string{"effect\\ef_hit2.wav", "effect\\ef_hit4.wav", "effect\\ef_hit2.wav"}, []time.Duration{10 * db.EffectFrameDuration, 20 * db.EffectFrameDuration, 30 * db.EffectFrameDuration}},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
-			t.Fatalf("%s spec = %+v ok=%t", tc.name, spec, ok)
-		}
-		if !reflect.DeepEqual(spec.sfx, tc.sfx) || !reflect.DeepEqual(spec.sfxDelays, tc.delays) {
-			t.Fatalf("%s sound = %v delays %v", tc.name, spec.sfx, spec.sfxDelays)
-		}
 	}
 
 	chemical, ok := worldEffectSpecForID(effectChemical2)

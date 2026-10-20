@@ -258,6 +258,7 @@ const (
 	effectGumgang2       = 261
 	effectTeiHit1        = 262
 	effectGumgang3       = 263
+	effectTeiHit2        = 264
 	effectTanji          = 265
 	effectTeiHit1X       = 266
 	effectChimto         = 267
@@ -300,6 +301,7 @@ const (
 	effectHeal4          = 325
 	effectBeginAsura     = 328
 	effectTripleAttack   = 329
+	effectHitLine        = 330
 	effectHPTime         = 331
 	effectSPTime         = 332
 	effectBlind          = 334
@@ -1548,8 +1550,15 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		expires:  starts.Add(duration),
 		duration: durationOverride,
 	}
-	if effectID == effectBackStab {
-		initBackStabEffect(ctx, &effect)
+	if effectID == effectBackStab || effectID == effectTeiHit2 {
+		initImpactParticles(ctx, &effect)
+	}
+	if effectID == effectTripleAttack {
+		initTripleAttack(ctx, &effect)
+	}
+	if effectID == effectTeiHit1 || effectID == effectTeiHit1X || effectID == effectHitLine {
+		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
+		effect.hasActorTransform = true
 	}
 	if effectID == effectRogueCoin || effectID == effectIntimidate || effectID == effectTeiHit3 || effectID == effectMagnumBreak || effectID == effectGrandCross || effectID == effectPressure || effectID == effectShieldBoomerang3 {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
@@ -1558,7 +1567,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectGrimtooth || effectID == effectThrowItem6 {
 		initAssassinProjectile(ctx, &effect)
 	}
-	if effectID == effectShieldBoomer {
+	if effectID == effectShieldBoomer || effectID == effectTanji {
 		initShieldBoomerang(ctx, &effect)
 	}
 	if effectID == effectShieldBoomerang3 {
@@ -2657,8 +2666,16 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncKaupeDodge
 	case "RogueBurst":
 		return effectFuncRogueBurst
-	case "BackStab":
-		return effectFuncBackStab
+	case "ImpactParticles":
+		return effectFuncImpactParticles
+	case "MonkRays":
+		return effectFuncMonkRays
+	case "TripleAttack":
+		return effectFuncTripleAttack
+	case "HitLine":
+		return effectFuncHitLine
+	case "Tanji":
+		return effectFuncShieldBoomerang
 	case "SonicBlow":
 		return effectFuncSonicBlow
 	case "VenomKnife":

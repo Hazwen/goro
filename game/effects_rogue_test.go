@@ -135,14 +135,14 @@ func TestRogueParticlesNativePhases(t *testing.T) {
 	}
 	effect := worldEffect{effectID: effectBackStab, starts: starts, projectileDirection: modelPoint3{x: 6}}
 	for i := 0; i < 80; i++ {
-		if _, _, _, alpha := backStabParticle(effect, i, 30); alpha != 0 {
+		if _, _, _, alpha := impactParticle(effect, i, 30); alpha != 0 {
 			t.Fatal("Back Stab appeared before its delayed particle launch")
 		}
-		position, size, _, alpha := backStabParticle(effect, i, 49)
+		position, size, _, alpha := impactParticle(effect, i, 49)
 		if alpha <= 0 || position.x <= 0 || math.Abs(position.z) > position.x || size <= 0 {
 			t.Fatalf("Back Stab must travel in the attack direction: %+v, %g, %d", position, size, alpha)
 		}
-		if _, _, _, alpha := backStabParticle(effect, i, 125); alpha != 0 {
+		if _, _, _, alpha := impactParticle(effect, i, 125); alpha != 0 {
 			t.Fatal("Back Stab did not fade out")
 		}
 	}
@@ -153,7 +153,7 @@ func TestBackStab2008Opacity(t *testing.T) {
 	for i := 0; i < 80; i++ {
 		for _, tc := range []struct{ age, alpha int }{{1, 0}, {2, 15}, {10, 135}, {11, 132}, {54, 3}, {55, 0}} {
 			frame := tc.age + 39 - hitEffectRandom(effect, i*5, 10)
-			_, _, _, alpha := backStabParticle(effect, i, frame)
+			_, _, _, alpha := impactParticle(effect, i, frame)
 			if alpha != tc.alpha {
 				t.Fatalf("particle %d at age %d: alpha = %d, want 2008 alpha %d", i, tc.age, alpha, tc.alpha)
 			}

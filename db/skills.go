@@ -3606,7 +3606,7 @@ const (
 )
 
 type SkillEffectSpec struct {
-	// SFX plays when a non-damaging skill succeeds, independently of shared visuals.
+	// SFX plays at attack start or when a non-damaging skill succeeds, independently of shared visuals.
 	SFX []string
 	// EffectTiming controls EffectIDs and EffectIDsOnCaster in attack notifications.
 	// HitEffectIDs and HitEffectIDsOnCaster always follow the damage timing.
@@ -4003,16 +4003,16 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillCRSpearquicken:             {SuccessEffectIDsSelf: []int{effectSpearQuicken}},
 	SkillMOCallspirits:              {},
 	SkillMOAbsorbspirits:            {SuccessEffectIDsSelf: []int{effectAbsorbSpirits}},
-	SkillMOTripleattack:             {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectTripleAttack}},
+	SkillMOTripleattack:             {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectTripleAttack}, HitEffectIDs: []int{effectHit1}},
 	SkillMOBodyrelocation:           {},
-	SkillMOInvestigate:              {EffectIDs: []int{effectChimto}},
-	SkillMOFingeroffensive:          {EffectIDs: []int{effectTanji}, HitEffectIDs: []int{1}},
+	SkillMOInvestigate:              {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectTeiHit2, effectChimto}, HitEffectIDs: []int{effectHit1}},
+	SkillMOFingeroffensive:          {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectTanji}, HitEffectIDs: []int{effectHit1, effectBashHit}},
 	SkillMOSteelbody:                {EffectIDs: []int{effectSteelBody, SkillEffectSteelBodyRing, effectQuake}},
 	SkillMOBladestop:                {},
 	SkillMOExplosionspirits:         {SFX: []string{"effect\\mon_폭기.wav"}, EffectIDsOnCaster: []int{effectGumgang2, effectQuake}, HideCastAura: true},
-	SkillMOExtremityfist:            {EffectIDs: []int{effectQuake}, HitEffectIDs: []int{effectTeiHit1X}},
-	SkillMOChaincombo:               {EffectIDs: []int{effectTeiHit1, effectChainCombo}, EffectIDsOnCaster: []int{effectGumgang3}, HitEffectIDs: []int{effectSonicBlowHit}},
-	SkillMOCombofinish:              {EffectIDs: []int{330, effectQuake}, EffectIDsOnCaster: []int{effectGumgang3}, HitEffectIDs: []int{1}},
+	SkillMOExtremityfist:            {EffectTiming: SkillEffectAtActionStart, SFX: []string{"effect\\mon_아수라 패황권.wav"}, EffectIDs: []int{effectTeiHit1X}, EffectIDsOnCaster: []int{effectQuake}, HitEffectIDs: []int{effectHit1}},
+	SkillMOChaincombo:               {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectTeiHit1, effectChainCombo}, EffectIDsOnCaster: []int{effectGumgang3}, HitEffectIDs: []int{effectHit1, effectSonicBlowHit}, HideCastAura: true},
+	SkillMOCombofinish:              {EffectTiming: SkillEffectAtActionStart, SFX: []string{"effect\\mon_금강불괴.wav"}, EffectIDsOnCaster: []int{effectGumgang3, effectHitLine, effectQuake}, HitEffectIDs: []int{effectHit1, effectBashHit}, HideCastAura: true},
 	SkillSACastcancel:               {},
 	SkillSAMagicrod:                 {SuccessEffectIDs: []int{effectMagicRod}},
 	SkillSASpellbreaker:             {SuccessEffectIDs: []int{effectSpellBreaker}},
@@ -4236,7 +4236,7 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillBaPangvoice:                {SuccessEffectIDs: []int{effectFVoice}},
 	SkillDCWinkcharm:                {SuccessEffectIDs: []int{effectWink}},
 	SkillMOKitranslation:            {},
-	SkillMOBalkyoung:                {EffectIDs: []int{514}},
+	SkillMOBalkyoung:                {HitEffectIDs: []int{effectHit3}, HideCastAura: true},
 	SkillSAElementground:            {EffectIDs: []int{effectSeismicWeapon}},
 	SkillSAElementfire:              {EffectIDs: []int{effectFlameLauncher}},
 	SkillSAElementwind:              {EffectIDs: []int{effectLightningLoad}},
@@ -4414,7 +4414,10 @@ var SkillActions = map[uint16]SkillActionKind{
 	SkillTFBacksliding:        SkillActionNone,
 	SkillSTChasewalk:          SkillActionIdle,
 	SkillMOCallspirits:        SkillActionIdle,
+	SkillMOKitranslation:      SkillActionIdle,
 	SkillChSoulcollect:        SkillActionIdle,
+	SkillMOTripleattack:       SkillActionAttack,
+	SkillMOBalkyoung:          SkillActionAttack,
 	SkillSMBash:               SkillActionAttack,
 	SkillSMMagnum:             SkillActionAttack,
 	SkillKNPierce:             SkillActionAttack,

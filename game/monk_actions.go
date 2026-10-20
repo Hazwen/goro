@@ -26,15 +26,17 @@ func monkSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
 	case db.SkillMOChaincombo:
 		spec.frame = 5
 	case db.SkillMOCombofinish:
-		spec.frame = 1
+		spec.action = skillActorActionAttack2
+		spec.frame = 3
 		spec.length = 2
-		spec.speed = 6 * db.EffectFrameDuration
-		spec.play = true
-	case db.SkillMOTripleattack:
-		spec.action = skillActorActionAttack3
-		spec.length = 8
 		spec.speed = 4 * db.EffectFrameDuration
 		spec.play = true
+	case db.SkillMOExplosionspirits:
+		spec.frame = 1
+		spec.length = 2
+		spec.speed = 30 * db.EffectFrameDuration
+		spec.play = true
+		spec.duration = time.Second
 	default:
 		return skillActionSpec{}, false
 	}
