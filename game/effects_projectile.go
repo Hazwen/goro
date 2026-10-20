@@ -48,6 +48,10 @@ func throwItemAt(effect worldEffect, process int) (position modelPoint3, angle f
 		speed, height, rotation, spin = .4, 2, 0, 10
 	}
 	travel := int(distance/speed) + 1
+	if isAlchemistBottle(effect.effectID) {
+		speed, height, rotation, spin = distance/25, 6, 0, 10
+		travel = 26
+	}
 	stop := int(float64(travel) * 1.05)
 	n := min(process, stop)
 	position = effect.actorOrigin
@@ -79,13 +83,29 @@ func (m *WorldMode) drawThrowItemEffect(screen *render.Frame, ctx client.Context
 			continue
 		}
 		size := .8 * math.Sqrt2
+		width, additive := size, false
 		tint := color.RGBA{255, 200, 255, uint8(alpha)}
 		if effect.effectID == effectThrowItem3 {
 			size = .4 * math.Sqrt2
+			width = size
 			tint.G = 255
 		}
+		if isAlchemistBottle(effect.effectID) {
+			size = .6 * math.Sqrt2
+			width = -size // RenderCloud reverses the bottle's texture corners.
+			tint = color.RGBA{135, 255, 135, uint8(alpha)}
+			if effect.effectID != effectThrowItem {
+				colors := [...]color.RGBA{{255, 135, 135, 255}, {255, 205, 135, 255}, {255, 255, 135, 255}, {255, 255, 255, 255}, {135, 135, 255, 255}, {255, 255, 255, 255}}
+				if effect.itemLevel < 1 || effect.itemLevel > len(colors) {
+					continue
+				}
+				tint = colors[effect.itemLevel-1]
+				tint.A = uint8(alpha)
+				additive = effect.itemLevel == 6
+			}
+		}
 		drawTexturedEffectBillboardRotatedXY(screen, projection, texture,
-			position.x, position.z, position.y, size, size, angle-3*math.Pi/4,
-			tint, false)
+			position.x, position.z, position.y, width, size, angle-3*math.Pi/4,
+			tint, additive)
 	}
 }

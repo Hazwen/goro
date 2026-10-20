@@ -642,7 +642,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 	switch action.SkillID {
 	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower, db.SkillSNFalconassault, db.SkillSNSharpshooting, db.SkillBaMusicalstrike, db.SkillDCThrowarrow, db.SkillCGArrowvulcan:
 		return true
-	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution, db.SkillWSCarttermination:
+	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution, db.SkillWSCarttermination, db.SkillAMAcidterror:
 		return true
 	case db.SkillWZFirepillar, db.SkillWZSightrasher, db.SkillWZMeteor, db.SkillWZJupitel, db.SkillWZVermilion,
 		db.SkillWZWaterball, db.SkillWZFrostnova, db.SkillWZStormgust, db.SkillWZEarthspike, db.SkillWZHeavendrive:
@@ -1476,6 +1476,14 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	}
 	if skillID == db.SkillALBlessing || skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk || skillID == db.SkillPRRedemptio || skillID == db.SkillBaPangvoice {
 		return spriteActionIdle
+	}
+	switch skillID {
+	case db.SkillAMPotionpitcher, db.SkillAMAcidterror, db.SkillAMCpWeapon, db.SkillAMCpShield, db.SkillAMCpArmor, db.SkillAMCpHelm, db.SkillAMCannibalize, db.SkillAMCallhomun, db.SkillAMRest, db.SkillAMResurrecthomun:
+		return spriteActionIdle
+	case db.SkillAMBerserkpitcher:
+		return spriteActionPCAttack1
+	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3:
+		return spriteActionPCSkill
 	}
 	if skillID == db.SkillALIncagi {
 		return spriteActionPCSkill

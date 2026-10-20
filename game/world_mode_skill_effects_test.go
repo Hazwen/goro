@@ -1451,15 +1451,15 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "RG_CLOSECONFINE success", skillSuccessEffectIDs(db.SkillRGCloseconfine), effectQuakeBody4)
 	expectEffectIDs(t, "RG_CLOSECONFINE imported ground", skillGroundEffectIDs(db.SkillRGCloseconfine))
 	expectEffectIDs(t, "AM_PHARMACY imported empty", skillEffectIDs(db.SkillAMPharmacy))
-	expectEffectIDs(t, "AM_DEMONSTRATION imported ground", skillGroundEffectIDs(db.SkillAMDemonstration), effectDemonstration)
-	expectEffectIDs(t, "AM_ACIDTERROR imported before hit", skillBeforeHitEffectIDs(db.SkillAMAcidterror), effectThrowItem)
-	expectEffectIDs(t, "AM_POTIONPITCHER imported", skillEffectIDs(db.SkillAMPotionpitcher), 299)
+	expectEffectIDs(t, "AM_DEMONSTRATION imported ground", skillGroundEffectIDs(db.SkillAMDemonstration))
+	expectEffectIDs(t, "AM_ACIDTERROR at release", skillEffectIDs(db.SkillAMAcidterror), effectThrowItem)
+	expectEffectIDs(t, "AM_POTIONPITCHER imported", skillEffectIDs(db.SkillAMPotionpitcher))
 	expectEffectIDs(t, "AM_CANNIBALIZE imported empty", skillEffectIDs(db.SkillAMCannibalize))
 	expectEffectIDs(t, "AM_SPHEREMINE imported empty", skillEffectIDs(db.SkillAMSpheremine))
-	expectEffectIDs(t, "AM_CP_WEAPON imported", skillEffectIDs(db.SkillAMCpWeapon), effectChemicalProt)
-	expectEffectIDs(t, "AM_CP_SHIELD imported", skillEffectIDs(db.SkillAMCpShield), effectChemicalProt)
-	expectEffectIDs(t, "AM_CP_ARMOR imported", skillEffectIDs(db.SkillAMCpArmor), effectChemicalProt)
-	expectEffectIDs(t, "AM_CP_HELM imported", skillEffectIDs(db.SkillAMCpHelm), effectChemicalProt)
+	expectEffectIDs(t, "AM_CP_WEAPON imported", skillSuccessEffectIDs(db.SkillAMCpWeapon), effectChemicalProt)
+	expectEffectIDs(t, "AM_CP_SHIELD imported", skillSuccessEffectIDs(db.SkillAMCpShield), effectChemicalProt)
+	expectEffectIDs(t, "AM_CP_ARMOR imported", skillSuccessEffectIDs(db.SkillAMCpArmor), effectChemicalProt)
+	expectEffectIDs(t, "AM_CP_HELM imported", skillSuccessEffectIDs(db.SkillAMCpHelm), effectChemicalProt)
 	expectEffectIDs(t, "AM_CALLHOMUN imported empty", skillEffectIDs(db.SkillAMCallhomun))
 	expectEffectIDs(t, "AM_REST imported empty", skillEffectIDs(db.SkillAMRest))
 	expectEffectIDs(t, "AM_RESURRECTHOMUN imported empty", skillEffectIDs(db.SkillAMResurrecthomun))
@@ -1573,11 +1573,11 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "SL_SMA original", skillEffectIDs(db.SkillSLSma), effectFourWayBody, effectStin2, effectHitLine6, effectHitTexture)
 	expectEffectIDs(t, "SL_SWOO imported", skillEffectIDs(db.SkillSLSwoo), effectM07, effectBabyBody)
 	expectEffectIDs(t, "SL_SKA imported", skillEffectIDs(db.SkillSLSka), effectSteelBody, effectGumgang2, effectQuake)
-	expectEffectIDs(t, "AM_BERSERKPITCHER imported", skillEffectIDs(db.SkillAMBerserkpitcher), effectItemFast3)
-	expectEffectIDs(t, "AM_BERSERKPITCHER imported before hit", skillBeforeHitEffectIDs(db.SkillAMBerserkpitcher), 541)
-	expectEffectIDs(t, "AM_TWILIGHT1 imported", skillEffectIDs(db.SkillAMTwilight1), 497)
-	expectEffectIDs(t, "AM_TWILIGHT2 imported", skillEffectIDs(db.SkillAMTwilight2), 498)
-	expectEffectIDs(t, "AM_TWILIGHT3 imported", skillEffectIDs(db.SkillAMTwilight3), 499)
+	expectEffectIDs(t, "AM_BERSERKPITCHER imported", skillSuccessEffectIDs(db.SkillAMBerserkpitcher), effectItemFast3)
+	expectEffectIDs(t, "AM_BERSERKPITCHER imported before hit", skillBeforeHitEffectIDs(db.SkillAMBerserkpitcher))
+	expectEffectIDs(t, "AM_TWILIGHT1 imported", skillEffectIDs(db.SkillAMTwilight1))
+	expectEffectIDs(t, "AM_TWILIGHT2 imported", skillEffectIDs(db.SkillAMTwilight2))
+	expectEffectIDs(t, "AM_TWILIGHT3 imported", skillEffectIDs(db.SkillAMTwilight3))
 	expectEffectIDs(t, "CR_ALCHEMY imported empty", skillEffectIDs(db.SkillCRAlchemy))
 	expectEffectIDs(t, "CR_SYNTHESISPOTION imported empty", skillEffectIDs(db.SkillCRSynthesispotion))
 	expectEffectIDs(t, "CR_SLIMPITCHER imported empty", skillEffectIDs(db.SkillCRSlimpitcher))
@@ -2267,7 +2267,6 @@ func TestSpeedPotionEffectSpecsMatchRobrowserSTRRows(t *testing.T) {
 	}{
 		{"Concentration Potion", effectItemFast, "집중"},
 		{"Awakening Potion", effectItemFast2, "각성"},
-		{"Berserk Potion", effectItemFast3, "버서크"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.effectID)
 		if !ok || len(spec.components) != 1 {
@@ -2288,8 +2287,8 @@ func TestBerserkPotionEffectStartsDelayedCameraShake(t *testing.T) {
 	if !ok {
 		t.Fatal("berserk potion effect spec missing")
 	}
-	if spec.cameraShake != 200*time.Millisecond || spec.cameraShakeDelay != 200*time.Millisecond {
-		t.Fatalf("berserk potion shake = delay %s duration %s, want 200ms/200ms", spec.cameraShakeDelay, spec.cameraShake)
+	if spec.cameraShake != 200*time.Millisecond || spec.cameraShakeDelay != 18*db.EffectFrameDuration {
+		t.Fatalf("berserk potion shake = delay %s duration %s, want 18 ticks/200ms", spec.cameraShakeDelay, spec.cameraShake)
 	}
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
@@ -2300,15 +2299,15 @@ func TestBerserkPotionEffectStartsDelayedCameraShake(t *testing.T) {
 	if !mode.addWorldEffectAt(ctx, effectItemFast3, 2000000, starts) {
 		t.Fatal("add berserk potion effect failed")
 	}
-	shakeStart := starts.Add(200 * time.Millisecond)
-	shakeEnd := starts.Add(400 * time.Millisecond)
+	shakeStart := starts.Add(18 * db.EffectFrameDuration)
+	shakeEnd := shakeStart.Add(200 * time.Millisecond)
 	if !mode.cameraShakeStart.Equal(shakeStart) || !mode.cameraShakeEnd.Equal(shakeEnd) {
 		t.Fatalf("camera shake = %s..%s, want %s..%s", mode.cameraShakeStart, mode.cameraShakeEnd, shakeStart, shakeEnd)
 	}
 	if x, y := mode.cameraShakeOffset(starts.Add(100 * time.Millisecond)); x != 0 || y != 0 {
 		t.Fatalf("early camera shake offset = %.3f, %.3f, want zero", x, y)
 	}
-	if x, y := mode.cameraShakeOffset(starts.Add(250 * time.Millisecond)); x == 0 && y == 0 {
+	if x, y := mode.cameraShakeOffset(shakeStart.Add(50 * time.Millisecond)); x == 0 && y == 0 {
 		t.Fatalf("active camera shake offset = %.3f, %.3f, want non-zero", x, y)
 	}
 }

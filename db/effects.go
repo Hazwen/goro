@@ -289,6 +289,7 @@ const (
 	effectTalkFrostJoke  = 295
 	effectTalkScream     = 296
 	effectThrowItem      = 298
+	effectThrowItem2     = 299
 	effectChemicalProt   = 300
 	effectDemonstration  = 302
 	effectChemical2      = 303
@@ -308,6 +309,7 @@ const (
 	effectGuard          = 336
 	effectJobLvUp50      = 337
 	effectMagnum2        = 339
+	effectCoupleCasting  = 342
 	effectEntry2         = 344
 	effectColorPaper     = 347
 	effectFoodChocolate  = 363
@@ -474,6 +476,7 @@ const (
 	effectTarotCard14      = 536
 	effectAcidDemon        = 537
 	effectBabyBodyBack     = 540
+	effectThrowItem5       = 541
 	effectBlueBody         = 542
 	effectHated            = 543
 	effectSmaReady         = 546
@@ -491,6 +494,9 @@ const (
 	effectHamiDefence      = 569
 	effectHamiCastle       = 570
 	effectHamiBlood        = 571
+	effectTwilight1        = 573
+	effectTwilight2        = 574
+	effectTwilight3        = 575
 	effectItemThunder      = effectBoxThunder
 	effectItemCloud        = effectBoxResentment
 	effectItemCurse        = 578
@@ -2413,8 +2419,14 @@ func healingPotionEffectSpec(file string, c color.RGBA) EffectSpec {
 
 func berserkPotionEffectSpec() EffectSpec {
 	spec := strEffectSpecAttached("버서크", "effect\\ac_concentration.wav", false)
+	spec.Duration = 151 * EffectFrameDuration
+	spec.SFXDelays = []time.Duration{18 * EffectFrameDuration}
 	spec.CameraShake = 200 * time.Millisecond
-	spec.CameraShakeDelay = 200 * time.Millisecond
+	spec.CameraShakeDelay = 18 * EffectFrameDuration
+	spec.Components = append(spec.Components, EffectComponent{
+		Kind: EffectComponentFUNC, FuncName: "BerserkPotion", AttachedEntity: true,
+		TextureFile: "effect/alpha_down.tga", TextureFiles: []string{"effect/ac_center2.tga"},
+	})
 	return spec
 }
 
@@ -3991,27 +4003,26 @@ var EffectSpecs = map[int]EffectSpec{
 	effectBottomServiceGround:    songVerticalEffectSpec("effect/safeline.bmp", 4),
 	effectTalkFrostJoke:          funcEffectSpec("FrostJokeTalk", 500*time.Millisecond, true),
 	effectTalkScream:             funcEffectSpec("ScreamTalk", 500*time.Millisecond, true),
-	effectThrowItem:              throwItemEffectSpec("유저인터페이스/item/염산병.bmp", 30),
-	effectChemicalProt:           soundOnlyEffectSpec("apocalips_attack.wav"),
-	effectDemonstration: {
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSPR,
-			SpriteFile:     "데몬스트레이션",
-			AttachedEntity: false,
-		}},
-	},
-	effectChemical2:    chemical2EffectSpec(),
-	effectHeal2:        heal2EffectSpec(),
-	effectExit2:        exit2EffectSpec(),
-	effectBottomMagnus: priestGroundEffectSpec(effectBottomMagnus),
-	effectBottomSanc:   priestGroundEffectSpec(effectBottomSanc),
-	effectWarpZone2:    warpZone2EffectSpec(),
-	effectHeal4:        heal4EffectSpec(),
-	effectBeginAsura:   beginAsuraEffectSpec(),
-	effectTripleAttack: tripleAttackEffectSpec(),
-	effectHitLine:      hitLineEffectSpec(),
-	effectHPTime:       naturalRecoveryEffectSpec(color.RGBA{R: 230, G: 255, B: 230, A: 255}, "_heal_effect.wav"),
-	effectSPTime:       naturalRecoveryEffectSpec(color.RGBA{R: 230, G: 230, B: 255, A: 255}, "effect\\흡기.wav"),
+	effectThrowItem:              throwItemFlightEffectSpec("유저인터페이스/item/빈병.bmp"),
+	effectThrowItem2:             throwItemFlightEffectSpec("유저인터페이스/item/빈포션병.bmp"),
+	effectThrowItem5:             throwItemFlightEffectSpec("유저인터페이스/item/버서크포션.bmp"),
+	effectChemicalProt:           chemicalProtectionEffectSpec(),
+	effectTwilight1:              twilightEffectSpec(0),
+	effectTwilight2:              twilightEffectSpec(1),
+	effectTwilight3:              twilightEffectSpec(2),
+	effectDemonstration:          demonstrationEffectSpec(),
+	effectChemical2:              chemical2EffectSpec(),
+	effectHeal2:                  heal2EffectSpec(),
+	effectExit2:                  exit2EffectSpec(),
+	effectBottomMagnus:           priestGroundEffectSpec(effectBottomMagnus),
+	effectBottomSanc:             priestGroundEffectSpec(effectBottomSanc),
+	effectWarpZone2:              warpZone2EffectSpec(),
+	effectHeal4:                  heal4EffectSpec(),
+	effectBeginAsura:             beginAsuraEffectSpec(),
+	effectTripleAttack:           tripleAttackEffectSpec(),
+	effectHitLine:                hitLineEffectSpec(),
+	effectHPTime:                 naturalRecoveryEffectSpec(color.RGBA{R: 230, G: 255, B: 230, A: 255}, "_heal_effect.wav"),
+	effectSPTime:                 naturalRecoveryEffectSpec(color.RGBA{R: 230, G: 230, B: 255, A: 255}, "effect\\흡기.wav"),
 	effectBlind: {
 		Duration: 500 * time.Millisecond,
 		SFX:      []string{"_blind.wav"},
@@ -4085,6 +4096,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectFourWayBody:       soulLinkerBodyEffectSpec("FourWayBody", "", 100),
 	effectAsuraBody:         soulLinkerBodyEffectSpec("AsuraBody", "", 500),
 	effectBlueCasting:       blueCastingEffectSpec(),
+	effectCoupleCasting:     coupleCastingEffectSpec(),
 	effectTaeReady:          soulLinkerBodyEffectSpec("TaeReady", "", 60),
 	effectStormKick4:        kaupeDodgeEffectSpec(),
 	effectSoulLink:          soulLinkEffectSpec(),

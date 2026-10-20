@@ -295,6 +295,7 @@ const (
 	effectTalkFrostJoke  = 295
 	effectTalkScream     = 296
 	effectThrowItem      = 298
+	effectThrowItem2     = 299
 	effectChemicalProt   = 300
 	effectDemonstration  = 302
 	effectChemical2      = 303
@@ -314,6 +315,7 @@ const (
 	effectGuard          = 336
 	effectJobLvUp50      = 337
 	effectMagnum2        = 339
+	effectCoupleCasting  = 342
 	effectEntry2         = 344
 	effectColorPaper     = 347
 	effectFoodChocolate  = 363
@@ -476,6 +478,7 @@ const (
 	effectTarotCard14      = 536
 	effectAcidDemon        = 537
 	effectBabyBodyBack     = 540
+	effectThrowItem5       = 541
 	effectBlueBody         = 542
 	effectHated            = 543
 	effectSmaReady         = 546
@@ -493,6 +496,9 @@ const (
 	effectHamiDefence      = 569
 	effectHamiCastle       = 570
 	effectHamiBlood        = 571
+	effectTwilight1        = 573
+	effectTwilight2        = 574
+	effectTwilight3        = 575
 	effectItemThunder      = effectBoxThunder
 	effectItemCloud        = effectBoxResentment
 	effectItemCurse        = 578
@@ -763,6 +769,8 @@ type worldEffect struct {
 	buffParticles                        *soulLinkerParticles
 	soulLights                           *soulLights
 	blueCasting                          *blueCasting
+	twilight                             *twilightParticles
+	itemLevel                            int
 	coinTrails                           *[5][]modelPoint3
 	arrowTargets                         *[9]modelPoint3
 	hasActorTransform                    bool
@@ -1030,6 +1038,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	}
 	m.applyFalconSkillNoDamageNotify(ctx, notify, now)
 	m.applyClownSkill(ctx, notify, now)
+	m.applyAlchemistSkill(ctx, notify, now)
 	m.applyWinkCharm(ctx, notify)
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
@@ -1270,11 +1279,15 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 	}
 	switch notify.SkillID {
 	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillMGFirewall, db.SkillPRSanctuary, db.SkillHPBasilica,
-		db.SkillWZFirepillar, db.SkillWZIcewall, db.SkillWZQuagmire:
+		db.SkillWZFirepillar, db.SkillWZIcewall, db.SkillWZQuagmire,
+		db.SkillAMDemonstration, db.SkillAMCannibalize, db.SkillAMSpheremine:
 		now := time.Now()
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
 			m.startSkillActionAnimation(ctx, notify.SourceID, actor, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
+		}
+		if notify.SkillID == db.SkillAMSpheremine {
+			m.addSkillBeginEffectsAt(ctx, notify.SkillID, notify.SourceID, 0, now)
 		}
 		if notify.SkillID == db.SkillHPBasilica {
 			m.scheduleSoundAtActor(now, notify.SourceID, "effect\\바실리카.wav")
@@ -1637,7 +1650,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		return false
 	}
 	// SAINTCASTING keeps a visible startup flare even for very short casts.
-	if effectID == effectBlueCasting && durationOverride > 0 {
+	if (effectID == effectBlueCasting || effectID == effectCoupleCasting) && durationOverride > 0 {
 		durationOverride = max(durationOverride, 56*db.EffectFrameDuration)
 	}
 	duration := spec.duration
@@ -1680,7 +1693,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
-	if effectID == effectSteal || effectID == effectDetoxication || effectID == effectSprinkleSand {
+	if effectID == effectSteal || effectID == effectDetoxication || effectID == effectSprinkleSand || effectID == effectChemicalProt {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -1691,7 +1704,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
-	if effectID == effectGrimtooth || effectID == effectThrowItem6 || effectID == effectThrowItem3 {
+	if effectID == effectGrimtooth || effectID == effectThrowItem6 || effectID == effectThrowItem3 || isAlchemistBottle(effectID) {
 		initDirectedEffect(ctx, &effect)
 	}
 	if effectID == effectShieldBoomer || effectID == effectTanji {
@@ -1724,7 +1737,10 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
-	if effectID == effectBlueCasting || effectID == effectAuraBlade {
+	if effectID >= effectTwilight1 && effectID <= effectTwilight3 {
+		effect.twilight = newTwilightParticles(ctx, effect)
+	}
+	if effectID == effectBlueCasting || effectID == effectAuraBlade || effectID == effectCoupleCasting {
 		effect.blueCasting = &blueCasting{auraBlade: effectID == effectAuraBlade}
 	}
 	m.worldEffects = append(m.worldEffects, effect)
@@ -1932,7 +1948,8 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault || skillID == db.SkillBaMusicalstrike || skillID == db.SkillDCThrowarrow ||
 		(skillID >= db.SkillBSIron && skillID <= db.SkillBSMaximize && skillID != db.SkillBSRepairweapon) || skillID == db.SkillBSAdrenaline2 ||
 		skillID == db.SkillWSMeltdown || skillID == db.SkillWSCartboost || skillID == db.SkillWSOverthrustmax ||
-		skillID == db.SkillWSCarttermination || skillID == db.SkillWSWeaponrefine {
+		skillID == db.SkillWSCarttermination || skillID == db.SkillWSWeaponrefine ||
+		skillID == db.SkillAMDemonstration || skillID == db.SkillAMSpheremine || skillID == db.SkillAMPharmacy {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -1966,6 +1983,10 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell
 	}
 	switch skillID {
+	case db.SkillAMCallhomun, db.SkillAMRest, db.SkillAMResurrecthomun:
+		effectID = effectCoupleCasting
+	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3:
+		effectID = effectTwilight1 + int(skillID-db.SkillAMTwilight1)
 	case db.SkillSAElementwater:
 		effectID = effectBeginSpell2
 	case db.SkillSAElementfire:
@@ -2761,6 +2782,12 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "ChemicalProtection":
+		return effectFuncChemicalProtection
+	case "BerserkPotion":
+		return effectFuncBerserkPotion
+	case "Twilight":
+		return effectFuncTwilight
 	case "CartTermination":
 		return effectFuncCartTermination
 	case "HasteUp", "Overthrust":

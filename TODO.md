@@ -118,7 +118,7 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Gypsy — all six shared skills and inherited dances audited; both reviews and actual female ACT checks passed, using the Clown/Dancer implementation.
 - [x] Blacksmith — all 24 skills audited, including Full Adrenaline Rush; native buff visuals, packet ownership, Hammer Fall, and sound timing reviewed twice and validated with client assets.
 - [x] Whitesmith — all five active skills audited; Cart Termination, buff poses/audio, and shared Overthrust afterimages reviewed twice and validated with client assets.
-- [ ] Alchemist
+- [x] Alchemist — all 20 skills audited; bottle flights, Chemical Protection, homunculus casts, Demonstration, Berserk Pitcher, and Twilight Alchemy reviewed twice and validated with client assets.
 - [ ] Creator
 - [ ] High Wizard
 - [ ] Professor
@@ -219,6 +219,25 @@ no behavior was invented for them. Both reviews, the full test suite with
 client assets, and the normal build passed. Live visual comparison is still
 useful, particularly for the new actor afterimages.
 
+Alchemist reference checks: dhxj and 2008 HighPriest agree on the bottle
+assets, 25-tick flight speed, arc, spin, afterimages, and potion-level colors.
+Acid Terror throws at release; Potion Pitcher uses its success packet, while
+separate server notifications own the healing visuals. Berserk Pitcher retains
+its casting throw pose and applies the recipient's Berserk Potion effect,
+including its red tint, growing pillar, rising streaks, and tick-18 sound/quake.
+Chemical Protection now draws its eight blue-white rays on the recipient.
+Homunculus utility skills use the pink Couple Casting rings. Demonstration's
+unit owns its looping, ground-anchored sprite; ground notifications animate
+the caster without duplicating the field. Twilight I–III use casting effects
+573–575, scattering 320 ingredients around the local viewer as both originals
+do, with incremental updates and at most three draw calls. Completion uses
+only the native release flare. ACT assets determine throw animation speed;
+the old SetAction speed argument is unused in the 2008 executable. Pharmacy's
+existing crafting UI/results and summon/homunculus entity lifecycles remain
+server-owned. Passives and unused draft homunculus skills have no invented
+activation effects. Both review passes, full asset-backed tests, and a normal
+build passed. No live playtest was performed; visual comparison remains useful.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -227,8 +246,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `697`.
-- Catalog size relative to all numeric constants: about `60.8%`.
+- Goro effect catalog entries: `703`.
+- Catalog size relative to all numeric constants: about `61.3%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.

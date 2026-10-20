@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 697 {
-		t.Fatalf("implemented effects = %d, want 697", coverage.Implemented)
+	if coverage.Implemented != 703 {
+		t.Fatalf("implemented effects = %d, want 703", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 114.82 || coverage.ActivePercent > 114.83 {
-		t.Fatalf("active coverage = %.3f, want about 114.83", coverage.ActivePercent)
+	if coverage.ActivePercent < 115.81 || coverage.ActivePercent > 115.82 {
+		t.Fatalf("active coverage = %.3f, want about 115.82", coverage.ActivePercent)
 	}
 }
 
@@ -563,7 +563,6 @@ func TestRobrowserSimpleEffectsTwoHundredToTwoFiftyMatchTableRows(t *testing.T) 
 		{"EF_KEEPING", effectKeeping, "keeping", "", true, false},
 		{"EF_POTION_CON", effectItemFast, "집중", "effect\\ac_concentration.wav", true, false},
 		{"EF_POTION_", effectItemFast2, "각성", "effect\\ac_concentration.wav", true, false},
-		{"EF_POTION_BERSERK", effectItemFast3, "버서크", "effect\\ac_concentration.wav", true, false},
 		{"EF_SPELLBREAKER", effectSpellBreaker, "spell", "effect\\sage_spell breake.wav", true, false},
 		{"EF_DISPELL", effectDispell, "디스펠", "", true, false},
 		{"EF_MAGICROD", effectMagicRod, "매직로드", "effect\\sage_magic rod.wav", true, false},
@@ -1333,21 +1332,6 @@ func TestRobrowserSimpleEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.T
 		}
 	}
 
-	for _, tc := range []struct {
-		name string
-		id   int
-		wav  string
-	}{
-		{"EF_CHEMICALPROTECTION", effectChemicalProt, "apocalips_attack.wav"},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
-			t.Fatalf("%s spec = %+v ok=%t, want sound-only 500ms", tc.name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
-			t.Fatalf("%s sfx = %v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
 }
 
 func TestGroundTextureEffectHoverMovesBetweenZRange(t *testing.T) {
@@ -1448,13 +1432,6 @@ func TestRobrowserSpecialEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.
 		}
 	}
 
-	throwItem, ok := worldEffectSpecForID(effectThrowItem)
-	if !ok || len(throwItem.components) != 1 || throwItem.duration != 300*time.Millisecond {
-		t.Fatalf("EF_THROWITEM spec = %+v ok=%t", throwItem, ok)
-	}
-	if component := throwItem.components[0]; component.kind != effectComponent3D || component.textureFile != "유저인터페이스/item/염산병.bmp" || component.duration != 300*time.Millisecond || component.alphaMax != 1 || !component.fadeIn || !component.fadeOut || !component.toSrc || !component.rotateToTarget || !component.rotateWithCamera || !component.rotate || component.angleStart != 180 || component.angleEnd != 360 || component.posZ != 1 || component.sizeStart != effectTableSize(30) || !component.attachedEntity {
-		t.Fatalf("EF_THROWITEM component = %+v", component)
-	}
 }
 
 func TestRobrowserSimpleEffectsThreeHundredToThreeFiftyMatchTableRows(t *testing.T) {
@@ -1462,7 +1439,7 @@ func TestRobrowserSimpleEffectsThreeHundredToThreeFiftyMatchTableRows(t *testing
 	if !ok || len(demo.components) != 1 {
 		t.Fatalf("EF_DEMONSTRATION spec = %+v ok=%t", demo, ok)
 	}
-	if component := demo.components[0]; component.kind != effectComponentSPR || component.spriteFile != "데몬스트레이션" || component.attachedEntity {
+	if component := demo.components[0]; component.kind != effectComponent3D || component.spriteFile != "데몬스트레이션" || component.attachedEntity {
 		t.Fatalf("EF_DEMONSTRATION component = %+v", component)
 	}
 

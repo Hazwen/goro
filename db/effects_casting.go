@@ -12,6 +12,13 @@ func blueCastingEffectSpec() EffectSpec {
 	}
 }
 
+func coupleCastingEffectSpec() EffectSpec {
+	spec := blueCastingEffectSpec()
+	spec.Duration = 1000 * EffectFrameDuration
+	spec.Components[0].TextureFile = "effect/ring_red.tga"
+	return spec
+}
+
 func castAuraEffectSpec(texture string, tint color.RGBA, alphaMax, height, topSize float64, rotate bool) EffectSpec {
 	return EffectSpec{
 		Duration: 900 * time.Millisecond,

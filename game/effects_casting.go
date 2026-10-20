@@ -73,6 +73,8 @@ func (m *WorldMode) drawBlueCastingEffect(screen *render.Frame, ctx client.Conte
 	duration := 60
 	if effect.duration > 0 {
 		duration = max(1, int(effect.duration/db.EffectFrameDuration))
+	} else if !effect.expires.IsZero() {
+		duration = max(1, int(effect.expires.Sub(effect.starts)/db.EffectFrameDuration))
 	}
 	effect.blueCasting.advance(int(now.Sub(effect.starts)/db.EffectFrameDuration), duration)
 	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
@@ -113,6 +115,9 @@ func (m *WorldMode) drawBlueCastingEffect(screen *render.Frame, ctx client.Conte
 			c := color.RGBA{100, 100, 255, uint8(clampInt(r.alpha, 0, 255))}
 			if effect.blueCasting.auraBlade {
 				c.R, c.G = 255, 255
+			}
+			if effect.effectID == effectCoupleCasting {
+				c.R, c.G, c.B = 255, 89, 182
 			}
 			w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
 			vertices = append(vertices, texturedSurfaceVertex3D(bottom, texturePoint{u: u, v: 1}, c, w, h), texturedSurfaceVertex3D(top, texturePoint{u: u, v: 0}, c, w, h))
