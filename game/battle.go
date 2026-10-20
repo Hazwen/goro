@@ -629,6 +629,9 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
+	case db.SkillMGSight, db.SkillMGSoulstrike, db.SkillMGColdbolt, db.SkillMGFrostdiver, db.SkillMGStonecurse,
+		db.SkillMGFireball, db.SkillMGFirewall, db.SkillMGFirebolt, db.SkillMGLightningbolt, db.SkillMGThunderstorm:
+		return true
 	case db.SkillALLResurrection, db.SkillPRAspersio, db.SkillPRBenedictio, db.SkillPRSanctuary, db.SkillPRTurnundead, db.SkillPRMagnus:
 		return true
 	case db.SkillMOTripleattack, db.SkillMOInvestigate, db.SkillMOFingeroffensive, db.SkillMOExtremityfist, db.SkillMOChaincombo, db.SkillMOBalkyoung:
@@ -791,6 +794,9 @@ func (m *WorldMode) addSkillBeforeHitEffect(ctx client.Context, action network.A
 	if action.SkillID == 0 || skillSplashAction(action) {
 		return
 	}
+	if m.addMageProjectileEffect(ctx, action, starts) {
+		return
+	}
 	effectIDs := skillBeforeHitEffectIDs(action.SkillID)
 	selfEffectIDs := skillBeforeHitEffectSelfIDs(action.SkillID)
 	if len(effectIDs) == 0 && len(selfEffectIDs) == 0 {
@@ -853,6 +859,9 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 				continue
 			}
 			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
+				continue
+			}
+			if i > 0 && (action.SkillID == db.SkillMGNapalmbeat || action.SkillID == db.SkillMGSoulstrike || action.SkillID == db.SkillMGFireball || action.SkillID == db.SkillMGFrostdiver) && (effectID == effectBashHit || effectID == effectFrostDiverHit) {
 				continue
 			}
 			if m.addWorldEffectAt(ctx, effectID, action.TargetID, effectStarts) {

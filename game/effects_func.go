@@ -69,6 +69,10 @@ const (
 	effectFuncTurnUndead
 	effectFuncRevive
 	effectFuncPriestGround
+	effectFuncMageProjectile
+	effectFuncFrostDiverHit
+	effectFuncMageBolt
+	effectFuncSight
 )
 
 const (
@@ -78,6 +82,14 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncMageProjectile:
+		m.drawMageProjectile(screen, ctx, projection, component, effect, now)
+	case effectFuncFrostDiverHit:
+		m.drawFrostDiverSpikes(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
+	case effectFuncMageBolt:
+		m.drawMageBolt(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
+	case effectFuncSight:
+		m.drawSightEffect(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncTurnUndead:
 		m.drawTurnUndeadEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncRevive:

@@ -746,6 +746,7 @@ type worldEffect struct {
 	actorDirection                       int
 	actorOrigin                          modelPoint3
 	projectileDirection                  modelPoint3
+	hitCount                             int
 	shield                               *shieldFlight
 	shieldChain                          *shieldChainFlight
 	pressureLanded                       bool
@@ -1210,7 +1211,7 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
 	switch notify.SkillID {
-	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillPRSanctuary, db.SkillHPBasilica:
+	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillMGFirewall, db.SkillPRSanctuary, db.SkillHPBasilica:
 		now := time.Now()
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
@@ -1241,7 +1242,7 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 		return
 	}
 	now := time.Now()
-	if notify.SkillID == db.SkillPRMagnus || notify.SkillID == db.SkillPRBenedictio {
+	if notify.SkillID == db.SkillPRMagnus || notify.SkillID == db.SkillPRBenedictio || notify.SkillID == db.SkillMGThunderstorm {
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
 			m.startSkillActionAnimation(ctx, notify.SourceID, actor, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
@@ -1606,6 +1607,9 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectSpearBoomerang {
 		initSpearBoomerang(ctx, &effect)
 	}
+	if effectID == effectFrostDiver || effectID == effectFireBall || effectID == effectSoulStrike {
+		initMageProjectile(ctx, &effect)
+	}
 	if effectID == effectStin || effectID == effectStin3 || effectID == effectStin2 {
 		initSoulLinkerProjectile(ctx, &effect)
 	}
@@ -1839,7 +1843,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell6
 	}
 	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
-		skillID == db.SkillALLResurrection || skillID == db.SkillMGSafetywall ||
+		skillID == db.SkillALLResurrection || (skillID >= db.SkillMGSrecovery && skillID <= db.SkillMGThunderstorm) || skillID == db.SkillMGEnergycoat ||
 		(skillID >= db.SkillPRImpositio && skillID <= db.SkillPRMagnus && skillID != db.SkillPRSlowpoison) ||
 		skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion {
 		effectID = effectBeginSpell
@@ -2625,6 +2629,14 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "MageProjectile":
+		return effectFuncMageProjectile
+	case "FrostDiverHit":
+		return effectFuncFrostDiverHit
+	case "MageBolt":
+		return effectFuncMageBolt
+	case "Sight":
+		return effectFuncSight
 	case "TurnUndead":
 		return effectFuncTurnUndead
 	case "Revive":

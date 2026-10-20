@@ -30,8 +30,8 @@ func TestGroundSkillNotifyAddsCellEffect(t *testing.T) {
 	}
 
 	mode.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: 21, SourceID: 2000000, Level: 4, X: 123, Y: 456})
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("deduped world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.worldEffects) != 2 {
+		t.Fatalf("repeated Thunderstorm casts = %d, want 2", len(mode.worldEffects))
 	}
 }
 

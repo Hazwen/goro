@@ -421,7 +421,7 @@ func TestRobrowserOldBoltSoundAndStatusEffectsZeroToFifty(t *testing.T) {
 	if !ok {
 		t.Fatal("EF_ICEARROW spec missing")
 	}
-	if len(ice.components) != 0 || len(ice.sfx) != 1 || ice.sfx[0] != "effect\\ef_icearrow%d.wav" || ice.sfxRandMin != 1 || ice.sfxRandMax != 3 {
+	if len(ice.components) != 1 || ice.components[0].funcAdapter != effectFuncMageBolt || len(ice.sfx) != 1 || ice.sfx[0] != "effect\\ef_icearrow%d.wav" || ice.sfxRandMin != 1 || ice.sfxRandMax != 3 {
 		t.Fatalf("EF_ICEARROW spec = %+v", ice)
 	}
 
@@ -429,7 +429,7 @@ func TestRobrowserOldBoltSoundAndStatusEffectsZeroToFifty(t *testing.T) {
 	if !ok {
 		t.Fatal("EF_FIREARROW spec missing")
 	}
-	if len(fire.components) != 0 || len(fire.sfx) != 1 || fire.sfx[0] != "effect\\ef_firearrow1.wav" {
+	if len(fire.components) != 1 || fire.components[0].funcAdapter != effectFuncMageBolt || len(fire.sfx) != 1 || fire.sfx[0] != "effect\\ef_firearrow%d.wav" {
 		t.Fatalf("EF_FIREARROW spec = %+v", fire)
 	}
 
@@ -593,90 +593,36 @@ func TestNoviceSkillEffectMappings(t *testing.T) {
 func TestMageSkillEffectMappings(t *testing.T) {
 	expectEffectIDs(t, "MG_SIGHT success", skillSuccessEffectIDs(10))
 	expectEffectIDs(t, "MG_SIGHT immediate", skillEffectIDs(10))
-	expectEffectIDs(t, "MG_NAPALMBEAT hit", skillHitEffectIDs(11), effectBashHit)
+	expectEffectIDs(t, "MG_NAPALMBEAT hit", skillHitEffectIDs(11), effectHit1, effectBashHit)
 	expectEffectIDs(t, "MG_SAFETYWALL ground", skillGroundEffectIDs(12))
 	expectEffectIDs(t, "MG_SOULSTRIKE before-hit", skillBeforeHitEffectIDs(13), effectSoulStrike)
-	expectEffectIDs(t, "MG_SOULSTRIKE hit", skillHitEffectIDs(13), effectBashHit)
+	expectEffectIDs(t, "MG_SOULSTRIKE hit", skillHitEffectIDs(13), effectHit1, effectBashHit)
 	expectEffectIDs(t, "MG_COLDBOLT before-hit", skillBeforeHitEffectIDs(14), effectColdBolt)
 	expectEffectIDs(t, "MG_COLDBOLT hit", skillHitEffectIDs(14), effectColdHit)
-	expectEffectIDs(t, "MG_FROSTDIVER", skillEffectIDs(15), effectFrostDiver)
-	expectEffectIDs(t, "MG_FROSTDIVER before-hit", skillBeforeHitEffectIDs(15))
-	expectEffectIDs(t, "MG_FROSTDIVER hit", skillHitEffectIDs(15), effectFrostDiverHit)
-	expectEffectIDs(t, "MG_STONECURSE", skillEffectIDs(16), effectStoneCurse)
+	expectEffectIDs(t, "MG_FROSTDIVER", skillEffectIDs(15))
+	expectEffectIDs(t, "MG_FROSTDIVER before-hit", skillBeforeHitEffectIDs(15), effectFrostDiver)
+	expectEffectIDs(t, "MG_FROSTDIVER hit", skillHitEffectIDs(15), effectColdHit, effectFrostDiverHit)
+	expectEffectIDs(t, "MG_STONECURSE", skillSuccessEffectIDs(16), effectStoneCurse)
 	expectEffectIDs(t, "MG_FIREBOLT before-hit", skillBeforeHitEffectIDs(19), effectFireBolt)
 	expectEffectIDs(t, "MG_FIREBALL before-hit", skillBeforeHitEffectIDs(17), effectFireBall)
-	expectEffectIDs(t, "MG_FIREWALL ground", skillGroundEffectIDs(18), effectFireWall)
-	for _, skillID := range []uint16{17, 18, 19} {
-		expectEffectIDs(t, "fire skill hit", skillHitEffectIDs(skillID), effectFireHit)
-	}
-	for _, skillID := range []uint16{20, 21} {
-		expectEffectIDs(t, "wind skill hit", skillHitEffectIDs(skillID), effectWindHit)
-	}
+	expectEffectIDs(t, "MG_FIREWALL ground", skillGroundEffectIDs(18))
+	expectEffectIDs(t, "MG_FIREBALL hit", skillHitEffectIDs(17), effectFireHit, effectBashHit)
+	expectEffectIDs(t, "MG_FIREWALL hit", skillHitEffectIDs(18), effectHit1)
+	expectEffectIDs(t, "MG_FIREBOLT hit", skillHitEffectIDs(19), effectFireHit)
+	expectEffectIDs(t, "MG_LIGHTNINGBOLT hit", skillHitEffectIDs(20), effectWindHit)
+	expectEffectIDs(t, "MG_THUNDERSTORM hit", skillHitEffectIDs(21), effectHit1)
 	expectEffectIDs(t, "MG_LIGHTNINGBOLT before-hit", skillBeforeHitEffectIDs(20))
 	expectEffectIDs(t, "MG_LIGHTNINGBOLT", skillEffectIDs(20), effectLightningBolt)
 	expectEffectIDs(t, "MG_THUNDERSTORM", skillEffectIDs(21), effectThunderStorm)
 	expectEffectIDs(t, "MG_THUNDERSTORM ground", skillGroundEffectIDs(21))
-	expectEffectIDs(t, "MG_ENERGYCOAT", skillEffectIDs(157), effectEnergyCoat)
+	expectEffectIDs(t, "MG_ENERGYCOAT", skillSuccessEffectSelfIDs(157), effectEnergyCoat)
 	expectEffectIDs(t, "MG_THUNDERSTORM before-hit", skillBeforeHitEffectIDs(21))
 	for _, skillID := range []uint16{20, 21} {
 		expectEffectIDs(t, "wind skill begin", skillBeginEffectIDs(skillID))
 	}
 }
 
-func TestFireBoltEffectSpecUsesFallingFrameList(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectFireBolt)
-	if !ok {
-		t.Fatal("fire bolt effect missing")
-	}
-	if len(spec.components) != 1 {
-		t.Fatalf("components = %d, want 1", len(spec.components))
-	}
-	component := spec.components[0]
-	if component.kind != effectComponent3D || len(component.textureFiles) != 6 || component.duration != 500*time.Millisecond {
-		t.Fatalf("component = %+v", component)
-	}
-	if component.posZ != 20 || component.posZEnd != 0.0001 || component.posXStartMiddle != 5 || component.posYStartMiddle != 2 || component.angleStart != 112.5 || !component.blendAdditive {
-		t.Fatalf("fire bolt trajectory = %+v", component)
-	}
-	if component.sizeStartX != 100*effectPixelRatio || component.sizeStartY != 50*effectPixelRatio {
-		t.Fatalf("fire bolt size = %.3f x %.3f", component.sizeStartX, component.sizeStartY)
-	}
-}
-
-func TestFireBallEffectSpecMatchesRobrowserProjectileAndHit(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectFireBall)
-	if !ok {
-		t.Fatal("fire ball effect missing")
-	}
-	if len(spec.components) != 1 {
-		t.Fatalf("components = %d, want 1", len(spec.components))
-	}
-	if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\ef_fireball.wav" {
-		t.Fatalf("fire ball sfx = %#v", spec.sfx)
-	}
-	component := spec.components[0]
-	if component.kind != effectComponent3D || component.spriteFile != "fireball" || !component.spriteRepeat {
-		t.Fatalf("projectile sprite = %+v", component)
-	}
-	if component.duration != 250*time.Millisecond || component.delay != 160*time.Millisecond || component.delayOffsetDelta != -40*time.Millisecond {
-		t.Fatalf("projectile timing = duration %s delay %s delta %s", component.duration, component.delay, component.delayOffsetDelta)
-	}
-	if component.duplicate != 5 || component.duplicateDelay != 0 {
-		t.Fatalf("projectile duplicates = %d delay %s", component.duplicate, component.duplicateDelay)
-	}
-	if worldEffectComponentStartOffset(component, 0) != 160*time.Millisecond || worldEffectComponentStartOffset(component, 4) != 0 {
-		t.Fatalf("projectile duplicate offsets = first %s last %s", worldEffectComponentStartOffset(component, 0), worldEffectComponentStartOffset(component, 4))
-	}
-	if worldEffectComponentDuration(spec, component) != 410*time.Millisecond {
-		t.Fatalf("projectile resolved duration = %s, want 410ms", worldEffectComponentDuration(spec, component))
-	}
-	if !component.toSrc || !component.rotateToTarget || !component.rotateWithCamera || component.alphaMax != 0.2 || component.alphaMaxDelta != 0.2 {
-		t.Fatalf("projectile orientation/alpha = %+v", component)
-	}
-	if component.posZ != 2 || component.sizeStart != 200*effectPixelRatio || component.sizeEnd != 200*effectPixelRatio {
-		t.Fatalf("projectile position/size = %+v", component)
-	}
-
+func TestFireHitEffectSpec(t *testing.T) {
 	hitSpec, ok := worldEffectSpecForID(effectFireHit)
 	if !ok || len(hitSpec.components) != 1 {
 		t.Fatalf("fire hit effect missing or wrong component count: ok=%t components=%d", ok, len(hitSpec.components))
@@ -803,72 +749,8 @@ func TestSkillHitSlashSpecsMatchRobrowser(t *testing.T) {
 	}
 }
 
-func TestColdBoltEffectSpecMatchesRobrowserProjectileAndRing(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectColdBolt)
-	if !ok {
-		t.Fatal("cold bolt effect missing")
-	}
-	if len(spec.components) != 2 {
-		t.Fatalf("components = %d, want 2", len(spec.components))
-	}
-	projectile := spec.components[0]
-	if projectile.kind != effectComponent3D || projectile.textureFile != "effect/icearrow.tga" || projectile.duration != 500*time.Millisecond {
-		t.Fatalf("projectile = %+v", projectile)
-	}
-	if projectile.posZ != 20 || projectile.posZEnd != 0.0001 || projectile.posXStartMiddle != 5 || projectile.posYStartMiddle != 2 || projectile.sizeStart != 50*effectPixelRatio {
-		t.Fatalf("cold bolt projectile trajectory = %+v", projectile)
-	}
-	ring := spec.components[1]
-	if ring.kind != effectComponentCylinder || ring.textureName != "ring_blue" || ring.delay != 500*time.Millisecond || ring.duration != 1000*time.Millisecond {
-		t.Fatalf("ring = %+v", ring)
-	}
-	if ring.bottomSize != 3 || ring.topSize != 5 || ring.animation != 4 {
-		t.Fatalf("cold bolt ring dimensions = %+v", ring)
-	}
-}
-
-func TestSightEffectSpecOrbitsAroundActor(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectSight)
-	if !ok {
-		t.Fatal("sight effect missing")
-	}
-	if len(spec.components) != 2 {
-		t.Fatalf("components = %d, want robr shadow + sight sprite", len(spec.components))
-	}
-	shadow := spec.components[0]
-	if !shadow.shadowTexture || shadow.spriteFile != "data\\sprite\\shadow" || shadow.duplicate != 10 {
-		t.Fatalf("sight shadow component = %+v", shadow)
-	}
-	if shadow.sizeStart != 30*effectPixelRatio || shadow.sizeDelta != 10*effectPixelRatio {
-		t.Fatalf("sight shadow size = %.3f delta %.3f", shadow.sizeStart, shadow.sizeDelta)
-	}
-	component := spec.components[1]
-	if component.spriteFile != "sight" || component.duplicate != 10 || component.orbitRadiusX != 3 || component.orbitRadiusY != 3 || component.orbitRotations != 10 {
-		t.Fatalf("sight orbit component = %+v", component)
-	}
-	if component.sizeStart != 60*effectPixelRatio || component.sizeDelta != 20*effectPixelRatio || component.alphaMaxDelta != 3.0/255.0 {
-		t.Fatalf("sight orbit size/alpha delta = %.3f delta %.3f alpha_delta %.3f", component.sizeStart, component.sizeDelta, component.alphaMaxDelta)
-	}
-	ctx := client.Context{}
-	effect := worldEffect{effectID: effectSight, actorID: 2000000}
-	mode := &WorldMode{}
-	x0, y0, _ := mode.effect3DOffset(ctx, component, effect, 0, 0, 0, 0, 0, 0)
-	x1, y1, _ := mode.effect3DOffset(ctx, component, effect, 0, 1, 0, 0, 0, 0)
-	x2, y2, _ := mode.effect3DOffset(ctx, component, effect, 0, 0, 0.025, 0, 0, 0)
-	if math.Hypot(x0-x1, y0-y1) < 0.1 {
-		t.Fatalf("sight duplicates overlap: duplicate0=(%.3f,%.3f) duplicate1=(%.3f,%.3f)", x0, y0, x1, y1)
-	}
-	if math.Hypot(x0-x2, y0-y2) < 0.1 {
-		t.Fatalf("sight orbit does not move over time: start=(%.3f,%.3f) later=(%.3f,%.3f)", x0, y0, x2, y2)
-	}
-}
-
-func TestFireBallSpriteRotationUsesRobrowserWorldTrajectory(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectFireBall)
-	if !ok || len(spec.components) == 0 {
-		t.Fatal("fire ball effect missing")
-	}
-	component := spec.components[0]
+func TestSpriteRotationUsesRobrowserWorldTrajectory(t *testing.T) {
+	component := worldEffectComponent{toSrc: true, rotateToTarget: true, rotateWithCamera: true}
 	tests := []struct {
 		name      string
 		sourceX   int
@@ -1017,26 +899,18 @@ func TestApplyActorActionNotifyRepeatsFireBoltHits(t *testing.T) {
 		Action:      network.ActorActionSkill,
 	})
 
-	if len(mode.worldEffects) != 8 {
-		t.Fatalf("world effects = %d, want 8", len(mode.worldEffects))
+	if len(mode.worldEffects) != 5 {
+		t.Fatalf("world effects = %d, want one bolt sequence and four impacts", len(mode.worldEffects))
 	}
-	for i := 0; i < 4; i++ {
-		effect := mode.worldEffects[i]
-		if effect.effectID != effectFireBolt || effect.actorID != 300 || effect.targetID != 2000000 {
-			t.Fatalf("before-hit effect %d = %+v", i, effect)
-		}
-		if i > 0 {
-			if delay := effect.starts.Sub(mode.worldEffects[i-1].starts); delay != multiHitDelay {
-				t.Fatalf("before-hit delay %d = %s, want %s", i, delay, multiHitDelay)
-			}
-		}
+	if effect := mode.worldEffects[0]; effect.effectID != effectFireBolt || effect.actorID != 300 || effect.hitCount != 4 {
+		t.Fatalf("wrong bolt sequence: %+v", effect)
 	}
-	for i := 4; i < 8; i++ {
+	for i := 1; i < 5; i++ {
 		effect := mode.worldEffects[i]
 		if effect.effectID != effectFireHit || effect.actorID != 300 {
 			t.Fatalf("hit effect %d = %+v", i, effect)
 		}
-		if i > 4 {
+		if i > 1 {
 			if delay := effect.starts.Sub(mode.worldEffects[i-1].starts); delay != multiHitDelay {
 				t.Fatalf("hit delay %d = %s, want %s", i, delay, multiHitDelay)
 			}
@@ -1177,13 +1051,8 @@ func TestZeroDamageSkillKeepsExecutionEffectsWithoutHitReaction(t *testing.T) {
 		Action:      8,
 	})
 
-	if len(mode.worldEffects) != 4 {
-		t.Fatalf("world effects = %+v, want four Soul Strike execution effects", mode.worldEffects)
-	}
-	for i, effect := range mode.worldEffects {
-		if effect.effectID != effectSoulStrike || effect.actorID != 300 || effect.targetID != 2000000 {
-			t.Fatalf("execution effect %d = %+v, want Soul Strike toward target", i, effect)
-		}
+	if len(mode.worldEffects) != 1 || mode.worldEffects[0].effectID != effectSoulStrike || mode.worldEffects[0].hitCount != 4 || mode.worldEffects[0].actorID != 2000000 || mode.worldEffects[0].targetID != 300 {
+		t.Fatalf("world effects = %+v, want one four-soul sequence from caster to target", mode.worldEffects)
 	}
 	if _, ok := mode.actorAnims[300]; ok {
 		t.Fatal("zero-damage target received a hurt animation")
@@ -1232,9 +1101,9 @@ func TestZeroDamageSkillKeepsImmediateEffectWithoutHitEffect(t *testing.T) {
 	if len(mode.worldEffects) != 1 || mode.worldEffects[0].effectID != effectFrostDiver {
 		t.Fatalf("world effects = %+v, want Frost Diver execution effect without hit effect", mode.worldEffects)
 	}
-	wantStart := mode.actorAnims[2000000].started.Add(580 * time.Millisecond)
+	wantStart := mode.actorAnims[2000000].started
 	if !mode.worldEffects[0].starts.Equal(wantStart) {
-		t.Fatalf("default effect start = %s, want hit time %s", mode.worldEffects[0].starts, wantStart)
+		t.Fatalf("Frost Diver start = %s, want action time %s", mode.worldEffects[0].starts, wantStart)
 	}
 }
 
@@ -1372,7 +1241,7 @@ func TestSkillCastNotifyAddsDurationAura(t *testing.T) {
 		t.Fatalf("lockon = %+v", lockon)
 	}
 	aura := mode.worldEffects[2]
-	if aura.effectID != effectBeginSpell4 || aura.actorID != 2000000 || aura.targetID != 1100 || aura.duration != 2500*time.Millisecond {
+	if aura.effectID != effectBeginSpell || aura.actorID != 2000000 || aura.targetID != 1100 || aura.duration != 2500*time.Millisecond {
 		t.Fatalf("aura = %+v", aura)
 	}
 	bar, ok := mode.actorCastBars[150000]
@@ -1428,7 +1297,7 @@ func TestSelfTargetSkillCastDoesNotAddLockOnTarget(t *testing.T) {
 	if len(mode.worldEffects) != 2 {
 		t.Fatalf("world effects = %+v, want cast ring and aura", mode.worldEffects)
 	}
-	if mode.worldEffects[0].effectID != effectCastRing || mode.worldEffects[1].effectID != effectBeginSpell3 {
+	if mode.worldEffects[0].effectID != effectCastRing || mode.worldEffects[1].effectID != effectBeginSpell {
 		t.Fatalf("effects = %+v", mode.worldEffects)
 	}
 }
@@ -1446,7 +1315,7 @@ func TestSkillCastEffectsDedupeServerAndLocalFallback(t *testing.T) {
 	if len(mode.worldEffects) != 2 {
 		t.Fatalf("world effects = %d, want 2", len(mode.worldEffects))
 	}
-	if mode.worldEffects[0].effectID != effectCastRing || mode.worldEffects[1].effectID != effectBeginSpell3 {
+	if mode.worldEffects[0].effectID != effectCastRing || mode.worldEffects[1].effectID != effectBeginSpell {
 		t.Fatalf("effects = %+v", mode.worldEffects)
 	}
 }
@@ -1490,7 +1359,7 @@ func TestGroundSkillCastEffectsAddGroundSampleMarker(t *testing.T) {
 	if marker.effectID != effectGroundSample || marker.actorID != 0 || marker.x != 123 || marker.y != 456 || marker.duration != 1800*time.Millisecond || marker.size != 7 || math.Abs(marker.groundSampleRotationRadiansPerSecond-wantSpeed) > 0.001 {
 		t.Fatalf("ground marker = %+v", marker)
 	}
-	if mode.worldEffects[1].effectID != effectCastRing || mode.worldEffects[2].effectID != effectBeginSpell4 {
+	if mode.worldEffects[1].effectID != effectCastRing || mode.worldEffects[2].effectID != effectBeginSpell {
 		t.Fatalf("cast effects = %+v", mode.worldEffects)
 	}
 }

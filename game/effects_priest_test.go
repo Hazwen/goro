@@ -109,6 +109,7 @@ func TestPriestGroundSpellsUseUnitLifetime(t *testing.T) {
 		effect      int
 	}{
 		{db.SkillMGSafetywall, 126, effectSafetyWall},
+		{db.SkillMGFirewall, 127, effectFireWall},
 		{db.SkillPRSanctuary, 131, effectBottomSanc},
 		{db.SkillHPBasilica, 180, effectBottomBasilica},
 	} {

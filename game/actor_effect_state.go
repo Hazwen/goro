@@ -23,6 +23,10 @@ func (m *WorldMode) applyActorEffectStateEffects(ctx client.Context, actorID uin
 		return
 	}
 	for _, stateEffect := range actorEffectStateEffects {
+		if stateEffect.effectID == effectSight {
+			m.setActorStateEffect(ctx, actorID, effectSight, newState&stateEffect.bit != 0)
+			continue
+		}
 		if newState&stateEffect.bit != 0 {
 			m.addWorldEffectIfMissing(ctx, stateEffect.effectID, actorID)
 		} else if oldState&stateEffect.bit != 0 {
