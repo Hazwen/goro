@@ -244,6 +244,7 @@ func actorAnimationOverridesWalk(anim actorAnimation, playerLike bool) bool {
 
 func (m *WorldMode) drawActorSpriteBillboardTintAlpha3D(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA, blend render.Blend) {
 	options := spriteBillboardTriangleDrawOptions()
+	options.DepthWrite = true
 	options.Filter = render.FilterSprite
 	options.Blend = blend
 	drawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, m.spriteTexture(billboard.image), worldX, worldY, actorSpriteWorldZ(worldZ), scale, alpha, shadow, tintColor, options)
@@ -273,6 +274,7 @@ func drawSpriteShadowBillboard3D(screen *render.Frame, projection sceneProjectio
 
 func (m *WorldMode) drawSpriteBillboardAlpha3D(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) {
 	options := spriteBillboardTriangleDrawOptions()
+	options.DepthWrite = true
 	options.Filter = render.FilterSprite
 	drawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, m.spriteTexture(billboard.image), worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, options)
 }

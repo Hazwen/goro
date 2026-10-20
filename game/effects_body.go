@@ -156,7 +156,9 @@ func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *ren
 		}
 		cmd.ColorA *= 150.0 / 255
 	}
+	cmd.Options.DepthWrite = true
 	screen.DrawWorldBillboard(cmd)
+	cmd.Options.DepthWrite = false
 	if blue > 0 {
 		flash := cmd
 		flash.Options.Blend = render.BlendLighter

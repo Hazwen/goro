@@ -89,7 +89,9 @@ func (m *WorldMode) drawWizardSpikes(screen *render.Frame, ctx client.Context, c
 		appendEffectSpike(&vertices, &indices, texture, position, size, height, degreesToRadians(pitch), degreesToRadians(yaw), travel, color.RGBA{255, 255, 255, uint8(alpha)})
 	}
 	if len(indices) > 0 {
-		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(false, false))
+		options := texturedEffectBillboardDrawOptions(false, false)
+		options.AfterBillboards = effect.effectID == effectIceWall
+		screen.DrawTriangles3DOwned(vertices, indices, texture, options)
 	}
 }
 

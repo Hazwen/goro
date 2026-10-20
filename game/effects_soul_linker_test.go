@@ -372,7 +372,17 @@ func TestSoulLinkerPlayerGlowsAndKaiteStatus(t *testing.T) {
 		frame := render.NewFrame(800, 600)
 		entry := sceneActorDrawEntry{actor: ctx.World.Player, worldX: 10.5, worldY: 20.5, scale: 1, shadow: 1}
 		m.drawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, .5, .6, .8, color.RGBA{100, 120, 200, 200}, render.BlendSourceOver, now)
-		return reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
+		commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
+		depthWriters := 0
+		for i := 0; i < commands.Len(); i++ {
+			if commands.Index(i).FieldByName("Options").FieldByName("DepthWrite").Bool() {
+				depthWriters++
+			}
+		}
+		if depthWriters != 1 {
+			t.Fatalf("only the body should occlude translucent geometry, got %d silhouettes", depthWriters)
+		}
+		return commands
 	}
 	base := draw(starts).Index(0)
 	for _, id := range []int{effectHated, effectKaizel, effectBlueBody, effectReflectBody} {

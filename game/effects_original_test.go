@@ -202,7 +202,7 @@ func TestMagicCrasherBlendReachesActorDraws(t *testing.T) {
 					if got := render.Blend(options.FieldByName("Blend").Int()); got != want {
 						t.Fatalf("target=%d local=%t expired=%t stealth=%d: blend %v, want %v", target, local, expired, stealth, got, want)
 					}
-					if !options.FieldByName("DepthTest").Bool() || options.FieldByName("DepthWrite").Bool() {
+					if !options.FieldByName("DepthTest").Bool() || !options.FieldByName("DepthWrite").Bool() {
 						t.Fatal("flash changed actor depth options")
 					}
 				}

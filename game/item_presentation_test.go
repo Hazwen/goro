@@ -2,6 +2,7 @@ package game
 
 import (
 	"math"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -150,8 +151,20 @@ func TestDrawGroundItemShadowUsesSharedOriginalShadowSprite(t *testing.T) {
 		shadow:      1,
 	}
 	projection := newSceneProjectionForTarget(800, 600, entry.worldX, entry.worldY, 0)
-	if !mode.drawGroundItemShadowEntry3D(render.NewFrame(800, 600), projection, entry) {
+	frame := render.NewFrame(800, 600)
+	if !mode.drawGroundItemShadowEntry3D(frame, projection, entry) {
 		t.Fatal("floor-item shadow was not drawn")
+	}
+	entry.billboard = &spriteBillboard{image: render.NewImage(16, 16), anchorX: 8, anchorY: 16}
+	entry.scale = 1
+	mode.drawGroundItemEntry3D(frame, projection, entry)
+	commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
+	if commands.Len() != 2 {
+		t.Fatal("expected the shadow followed by the item sprite")
+	}
+	if commands.Index(0).FieldByName("Options").FieldByName("DepthWrite").Bool() ||
+		!commands.Index(1).FieldByName("Options").FieldByName("DepthWrite").Bool() {
+		t.Fatal("the item must occlude translucent geometry; its shadow must not")
 	}
 }
 

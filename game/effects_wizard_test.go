@@ -258,6 +258,11 @@ func TestWizardNativeGeometry(t *testing.T) {
 		if cmds.Len() != 1 || cmds.Index(0).FieldByName("Vertices").Len() != tc.spikes*12 {
 			t.Fatalf("effect %d tick %d: expected %d four-sided spikes", tc.id, tc.tick, tc.spikes)
 		}
+		options := cmds.Index(0).FieldByName("Options")
+		if options.FieldByName("AfterBillboards").Bool() != (tc.id == effectIceWall) ||
+			!options.FieldByName("DepthTest").Bool() || options.FieldByName("DepthWrite").Bool() {
+			t.Fatalf("effect %d: incorrect translucent spike depth/order", tc.id)
+		}
 		vertices := cmds.Index(0).FieldByName("Vertices")
 		for i := 0; i < vertices.Len(); i += 3 {
 			if vertices.Index(i+1).FieldByName("Y").Float() <= vertices.Index(i).FieldByName("Y").Float() {
