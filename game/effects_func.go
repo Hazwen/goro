@@ -48,6 +48,7 @@ const (
 	effectFuncArrowShower
 	effectFuncHunter
 	effectFuncSniper
+	effectFuncClown
 	effectFuncSongMusic
 	effectFuncSongVertical
 	effectFuncSongLight
@@ -132,6 +133,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawSongGround(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncPangVoice:
 		m.drawPangVoice(screen, ctx, projection, component, effect, now)
+	case effectFuncClown:
+		m.drawClownEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncSniper:
 		m.drawSniperEffect(screen, ctx, component, effect, now)
 	case effectFuncTripleAttack:

@@ -113,8 +113,8 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Hunter — traps, Detecting, Blitz Beat, Phantasmic Arrow, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
 - [x] Sniper — all four skills audited; procedural visuals, casting poses, hit routing, and sound timing reviewed twice and validated with OldRO assets.
 - [x] Bard — songs/ensembles, Musical Strike, Frost Joke, Pang Voice, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
-- [ ] Clown — analysis in progress
-- [ ] Dancer
+- [x] Clown — all six 2008 skills audited; rays, sphere, link/body effects, Hermode cubes, and Tarot timing reviewed twice and validated with OldRO assets.
+- [ ] Dancer — analysis in progress
 - [ ] Gypsy
 - [ ] Blacksmith
 - [ ] Whitesmith
@@ -158,6 +158,17 @@ position and camera-relative direction. Song/dance loops now use their correct
 frame ranges and stop on Adaptation/status end. Musical Lesson has no activation
 visual, and Encore uses the server's subsequent song notification. Full tests
 with client assets and a normal build passed; live comparison remains useful.
+
+Clown reference checks: dhxj and 2008 HighPriest agree on Arrow Vulcan's
+36 delayed pink rays, white casting aura, ACT 88 release, and additional attack
+replays. Moonlit uses a status-owned sphere on the caster, not ground tiles;
+Marionette links two actors and applies the pink body glow until status end.
+Hermode ground units own their blue cubes. Longing flashes the caster; Tarot
+flashes its target and displays only the card selected by the server, at its
+native height and fade timing, without duplicate sound. The later renewal
+skill CG_SPECIALSINGER is outside this 2008 audit. Both review passes, full
+tests with client assets, and a normal build passed; live comparison remains
+useful for these procedural effects.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,

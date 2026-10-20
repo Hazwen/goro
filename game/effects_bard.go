@@ -31,8 +31,8 @@ func isBardPerformance(skillID uint16) bool {
 		skillID == db.SkillBaDissonance || skillID >= db.SkillBaWhistle && skillID <= db.SkillBaAppleidun
 }
 
-func (m *WorldMode) applyBardGroundSkill(ctx client.Context, notify network.GroundSkillNotify, now time.Time) bool {
-	if !isBardPerformance(notify.SkillID) {
+func (m *WorldMode) applyPerformanceGroundSkill(ctx client.Context, notify network.GroundSkillNotify, now time.Time) bool {
+	if !isBardPerformance(notify.SkillID) && notify.SkillID != db.SkillCGHermode && notify.SkillID != db.SkillCGMoonlit {
 		return false
 	}
 	if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
@@ -40,6 +40,9 @@ func (m *WorldMode) applyBardGroundSkill(ctx client.Context, notify network.Grou
 	}
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.SourceID, sound)
+	}
+	if notify.SkillID == db.SkillCGMoonlit {
+		m.applyClownSkill(ctx, network.SkillNoDamageNotify{SkillID: notify.SkillID, SourceID: notify.SourceID}, now)
 	}
 	// Skill-unit packets own each symbol and its lifetime.
 	return true

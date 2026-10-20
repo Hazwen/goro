@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 693 {
-		t.Fatalf("implemented effects = %d, want 693", coverage.Implemented)
+	if coverage.Implemented != 696 {
+		t.Fatalf("implemented effects = %d, want 696", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 114.16 || coverage.ActivePercent > 114.18 {
-		t.Fatalf("active coverage = %.3f, want about 114.17", coverage.ActivePercent)
+	if coverage.ActivePercent < 114.66 || coverage.ActivePercent > 114.67 {
+		t.Fatalf("active coverage = %.3f, want about 114.66", coverage.ActivePercent)
 	}
 }
 
@@ -1807,7 +1807,6 @@ func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		{"EF_BOTTOM_GOSPEL", effectBottomGospel, "effect\\가스펠.wav"},
 		{"EF_HITLINE2", effectHitLine2, "effect\\맹호경파산.wav"},
 		{"EF_LINELINK2", effectLineLink2, "effect\\소울 체인지.wav"},
-		{"EF_TRIPLEATTACK3", effectTripleAttack3, "effect\\애로우 발칸.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
@@ -1943,16 +1942,6 @@ func TestRobrowserDrainAndMagicEffectsThreeFiftyToFourHundredMatchTableRows(t *t
 		t.Fatalf("EF_FALCONASSAULT component = %+v", component)
 	}
 
-	moonlit, ok := worldEffectSpecForID(effectMoonlit)
-	if !ok || len(moonlit.components) != 1 || moonlit.duration != 20*time.Second {
-		t.Fatalf("EF_SPHEREWIND2 spec = %+v ok=%t", moonlit, ok)
-	}
-	if len(moonlit.sfx) != 1 || moonlit.sfx[0] != "effect\\달빛세레나데.wav" {
-		t.Fatalf("EF_SPHEREWIND2 sfx = %#v", moonlit.sfx)
-	}
-	if component := moonlit.components[0]; component.kind != effectComponentFUNC || component.funcName != "FlatColorTile" || component.funcAdapter != effectFuncFlatColorTile || component.color != (color.RGBA{R: 255, G: 138, B: 187, A: 153}) || component.sizeStart != 1 || component.attachedEntity {
-		t.Fatalf("EF_SPHEREWIND2 component = %+v", component)
-	}
 }
 
 func TestRobrowserEffectsFourHundredToFourFiftyMatchTableRows(t *testing.T) {
@@ -2280,15 +2269,6 @@ func TestRobrowserSimpleEffectsFiveHundredToFiveFiftyMatchTableRows(t *testing.T
 		}
 	}
 
-	hermode, ok := worldEffectSpecForID(effectBottomHermode)
-	if !ok || len(hermode.components) != 0 || len(hermode.sfx) != 0 {
-		t.Fatalf("EF_BOTTOM_HERMODE spec = %+v ok=%t, want empty robr row", hermode, ok)
-	}
-	hermodeMusic, ok := worldEffectSpecForID(effectHermodeMusic)
-	if !ok || len(hermodeMusic.components) != 0 || len(hermodeMusic.sfx) != 1 || hermodeMusic.sfx[0] != "effect\\헤르모드의 지팡이" {
-		t.Fatalf("517_music spec = %+v ok=%t, want robr Hermode sound", hermodeMusic, ok)
-	}
-
 }
 
 func TestRobrowserFuncEffectsFiveHundredToFiveFiftyMatchTableRows(t *testing.T) {
@@ -2351,39 +2331,6 @@ func TestRobrowserBeginAsuraElevenMatchesTableRow(t *testing.T) {
 	}
 	if lastOut.textureFile != "effect/asura16.tga" || lastOut.delay != 1700*time.Millisecond || lastOut.posX != 8 || lastOut.sizeStart != effectTableSize(150) || lastOut.sizeEnd != effectTableSize(250) {
 		t.Fatalf("EF_BEGINASURA11 last glyph = %+v", lastOut)
-	}
-}
-
-func TestRobrowserTarotCardsFiveHundredToFiveFiftyMatchTableRows(t *testing.T) {
-	ids := []int{
-		effectTarotCard1,
-		effectTarotCard2,
-		effectTarotCard3,
-		effectTarotCard4,
-		effectTarotCard5,
-		effectTarotCard6,
-		effectTarotCard7,
-		effectTarotCard8,
-		effectTarotCard9,
-		effectTarotCard10,
-		effectTarotCard11,
-		effectTarotCard12,
-		effectTarotCard13,
-		effectTarotCard14,
-	}
-	for i, id := range ids {
-		name := fmt.Sprintf("EF_TAROTCARD%d", i+1)
-		spec, ok := worldEffectSpecForID(id)
-		if !ok || spec.duration != 3*time.Second || len(spec.components) != 1 {
-			t.Fatalf("%s spec = %+v ok=%t", name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\priest_slowpoison.wav" {
-			t.Fatalf("%s sfx = %#v", name, spec.sfx)
-		}
-		component := spec.components[0]
-		if component.kind != effectComponent3D || component.textureFile != fmt.Sprintf("effect/tarot%02d.tga", i+1) || component.duration != 3*time.Second || component.alphaMax != 1 || !component.attachedEntity || !component.fadeIn || !component.fadeOut || component.posZ != 4 || component.sizeStart != effectTableSize(100) || component.sizeEnd != effectTableSize(70) || !component.sizeSmooth {
-			t.Fatalf("%s component = %+v", name, component)
-		}
 	}
 }
 

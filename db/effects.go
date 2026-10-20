@@ -396,6 +396,8 @@ const (
 	effectRejectSword       = 392
 	effectTripleAttack3     = 393
 	effectMoonlit           = 394
+	effectMarionetteLink    = 395
+	effectPinkBody          = 396
 	effectLevel99AuraMid    = 397
 	effectLevel99AuraBottom = 398
 	effectBash3D3           = 399
@@ -444,6 +446,7 @@ const (
 	effectRamadan          = 492
 	effectEDP              = 493
 	effectPreserve         = 496
+	effectChemicalBody     = 500
 	effectCastSpin         = 501
 	effectSoulLink         = 503
 	effectChookgi2         = 504
@@ -2155,20 +2158,6 @@ func magicCrasherEffectSpec() EffectSpec {
 	}
 }
 
-func moonlitEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 20 * time.Second,
-		SFX:      []string{"effect\\달빛세레나데.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "FlatColorTile",
-			Color:          color.RGBA{R: 255, G: 138, B: 187, A: 153},
-			SizeStart:      1,
-			AttachedEntity: false,
-		}},
-	}
-}
-
 func darkSoulStrikeEffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 450 * time.Millisecond,
@@ -2407,26 +2396,6 @@ func spiritSphereEffectSpec() EffectSpec {
 			TextureFile:    "effect/thunder_center.bmp",
 			AttachedEntity: true,
 			Duplicate:      5,
-		}},
-	}
-}
-
-func tarotCardEffectSpec(index int) EffectSpec {
-	return EffectSpec{
-		Duration: 3 * time.Second,
-		SFX:      []string{"effect\\priest_slowpoison.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			TextureFile:    "effect/tarot" + twoDigitString(index) + ".tga",
-			Duration:       3 * time.Second,
-			AlphaMax:       1,
-			AttachedEntity: true,
-			FadeIn:         true,
-			FadeOut:        true,
-			PosZ:           4,
-			SizeStart:      effectTableSize(100),
-			SizeEnd:        effectTableSize(70),
-			SizeSmooth:     true,
 		}},
 	}
 }
@@ -4147,8 +4116,11 @@ var EffectSpecs = map[int]EffectSpec{
 	effectMeltdown:          strEffectSpecAttached("melt", "", false),
 	effectCartBoost:         strEffectSpecAttached("cart", "effect\\ef_incagility.wav", false),
 	effectRejectSword:       strEffectSpecAttached("sword", "effect\\kyrie_guard.wav", false),
-	effectTripleAttack3:     soundOnlyEffectSpec("effect\\애로우 발칸.wav"),
+	effectTripleAttack3:     arrowVulcanEffectSpec(),
 	effectMoonlit:           moonlitEffectSpec(),
+	effectMarionetteLink:    marionetteEffectSpec(),
+	effectPinkBody:          funcEffectSpec("EffectBodyColor", 99999999*EffectFrameDuration, true),
+	effectChemicalBody:      funcEffectSpec("EffectBodyColor", 120*EffectFrameDuration, true),
 	effectLevel99AuraMid:    level99EffectSpec(),
 	effectLevel99AuraBottom: level99GroundEffectSpec(),
 	effectBash3D3:           lordKnightBurstEffectSpec("effect\\헤드 크러쉬.wav", 0),
@@ -4203,8 +4175,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectValentine05:       sprEffectSpec("05vallentine", "", true, false),
 	effectBeginAsura11:      beginAsura11EffectSpec(),
 	effectChemical2Dash:     chemical2EffectSpec(),
-	effectBottomHermode:     {},
-	effectHermodeMusic:      soundOnlyEffectSpec("effect\\헤르모드의 지팡이"),
+	effectBottomHermode:     hermodeEffectSpec(),
+	effectHermodeMusic:      soundOnlyEffectSpec("effect\\헤르모드의 지팡이.wav"),
 	effectItemFastDown:      sprEffectSpec("fast", "effect\\fast.wav", true, false),
 	effectTarotCard1:        tarotCardEffectSpec(1),
 	effectTarotCard2:        tarotCardEffectSpec(2),

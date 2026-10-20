@@ -74,6 +74,9 @@ func (m *WorldMode) removeActorEffectStateEffects(actorID uint32) {
 	m.removeWorldEffect(effectSteelBody, actorID)
 	m.removeWorldEffect(effectAssumptio, actorID)
 	m.removeWorldEffect(effectRedBody, actorID)
+	m.removeWorldEffect(effectMoonlit, actorID)
+	m.removeWorldEffect(effectPinkBody, actorID)
+	m.removeMarionetteLinks(actorID)
 	m.removeWorldEffect(effectLKConcentration, actorID)
 	m.removeWorldEffect(effectAsuraBody, actorID)
 	m.removeWorldEffect(effectAsuraBodyMonster, actorID)
@@ -177,6 +180,11 @@ func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
 	m.setActorStateEffect(ctx, actorID, effectSteelBody, visible && actor.Opt3State&db.Opt3Steelbody != 0)
 	m.setActorStateEffect(ctx, actorID, effectAssumptio, visible && actor.Opt3State&db.Opt3Assumptio != 0)
 	m.setActorStateEffect(ctx, actorID, effectRedBody, visible && actor.Opt3State&db.Opt3Berserk != 0)
+	m.setActorStateEffect(ctx, actorID, effectMoonlit, visible && actor.Opt3State&db.Opt3Moonlit != 0)
+	m.setActorStateEffect(ctx, actorID, effectPinkBody, visible && actor.Opt3State&db.Opt3Marionette != 0)
+	if !visible || actor.HasState && actor.Opt3State&db.Opt3Marionette == 0 {
+		m.removeMarionetteLinks(actorID)
+	}
 	sphereEffect := effectChookgi
 	switch actor.Job {
 	case db.JobMonkB:

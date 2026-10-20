@@ -54,6 +54,22 @@ func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *ren
 		switch effect.effectID {
 		case effectAssumptio:
 			doubleBody = billboard.layerGroup == 0
+		case effectPinkBody:
+			tint.R, tint.G, tint.B = 255, 89, 182
+			if billboard.layerGroup == 0 {
+				doubleBody, blend = true, render.BlendLighter
+			}
+		case effectChemicalBody:
+			if frame < 31 {
+				doubleBody = billboard.layerGroup == 0
+				tint.R, tint.G, tint.B = 255, 255, 255
+				if frame%2 == 0 {
+					tint.R, tint.G = 0, 0
+					if billboard.layerGroup == 0 {
+						blend = render.BlendLighter
+					}
+				}
+			}
 		case effectRedBody:
 			tint.R, tint.G, tint.B = 255, 100, 100
 			if billboard.layerGroup == 0 {

@@ -398,6 +398,8 @@ const (
 	effectRejectSword       = 392
 	effectTripleAttack3     = 393
 	effectMoonlit           = 394
+	effectMarionetteLink    = 395
+	effectPinkBody          = 396
 	effectLevel99AuraMid    = 397
 	effectLevel99AuraBottom = 398
 	effectBash3D3           = 399
@@ -446,6 +448,7 @@ const (
 	effectRamadan          = 492
 	effectEDP              = 493
 	effectPreserve         = 496
+	effectChemicalBody     = 500
 	effectCastSpin         = 501
 	effectSoulLink         = 503
 	effectChookgi2         = 504
@@ -1025,6 +1028,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 		return
 	}
 	m.applyFalconSkillNoDamageNotify(ctx, notify, now)
+	m.applyClownSkill(ctx, notify, now)
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
 	}
@@ -1184,7 +1188,7 @@ func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID u
 		return
 	}
 	actionFamily := skillCastActionFamilyForActor(source, skillID)
-	if skillID == db.SkillSNSharpshooting && res.HasPlayerJobToken(int(source.Job)) {
+	if (skillID == db.SkillSNSharpshooting || skillID == db.SkillCGArrowvulcan) && res.HasPlayerJobToken(int(source.Job)) {
 		m.setCombatActorAction(ctx, sourceID, actorAnimation{
 			actionFamily: actionFamily, started: now, duration: duration,
 			hasPlay: true, hasFixedMotion: true, fixedMotion: 0,
@@ -1233,7 +1237,7 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 }
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
-	if m.applyHunterGroundSkill(ctx, notify, time.Now()) || m.applyBardGroundSkill(ctx, notify, time.Now()) {
+	if m.applyHunterGroundSkill(ctx, notify, time.Now()) || m.applyPerformanceGroundSkill(ctx, notify, time.Now()) {
 		return
 	}
 	if notify.SkillID == db.SkillACShower {
@@ -1407,7 +1411,7 @@ func (m *WorldMode) removeWorldEffectsForActor(id uint32) bool {
 	active := m.worldEffects[:0]
 	removed := false
 	for _, effect := range m.worldEffects {
-		if effect.actorID == id || (effect.effectID == effectLineLink && effect.targetID == id) {
+		if effect.actorID == id || ((effect.effectID == effectLineLink || effect.effectID == effectMarionetteLink) && effect.targetID == id) {
 			removed = true
 			continue
 		}
@@ -1653,10 +1657,10 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectFVoice {
 		m.initPangVoice(ctx, &effect)
 	}
-	if effectID == effectTripleAttack || effectID == effectTripleAttack2 {
+	if effectID == effectTripleAttack || effectID == effectTripleAttack2 || effectID == effectTripleAttack3 {
 		initTripleAttack(ctx, &effect)
 	}
-	if effectID == effectTeiHit1 || effectID == effectTeiHit1X || effectID == effectHitLine || effectID == effectPortal4 {
+	if effectID >= effectTarotCard1 && effectID <= effectTarotCard14 || effectID == effectTeiHit1 || effectID == effectTeiHit1X || effectID == effectHitLine || effectID == effectPortal4 {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -1935,7 +1939,8 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 	}
 	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain ||
 		skillID == db.SkillHPAssumptio || skillID == db.SkillHPBasilica || skillID == db.SkillPRRedemptio ||
-		skillID == db.SkillSNSharpshooting || skillID == db.SkillSNWindwalk || skillID == db.SkillBaPangvoice {
+		skillID == db.SkillSNSharpshooting || skillID == db.SkillSNWindwalk || skillID == db.SkillBaPangvoice ||
+		skillID == db.SkillCGArrowvulcan || skillID == db.SkillCGTarotcard {
 		effectID = effectBeginSpell6
 	}
 	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
@@ -2461,7 +2466,7 @@ var skillUnitEffectSpecs = map[uint16]skillUnitEffectSpec{
 	177: {effectIDs: []int{effectDemonstration}},          // UNT_DEMONSTRATION -> EF_DEMONSTRATION
 	179: {effectIDs: []int{effectGospelGround}},           // UNT_GOSPEL -> 370_ground
 	180: {effectIDs: []int{effectBottomBasilica}},         // UNT_BASILICA -> EF_BOTTOM_BASILICA
-	181: {effectIDs: []int{effectMoonlit}},                // UNT_MOONLIT -> 394_ground
+	181: {},                                               // UNT_MOONLIT: the caster owns the sphere.
 	182: {effectIDs: []int{effectFogWallGround}},          // UNT_FOGWALL -> 405_ground
 	183: {effectIDs: []int{effectBottomSpider}},           // UNT_SPIDERWEB -> EF_BOTTOM_SPIDER
 	184: {effectIDs: []int{effectGravitation}},            // UNT_GRAVITATION -> 522_ground
@@ -2852,6 +2857,8 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncSongOut
 	case "PangVoice":
 		return effectFuncPangVoice
+	case "ArrowVulcan", "Moonlit", "Marionette", "Hermode", "TarotCard":
+		return effectFuncClown
 	case "TrueSight", "WindWalk", "SharpShooting":
 		return effectFuncSniper
 	case "TripleAttack":
