@@ -1,6 +1,8 @@
 package game
 
 import (
+	"encoding/binary"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +15,52 @@ import (
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
 )
+
+func TestSkillUnitPositionUpdatesDoNotCreateActors(t *testing.T) {
+	for _, packetID := range []uint16{0x0088, 0x01FF} {
+		t.Run(fmt.Sprintf("0x%04X", packetID), func(t *testing.T) {
+			world := worldstate.New()
+			world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Moving: true}
+			ctx := client.Context{Session: &session.Session{AccountID: 2000000}, World: world}
+			mode := &WorldMode{}
+			mode.applySkillUnitEntry(ctx, network.SkillUnitEntry{
+				ID: 9001, CreatorID: world.Player.ID, UnitID: 141, X: 12, Y: 20, Visible: true,
+			})
+			data := make([]byte, 10)
+			binary.LittleEndian.PutUint16(data, packetID)
+			binary.LittleEndian.PutUint32(data[2:], 9001)
+			binary.LittleEndian.PutUint16(data[6:], 12)
+			binary.LittleEndian.PutUint16(data[8:], 20)
+			packet := network.Packet{ID: packetID, Data: data}
+			mode.handleNetworkPacket(ctx, packet, time.Now())
+			if len(world.Actors) != 0 {
+				t.Fatalf("Ice Wall position update created a phantom actor: %+v", world.Actors)
+			}
+			if len(mode.worldEffects) != 1 || mode.worldEffects[0].effectID != effectIceWall {
+				t.Fatal("position update removed the Ice Wall visual")
+			}
+			mode.applySkillUnitDisappear(network.SkillUnitDisappear{ID: 9001})
+			mode.handleNetworkPacket(ctx, packet, time.Now())
+			if len(world.Actors) != 0 || len(mode.worldEffects) != 0 {
+				t.Fatal("late position update resurrected the expired skill unit")
+			}
+
+			// Real Novices and the local player must still receive position fixes.
+			world.UpsertActor(worldstate.Actor{ID: 300, Job: db.JobNovice, Name: "Alice", Appearance: true, X: 5, Y: 6, Moving: true})
+			binary.LittleEndian.PutUint32(data[2:], 300)
+			mode.handleNetworkPacket(ctx, packet, time.Now())
+			actor := world.Actors[300]
+			if actor.X != 12 || actor.Y != 20 || actor.Moving || actor.Name != "Alice" || !actor.Appearance {
+				t.Fatalf("known actor was not updated correctly: %+v", actor)
+			}
+			binary.LittleEndian.PutUint32(data[2:], world.Player.ID)
+			mode.handleNetworkPacket(ctx, packet, time.Now())
+			if world.Player.X != 12 || world.Player.Y != 20 || world.Player.Moving || ctx.Session.PlayerX != 12 || ctx.Session.PlayerY != 20 {
+				t.Fatal("local position update stopped working")
+			}
+		})
+	}
+}
 
 func TestGroundSkillNotifyAddsCellEffect(t *testing.T) {
 	world := worldstate.New()

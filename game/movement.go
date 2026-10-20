@@ -445,10 +445,17 @@ func applyWarpPosition(ctx client.Context, x, y int) {
 }
 
 func applyActorSetPosition(ctx client.Context, position network.ActorSetPosition) {
+	if ctx.World == nil {
+		return
+	}
 	if isLocalActor(ctx, position.ID) {
 		ctx.World.SetPlayerPosition(position.X, position.Y, ctx.World.Dir)
 		ctx.Session.PlayerX = position.X
 		ctx.Session.PlayerY = position.Y
+		return
+	}
+	// Position updates can also refer to skill units; they never spawn actors.
+	if _, ok := ctx.World.Actors[position.ID]; !ok {
 		return
 	}
 	upsertActor(ctx, worldstate.Actor{
@@ -459,10 +466,16 @@ func applyActorSetPosition(ctx client.Context, position network.ActorSetPosition
 }
 
 func applyActorJumpPosition(ctx client.Context, position network.ActorJumpPosition) {
+	if ctx.World == nil {
+		return
+	}
 	if isLocalActor(ctx, position.ID) {
 		ctx.World.SetPlayerPosition(position.X, position.Y, ctx.World.Dir)
 		ctx.Session.PlayerX = position.X
 		ctx.Session.PlayerY = position.Y
+		return
+	}
+	if _, ok := ctx.World.Actors[position.ID]; !ok {
 		return
 	}
 	upsertActor(ctx, worldstate.Actor{
