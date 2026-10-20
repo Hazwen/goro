@@ -45,6 +45,7 @@ const (
 	effectFuncRisingParticles
 	effectFuncSteal
 	effectFuncMammoniteCoins
+	effectFuncArrowShower
 	effectFuncCartRevolution
 	effectFuncSprinkleSand
 	effectFuncRogueBurst
@@ -159,6 +160,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawEndureEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncMagnumBreak:
 		m.drawMagnumBreakEffect(screen, ctx, component, effect, now)
+	case effectFuncArrowShower:
+		m.drawArrowShower(screen, ctx, projection, component, effect, now)
 	case effectFuncMammoniteCoins:
 		m.drawMammoniteCoins(screen, ctx, projection, component, effect, now)
 	case effectFuncCartRevolution:

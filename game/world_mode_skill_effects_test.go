@@ -401,12 +401,9 @@ func TestRobrowserOldBoltSoundAndStatusEffectsZeroToFifty(t *testing.T) {
 	if len(incAgiDex.sfx) != 1 || incAgiDex.sfx[0] != "effect\\ef_incagidex.wav" {
 		t.Fatalf("EF_INCAGIDEX sfx = %#v", incAgiDex.sfx)
 	}
-	overlay := incAgiDex.components[0]
-	if overlay.kind != effectComponent3D || overlay.textureFile != "effect/dex_agi_up.bmp" || overlay.duration != time.Second || !overlay.fadeIn || !overlay.fadeOut || !overlay.attachedEntity || !overlay.overlay {
-		t.Fatalf("EF_INCAGIDEX overlay = %+v", overlay)
-	}
-	if overlay.posZ != 0.4 || overlay.posZEnd != 3 || overlay.sizeStart != 100*effectPixelRatio || overlay.sizeStartY != 45*effectPixelRatio || !overlay.sizeSmooth {
-		t.Fatalf("EF_INCAGIDEX overlay geometry = %+v", overlay)
+	component := incAgiDex.components[0]
+	if component.funcAdapter != effectFuncAgility || component.textureFile != "effect/dex_agi_up.bmp" || incAgiDex.duration != 100*db.EffectFrameDuration {
+		t.Fatalf("EF_INCAGIDEX must reuse the native agility particles: %+v", component)
 	}
 }
 
@@ -1224,7 +1221,7 @@ func TestSkillCastNotifyAddsDurationAura(t *testing.T) {
 	}
 }
 
-func TestSkillCastNotifyHonorsHideCastAura(t *testing.T) {
+func TestArrowRepelCastUsesNativeFlash(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Dir: 4}
 	world.UpsertActor(worldstate.Actor{ID: 1100, X: 12, Y: 20})
@@ -1233,8 +1230,8 @@ func TestSkillCastNotifyHonorsHideCastAura(t *testing.T) {
 
 	mode.applySkillCastNotify(ctx, network.SkillCastNotify{SourceID: 2000000, TargetID: 1100, SkillID: db.SkillACChargearrow, Property: 4, DelayTime: 1200})
 
-	if len(mode.worldEffects) != 2 {
-		t.Fatalf("world effects = %+v, want cast ring and target lock-on", mode.worldEffects)
+	if len(mode.worldEffects) != 3 {
+		t.Fatalf("world effects = %+v, want cast ring, target lock-on, and Bash flash", mode.worldEffects)
 	}
 	if mode.worldEffects[0].effectID != effectCastRing {
 		t.Fatalf("effect = %+v, want cast ring", mode.worldEffects[0])
@@ -1242,8 +1239,11 @@ func TestSkillCastNotifyHonorsHideCastAura(t *testing.T) {
 	if mode.worldEffects[1].effectID != effectLockOnTarget || mode.worldEffects[1].actorID != 1100 {
 		t.Fatalf("effect = %+v, want target lock-on", mode.worldEffects[1])
 	}
+	if e := mode.worldEffects[2]; e.effectID != effectBashBegin || e.duration != 0 {
+		t.Fatalf("Arrow Repel needs a single flash with its own duration: %+v", e)
+	}
 	if _, ok := mode.actorCastBars[150000]; !ok {
-		t.Fatal("cast bar should remain visible when only hideCastAura is set")
+		t.Fatal("Arrow Repel cast bar should remain visible")
 	}
 }
 
@@ -1870,15 +1870,15 @@ func TestMVPEffectSpecMatchesRoBrowserSTR(t *testing.T) {
 
 func TestImportedSkillActionFallback(t *testing.T) {
 	archer := worldstate.Actor{Job: 3}
-	if action := skillAction(db.SkillACDouble).actionFamilyForActorWithResources(nil, archer); action != spriteActionPCAttack3 {
-		t.Fatalf("AC_DOUBLE action = %d, want ATTACK3", action)
+	if action := skillAction(db.SkillACDouble).actionFamilyForActorWithResources(nil, archer); action != attackActionFamilyForActorWithResources(nil, archer) {
+		t.Fatalf("AC_DOUBLE action = %d, want normal weapon attack", action)
 	}
 	shower := skillAction(db.SkillACShower)
 	if action := shower.actionFamilyForActorWithResources(nil, archer); action != attackActionFamilyForActorWithResources(nil, archer) {
 		t.Fatalf("AC_SHOWER action = %d, want normal attack family", action)
 	}
-	if shower.speed != 50*time.Millisecond || shower.next == nil || shower.next.action != skillActorActionReadyFight {
-		t.Fatalf("AC_SHOWER timing = %+v, want robr speed 50ms then READYFIGHT", shower)
+	if shower.speed != 0 {
+		t.Fatalf("AC_SHOWER must use the supplied attack duration: %+v", shower)
 	}
 	merchant := worldstate.Actor{Job: 5}
 	if action := skillAction(db.SkillMCCartrevolution).actionFamilyForActorWithResources(nil, merchant); action != spriteActionPCSkill {
@@ -2028,15 +2028,15 @@ func TestGospelGroundHasTileAndFloatingCross(t *testing.T) {
 }
 
 func TestArcherThiefMerchantSkillEffectMappings(t *testing.T) {
-	expectEffectIDs(t, "AC_CONCENTRATION", skillEffectIDs(45), effectConcentration)
+	expectEffectIDs(t, "AC_CONCENTRATION", skillSuccessEffectSelfIDs(45), effectConcentration)
 	expectEffectIDs(t, "AC_DOUBLE begin", skillBeginEffectIDs(46), effectBashBegin)
 	expectEffectIDs(t, "AC_DOUBLE before-hit", skillBeforeHitEffectIDs(46), effectArrowShot)
-	expectEffectIDs(t, "AC_DOUBLE hit", skillHitEffectIDs(46), effectBashHit)
+	expectEffectIDs(t, "AC_DOUBLE hit", skillHitEffectIDs(46), effectHit1, effectBashHit)
 	expectEffectIDs(t, "AC_SHOWER", skillEffectIDs(47), effectArrowShower)
-	expectEffectIDs(t, "AC_SHOWER hit", skillHitEffectIDs(47), effectBashHit)
-	expectEffectIDs(t, "AC_CHARGEARROW before-hit", skillBeforeHitEffectIDs(148), effectArrowShot)
-	if !skillHidesCastAura(db.SkillACChargearrow) {
-		t.Fatal("AC_CHARGEARROW should hide cast aura like roBrowser")
+	expectEffectIDs(t, "AC_SHOWER hit", skillHitEffectIDs(47), effectHit1, effectBashHit)
+	expectEffectIDs(t, "AC_CHARGEARROW hit", skillHitEffectIDs(148), effectHit1)
+	if skillHidesCastAura(db.SkillACChargearrow) {
+		t.Fatal("AC_CHARGEARROW must show the native casting flash")
 	}
 	expectEffectIDs(t, "TF_DOUBLE passive", skillEffectIDs(48))
 	expectEffectIDs(t, "TF_MISS passive", skillEffectIDs(49))
@@ -2058,7 +2058,7 @@ func TestArcherThiefMerchantSkillEffectMappings(t *testing.T) {
 	expectEffectIDs(t, "AL_HOLYLIGHT", skillHitEffectIDs(156), effectHit1, effectHolyLight)
 }
 
-func TestArcherProjectileEffectsFollowRoBrowserTable(t *testing.T) {
+func TestArcherProjectileEffects(t *testing.T) {
 	shot, ok := worldEffectSpecForID(effectArrowShot)
 	if !ok || len(shot.components) != 1 {
 		t.Fatalf("arrow shot spec = %#v ok=%t, want one component", shot, ok)
@@ -2076,8 +2076,8 @@ func TestArcherProjectileEffectsFollowRoBrowserTable(t *testing.T) {
 		t.Fatalf("arrow shower spec = %#v ok=%t, want one component", shower, ok)
 	}
 	component = shower.components[0]
-	if component.duplicate != 10 || component.posXEndRand != 1.5 || component.posYEndRand != 1.5 {
-		t.Fatalf("arrow shower scatter = %#v, want robr duplicate/scatter values", component)
+	if component.funcAdapter != effectFuncArrowShower || shower.duration != referenceBowArrowFlightDuration {
+		t.Fatalf("arrow shower must use native flight and spread: %#v", component)
 	}
 }
 

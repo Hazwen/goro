@@ -760,6 +760,7 @@ type worldEffect struct {
 	soulLights                           *soulLights
 	blueCasting                          *blueCasting
 	coinTrails                           *[5][]modelPoint3
+	arrowTargets                         *[9]modelPoint3
 	hasActorTransform                    bool
 	x                                    int
 	y                                    int
@@ -1220,6 +1221,23 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 }
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
+	if notify.SkillID == db.SkillACShower {
+		now := time.Now()
+		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
+		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
+			m.startSkillActionAnimation(ctx, notify.SourceID, actor, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
+			family := skillActionFamilyForActorWithResources(ctx.Resources, actor, notify.SkillID)
+			if action, ok := m.actorResolvedAction(ctx, actor, family); ok {
+				act := m.actorActionACT(ctx, actor)
+				motion := actionAttackMarkerMotion(act, action)
+				delay := combatMotionDelayFromAction(action, defaultAttackAnimationDuration, motion)
+				m.scheduleSkillActionSoundAtActor(now.Add(delay), notify.SourceID, notify.SkillID, actionSFXCandidatesForActor(actor, act, action, motion)...)
+			}
+		}
+		m.applySkillNameBubble(ctx, notify.SourceID, notify.SkillID, now)
+		m.addArrowShower(ctx, notify.SourceID, float64(notify.X), float64(notify.Y), true, now)
+		return
+	}
 	switch notify.SkillID {
 	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillMGFirewall, db.SkillPRSanctuary, db.SkillHPBasilica,
 		db.SkillWZFirepillar, db.SkillWZIcewall, db.SkillWZQuagmire:
@@ -1871,6 +1889,10 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 			glog.Debugf("skill cast target lockon source=%s skill=%d src=%d target=%d delay_ms=%d", source, skillID, sourceID, targetID, duration.Milliseconds())
 		}
 	}
+	if skillID == db.SkillACChargearrow {
+		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
+		return
+	}
 	if skillHidesCastAura(skillID) {
 		return
 	}
@@ -2269,11 +2291,6 @@ func importedSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
 		spec.hasFrame = true
 		spec.frame = 1
 		spec.play = false
-		return spec, true
-	}
-	if skillID == db.SkillACShower {
-		spec := newSkillActionSpec(skillActorActionAttack, false, &readyFightSkillActionSpec)
-		spec.speed = 50 * time.Millisecond
 		return spec, true
 	}
 	if skillID == db.SkillASSonicblow {
@@ -2810,6 +2827,8 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncRisingParticles
 	case "Steal":
 		return effectFuncSteal
+	case "ArrowShower":
+		return effectFuncArrowShower
 	case "MammoniteCoins":
 		return effectFuncMammoniteCoins
 	case "CartRevolution":

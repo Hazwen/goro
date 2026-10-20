@@ -1054,13 +1054,18 @@ func TestDoubleStrafeUsesReferenceBowReleaseAndMultiHitTimeline(t *testing.T) {
 			}
 
 			if tc.damage > 0 {
-				if len(mode.worldEffects) != 4 {
-					t.Fatalf("Double Strafe effects = %+v, want begin, one arrow, and two impacts", mode.worldEffects)
+				if len(mode.worldEffects) != 5 {
+					t.Fatalf("Double Strafe effects = %+v, want begin, one arrow, and three impact effects", mode.worldEffects)
 				}
 				for i, impact := range mode.worldEffects[2:] {
-					wantStarts := projectile.expires.Add(multiHitDelay * time.Duration(i))
-					if impact.effectID != effectBashHit || impact.actorID != targetID || !impact.starts.Equal(wantStarts) {
-						t.Fatalf("Double Strafe impact %d = %+v, want start %s", i, impact, wantStarts)
+					wantStarts, wantID := projectile.expires, effectHit1
+					if i == 1 {
+						wantID = effectBashHit
+					} else if i == 2 {
+						wantStarts = wantStarts.Add(multiHitDelay)
+					}
+					if impact.effectID != wantID || impact.actorID != targetID || !impact.starts.Equal(wantStarts) {
+						t.Fatalf("Double Strafe impact %d = %+v, want effect %d at %s", i, impact, wantID, wantStarts)
 					}
 				}
 				targetAnim, ok := mode.actorAnims[targetID]

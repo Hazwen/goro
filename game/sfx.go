@@ -2,6 +2,7 @@ package game
 
 import (
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -14,14 +15,15 @@ import (
 )
 
 type scheduledSound struct {
-	at          time.Time
-	paths       []string
-	volume      float64
-	positioned  bool
-	actorID     uint32
-	hasPosition bool
-	x           float64
-	y           float64
+	at            time.Time
+	paths         []string
+	volume        float64
+	positioned    bool
+	actorID       uint32
+	skillActionID uint16
+	hasPosition   bool
+	x             float64
+	y             float64
 }
 
 type actorSoundFrame struct {
@@ -40,6 +42,15 @@ func (m *WorldMode) scheduleSoundVolume(at time.Time, volume float64, paths ...s
 
 func (m *WorldMode) scheduleSoundAtActor(at time.Time, actorID uint32, paths ...string) {
 	m.scheduleSoundVolumeAtActor(at, 1, actorID, paths...)
+}
+
+func (m *WorldMode) scheduleSkillActionSoundAtActor(at time.Time, actorID uint32, skillID uint16, paths ...string) {
+	// Ground and damage packets can replace the same skill animation before
+	// its release sound plays. Keep only the latest release for that actor.
+	m.scheduledSounds = slices.DeleteFunc(m.scheduledSounds, func(sound scheduledSound) bool {
+		return sound.actorID == actorID && sound.skillActionID == skillID
+	})
+	m.scheduleSoundOptions(scheduledSound{at: at, volume: 1, positioned: true, actorID: actorID, skillActionID: skillID}, paths...)
 }
 
 func (m *WorldMode) scheduleSoundVolumeAtActor(at time.Time, volume float64, actorID uint32, paths ...string) {

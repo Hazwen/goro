@@ -516,7 +516,8 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	playerBowAttack := sourceOK && res.HasPlayerJobToken(int(source.Job)) && actorUsesBow(ctx.Resources, source)
 	normalPlayerBowAttack := action.SkillID == 0 && playerBowAttack
 	doubleStrafeBowAttack := action.SkillID == db.SkillACDouble && playerBowAttack
-	referenceBowFlightAttack := normalPlayerBowAttack || doubleStrafeBowAttack
+	showerBowAttack := action.SkillID == db.SkillACShower && playerBowAttack
+	referenceBowFlightAttack := normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack
 	if sourceOK && !splash {
 		if anim, ok := m.actorAnimation(action.SourceID, now); ok && anim.autoCounter && action.SkillID == 0 {
 			m.addWorldEffectAt(ctx, effectAutoCounter, action.SourceID, now)
@@ -539,7 +540,11 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 			}
 			hitDelay = combatMotionDelayFromAction(actionDef, attackDuration, soundMotion)
 			if sounds := actionSFXCandidatesForActor(source, actionACT, actionDef, soundMotion); len(sounds) > 0 && !splash {
-				m.scheduleSoundAtActor(now.Add(hitDelay), action.SourceID, sounds...)
+				if action.SkillID == db.SkillACShower {
+					m.scheduleSkillActionSoundAtActor(now.Add(hitDelay), action.SourceID, action.SkillID, sounds...)
+				} else {
+					m.scheduleSoundAtActor(now.Add(hitDelay), action.SourceID, sounds...)
+				}
 			}
 		}
 	}
@@ -564,9 +569,8 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		}
 		if action.SkillID > 0 {
 			m.addSkillBeginEffect(ctx, action, now)
-			if doubleStrafeBowAttack {
-				// Double Strafe releases one visible arrow; its two impacts are
-				// delivered separately after that arrow reaches the target.
+			if doubleStrafeBowAttack || showerBowAttack {
+				// The bow releases one arrow at the ACT marker.
 				m.addSkillBeforeHitEffectOnce(ctx, action, projectileAt, projectileDuration)
 			} else {
 				m.addSkillBeforeHitEffect(ctx, action, now)
@@ -629,7 +633,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
-	case db.SkillMCMammonite, db.SkillMCCartrevolution:
+	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution:
 		return true
 	case db.SkillWZFirepillar, db.SkillWZSightrasher, db.SkillWZMeteor, db.SkillWZJupitel, db.SkillWZVermilion,
 		db.SkillWZWaterball, db.SkillWZFrostnova, db.SkillWZStormgust, db.SkillWZEarthspike, db.SkillWZHeavendrive:
@@ -747,6 +751,13 @@ func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActio
 	if action.SkillID == 0 || skillSplashAction(action) {
 		return
 	}
+	if action.SkillID == db.SkillACShower {
+		if target, ok, _ := actorForCombatID(ctx, action.TargetID); ok {
+			x, y := actorRenderPosition(target, actionAt)
+			m.addArrowShower(ctx, action.SourceID, x, y, false, actionAt)
+		}
+		return
+	}
 	if action.SkillID == db.SkillASSplasher {
 		// ZC_NOTIFY_SKILL's level -1 marks the server's delayed explosion.
 		if action.SkillLevel == 0xffff {
@@ -827,7 +838,7 @@ func (m *WorldMode) addSkillBeforeHitEffect(ctx client.Context, action network.A
 }
 
 func (m *WorldMode) addSkillBeforeHitEffectOnce(ctx client.Context, action network.ActorActionNotify, starts time.Time, duration time.Duration) {
-	if action.SkillID == 0 {
+	if action.SkillID == 0 || skillSplashAction(action) {
 		return
 	}
 	for _, effectID := range skillBeforeHitEffectIDs(action.SkillID) {
@@ -866,7 +877,7 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 			if effectID == effectBowlingBash && i > 0 {
 				continue
 			}
-			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
+			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
 				continue
 			}
 			if i > 0 && (action.SkillID == db.SkillMGNapalmbeat || action.SkillID == db.SkillMGSoulstrike || action.SkillID == db.SkillMGFireball || action.SkillID == db.SkillMGFrostdiver) && (effectID == effectBashHit || effectID == effectFrostDiverHit) {
