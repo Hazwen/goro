@@ -3795,7 +3795,6 @@ const (
 	SkillEffectMaximizeSounds         = 11009
 	SkillEffectGreedSound             = 11010
 	SkillEffectGospelGround           = 11011
-	SkillEffectShieldProjectile       = 11012
 	SkillEffectFogWallGround          = 11013
 	SkillEffectHermodeMusic           = 11014
 	SkillEffectBottomDissonanceGround = 11015
@@ -3991,16 +3990,16 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillAMCallhomun:                {},
 	SkillAMRest:                     {},
 	SkillAMResurrecthomun:           {},
-	SkillCRAutoguard:                {EffectIDs: []int{effectGuard}},
-	SkillCRShieldcharge:             {EffectIDs: []int{effectShieldCharge}},
-	SkillCRShieldboomerang:          {EffectIDs: []int{effectShieldBoomer}, BeforeHitEffectIDs: []int{SkillEffectShieldProjectile}},
-	SkillCRReflectshield:            {EffectIDs: []int{effectReflectShield}},
-	SkillCRHolycross:                {EffectIDs: []int{effectHolyCross}},
-	SkillCRGrandcross:               {EffectIDs: []int{effectGrandCross}},
-	SkillCRDevotion:                 {EffectIDs: []int{effectDevotion}},
+	SkillCRAutoguard:                {SuccessEffectIDsSelf: []int{effectGuard}},
+	SkillCRShieldcharge:             {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectShieldCharge}, HitEffectIDs: []int{effectHit1}},
+	SkillCRShieldboomerang:          {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectShieldBoomer}, HitEffectIDs: []int{effectHit1}},
+	SkillCRReflectshield:            {SuccessEffectIDsSelf: []int{effectReflectShield}},
+	SkillCRHolycross:                {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectHolyCross}, HitEffectIDs: []int{effectHit1}},
+	SkillCRGrandcross:               {EffectTiming: SkillEffectAtActionStart, EffectIDsOnCaster: []int{effectGrandCross}, HitEffectIDs: []int{effectHit1}},
+	SkillCRDevotion:                 {SuccessEffectIDsSelf: []int{effectDevotion}},
 	SkillCRProvidence:               {EffectIDs: []int{effectProvidence}},
-	SkillCRDefender:                 {EffectIDs: []int{effectCrusaderDef}},
-	SkillCRSpearquicken:             {EffectIDs: []int{effectSpearQuicken}},
+	SkillCRDefender:                 {SuccessEffectIDsSelf: []int{effectCrusaderDef}},
+	SkillCRSpearquicken:             {SuccessEffectIDsSelf: []int{effectSpearQuicken}},
 	SkillMOCallspirits:              {},
 	SkillMOAbsorbspirits:            {SuccessEffectIDsSelf: []int{effectAbsorbSpirits}},
 	SkillMOTripleattack:             {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectTripleAttack}},
@@ -4082,10 +4081,10 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillHWMagiccrasher:             {EffectIDs: []int{effectMagicCrasher}},
 	SkillHWMagicpower:               {EffectIDs: []int{SkillEffectMagicPower}, BeginCastEffectIDs: []int{16}, HideCastAura: true},
 	SkillHWSouldrain:                {EffectIDsOnCaster: []int{effectEnergyDrain}},
-	SkillPaPressure:                 {BeforeHitEffectIDs: []int{effectPressure}},
-	SkillPaSacrifice:                {EffectIDs: []int{effectBash3D}},
+	SkillPaPressure:                 {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectPressure}, HitEffectIDs: []int{effectHit1}},
+	SkillPaSacrifice:                {EffectTiming: SkillEffectAtActionStart, EffectIDsOnCaster: []int{effectBash3D}, HitEffectIDs: []int{effectHit1}, HideCastAura: true},
 	SkillPaGospel:                   {EffectIDs: []int{effectBottomGospel}, GroundEffectIDs: []int{SkillEffectGospelGround}},
-	SkillPaShieldchain:              {BeforeHitEffectIDs: []int{SkillEffectShieldProjectile}},
+	SkillPaShieldchain:              {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectShieldBoomerang3}, HitEffectIDs: []int{effectHit1}},
 	SkillChPalmstrike:               {HitEffectIDs: []int{effectHitLine2, effectQuake}},
 	SkillChTigerfist:                {EffectIDs: []int{effectBash3D2, effectQuake}, EffectIDsOnCaster: []int{effectGumgang3}},
 	SkillChChaincrush:               {EffectIDs: []int{effectChemical2Dash}},
@@ -4226,7 +4225,7 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillNPCCriticalwound:           {HitEffectIDs: []int{effectCriticalWound}},
 	SkillALLWewish:                  {EffectIDs: []int{effectChristmasCarol}},
 	SkillNPCVenomfog:                {EffectIDs: []int{effectVenomFog}},
-	SkillCRShrink:                   {EffectIDs: []int{599}},
+	SkillCRShrink:                   {SuccessEffectIDsSelf: []int{effectShrink}},
 	SkillASVenomknife:               {BeforeHitEffectIDs: []int{effectThrowItem6}},
 	SkillRGCloseconfine:             {SuccessEffectIDs: []int{effectQuakeBody4}},
 	SkillWZSightblaster:             {EffectIDs: []int{601}},
@@ -4401,6 +4400,12 @@ const (
 )
 
 var SkillActions = map[uint16]SkillActionKind{
+	SkillCRAutoguard:          SkillActionIdle,
+	SkillCRReflectshield:      SkillActionIdle,
+	SkillCRDefender:           SkillActionIdle,
+	SkillCRProvidence:         SkillActionIdle,
+	SkillPaGospel:             SkillActionIdle,
+	SkillPaPressure:           SkillActionAttack,
 	SkillNVBasic:              SkillActionNone,
 	SkillNVTrickdead:          SkillActionNone,
 	SkillTFBacksliding:        SkillActionNone,
@@ -4419,7 +4424,7 @@ var SkillActions = map[uint16]SkillActionKind{
 	SkillRGBackstap:           SkillActionAttack,
 	SkillRGRaid:               SkillActionAttack,
 	SkillRGIntimidate:         SkillActionAttack,
-	SkillCRShieldcharge:       SkillActionAttack,
+	SkillCRShieldcharge:       SkillActionAttack1,
 	SkillCRHolycross:          SkillActionAttack,
 	SkillMOChaincombo:         SkillActionAttack,
 	SkillMOCombofinish:        SkillActionAttack,

@@ -42,6 +42,8 @@ func (m *WorldMode) drawSTREffect(screen *render.Frame, ctx client.Context, proj
 		if texture == nil {
 			continue
 		}
+		anim.Pos[0] += float32(component.spriteXOffset)
+		anim.Pos[1] += float32(component.spriteYOffset)
 		drawSTRAnimation(screen, projection, texture, worldX, worldY, worldZ, anim, component.attachedEntity)
 		drawn = true
 	}

@@ -7,21 +7,8 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
-	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 )
-
-func knightSplashAction(action network.ActorActionNotify) bool {
-	if action.Action != 5 { // ACTION_SPLASH: secondary victims do not replay the skill.
-		return false
-	}
-	switch action.SkillID {
-	case db.SkillKNPierce, db.SkillKNBrandishspear, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNBowlingbash, db.SkillKNChargeatk:
-		return true
-	default:
-		return false
-	}
-}
 
 func (m *WorldMode) drawBowlingBashEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, now time.Time) {
 	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)

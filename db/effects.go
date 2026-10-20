@@ -697,7 +697,6 @@ const (
 	effectMaximizeSounds         = SkillEffectMaximizeSounds
 	effectGreedSound             = SkillEffectGreedSound
 	effectGospelGround           = SkillEffectGospelGround
-	effectShieldProjectile       = SkillEffectShieldProjectile
 	effectSteelBodyRing          = SkillEffectSteelBodyRing
 	effectFogWallGround          = SkillEffectFogWallGround
 	effectHermodeMusic           = SkillEffectHermodeMusic
@@ -1186,28 +1185,6 @@ func drainEffectSpec(tint color.RGBA, withBodyColor bool) EffectSpec {
 		)
 	}
 	return spec
-}
-
-func defenderCylinderEffectSpec(texture string) EffectSpec {
-	return EffectSpec{
-		Duration: 3 * time.Second,
-		Components: []EffectComponent{{
-			Kind:             EffectComponentCylinder,
-			TextureName:      texture,
-			Duration:         3 * time.Second,
-			AlphaMax:         0.6,
-			Animation:        1,
-			BlendMode:        8,
-			BottomSize:       1.5,
-			TopSize:          1.5,
-			Height:           10,
-			Fade:             true,
-			Rotate:           true,
-			AttachedEntity:   true,
-			TotalCircleSides: 32,
-			CircleSides:      32,
-		}},
-	}
 }
 
 func robrCylinderBlendComponent(textureName string, tint color.RGBA, duration time.Duration, alphaMax float64, animation int, bottomSize, topSize, height float64, attached, rotate, fade bool, blendMode int) EffectComponent {
@@ -1994,27 +1971,6 @@ func naturalRecoveryEffectSpec(tint color.RGBA, wav string) EffectSpec {
 	}
 }
 
-func guardEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 600 * time.Millisecond,
-		SFX:      []string{"effect\\kyrie_guard.wav"},
-		Components: []EffectComponent{
-			guardCylinderComponent(1.5, 1, 0.7, 2.14),
-			guardCylinderComponent(1.5, 1.5, 1.14, 1),
-			guardCylinderComponent(1, 1.5, 0.7, 0.3),
-		},
-	}
-}
-
-func guardCylinderComponent(bottomSize, topSize, height, posZ float64) EffectComponent {
-	component := robrCylinderBlendComponent("guardk", color.RGBA{R: 232, G: 255, B: 230, A: 255}, 600*time.Millisecond, 0.6, 0, bottomSize, topSize, height, true, false, true, 2)
-	component.TotalCircleSides = 8
-	component.CircleSides = 5
-	component.AngleY = 112.5
-	component.PosZ = posZ
-	return component
-}
-
 func magnum2EffectSpec() EffectSpec {
 	return delayedSoundEffectSpec(
 		[]string{"permeter_attack.wav", "effect\\ef_magnumbreak.wav"},
@@ -2146,53 +2102,6 @@ func bodySizeEffectSpec(name string, duration time.Duration, targetSize float64)
 			SizeEnd:        targetSize,
 			AttachedEntity: true,
 		}},
-	}
-}
-
-func pressureEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration:         1001 * time.Millisecond,
-		CameraShake:      200 * time.Millisecond,
-		CameraShakeDelay: 500 * time.Millisecond,
-		SFX:              []string{"effect\\프레셔.wav"},
-		Components: []EffectComponent{
-			{
-				Kind:           EffectComponent3D,
-				TextureFile:    "effect/cross_old.bmp",
-				Duration:       500 * time.Millisecond,
-				AlphaMax:       0.6,
-				BlendMode:      2,
-				BlendAdditive:  true,
-				Rotate:         true,
-				AngleStart:     0,
-				AngleEnd:       -611,
-				PosZ:           20,
-				PosZEnd:        5,
-				SizeStart:      effectTableSize(100),
-				SizeEnd:        effectTableSize(100),
-				AttachedEntity: true,
-			},
-			{
-				Kind:           EffectComponent3D,
-				TextureFile:    "effect/cross_old.bmp",
-				Duration:       500 * time.Millisecond,
-				Delay:          501 * time.Millisecond,
-				AlphaMax:       0.6,
-				BlendMode:      2,
-				BlendAdditive:  true,
-				FadeOut:        true,
-				AngleStart:     -611,
-				PosZ:           5,
-				SizeStart:      effectTableSize(100),
-				SizeEnd:        effectTableSize(100),
-				AttachedEntity: true,
-			},
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "CameraQuake",
-				AttachedEntity: true,
-			},
-		},
 	}
 }
 
@@ -2665,59 +2574,6 @@ func mildWindComponent(texture string, alphaMax, red, green, blue, sizeStart, si
 	}
 }
 
-func grandCrossEffectSpec() EffectSpec {
-	components := make([]EffectComponent, 0, 25)
-	addSquare := func(x, y float64) {
-		components = append(components, grandCrossCylinder(4, 4, 0.7, 45, x, y))
-	}
-	addArc := func(angleY, x, y float64) {
-		components = append(components, grandCrossCylinder(20, 5, 3, angleY, x, y))
-	}
-	addSquare(0, 0)
-	for _, x := range []float64{-1, -2, -3, -4, 1, 2, 3, 4} {
-		addSquare(x, 0)
-	}
-	for _, y := range []float64{1, 2, 3, 4, -1, -2, -3, -4} {
-		addSquare(0, y)
-	}
-	addSquare(1, 1)
-	addSquare(1, -1)
-	addSquare(-1, -1)
-	addSquare(-1, 1)
-	addArc(-180, 3.5, 3.5)
-	addArc(90, 3.5, -3.5)
-	addArc(0, -3.5, -3.5)
-	addArc(-90, -3.5, 3.5)
-	return EffectSpec{
-		Duration:   2 * time.Second,
-		SFX:        []string{"effect\\cru_grand cross.wav"},
-		Components: components,
-	}
-}
-
-func grandCrossCylinder(totalSides, sides int, size, angleY, posX, posY float64) EffectComponent {
-	return EffectComponent{
-		Kind:             EffectComponentCylinder,
-		TextureName:      "ring_red",
-		Duration:         time.Second,
-		Duplicate:        3,
-		DuplicateDelay:   500 * time.Millisecond,
-		AlphaMax:         0.1,
-		Animation:        1,
-		BlendMode:        2,
-		BlendAdditive:    true,
-		BottomSize:       size,
-		TopSize:          size,
-		Height:           5,
-		Fade:             true,
-		AngleY:           angleY,
-		PosX:             posX,
-		PosY:             posY,
-		TotalCircleSides: totalSides,
-		CircleSides:      sides,
-	}
-}
-
 func propertyGroundEffectSpec(name, texture string) EffectSpec {
 	return EffectSpec{
 		Duration: 1500 * time.Millisecond,
@@ -2763,30 +2619,6 @@ func whitePulseEffectSpec() EffectSpec {
 	return EffectSpec{Duration: 500 * time.Millisecond}
 }
 
-func shieldProjectileEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 140 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			TextureFile:      "effect/shield_boomerang.bmp",
-			ToSrc:            true,
-			RotateToTarget:   true,
-			RotateWithCamera: true,
-			Rotate:           true,
-			Duration:         140 * time.Millisecond,
-			AlphaMax:         1,
-			FadeIn:           true,
-			FadeOut:          true,
-			PosZ:             1,
-			SizeStart:        effectTableSize(50),
-			SizeEnd:          effectTableSize(50),
-			AngleStart:       180,
-			AngleEnd:         540,
-			AttachedEntity:   true,
-		}},
-	}
-}
-
 func gospelGroundEffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 1500 * time.Millisecond,
@@ -2800,17 +2632,7 @@ func gospelGroundEffectSpec() EffectSpec {
 				AttachedEntity: false,
 			},
 			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "GroundTexture",
-				TextureFile:    "effect/cross_old.bmp",
-				Duration:       1500 * time.Millisecond,
-				SizeStart:      0.5,
-				SizeEnd:        0.5,
-				AlphaMax:       0.7,
-				PosZ:           0.4,
-				BlendAdditive:  true,
-				RenderBefore:   true,
-				AttachedEntity: false,
+				Kind: EffectComponentFUNC, FuncName: "GospelCross", TextureFile: "effect/cross_old.bmp", Repeat: true,
 			},
 		},
 	}
@@ -3789,6 +3611,9 @@ func einbrochWeatherCloudEffectSpec() EffectSpec {
 // original-client behavior. Leave effects unsupported until their reference
 // behavior is understood rather than guessing local visuals.
 var EffectSpecs = map[int]EffectSpec{
+	effectShieldBoomerang3: shieldChainEffectSpec(),
+	effectShrink:           shrinkEffectSpec(),
+
 	effectRain:        weatherRainEffectSpec(),
 	effectSnow:        weatherSnowEffectSpec(),
 	effectSakura:      weatherLeafEffectSpec("data/sprite/이팩트/sakura01", color.RGBA{R: 255, G: 210, B: 225, A: 255}),
@@ -4932,42 +4757,41 @@ var EffectSpecs = map[int]EffectSpec{
 			AttachedEntity: true,
 		}},
 	},
-	effectShockwaveHit:     strEffectSpecAttached("shockwavehit", "", false),
-	effectEarthHit:         strEffectSpecAttached("earthhit", "", false),
-	effectPierceSelf:       strEffectSpecAttached("pierce", "", false),
-	effectBowlingSelf:      strEffectSpecAttached("bowling", "", false),
-	effectSpearStabSelf:    strEffectSpecAttached("spearstab", "", false),
-	effectSpearBmrSelf:     strEffectSpecAttached("spearboomerang", "", false),
-	effectSpearHitSound:    soundOnlyEffectSpec("_hit_spear.wav"),
-	effectShieldProjectile: shieldProjectileEffectSpec(),
-	effectEnemyHitNormal1:  soundOnlyEffectSpec("_enemy_hit_normal1.wav"),
-	effectHolyLight:        strEffectSpecAttached("holyhit", "", false),
-	effectConcentration:    strEffectSpecAttached("concentration", "effect\\ac_concentration.wav", false),
-	effectRefineOK:         strEffectSpecAttached("bs_refinesuccess", "effect\\bs_refinesuccess.wav", false),
-	effectRefineFail:       strEffectSpecAttached("bs_refinefailed", "effect\\bs_refinefailed.wav", false),
-	effectMakeBlur:         funcEffectSpec("MakeBlur", 2*time.Second, false),
-	effectEnergyCoat:       strEffectSpecAttached("energycoat", "", false),
-	effectVenomDust2:       poisonParticlesEffectSpec(false),
-	effectMentalBreak:      strEffectSpecAttached("mentalbreak", "", false),
-	effectMagicalAtkHit:    strEffectSpecAttached("magical", "", false),
-	effectSuiExplosion:     suiExplosionEffectSpec(),
-	effectSuicide:          strEffectSpecAttached("suicide", "", false),
-	effectComboAttack1:     strEffectSpecAttached("yunta_1", "", false),
-	effectComboAttack2:     strEffectSpecAttached("yunta_2", "", false),
-	effectComboAttack3:     strEffectSpecAttached("yunta_3", "", false),
-	effectComboAttack4:     strEffectSpecAttached("yunta_4", "", false),
-	effectComboAttack5:     strEffectSpecAttached("yunta_5", "", false),
-	effectGuidedAttack:     strEffectSpecAttached("homing", "", false),
-	effectPoisonAttack2:    strEffectSpecAttached("poison", "", false),
-	effectSilenceAttack:    strEffectSpecAttached("silence", "", false),
-	effectStunAttack:       strEffectSpecAttached("stun", "", false),
-	effectPetrifyAttack:    strEffectSpecAttached("stonecurse", "", false),
-	effectSleepAttack:      strEffectSpecAttached("sleep", "", false),
-	effectPong:             strEffectSpecRandom("pong%d", "", 1, 3),
-	effectLevel99:          level99EffectSpec(),
-	effectLevel99Ground:    level99GroundEffectSpec(),
-	effectLevel99Bubble:    level99BubbleEffectSpec(),
-	effectGumgang:          gumgangEffectSpec(),
+	effectShockwaveHit:    strEffectSpecAttached("shockwavehit", "", false),
+	effectEarthHit:        strEffectSpecAttached("earthhit", "", false),
+	effectPierceSelf:      strEffectSpecAttached("pierce", "", false),
+	effectBowlingSelf:     strEffectSpecAttached("bowling", "", false),
+	effectSpearStabSelf:   strEffectSpecAttached("spearstab", "", false),
+	effectSpearBmrSelf:    strEffectSpecAttached("spearboomerang", "", false),
+	effectSpearHitSound:   soundOnlyEffectSpec("_hit_spear.wav"),
+	effectEnemyHitNormal1: soundOnlyEffectSpec("_enemy_hit_normal1.wav"),
+	effectHolyLight:       strEffectSpecAttached("holyhit", "", false),
+	effectConcentration:   strEffectSpecAttached("concentration", "effect\\ac_concentration.wav", false),
+	effectRefineOK:        strEffectSpecAttached("bs_refinesuccess", "effect\\bs_refinesuccess.wav", false),
+	effectRefineFail:      strEffectSpecAttached("bs_refinefailed", "effect\\bs_refinefailed.wav", false),
+	effectMakeBlur:        funcEffectSpec("MakeBlur", 2*time.Second, false),
+	effectEnergyCoat:      strEffectSpecAttached("energycoat", "", false),
+	effectVenomDust2:      poisonParticlesEffectSpec(false),
+	effectMentalBreak:     strEffectSpecAttached("mentalbreak", "", false),
+	effectMagicalAtkHit:   strEffectSpecAttached("magical", "", false),
+	effectSuiExplosion:    suiExplosionEffectSpec(),
+	effectSuicide:         strEffectSpecAttached("suicide", "", false),
+	effectComboAttack1:    strEffectSpecAttached("yunta_1", "", false),
+	effectComboAttack2:    strEffectSpecAttached("yunta_2", "", false),
+	effectComboAttack3:    strEffectSpecAttached("yunta_3", "", false),
+	effectComboAttack4:    strEffectSpecAttached("yunta_4", "", false),
+	effectComboAttack5:    strEffectSpecAttached("yunta_5", "", false),
+	effectGuidedAttack:    strEffectSpecAttached("homing", "", false),
+	effectPoisonAttack2:   strEffectSpecAttached("poison", "", false),
+	effectSilenceAttack:   strEffectSpecAttached("silence", "", false),
+	effectStunAttack:      strEffectSpecAttached("stun", "", false),
+	effectPetrifyAttack:   strEffectSpecAttached("stonecurse", "", false),
+	effectSleepAttack:     strEffectSpecAttached("sleep", "", false),
+	effectPong:            strEffectSpecRandom("pong%d", "", 1, 3),
+	effectLevel99:         level99EffectSpec(),
+	effectLevel99Ground:   level99GroundEffectSpec(),
+	effectLevel99Bubble:   level99BubbleEffectSpec(),
+	effectGumgang:         gumgangEffectSpec(),
 	effectFirstAid: {
 		Duration: time.Second,
 		SFX:      []string{"_heal_effect.wav"},
@@ -5079,35 +4903,11 @@ var EffectSpecs = map[int]EffectSpec{
 	effectItemFast:     strEffectSpecAttached("집중", "effect\\ac_concentration.wav", false),
 	effectItemFast2:    strEffectSpecAttached("각성", "effect\\ac_concentration.wav", false),
 	effectItemFast3:    berserkPotionEffectSpec(),
-	effectCrusaderDef:  defenderCylinderEffectSpec("ring_black"),
+	effectCrusaderDef:  crusaderDefenseEffectSpec("ring_black"),
 	effectGrandCross:   grandCrossEffectSpec(),
 	effectIntimidate:   rogueBurstEffectSpec(effectIntimidate),
 	effectChookgi:      spiritSphereEffectSpec(),
-	effectLineLink: {
-		Duration: 100 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			TextureFile:      "effect/alpha_center.tga",
-			Duration:         100 * time.Millisecond,
-			AlphaMax:         0.5,
-			Color:            color.RGBA{R: 26, G: 26, B: 230, A: 255},
-			AttachedEntity:   true,
-			BlendMode:        2,
-			BlendAdditive:    true,
-			FadeIn:           true,
-			FadeOut:          true,
-			FromSrc:          true,
-			RotateToTarget:   true,
-			RotateWithCamera: true,
-			SizeStartX:       effectTableSize(5),
-			SizeStartY:       effectTableSize(50),
-			SizeEndX:         effectTableSize(5),
-			SizeEndY:         effectTableSize(50),
-			PosZ:             1,
-			AngleStart:       180,
-			Overlay:          true,
-		}},
-	},
+
 	effectSpellBreaker:  strEffectSpecAttached("spell", "effect\\sage_spell breake.wav", false),
 	effectDispell:       strEffectSpecAttached("디스펠", "", false),
 	effectBottomVolcano: propertyGroundEffectSpec("PropertyGround", "ring_red"),
@@ -5117,11 +4917,12 @@ var EffectSpecs = map[int]EffectSpec{
 	effectMagicRod:      strEffectSpecAttached("매직로드", "effect\\sage_magic rod.wav", false),
 	effectHolyCross:     strEffectSpecAttached("holy_cross", "effect\\cru_holy cross.wav", false),
 	effectShieldCharge:  strEffectSpecAttached("shield_charge", "", false),
-	effectProvidence:    strEffectSpecAttached("providence", "", false),
-	effectShieldBoomer:  soundOnlyEffectSpec("effect\\cru_shield boomerang.wav"),
-	effectSpearQuicken:  strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", true),
-	effectDevotion:      strEffectSpecAttached("devotion", "", false),
-	effectReflectShield: defenderCylinderEffectSpec("ring_yellow"),
+	effectProvidence:    providenceEffectSpec(),
+	effectShieldBoomer:  shieldBoomerangEffectSpec(),
+	effectLineLink:      devotionLinkEffectSpec(),
+	effectSpearQuicken:  strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", false),
+	effectDevotion:      devotionEffectSpec(),
+	effectReflectShield: crusaderDefenseEffectSpec("ring_yellow"),
 	effectAbsorbSpirits: absorbSpiritsEffectSpec(),
 	effectSteelBody:     steelBodyEffectSpec(),
 	effectSteelBodyRing: gumgangRingEffectSpec(1500*time.Millisecond, 0.5, 2, 5, ""),
@@ -5226,7 +5027,7 @@ var EffectSpecs = map[int]EffectSpec{
 		false,
 	),
 	effectPressure:          pressureEffectSpec(),
-	effectBash3D:            bash3DEffectSpec("Bash3D", "effect\\bash3d.wav", 500*time.Millisecond, 200*time.Millisecond, 5),
+	effectBash3D:            sacrificeEffectSpec(),
 	effectAuraBlade:         soundOnlyEffectSpec("effect\\오라 블레이드.wav"),
 	effectRedBody:           soundOnlyEffectSpec("effect\\버서크.wav"),
 	effectSpiralBeforeCast:  spiralBeforeCastEffectSpec(),

@@ -699,7 +699,6 @@ const (
 	effectMaximizeSounds         = db.SkillEffectMaximizeSounds
 	effectGreedSound             = db.SkillEffectGreedSound
 	effectGospelGround           = db.SkillEffectGospelGround
-	effectShieldProjectile       = db.SkillEffectShieldProjectile
 	effectFogWallGround          = db.SkillEffectFogWallGround
 	effectHermodeMusic           = db.SkillEffectHermodeMusic
 	effectBottomDissonanceGround = db.SkillEffectBottomDissonanceGround
@@ -745,6 +744,9 @@ type worldEffect struct {
 	actorDirection                       int
 	actorOrigin                          modelPoint3
 	projectileDirection                  modelPoint3
+	shield                               *shieldFlight
+	shieldChain                          *shieldChainFlight
+	pressureLanded                       bool
 	esma                                 *esmaProjectile
 	buffParticles                        *soulLinkerParticles
 	soulLights                           *soulLights
@@ -995,6 +997,10 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	now := time.Now()
 	m.applySkillNameBubble(ctx, notify.SourceID, notify.SkillID, now)
 	m.startSkillNoDamageSourceAnimation(ctx, notify, now)
+	if notify.SkillID == db.SkillPaSacrifice {
+		// Activation is silent; each sacrificed attack launches BASH3D.
+		return
+	}
 	m.applyFalconSkillNoDamageNotify(ctx, notify, now)
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
@@ -1032,6 +1038,9 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 		}
 	}
 	for _, effectID := range skillSuccessEffectSelfIDs(notify.SkillID) {
+		if effectID == effectSpearQuicken {
+			m.removeWorldEffect(effectID, notify.SourceID)
+		}
 		if m.addWorldEffectAt(ctx, effectID, notify.SourceID, now) {
 			glog.Debugf("skill success self effect skill=%d src=%d target=%d effect=%d amount=%d", notify.SkillID, notify.SourceID, notify.TargetID, effectID, notify.Amount)
 		}
@@ -1268,7 +1277,7 @@ func (m *WorldMode) removeWorldEffectsForActor(id uint32) bool {
 	active := m.worldEffects[:0]
 	removed := false
 	for _, effect := range m.worldEffects {
-		if effect.actorID == id {
+		if effect.actorID == id || (effect.effectID == effectLineLink && effect.targetID == id) {
 			removed = true
 			continue
 		}
@@ -1511,12 +1520,18 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectBackStab {
 		initBackStabEffect(ctx, &effect)
 	}
-	if effectID == effectRogueCoin || effectID == effectIntimidate || effectID == effectTeiHit3 || effectID == effectMagnumBreak {
+	if effectID == effectRogueCoin || effectID == effectIntimidate || effectID == effectTeiHit3 || effectID == effectMagnumBreak || effectID == effectGrandCross || effectID == effectPressure || effectID == effectShieldBoomerang3 {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
 	if effectID == effectGrimtooth || effectID == effectThrowItem6 {
 		initAssassinProjectile(ctx, &effect)
+	}
+	if effectID == effectShieldBoomer {
+		initShieldBoomerang(ctx, &effect)
+	}
+	if effectID == effectShieldBoomerang3 {
+		effect.shieldChain = &shieldChainFlight{origins: [5]modelPoint3{effect.actorOrigin}, count: 1}
 	}
 	if effectID == effectSpearBoomerang {
 		initSpearBoomerang(ctx, &effect)
@@ -1746,8 +1761,11 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		return
 	}
 	effectID := skillCastAuraEffectID(property)
-	if skillID == db.SkillKNChargeatk {
+	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain {
 		effectID = effectBeginSpell6
+	}
+	if skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion {
+		effectID = effectBeginSpell
 	}
 	if db.IsSoulLinkerActiveSkill(skillID) {
 		effectID = effectBlueCasting
@@ -2530,6 +2548,26 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "Guard":
+		return effectFuncGuard
+	case "GospelCross":
+		return effectFuncGospelCross
+	case "DevotionLink":
+		return effectFuncDevotionLink
+	case "Providence":
+		return effectFuncProvidence
+	case "CrusaderDefense":
+		return effectFuncCrusaderDefense
+	case "GrandCross":
+		return effectFuncGrandCross
+	case "Sacrifice":
+		return effectFuncSacrifice
+	case "Pressure":
+		return effectFuncPressure
+	case "ShieldChain":
+		return effectFuncShieldChain
+	case "ShieldBoomerang":
+		return effectFuncShieldBoomerang
 	case "BowlingBash":
 		return effectFuncBowlingBash
 	case "SpearBoomerang":
@@ -2643,6 +2681,16 @@ func (m *WorldMode) drawWorldEffects(screen *render.Frame, ctx client.Context, p
 			effect.actorDirection = effectActorDirection(ctx, effect.actorID, effect.starts)
 			effect.actorOrigin = effectWorldAnchor(ctx, effect, effect.starts)
 			effect.hasActorTransform = true
+		}
+		if effect.effectID == effectPressure && !effect.pressureLanded {
+			at := now
+			// Process 1 starts at time zero; process 32 ends the fall.
+			landingAt := effect.starts.Add(31 * db.EffectFrameDuration)
+			if !now.Before(landingAt) {
+				at = landingAt
+				effect.pressureLanded = true
+			}
+			effect.actorOrigin = effectWorldAnchor(ctx, effect, at)
 		}
 		active = append(active, effect)
 		anchor := effectWorldAnchor(ctx, effect, now)

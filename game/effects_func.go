@@ -51,6 +51,16 @@ const (
 	effectFuncMagnumBreak
 	effectFuncBowlingBash
 	effectFuncSpearBoomerang
+	effectFuncShieldBoomerang
+	effectFuncShieldChain
+	effectFuncPressure
+	effectFuncSacrifice
+	effectFuncGrandCross
+	effectFuncCrusaderDefense
+	effectFuncProvidence
+	effectFuncDevotionLink
+	effectFuncGuard
+	effectFuncGospelCross
 )
 
 const (
@@ -60,6 +70,27 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncGuard:
+		m.drawGuardEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncGospelCross:
+		m.drawGospelCrossEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncShieldBoomerang:
+		m.drawShieldBoomerangEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncShieldChain:
+		m.drawShieldChainEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncPressure:
+		m.drawPressureEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncSacrifice:
+		m.drawSacrificeEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncGrandCross:
+		m.drawGrandCrossEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncCrusaderDefense:
+		m.drawCrusaderDefenseEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncProvidence:
+		m.drawProvidenceEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncDevotionLink:
+		m.drawDevotionLinkEffect(screen, ctx, projection, component, effect, now)
+
 	case effectFuncBowlingBash:
 		m.drawBowlingBashEffect(screen, ctx, component, effect, now)
 	case effectFuncSpearBoomerang:

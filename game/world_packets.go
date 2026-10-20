@@ -1157,6 +1157,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		}
 		return nil, false
 	}
+	if devotion, ok, err := network.ParseActorDevotion(pkt); err != nil {
+		glog.Errorf("parse devotion list 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		m.applyActorDevotion(ctx, devotion)
+		return nil, false
+	}
 	if bladeStop, ok, err := network.ParseActorBladeStop(pkt); err != nil {
 		glog.Errorf("parse actor blade stop 0x%04X: %v", pkt.ID, err)
 	} else if ok {

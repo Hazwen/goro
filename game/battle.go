@@ -499,7 +499,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	}
 	source, sourceOK, sourceLocal := actorForCombatID(ctx, action.SourceID)
 	target, targetOK, targetLocal := actorForCombatID(ctx, action.TargetID)
-	splash := knightSplashAction(action)
+	splash := skillSplashAction(action)
 	if action.SkillID > 0 && !splash {
 		m.applySkillNameBubble(ctx, action.SourceID, action.SkillID, now)
 		m.applyFalconActorActionNotify(ctx, action, now)
@@ -621,8 +621,21 @@ func (m *WorldMode) applyActorActionAIState(ctx client.Context, action network.A
 	}
 }
 
+func skillSplashAction(action network.ActorActionNotify) bool {
+	if action.Action != 5 { // ACTION_SPLASH: secondary victims do not replay the skill.
+		return false
+	}
+	switch action.SkillID {
+	case db.SkillCRShieldcharge, db.SkillCRShieldboomerang, db.SkillCRHolycross, db.SkillCRGrandcross, db.SkillPaPressure, db.SkillPaSacrifice, db.SkillPaShieldchain,
+		db.SkillKNPierce, db.SkillKNBrandishspear, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNBowlingbash, db.SkillKNChargeatk:
+		return true
+	default:
+		return false
+	}
+}
+
 func (m *WorldMode) addSkillBeginEffect(ctx client.Context, action network.ActorActionNotify, starts time.Time) {
-	if knightSplashAction(action) {
+	if skillSplashAction(action) {
 		return
 	}
 	m.addSkillBeginEffectsAt(ctx, action.SkillID, action.SourceID, action.TargetID, starts)
@@ -714,7 +727,7 @@ func normalAttackProjectileEffectIDForName(name string) (int, bool) {
 }
 
 func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActionNotify, actionAt, hitAt time.Time) {
-	if action.SkillID == 0 || knightSplashAction(action) {
+	if action.SkillID == 0 || skillSplashAction(action) {
 		return
 	}
 	if action.SkillID == db.SkillASSplasher {
@@ -763,7 +776,7 @@ func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActio
 }
 
 func (m *WorldMode) addSkillBeforeHitEffect(ctx client.Context, action network.ActorActionNotify, starts time.Time) {
-	if action.SkillID == 0 || knightSplashAction(action) {
+	if action.SkillID == 0 || skillSplashAction(action) {
 		return
 	}
 	effectIDs := skillBeforeHitEffectIDs(action.SkillID)
@@ -807,7 +820,7 @@ func (m *WorldMode) addSkillBeforeHitEffectOnce(ctx client.Context, action netwo
 }
 
 func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorActionNotify, starts time.Time) {
-	if action.SkillID == 0 || action.Damage == 0 || knightSplashAction(action) {
+	if action.SkillID == 0 || action.Damage == 0 || skillSplashAction(action) {
 		return
 	}
 	effectIDs := skillHitEffectIDs(action.SkillID)

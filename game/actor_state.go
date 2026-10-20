@@ -297,6 +297,16 @@ func (m *WorldMode) actorBodyColorTint(actorID uint32, tint color.RGBA, now time
 			continue
 		}
 		switch effect.effectID {
+		case effectShrink:
+			frame := now.Sub(effect.starts) / db.EffectFrameDuration
+			if frame >= 5 && frame < 26 && frame%2 == 0 {
+				tint = multiplyTint(base, 250.0/255, 250.0/255, 100.0/255, 1)
+			}
+		case effectBash3D:
+			frame := now.Sub(effect.starts) / db.EffectFrameDuration
+			if frame >= 20 && frame <= 40 {
+				tint = multiplyTint(base, 1, 200.0/255, 200.0/255, 1)
+			}
 		case effectBodyColor:
 			tint = effectBodyColorTint(tint, now.Sub(effect.starts))
 		case effectPortal5:

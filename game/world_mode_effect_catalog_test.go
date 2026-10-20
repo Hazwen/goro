@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 683 {
-		t.Fatalf("implemented effects = %d, want 683", coverage.Implemented)
+	if coverage.Implemented != 684 {
+		t.Fatalf("implemented effects = %d, want 684", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 112.52 || coverage.ActivePercent > 112.53 {
-		t.Fatalf("active coverage = %.3f, want about 112.52", coverage.ActivePercent)
+	if coverage.ActivePercent < 112.68 || coverage.ActivePercent > 112.69 {
+		t.Fatalf("active coverage = %.3f, want about 112.68", coverage.ActivePercent)
 	}
 }
 
@@ -681,8 +681,7 @@ func TestRobrowserSimpleEffectsTwoHundredToTwoFiftyMatchTableRows(t *testing.T) 
 		{"EF_MAGICROD", effectMagicRod, "매직로드", "effect\\sage_magic rod.wav", true, false},
 		{"EF_HOLYCROSS", effectHolyCross, "holy_cross", "effect\\cru_holy cross.wav", true, false},
 		{"EF_SHIELDCHARGE", effectShieldCharge, "shield_charge", "", true, false},
-		{"EF_PROVIDENCE", effectProvidence, "providence", "", true, false},
-		{"EF_SPEARQUICKEN", effectSpearQuicken, "twohand", "effect\\knight_twohandquicken.wav", true, true},
+		{"EF_SPEARQUICKEN", effectSpearQuicken, "twohand", "effect\\knight_twohandquicken.wav", true, false},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 1 {
@@ -703,21 +702,6 @@ func TestRobrowserSimpleEffectsTwoHundredToTwoFiftyMatchTableRows(t *testing.T) 
 		}
 	}
 
-	for _, tc := range []struct {
-		name string
-		id   int
-		wav  string
-	}{
-		{"EF_SHIELDBOOMERANG", effectShieldBoomer, "effect\\cru_shield boomerang.wav"},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
-			t.Fatalf("%s spec = %+v ok=%t, want sound-only 500ms", tc.name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
-			t.Fatalf("%s sfx = %v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
 }
 
 func TestReferencePotionEffectsTwoHundredRowsAreAttached(t *testing.T) {
@@ -824,38 +808,6 @@ func TestRobrowserSpecialEffectsTwoHundredToTwoFiftyMatchTableRows(t *testing.T)
 		if component.color.R != tc.r || component.color.G != tc.g || component.color.B != tc.b || component.sizeStart != effectTableSize(150) || component.sizeEnd != effectTableSize(180) || component.posZ != 5 {
 			t.Fatalf("%s particle scalar fields = %+v", tc.name, component)
 		}
-	}
-
-	defender, ok := worldEffectSpecForID(effectCrusaderDef)
-	if !ok || len(defender.components) != 1 || defender.duration != 3*time.Second {
-		t.Fatalf("EF_DEFENDER spec = %+v ok=%t", defender, ok)
-	}
-	if component := defender.components[0]; component.kind != effectComponentCylinder || component.textureName != "ring_black" || component.duration != 3*time.Second || component.alphaMax != 0.6 || component.blendMode != 8 || component.bottomSize != 1.5 || component.topSize != 1.5 || component.height != 10 || !component.rotate || !component.fade || !component.attachedEntity {
-		t.Fatalf("EF_DEFENDER component = %+v", component)
-	}
-
-	grand, ok := worldEffectSpecForID(effectGrandCross)
-	if !ok || len(grand.components) != 25 || grand.duration != 2*time.Second {
-		t.Fatalf("EF_GRANDCROSS spec = %+v ok=%t", grand, ok)
-	}
-	if len(grand.sfx) != 1 || grand.sfx[0] != "effect\\cru_grand cross.wav" {
-		t.Fatalf("EF_GRANDCROSS sfx = %v", grand.sfx)
-	}
-	first := grand.components[0]
-	if first.kind != effectComponentCylinder || first.textureName != "ring_red" || first.totalCircleSides != 4 || first.circleSides != 4 || first.bottomSize != 0.7 || first.topSize != 0.7 || first.duplicate != 3 || first.duplicateDelay != 500*time.Millisecond || first.alphaMax != 0.1 || first.angleY != 45 {
-		t.Fatalf("EF_GRANDCROSS center = %+v", first)
-	}
-	arc := grand.components[len(grand.components)-1]
-	if arc.totalCircleSides != 20 || arc.circleSides != 5 || arc.bottomSize != 3 || arc.topSize != 3 || arc.posX != -3.5 || arc.posY != 3.5 || arc.angleY != -90 {
-		t.Fatalf("EF_GRANDCROSS final arc = %+v", arc)
-	}
-
-	line, ok := worldEffectSpecForID(effectLineLink)
-	if !ok || len(line.components) != 1 || line.duration != 100*time.Millisecond {
-		t.Fatalf("EF_LINELINK spec = %+v ok=%t", line, ok)
-	}
-	if component := line.components[0]; component.kind != effectComponent3D || component.textureFile != "effect/alpha_center.tga" || component.alphaMax != 0.5 || !component.fromSrc || !component.rotateToTarget || !component.rotateWithCamera || component.sizeStartX != effectTableSize(5) || component.sizeStartY != effectTableSize(50) || component.posZ != 1 {
-		t.Fatalf("EF_LINELINK component = %+v", component)
 	}
 
 	for _, tc := range []struct {
@@ -1613,13 +1565,6 @@ func TestGroundTextureEffectHoverMovesBetweenZRange(t *testing.T) {
 }
 
 func TestRobrowserSpecialEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.T) {
-	reflectShield, ok := worldEffectSpecForID(effectReflectShield)
-	if !ok || len(reflectShield.components) != 1 || reflectShield.duration != 3*time.Second {
-		t.Fatalf("EF_REFLECTSHIELD spec = %+v ok=%t", reflectShield, ok)
-	}
-	if component := reflectShield.components[0]; component.kind != effectComponentCylinder || component.textureName != "ring_yellow" || component.duration != 3*time.Second || component.alphaMax != 0.6 || component.animation != 1 || component.blendMode != 8 || component.bottomSize != 1.5 || component.topSize != 1.5 || component.height != 10 || !component.rotate || !component.fade || !component.attachedEntity {
-		t.Fatalf("EF_REFLECTSHIELD component = %+v", component)
-	}
 
 	absorb, ok := worldEffectSpecForID(effectAbsorbSpirits)
 	if !ok || len(absorb.components) != 6 || absorb.duration != 1890*time.Millisecond {
@@ -2018,34 +1963,6 @@ func TestRobrowserAsuraAndGuardEffectsThreeHundredToThreeFiftyMatchTableRows(t *
 		t.Fatalf("EF_BEGINASURA last glyph = %+v", lastGlyph)
 	}
 
-	guard, ok := worldEffectSpecForID(effectGuard)
-	if !ok || len(guard.components) != 3 || guard.duration != 600*time.Millisecond {
-		t.Fatalf("EF_GUARD spec = %+v ok=%t", guard, ok)
-	}
-	if len(guard.sfx) != 1 || guard.sfx[0] != "effect\\kyrie_guard.wav" {
-		t.Fatalf("EF_GUARD sfx = %#v", guard.sfx)
-	}
-	for i, want := range []struct {
-		bottom float64
-		top    float64
-		height float64
-		posZ   float64
-	}{
-		{1.5, 1, 0.7, 2.14},
-		{1.5, 1.5, 1.14, 1},
-		{1, 1.5, 0.7, 0.3},
-	} {
-		component := guard.components[i]
-		if component.kind != effectComponentCylinder || component.textureName != "guardk" || component.duration != 600*time.Millisecond || component.alphaMax != 0.6 || component.blendMode != 2 || !component.blendAdditive || !component.fade || component.totalCircleSides != 8 || component.circleSides != 5 || component.angleY != 112.5 || !component.attachedEntity {
-			t.Fatalf("EF_GUARD component %d = %+v", i, component)
-		}
-		if component.bottomSize != want.bottom || component.topSize != want.top || component.height != want.height || component.posZ != want.posZ {
-			t.Fatalf("EF_GUARD component %d shape = %+v", i, component)
-		}
-		if component.color != (color.RGBA{R: 232, G: 255, B: 230, A: 255}) {
-			t.Fatalf("EF_GUARD component %d color = %+v", i, component.color)
-		}
-	}
 }
 
 func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.T) {
@@ -2177,24 +2094,6 @@ func TestRobrowserCombatEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		t.Fatalf("EF_SOULBREAKER component = %+v", component)
 	}
 
-	pressure, ok := worldEffectSpecForID(effectPressure)
-	if !ok || len(pressure.components) != 3 || pressure.duration != 1001*time.Millisecond {
-		t.Fatalf("EF_PRESSURE spec = %+v ok=%t", pressure, ok)
-	}
-	if len(pressure.sfx) != 1 || pressure.sfx[0] != "effect\\프레셔.wav" || pressure.cameraShakeDelay != 500*time.Millisecond || pressure.cameraShake != 200*time.Millisecond {
-		t.Fatalf("EF_PRESSURE timing/sfx = sfx %#v delay %s shake %s", pressure.sfx, pressure.cameraShakeDelay, pressure.cameraShake)
-	}
-	first, second, quake := pressure.components[0], pressure.components[1], pressure.components[2]
-	if first.kind != effectComponent3D || first.textureFile != "effect/cross_old.bmp" || first.duration != 500*time.Millisecond || first.alphaMax != 0.6 || first.blendMode != 2 || !first.blendAdditive || !first.rotate || first.angleEnd != -611 || first.posZ != 20 || first.posZEnd != 5 || first.sizeStart != effectTableSize(100) || !first.attachedEntity {
-		t.Fatalf("EF_PRESSURE first cross = %+v", first)
-	}
-	if second.kind != effectComponent3D || second.delay != 501*time.Millisecond || !second.fadeOut || second.angleStart != -611 || second.posZ != 5 || second.sizeStart != effectTableSize(100) || !second.attachedEntity {
-		t.Fatalf("EF_PRESSURE second cross = %+v", second)
-	}
-	if quake.kind != effectComponentFUNC || quake.funcName != "CameraQuake" || !quake.attachedEntity {
-		t.Fatalf("EF_PRESSURE quake = %+v", quake)
-	}
-
 	for _, tc := range []struct {
 		name      string
 		id        int
@@ -2204,7 +2103,6 @@ func TestRobrowserCombatEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		delay     time.Duration
 		duplicate int
 	}{
-		{"EF_BASH3D", effectBash3D, "Bash3D", "effect\\bash3d.wav", 500 * time.Millisecond, 200 * time.Millisecond, 5},
 		{"EF_BASH3D2", effectBash3D2, "Bash3D2", "effect\\mon_폭기.wav", 400 * time.Millisecond, 50 * time.Millisecond, 8},
 		{"EF_BASH3D3", effectBash3D3, "Bash3D3", "effect\\헤드 크러쉬.wav", 675 * time.Millisecond, 500 * time.Millisecond, 6},
 		{"EF_BASH3D4", effectBash3D4, "Bash3D4", "effect\\비트 조인트.wav", 675 * time.Millisecond, 500 * time.Millisecond, 6},

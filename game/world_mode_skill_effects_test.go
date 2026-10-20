@@ -1718,17 +1718,17 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "AM_CALLHOMUN imported empty", skillEffectIDs(db.SkillAMCallhomun))
 	expectEffectIDs(t, "AM_REST imported empty", skillEffectIDs(db.SkillAMRest))
 	expectEffectIDs(t, "AM_RESURRECTHOMUN imported empty", skillEffectIDs(db.SkillAMResurrecthomun))
-	expectEffectIDs(t, "CR_AUTOGUARD imported", skillEffectIDs(db.SkillCRAutoguard), effectGuard)
+	expectEffectIDs(t, "CR_AUTOGUARD imported", skillSuccessEffectSelfIDs(db.SkillCRAutoguard), effectGuard)
 	expectEffectIDs(t, "CR_SHIELDCHARGE imported", skillEffectIDs(db.SkillCRShieldcharge), effectShieldCharge)
 	expectEffectIDs(t, "CR_SHIELDBOOMERANG imported", skillEffectIDs(db.SkillCRShieldboomerang), effectShieldBoomer)
-	expectEffectIDs(t, "CR_SHIELDBOOMERANG imported before hit", skillBeforeHitEffectIDs(db.SkillCRShieldboomerang), effectShieldProjectile)
-	expectEffectIDs(t, "CR_REFLECTSHIELD imported", skillEffectIDs(db.SkillCRReflectshield), effectReflectShield)
+	expectEffectIDs(t, "CR_SHIELDBOOMERANG imported before hit", skillBeforeHitEffectIDs(db.SkillCRShieldboomerang))
+	expectEffectIDs(t, "CR_REFLECTSHIELD imported", skillSuccessEffectSelfIDs(db.SkillCRReflectshield), effectReflectShield)
 	expectEffectIDs(t, "CR_HOLYCROSS imported", skillEffectIDs(db.SkillCRHolycross), effectHolyCross)
-	expectEffectIDs(t, "CR_GRANDCROSS imported", skillEffectIDs(db.SkillCRGrandcross), effectGrandCross)
-	expectEffectIDs(t, "CR_DEVOTION imported", skillEffectIDs(db.SkillCRDevotion), effectDevotion)
+	expectEffectIDs(t, "CR_GRANDCROSS imported", skillEffectOnCasterIDs(db.SkillCRGrandcross), effectGrandCross)
+	expectEffectIDs(t, "CR_DEVOTION imported", skillSuccessEffectSelfIDs(db.SkillCRDevotion), effectDevotion)
 	expectEffectIDs(t, "CR_PROVIDENCE imported", skillEffectIDs(db.SkillCRProvidence), effectProvidence)
-	expectEffectIDs(t, "CR_DEFENDER imported", skillEffectIDs(db.SkillCRDefender), effectCrusaderDef)
-	expectEffectIDs(t, "CR_SPEARQUICKEN imported", skillEffectIDs(db.SkillCRSpearquicken), effectSpearQuicken)
+	expectEffectIDs(t, "CR_DEFENDER imported", skillSuccessEffectSelfIDs(db.SkillCRDefender), effectCrusaderDef)
+	expectEffectIDs(t, "CR_SPEARQUICKEN imported", skillSuccessEffectSelfIDs(db.SkillCRSpearquicken), effectSpearQuicken)
 	expectEffectIDs(t, "MO_CALLSPIRITS imported empty", skillEffectIDs(db.SkillMOCallspirits))
 	expectEffectIDs(t, "MO_ABSORBSPIRITS imported self success", skillSuccessEffectSelfIDs(db.SkillMOAbsorbspirits), effectAbsorbSpirits)
 	expectEffectIDs(t, "MO_BODYRELOCATION imported empty", skillEffectIDs(db.SkillMOBodyrelocation))
@@ -1874,11 +1874,11 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "HW_GANBANTEIN imported", skillEffectIDs(db.SkillHWGanbantein), 223)
 	expectEffectIDs(t, "HW_GANBANTEIN imported ground", skillGroundEffectIDs(db.SkillHWGanbantein), 224)
 	expectEffectIDs(t, "HW_GRAVITATION imported ground", skillGroundEffectIDs(db.SkillHWGravitation), effectGravitation)
-	expectEffectIDs(t, "PA_PRESSURE imported before hit", skillBeforeHitEffectIDs(db.SkillPaPressure), effectPressure)
-	expectEffectIDs(t, "PA_SACRIFICE imported", skillEffectIDs(db.SkillPaSacrifice), effectBash3D)
+	expectEffectIDs(t, "PA_PRESSURE imported before hit", skillEffectIDs(db.SkillPaPressure), effectPressure)
+	expectEffectIDs(t, "PA_SACRIFICE imported", skillEffectOnCasterIDs(db.SkillPaSacrifice), effectBash3D)
 	expectEffectIDs(t, "PA_GOSPEL imported", skillEffectIDs(db.SkillPaGospel), effectBottomGospel)
 	expectEffectIDs(t, "PA_GOSPEL imported ground", skillGroundEffectIDs(db.SkillPaGospel), effectGospelGround)
-	expectEffectIDs(t, "PA_SHIELDCHAIN imported before hit", skillBeforeHitEffectIDs(db.SkillPaShieldchain), effectShieldProjectile)
+	expectEffectIDs(t, "PA_SHIELDCHAIN imported before hit", skillEffectIDs(db.SkillPaShieldchain), effectShieldBoomerang3)
 	expectEffectIDs(t, "CH_PALMSTRIKE imported hit", skillHitEffectIDs(db.SkillChPalmstrike), effectHitLine2, effectQuake)
 	expectEffectIDs(t, "CH_TIGERFIST imported", skillEffectIDs(db.SkillChTigerfist), effectBash3D2, effectQuake)
 	expectEffectIDs(t, "CH_CHAINCRUSH imported", skillEffectIDs(db.SkillChChaincrush), effectChemical2Dash)
@@ -2270,22 +2270,7 @@ func TestKnightStringKeyEffectsMatchRobrowser(t *testing.T) {
 	}
 }
 
-func TestCrusaderStringKeyEffectsMatchRobrowser(t *testing.T) {
-	projectile, ok := worldEffectSpecForID(effectShieldProjectile)
-	if !ok || projectile.duration != 140*time.Millisecond || len(projectile.components) != 1 {
-		t.Fatalf("ef_shield_projectile spec = %+v ok=%t, want one 140ms 3D component", projectile, ok)
-	}
-	component := projectile.components[0]
-	if component.kind != effectComponent3D || component.textureFile != "effect/shield_boomerang.bmp" || !component.toSrc || !component.rotateToTarget || !component.rotateWithCamera || !component.rotate || !component.attachedEntity {
-		t.Fatalf("ef_shield_projectile component flags = %+v", component)
-	}
-	if component.duration != 140*time.Millisecond || component.alphaMax != 1 || !component.fadeIn || !component.fadeOut || component.posZ != 1 || component.angleStart != 180 || component.angleEnd != 540 {
-		t.Fatalf("ef_shield_projectile component timing/shape = %+v", component)
-	}
-	if component.sizeStart != 50*effectPixelRatio || component.sizeEnd != 50*effectPixelRatio {
-		t.Fatalf("ef_shield_projectile size = %.3f/%.3f", component.sizeStart, component.sizeEnd)
-	}
-
+func TestGospelGroundHasTileAndFloatingCross(t *testing.T) {
 	gospel, ok := worldEffectSpecForID(effectGospelGround)
 	if !ok || gospel.duration != 1500*time.Millisecond || len(gospel.components) != 2 {
 		t.Fatalf("370_ground spec = %+v ok=%t, want two song ground components", gospel, ok)
@@ -2294,7 +2279,7 @@ func TestCrusaderStringKeyEffectsMatchRobrowser(t *testing.T) {
 	if tile.kind != effectComponentFUNC || tile.funcName != "FlatColorTile" || tile.funcAdapter != effectFuncFlatColorTile || tile.color != (color.RGBA{R: 255, G: 255, B: 255, A: 13}) || tile.sizeStart != 1 || !tile.renderBefore || tile.attachedEntity {
 		t.Fatalf("370_ground tile = %+v", tile)
 	}
-	if cross.kind != effectComponentFUNC || cross.funcName != "GroundTexture" || cross.funcAdapter != effectFuncGroundTexture || cross.textureFile != "effect/cross_old.bmp" || cross.duration != 1500*time.Millisecond || cross.sizeStart != 0.5 || cross.sizeEnd != 0.5 || cross.alphaMax != 0.7 || cross.posZ != 0.4 || !cross.blendAdditive || !cross.renderBefore || cross.attachedEntity {
+	if cross.kind != effectComponentFUNC || cross.funcAdapter != effectFuncGospelCross || cross.textureFile != "effect/cross_old.bmp" || !cross.repeat || cross.renderBefore {
 		t.Fatalf("370_ground cross = %+v", cross)
 	}
 }
