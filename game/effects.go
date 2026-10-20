@@ -689,7 +689,6 @@ const (
 const (
 	effectWhitePulse             = db.SkillEffectWhitePulse
 	effectSpearProjectile        = db.SkillEffectSpearProjectile
-	effectSpiralBeforeCast       = db.SkillEffectSpiralBeforeCast
 	effectSpearHitSound          = db.SkillEffectSpearHitSound
 	effectEnemyHitNormal1        = db.SkillEffectEnemyHitNormal1
 	effectQuake                  = db.SkillEffectQuake
@@ -1038,7 +1037,18 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 		}
 	}
 	for _, effectID := range skillSuccessEffectSelfIDs(notify.SkillID) {
-		if effectID == effectSpearQuicken {
+		if effectID == effectRedBody || effectID == effectLKConcentration {
+			actorID := notify.SourceID
+			if isLocalActor(ctx, actorID) {
+				actorID = localSkillTarget(ctx)
+			}
+			if effectID == effectLKConcentration {
+				m.removeWorldEffect(effectID, actorID)
+			}
+			m.setActorStateEffect(ctx, actorID, effectID, true)
+			continue
+		}
+		if effectID == effectSpearQuicken || effectID == effectAuraBlade {
 			m.removeWorldEffect(effectID, notify.SourceID)
 		}
 		if m.addWorldEffectAt(ctx, effectID, notify.SourceID, now) {
@@ -1117,6 +1127,14 @@ func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify
 			actionFamily: attackActionFamilyForActorWithResources(ctx.Resources, source),
 			started:      now, duration: 1500 * time.Millisecond,
 			hasPlay: true, hasFixedMotion: true, fixedMotion: 0, autoCounter: true,
+		})
+		return
+	}
+	if notify.SkillID == db.SkillLKAurablade {
+		m.setCombatActorAction(ctx, notify.SourceID, actorAnimation{
+			actionFamily: spriteActionPCReadyFight, started: now, duration: time.Second,
+			play: true, hasPlay: true, length: 6, hasLength: true,
+			speed: 10 * db.EffectFrameDuration, hasSpeed: true,
 		})
 		return
 	}
@@ -1547,8 +1565,8 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
-	if effectID == effectBlueCasting {
-		effect.blueCasting = &blueCasting{}
+	if effectID == effectBlueCasting || effectID == effectAuraBlade {
+		effect.blueCasting = &blueCasting{auraBlade: effectID == effectAuraBlade}
 	}
 	m.worldEffects = append(m.worldEffects, effect)
 	m.scheduleWorldEffectSound(starts, spec, effect)
@@ -1761,6 +1779,9 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		return
 	}
 	effectID := skillCastAuraEffectID(property)
+	if skillID == db.SkillLKSpiralpierce {
+		effectID = effectPierceBody
+	}
 	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain {
 		effectID = effectBeginSpell6
 	}
@@ -2632,6 +2653,8 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncPoisonParticles
 	case "BlueCasting":
 		return effectFuncBlueCasting
+	case "SpiralPierce":
+		return effectFuncSpiralPierce
 	case "Estin":
 		return effectFuncEstin
 	case "Estun", "SoulLinkerParticles":
@@ -2698,7 +2721,8 @@ func (m *WorldMode) drawWorldEffects(screen *render.Frame, ctx client.Context, p
 			if component.renderBefore != beforeEntities {
 				continue
 			}
-			if effect.persistent {
+			// Concentration keeps its tint until status end, but its STR plays once.
+			if effect.persistent && effect.effectID != effectLKConcentration {
 				component.repeat = true
 			}
 			componentDuration := m.worldEffectResolvedComponentDuration(ctx, spec, component)

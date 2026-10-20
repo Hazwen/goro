@@ -275,7 +275,11 @@ func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context
 	origin.y += 2.4
 	distance := .4 * math.Pow(1.15, float64(process))
 	vertices, indices := []render.Vertex3D{}, []uint16{}
-	for i := 0; i < 20; i++ {
+	count := 20
+	if effect.effectID == effectBash3D3 || effect.effectID == effectBash3D4 {
+		count = 24
+	}
+	for i := 0; i < count; i++ {
 		yaw := degreesToRadians(float64(90*(i%4) + 22*(i/4)))
 		roll := deterministicAngle(effect, i)
 		point := func(angle float64) modelPoint3 {
@@ -287,11 +291,29 @@ func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context
 			if layer == 1 {
 				tint = color.RGBA{250, 0, 0, uint8(alpha)}
 			}
+			if effect.effectID == effectBash3D3 {
+				tint = color.RGBA{0, 0, 250, uint8(alpha)}
+				if layer == 1 {
+					tint = color.RGBA{250, 250, 0, uint8(alpha)}
+				}
+			} else if effect.effectID == effectBash3D4 {
+				tint = color.RGBA{50, 50, 50, uint8(alpha)}
+				if layer == 1 {
+					tint = color.RGBA{250, 250, 250, uint8(alpha)}
+				}
+			}
 			a, b := point(yaw-degreesToRadians(width)), point(yaw+degreesToRadians(width))
 			appendSoulLinkerQuad(&vertices, &indices, texture, [4]modelPoint3{origin, origin, b, a}, tint)
+			if count == 24 {
+				// Head Crush and Joint Beat use alpha blending for the wider ray.
+				screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(layer == 0, false))
+				vertices, indices = nil, nil
+			}
 		}
 	}
-	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
+	if len(indices) > 0 {
+		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
+	}
 }
 
 // The native ring primitives have a height at each of their 21 vertices.

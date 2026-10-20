@@ -125,6 +125,8 @@ type humanoidBillboardKey struct {
 	direction    int
 	bodyMotion   int
 	headMotion   int
+
+	separateEquipment bool
 }
 
 type singleSpriteBillboardKey struct {
@@ -139,9 +141,14 @@ type spriteBillboard struct {
 	image   *render.Image
 	anchorX float64
 	anchorY float64
+
+	parts      []*spriteBillboard
+	layerGroup int
 }
 
 type spriteState struct {
+	separateEquipment bool
+
 	actionFamily   int
 	direction      int
 	headDir        uint8
@@ -170,13 +177,14 @@ func (m *WorldMode) drawPlayerSprite3D(ctx client.Context, screen *render.Frame,
 	actor := entry.actor
 	moving := actorIsMovingAt(actor, now)
 	state := spriteState{
-		actionFamily: spriteActionIdle,
-		direction:    direction,
-		headDir:      actor.HeadDir,
-		headTurn:     true,
-		cameraYaw:    cameraYaw,
-		moving:       moving,
-		moveSpeedMS:  actor.Speed,
+		separateEquipment: m.lordKnightSeparateEquipment(ctx, actor, now),
+		actionFamily:      spriteActionIdle,
+		direction:         direction,
+		headDir:           actor.HeadDir,
+		headTurn:          true,
+		cameraYaw:         cameraYaw,
+		moving:            moving,
+		moveSpeedMS:       actor.Speed,
 	}
 	if moving {
 		state.actionFamily = spriteActionWalk
@@ -440,15 +448,16 @@ func humanoidBillboardForState(view *humanoidSpriteView, state spriteState, now 
 		}
 	}
 	key := humanoidBillboardKey{
-		actionFamily: bodyActionIndex / 8,
-		direction:    bodyActionIndex % 8,
-		bodyMotion:   bodyMotion,
-		headMotion:   headMotion,
+		separateEquipment: state.separateEquipment,
+		actionFamily:      bodyActionIndex / 8,
+		direction:         bodyActionIndex % 8,
+		bodyMotion:        bodyMotion,
+		headMotion:        headMotion,
 	}
 	if billboard, ok := view.billboards[key]; ok {
 		return billboard, true
 	}
-	billboard, ok := composeHumanoidBillboard(view, key.actionFamily, key.direction, bodyAction, bodyMotion, headMotion)
+	billboard, ok := composeHumanoidBillboard(view, key.actionFamily, key.direction, bodyAction, bodyMotion, headMotion, key.separateEquipment)
 	if !ok {
 		return nil, false
 	}
@@ -546,22 +555,57 @@ func cursorFrameBillboard(view *spriteView, actionIndex, motion int, anchorX, an
 	return billboard, true
 }
 
-func composeHumanoidBillboard(view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int) (*spriteBillboard, bool) {
+func composeHumanoidBillboard(view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, separateEquipment bool) (*spriteBillboard, bool) {
 	if bodyMotion < 0 || bodyMotion >= len(bodyAction.Animations) {
 		return nil, false
 	}
 	target := render.NewImage(humanoidCompositionWidth, humanoidCompositionHeight)
 	bodyActionIndex := actionFamily*8 + direction
+	order := playerRenderLayerOrder(view.imf, bodyActionIndex, bodyMotion)
+	if separateEquipment {
+		billboard := &spriteBillboard{}
+		// Keep IMF order, including equipment drawn behind the body.
+		for first := 0; first < len(order); {
+			group := humanoidLayerGroup(order[first])
+			last := first + 1
+			for last < len(order) && humanoidLayerGroup(order[last]) == group {
+				last++
+			}
+			target.Fill(color.RGBA{})
+			if view.imf != nil {
+				drawPlayerIMFLayers(target, view, bodyActionIndex, bodyMotion, headMotion, order[first:last])
+			} else {
+				drawFallbackHumanoidLayers(target, view, actionFamily, direction, bodyAction, bodyMotion, headMotion, order[first:last])
+			}
+			if part, ok := cropHumanoidBillboard(target); ok {
+				part.layerGroup = group
+				billboard.parts = append(billboard.parts, part)
+			}
+			first = last
+		}
+		return billboard, len(billboard.parts) > 0
+	}
 	drawn := false
 	if view.imf != nil {
-		drawn = drawPlayerIMFLayers(target, view, bodyActionIndex, bodyMotion, headMotion)
+		drawn = drawPlayerIMFLayers(target, view, bodyActionIndex, bodyMotion, headMotion, order[:])
 	} else {
-		drawn = drawFallbackHumanoidLayers(target, view, actionFamily, direction, bodyAction, bodyMotion, headMotion)
+		drawn = drawFallbackHumanoidLayers(target, view, actionFamily, direction, bodyAction, bodyMotion, headMotion, order[:])
 	}
 	if !drawn {
 		return nil, false
 	}
 	return cropHumanoidBillboard(target)
+}
+
+func humanoidLayerGroup(layer int) int {
+	switch layer {
+	case humanoidLayerWeapon, humanoidLayerWeaponLight:
+		return 1
+	case humanoidLayerShield:
+		return 2
+	default:
+		return 0
+	}
 }
 
 func cropHumanoidBillboard(source *render.Image) (*spriteBillboard, bool) {
@@ -705,11 +749,11 @@ func spriteLayerFrameSize(view *spriteView, index int32, sprType int32) (float64
 	return float64(frame.Width), float64(frame.Height), true
 }
 
-func drawFallbackHumanoidLayers(target *render.Image, view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int) bool {
+func drawFallbackHumanoidLayers(target *render.Image, view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, order []int) bool {
 	bodyAnim := bodyAction.Animations[bodyMotion]
 	actionIndex := actionFamily*8 + direction
 	drawn := false
-	for _, layer := range playerRenderLayerOrder(nil, actionIndex, bodyMotion) {
+	for _, layer := range order {
 		switch layer {
 		case humanoidLayerBody:
 			drawn = drawSpriteAnimation(target, view.body, bodyAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, 0, 0) || drawn
@@ -747,8 +791,7 @@ func drawFallbackHeadMotion(target *render.Image, view *humanoidSpriteView, body
 	return drawSpriteAnimation(target, view.head, headAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, headPosX, headPosY)
 }
 
-func drawPlayerIMFLayers(target *render.Image, view *humanoidSpriteView, actionIndex, bodyMotion, headMotion int) bool {
-	order := playerRenderLayerOrder(view.imf, actionIndex, bodyMotion)
+func drawPlayerIMFLayers(target *render.Image, view *humanoidSpriteView, actionIndex, bodyMotion, headMotion int, order []int) bool {
 	bodyAnim, bodyAnimOK := actionAnimation(view.body.act, actionIndex, bodyMotion)
 	drawn := false
 	for _, layer := range order {

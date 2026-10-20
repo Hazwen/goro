@@ -3785,7 +3785,6 @@ const (
 	SkillEffectGravitationGround      = 10484
 	SkillEffectWhitePulse             = 11000
 	SkillEffectSpearProjectile        = 11001
-	SkillEffectSpiralBeforeCast       = 11002
 	SkillEffectSpearHitSound          = 11003
 	SkillEffectEnemyHitNormal1        = 11004
 	SkillEffectQuake                  = 11005
@@ -4071,11 +4070,11 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillNPCDarkthunder:             {EffectIDs: []int{93}, HitEffectIDs: []int{94}},
 	SkillNPCStop:                    {EffectIDs: []int{effectNPCStop}},
 	SkillNPCPowerup:                 {EffectIDs: []int{effectNPCPowerUp}},
-	SkillLKAurablade:                {EffectIDs: []int{effectAuraBlade}, BeginCastEffectIDs: []int{SkillEffectWhitePulse}},
-	SkillLKParrying:                 {EffectIDs: []int{effectGuard}},
-	SkillLKConcentration:            {EffectIDs: []int{effectLKConcentration}},
-	SkillLKBerserk:                  {EffectIDs: []int{effectRedBody, SkillEffectQuake}},
-	SkillLKFury:                     {EffectIDs: []int{effectRedBody, SkillEffectQuake}},
+	SkillLKAurablade:                {SuccessEffectIDsSelf: []int{effectAuraBlade}},
+	SkillLKParrying:                 {SuccessEffectIDsSelf: []int{effectGuard}},
+	SkillLKConcentration:            {SFX: []string{"effect\\knight_twohandquicken.wav"}, SuccessEffectIDsSelf: []int{effectLKConcentration}},
+	SkillLKBerserk:                  {SFX: []string{"effect\\버서크.wav"}, SuccessEffectIDsSelf: []int{effectRedBody, SkillEffectQuake}},
+	SkillLKFury:                     {SFX: []string{"effect\\버서크.wav"}, SuccessEffectIDsSelf: []int{effectRedBody, SkillEffectQuake}},
 	SkillHPAssumptio:                {EffectIDs: []int{440}},
 	SkillHPBasilica:                 {GroundEffectIDs: []int{effectBottomBasilica}},
 	SkillHWMagiccrasher:             {EffectIDs: []int{effectMagicCrasher}},
@@ -4107,9 +4106,9 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillCGArrowvulcan:              {EffectIDs: []int{effectTripleAttack3}, BeforeHitEffectIDs: []int{SkillEffectArrowShot}},
 	SkillCGMoonlit:                  {EffectIDs: []int{effectMoonlit}, GroundEffectIDs: []int{effectMoonlit}},
 	SkillCGMarionette:               {EffectIDs: []int{395}, HitEffectIDs: []int{396}},
-	SkillLKSpiralpierce:             {EffectIDs: []int{effectMagnum2}, BeginCastEffectIDs: []int{SkillEffectSpiralBeforeCast}, HitEffectIDs: []int{SkillEffectSpearHitSound}, HideCastAura: true},
-	SkillLKHeadcrush:                {BeginCastEffectIDs: []int{effectBash3D3}, HitEffectIDs: []int{SkillEffectEnemyHitNormal1}},
-	SkillLKJointbeat:                {BeginCastEffectIDs: []int{effectBash3D4}, HitEffectIDs: []int{SkillEffectEnemyHitNormal1}},
+	SkillLKSpiralpierce:             {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectMagnum2}, HitEffectIDs: []int{effectPierce}},
+	SkillLKHeadcrush:                {EffectTiming: SkillEffectAtActionStart, EffectIDsOnCaster: []int{effectBash3D3}, HitEffectIDs: []int{effectHit1}, HideCastAura: true},
+	SkillLKJointbeat:                {EffectTiming: SkillEffectAtActionStart, EffectIDsOnCaster: []int{effectBash3D4}, HitEffectIDs: []int{effectHit1}, HideCastAura: true},
 	SkillHWNapalmvulcan:             {EffectIDs: []int{401}},
 	SkillChSoulcollect:              {BeginCastEffectIDs: []int{402, 12}},
 	SkillPFMindbreaker:              {SuccessEffectIDs: []int{403}},
@@ -4400,6 +4399,7 @@ const (
 )
 
 var SkillActions = map[uint16]SkillActionKind{
+	SkillLKParrying:           SkillActionIdle,
 	SkillCRAutoguard:          SkillActionIdle,
 	SkillCRReflectshield:      SkillActionIdle,
 	SkillCRDefender:           SkillActionIdle,

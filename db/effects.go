@@ -687,7 +687,6 @@ const (
 const (
 	effectWhitePulse             = SkillEffectWhitePulse
 	effectSpearProjectile        = SkillEffectSpearProjectile
-	effectSpiralBeforeCast       = SkillEffectSpiralBeforeCast
 	effectSpearHitSound          = SkillEffectSpearHitSound
 	effectEnemyHitNormal1        = SkillEffectEnemyHitNormal1
 	effectQuake                  = SkillEffectQuake
@@ -1972,10 +1971,15 @@ func naturalRecoveryEffectSpec(tint color.RGBA, wav string) EffectSpec {
 }
 
 func magnum2EffectSpec() EffectSpec {
-	return delayedSoundEffectSpec(
-		[]string{"permeter_attack.wav", "effect\\ef_magnumbreak.wav"},
-		[]time.Duration{0, 300 * time.Millisecond},
-	)
+	return EffectSpec{
+		Duration:  100 * EffectFrameDuration,
+		SFX:       []string{"permeter_attack.wav", "effect\\ef_magnumbreak.wav"},
+		SFXDelays: []time.Duration{20 * EffectFrameDuration, 30 * EffectFrameDuration},
+		Components: []EffectComponent{{
+			Kind: EffectComponentFUNC, FuncName: "SpiralPierce", TextureFile: "effect/ring_yellow.tga",
+			AttachedEntity: true,
+		}},
+	}
 }
 
 func entry2EffectSpec() EffectSpec {
@@ -2704,10 +2708,6 @@ func songGroundEffectSpec(texture string, tint color.RGBA, textureSize float64) 
 		})
 	}
 	return spec
-}
-
-func spiralBeforeCastEffectSpec() EffectSpec {
-	return funcEffectSpec("EffectBodyColor", 500*time.Millisecond, true)
 }
 
 func sharpShootingCastEffectSpec() EffectSpec {
@@ -5028,11 +5028,11 @@ var EffectSpecs = map[int]EffectSpec{
 	),
 	effectPressure:          pressureEffectSpec(),
 	effectBash3D:            sacrificeEffectSpec(),
-	effectAuraBlade:         soundOnlyEffectSpec("effect\\오라 블레이드.wav"),
-	effectRedBody:           soundOnlyEffectSpec("effect\\버서크.wav"),
-	effectSpiralBeforeCast:  spiralBeforeCastEffectSpec(),
+	effectAuraBlade:         auraBladeEffectSpec(),
+	effectRedBody:           funcEffectSpec("EffectBodyColor", 99999*EffectFrameDuration, true),
+	effectPierceBody:        {Duration: 200 * EffectFrameDuration, SFX: []string{"effect\\ef_beginspell.wav"}, Components: []EffectComponent{{Kind: EffectComponentFUNC, FuncName: "EffectBodyColor", AttachedEntity: true}}},
 	effectQuake:             quakeEffectSpec(),
-	effectLKConcentration:   strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", true),
+	effectLKConcentration:   strEffectSpecAttached("twohand", "", true),
 	effectBottomGospel:      soundOnlyEffectSpec("effect\\가스펠.wav"),
 	effectGospelGround:      gospelGroundEffectSpec(),
 	effectFogWallGround:     fogWallGroundEffectSpec(),
@@ -5059,8 +5059,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectMoonlit:           moonlitEffectSpec(),
 	effectLevel99AuraMid:    level99EffectSpec(),
 	effectLevel99AuraBottom: level99GroundEffectSpec(),
-	effectBash3D3:           bash3DEffectSpec("Bash3D3", "effect\\헤드 크러쉬.wav", 675*time.Millisecond, 500*time.Millisecond, 6),
-	effectBash3D4:           bash3DEffectSpec("Bash3D4", "effect\\비트 조인트.wav", 675*time.Millisecond, 500*time.Millisecond, 6),
+	effectBash3D3:           lordKnightBurstEffectSpec("effect\\헤드 크러쉬.wav", 0),
+	effectBash3D4:           lordKnightBurstEffectSpec("effect\\비트 조인트.wav", 22*EffectFrameDuration),
 	effectPortal5:           portal5EffectSpec(),
 	effectMagicCrasher2:     magicCrasher2EffectSpec(),
 	effectBottomSpider:      spiderWebEffectSpec(),

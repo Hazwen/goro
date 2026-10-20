@@ -1490,6 +1490,7 @@ func (m *WorldMode) drawActorSprite3D(screen *render.Frame, ctx client.Context, 
 	if !isDeathActionFamily(state.actionFamily) {
 		applyActorBodyState(actor, &state)
 	}
+	state.separateEquipment = m.lordKnightSeparateEquipment(ctx, actor, now)
 	billboard, ok := humanoidBillboardForState(view, state, now)
 	if !ok {
 		return false
@@ -1527,6 +1528,7 @@ func (m *WorldMode) drawMercenarySprite3D(screen *render.Frame, ctx client.Conte
 	if !isDeathActionFamily(state.actionFamily) {
 		applyActorBodyState(actor, &state)
 	}
+	state.separateEquipment = m.lordKnightSeparateEquipment(ctx, actor, now)
 	billboard, ok := humanoidBillboardForState(view, state, now)
 	if !ok {
 		return false

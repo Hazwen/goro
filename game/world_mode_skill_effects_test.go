@@ -1849,16 +1849,6 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "SA_ELEMENTWIND imported", skillEffectIDs(db.SkillSAElementwind), effectLightningLoad)
 	expectEffectIDs(t, "MO_KITRANSLATION imported empty", skillEffectIDs(db.SkillMOKitranslation))
 	expectEffectIDs(t, "MO_BALKYOUNG imported", skillEffectIDs(db.SkillMOBalkyoung), 514)
-	expectEffectIDs(t, "LK_PARRYING imported", skillEffectIDs(db.SkillLKParrying), effectGuard)
-	expectEffectIDs(t, "LK_SPIRALPIERCE imported", skillEffectIDs(db.SkillLKSpiralpierce), effectMagnum2)
-	expectEffectIDs(t, "LK_SPIRALPIERCE imported begin", skillBeginEffectIDs(db.SkillLKSpiralpierce), effectSpiralBeforeCast)
-	expectEffectIDs(t, "LK_SPIRALPIERCE imported hit", skillHitEffectIDs(db.SkillLKSpiralpierce), effectSpearHitSound)
-	expectEffectIDs(t, "LK_AURABLADE imported", skillEffectIDs(db.SkillLKAurablade), effectAuraBlade)
-	expectEffectIDs(t, "LK_AURABLADE imported begin", skillBeginEffectIDs(db.SkillLKAurablade), effectWhitePulse)
-	expectEffectIDs(t, "LK_CONCENTRATION imported", skillEffectIDs(db.SkillLKConcentration), effectLKConcentration)
-	expectEffectIDs(t, "LK_TENSIONRELAX imported empty", skillEffectIDs(db.SkillLKTensionrelax))
-	expectEffectIDs(t, "LK_BERSERK imported", skillEffectIDs(db.SkillLKBerserk), effectRedBody, effectQuake)
-	expectEffectIDs(t, "LK_FURY imported", skillEffectIDs(db.SkillLKFury), effectRedBody, effectQuake)
 	expectEffectIDs(t, "HP_ASSUMPTIO imported", skillEffectIDs(db.SkillHPAssumptio), effectAssumptio2)
 	expectEffectIDs(t, "HP_BASILICA imported ground", skillGroundEffectIDs(db.SkillHPBasilica), effectBottomBasilica)
 	expectEffectIDs(t, "HP_MEDITATIO has no robr effect row", skillEffectIDs(db.SkillHPMeditatio))
@@ -1940,10 +1930,6 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "WE_BABY imported", skillEffectIDs(db.SkillWEBaby), 408)
 	expectEffectIDs(t, "WE_CALLPARENT imported empty", skillEffectIDs(db.SkillWECallparent))
 	expectEffectIDs(t, "WE_CALLBABY imported empty", skillEffectIDs(db.SkillWECallbaby))
-	expectEffectIDs(t, "LK_HEADCRUSH imported begin", skillBeginEffectIDs(db.SkillLKHeadcrush), effectBash3D3)
-	expectEffectIDs(t, "LK_HEADCRUSH imported hit", skillHitEffectIDs(db.SkillLKHeadcrush), effectEnemyHitNormal1)
-	expectEffectIDs(t, "LK_JOINTBEAT imported begin", skillBeginEffectIDs(db.SkillLKJointbeat), effectBash3D4)
-	expectEffectIDs(t, "LK_JOINTBEAT imported hit", skillHitEffectIDs(db.SkillLKJointbeat), effectEnemyHitNormal1)
 	expectEffectIDs(t, "TK_JUMPKICK imported hit", skillHitEffectIDs(db.SkillTKJumpkick), effectJumpKick)
 	expectEffectIDs(t, "GS_INCREASING imported", skillEffectIDs(db.SkillGSIncreasing), effectNPCPowerUp)
 	expectEffectIDs(t, "GS_TRIPLEACTION imported", skillEffectIDs(db.SkillGSTripleaction), effectTripleAction)
@@ -2249,15 +2235,6 @@ func TestKnightStringKeyEffectsMatchRobrowser(t *testing.T) {
 		if !ok || spec.duration != 500*time.Millisecond || len(spec.components) != 0 || len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
 			t.Fatalf("%s spec = %+v ok=%t, want sound %q", tc.name, spec, ok, tc.wav)
 		}
-	}
-
-	beforeCast, ok := worldEffectSpecForID(effectSpiralBeforeCast)
-	if !ok || beforeCast.duration != 500*time.Millisecond || len(beforeCast.components) != 1 {
-		t.Fatalf("339_beforecast spec = %+v ok=%t, want body color FUNC", beforeCast, ok)
-	}
-	beforeComponent := beforeCast.components[0]
-	if beforeComponent.kind != effectComponentFUNC || beforeComponent.funcName != "EffectBodyColor" || beforeComponent.funcAdapter != effectFuncBodyColor || !beforeComponent.attachedEntity {
-		t.Fatalf("339_beforecast component = %+v", beforeComponent)
 	}
 
 	quake, ok := worldEffectSpecForID(effectQuake)

@@ -61,6 +61,7 @@ const (
 	effectFuncDevotionLink
 	effectFuncGuard
 	effectFuncGospelCross
+	effectFuncSpiralPierce
 )
 
 const (
@@ -70,6 +71,8 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncSpiralPierce:
+		m.drawSpiralPierceEffect(screen, ctx, component, effect, now)
 	case effectFuncGuard:
 		m.drawGuardEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncGospelCross:

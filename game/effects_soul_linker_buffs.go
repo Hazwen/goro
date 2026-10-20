@@ -59,6 +59,16 @@ func blueBodyAlpha(bodyTime int) float64 {
 // Body effects reuse the composed sprite, including its appearance and scale.
 // They never mutate the cached image or the actor's authoritative position.
 func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *render.Frame, projection sceneProjection, entry sceneActorDrawEntry, billboard *spriteBillboard, scale, visibility, shadow float64, tint color.RGBA, blend render.Blend, now time.Time) {
+	if len(billboard.parts) > 0 {
+		for _, part := range billboard.parts {
+			m.drawActorSpriteWithEffects3D(ctx, screen, projection, entry, part, scale, visibility, shadow, tint, blend, now)
+		}
+		return
+	}
+	if billboard.layerGroup == 1 && entry.actor.Opt3State&db.Opt3Aurablade != 0 {
+		blend = render.BlendLighter
+	}
+	doubleBody := false
 	blue, eskeAge, fourWayAge := 0.0, -1, -1
 	soulAlpha := 0.0
 	// Monsters use the Energy Coat option bit for Eske. The initial burst
@@ -75,6 +85,32 @@ func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *ren
 		}
 		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 		switch effect.effectID {
+		case effectRedBody:
+			tint.R, tint.G, tint.B = 255, 100, 100
+			if billboard.layerGroup == 0 {
+				blend = render.BlendLighter
+			}
+		case effectLKConcentration:
+			tint.R, tint.G, tint.B = 255, 255, 160
+		case effectPierceBody:
+			if frame < 141 {
+				doubleBody = billboard.layerGroup == 0
+				tint.R, tint.G, tint.B = 255, 255, 255
+				if frame%2 == 0 {
+					tint.R, tint.G, tint.B = 250, 250, 100
+					if billboard.layerGroup == 0 {
+						blend = render.BlendLighter
+					}
+				}
+			}
+		case effectBash3D3, effectBash3D4:
+			if frame >= 20 && frame <= 50 {
+				doubleBody = billboard.layerGroup == 0
+				tint.R, tint.G, tint.B = 255, 255, 255
+				if effect.effectID == effectBash3D3 {
+					tint.B = 200
+				}
+			}
 		case effectAsuraBody:
 			soulAlpha = float64(min(frame, 200)) / 255
 		case effectTaeReady:
@@ -115,7 +151,7 @@ func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *ren
 		}
 	}
 	reflectBody := entry.actor.Opt3State&db.Opt3Kaite != 0
-	if blue == 0 && soulAlpha == 0 && eskeAge < 0 && fourWayAge < 0 && shake == [4]float64{} && !reflectBody {
+	if blue == 0 && soulAlpha == 0 && eskeAge < 0 && fourWayAge < 0 && shake == [4]float64{} && !reflectBody && !doubleBody {
 		m.drawActorSpriteBillboardTintAlpha3D(screen, projection, billboard, entry.worldX, entry.worldY, entry.worldZ, scale, visibility, shadow, tint, blend)
 		return
 	}
@@ -137,12 +173,17 @@ func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *ren
 		modelPoint3{x: x, y: z, z: y}, mul3(right, units*width/w), mul3(up, -units*height/h),
 		float32(w), float32(h), float32(-left*w/width), float32(-top*h/height), multiplyTint(tint, shadow, shadow, shadow, visibility))
 	cmd.DepthUpAxis = [3]float32{0, float32(-units * height / h), 0}
+	if doubleBody {
+		phase := float64(now.UnixNano() / int64(db.EffectFrameDuration) % 181)
+		drawBodyExpansion(screen, cmd, billboard, right, up, units, scale,
+			(5+1.5*math.Sin(degreesToRadians(phase)))*zoomScale, alpha, render.BlendLighter, tint)
+	}
 	// Native Kaite draws four expanding silhouettes behind a translucent body.
 	if reflectBody && blend != render.BlendLighter {
 		phase := float64(now.UnixNano()/int64(db.EffectFrameDuration)%200) * .1
 		for i := 1; i <= 4; i++ {
 			spread := math.Mod(float64(i*5)+phase, 20)
-			drawBodyExpansion(screen, cmd, billboard, right, up, units, scale, spread*zoomScale, alpha*(100-spread*5)/255, blend)
+			drawBodyExpansion(screen, cmd, billboard, right, up, units, scale, spread*zoomScale, alpha*(100-spread*5)/255, blend, color.RGBA{255, 255, 255, 255})
 		}
 		cmd.ColorA *= 150.0 / 255
 	}
@@ -175,7 +216,7 @@ func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *ren
 			if eskeAge > 80 {
 				a = 95 - eskeAge + (10-i)*10
 			}
-			drawBodyExpansion(screen, cmd, billboard, right, up, units, scale, float64(i*3)*zoomScale, alpha*float64(clampInt(a, 0, 200))/255, render.BlendLighter)
+			drawBodyExpansion(screen, cmd, billboard, right, up, units, scale, float64(i*3)*zoomScale, alpha*float64(clampInt(a, 0, 200))/255, render.BlendLighter, color.RGBA{255, 255, 255, 255})
 		}
 	}
 	if fourWayAge >= 0 {
@@ -191,7 +232,7 @@ func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *ren
 	}
 }
 
-func drawBodyExpansion(screen *render.Frame, cmd render.WorldBillboardCommand, billboard *spriteBillboard, right, up modelPoint3, units, scale, spread, alpha float64, blend render.Blend) {
+func drawBodyExpansion(screen *render.Frame, cmd render.WorldBillboardCommand, billboard *spriteBillboard, right, up modelPoint3, units, scale, spread, alpha float64, blend render.Blend, tint color.RGBA) {
 	if alpha <= 0 {
 		return
 	}
@@ -204,6 +245,6 @@ func drawBodyExpansion(screen *render.Frame, cmd render.WorldBillboardCommand, b
 	cmd.AnchorX = float32((billboard.anchorX*scale + spread) * w / width)
 	cmd.AnchorY = float32((billboard.anchorY*scale + spread) * h / height)
 	cmd.Options.Blend = blend
-	cmd.ColorR, cmd.ColorG, cmd.ColorB, cmd.ColorA = 1, 1, 1, float32(alpha)
+	cmd.ColorR, cmd.ColorG, cmd.ColorB, cmd.ColorA = float32(tint.R)/255, float32(tint.G)/255, float32(tint.B)/255, float32(alpha)
 	screen.DrawWorldBillboard(cmd)
 }

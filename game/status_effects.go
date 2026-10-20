@@ -20,6 +20,12 @@ func (m *WorldMode) applyStatusEffectChange(ctx client.Context, change network.S
 	m.applyFalconStatus(ctx, change)
 	if actorID := applyActorOpt3StateStatus(ctx, change); actorID != 0 {
 		m.syncActorSpiritEffects(ctx, actorID)
+		if change.StatusID == db.StatusLkconcentration {
+			if isLocalActor(ctx, actorID) {
+				actorID = localSkillTarget(ctx)
+			}
+			m.setActorStateEffect(ctx, actorID, effectLKConcentration, change.Active)
+		}
 	}
 	m.applyTrickDeadStatus(ctx, change)
 	m.applyTaekwonStatus(ctx, change)

@@ -16,8 +16,9 @@ type castingRing struct {
 }
 
 type blueCasting struct {
-	tick  int
-	rings [8]castingRing
+	tick      int
+	rings     [8]castingRing
+	auraBlade bool
 }
 
 // BlueCasting launches two four-layer SAINTCASTING rings. PrimGI1 makes
@@ -50,9 +51,16 @@ func (p *blueCasting) advance(frame, duration int) {
 				r.alpha = max(r.alpha-3, 0)
 				if r.alpha == 0 && r.process < duration-30 {
 					r.radius, r.angle = 3.37, 74
+					if p.auraBlade {
+						r.angle = 64
+					}
 				}
 			} else {
-				r.alpha += 10
+				if p.auraBlade {
+					r.alpha += 5
+				} else {
+					r.alpha += 10
+				}
 			}
 		}
 	}
@@ -71,10 +79,17 @@ func (m *WorldMode) drawBlueCastingEffect(screen *render.Frame, ctx client.Conte
 	if texture == nil {
 		return
 	}
-	w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
 	var vertices []render.Vertex3D
 	var indices []uint16
 	for i, r := range effect.blueCasting.rings {
+		if i == 4 && effect.blueCasting.auraBlade {
+			screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
+			vertices, indices = nil, nil
+			texture = m.effectFileTexture(ctx.Resources, component.textureFiles[0])
+			if texture == nil {
+				return
+			}
+		}
 		if r.alpha <= 0 {
 			continue
 		}
@@ -87,11 +102,19 @@ func (m *WorldMode) drawBlueCastingEffect(screen *render.Frame, ctx client.Conte
 		base := uint16(len(vertices))
 		for segment := 0; segment <= 20; segment++ {
 			sin, cos := math.Sincos(degreesToRadians(float64(segment*18 + (layer+2)*90)))
-			height := float64(20-layer) * (1 + .3*math.Sin(degreesToRadians(float64(segment*9)))*math.Sin(degreesToRadians(float64(phase))))
+			maxHeight := 20 - layer
+			if effect.blueCasting.auraBlade {
+				maxHeight = 15 - layer
+			}
+			height := float64(maxHeight) * (1 + .3*math.Sin(degreesToRadians(float64(segment*9)))*math.Sin(degreesToRadians(float64(phase))))
 			bottom := modelPoint3{x: x + cos*r.radius/5, y: z, z: y + sin*r.radius/5}
 			top := add3(bottom, modelPoint3{x: cos * riseCos * height / 5, y: riseSin * height / 5, z: sin * riseCos * height / 5})
 			u := float32(segment) / 21
 			c := color.RGBA{100, 100, 255, uint8(clampInt(r.alpha, 0, 255))}
+			if effect.blueCasting.auraBlade {
+				c.R, c.G = 255, 255
+			}
+			w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
 			vertices = append(vertices, texturedSurfaceVertex3D(bottom, texturePoint{u: u, v: 1}, c, w, h), texturedSurfaceVertex3D(top, texturePoint{u: u, v: 0}, c, w, h))
 			if segment < 20 {
 				b := base + uint16(segment*2)

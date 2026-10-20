@@ -1727,7 +1727,6 @@ func TestRobrowserSimpleEffectsThreeHundredToThreeFiftyMatchTableRows(t *testing
 		delays []time.Duration
 	}{
 		{"EF_TRIPLEATTACK", effectTripleAttack, []string{"effect\\ef_hit2.wav", "effect\\ef_hit4.wav", "effect\\ef_hit2.wav"}, []time.Duration{10 * db.EffectFrameDuration, 20 * db.EffectFrameDuration, 30 * db.EffectFrameDuration}},
-		{"EF_MAGNUM2", effectMagnum2, []string{"permeter_attack.wav", "effect\\ef_magnumbreak.wav"}, []time.Duration{0, 300 * time.Millisecond}},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
@@ -1974,7 +1973,7 @@ func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		attached bool
 		head     bool
 	}{
-		{"EF_LKCONCENTRATION", effectLKConcentration, "twohand", "effect\\knight_twohandquicken.wav", true, true},
+		{"EF_LKCONCENTRATION", effectLKConcentration, "twohand", "", true, true},
 		{"EF_DEVIL", effectDeath, "devil", "", true, false},
 		{"EF_MELTDOWN", effectMeltdown, "melt", "", true, false},
 		{"EF_CARTBOOST", effectCartBoost, "cart", "effect\\ef_incagility.wav", true, false},
@@ -2034,8 +2033,6 @@ func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		id   int
 		wav  string
 	}{
-		{"EF_AURABLADE", effectAuraBlade, "effect\\오라 블레이드.wav"},
-		{"EF_REDBODY", effectRedBody, "effect\\버서크.wav"},
 		{"EF_BOTTOM_GOSPEL", effectBottomGospel, "effect\\가스펠.wav"},
 		{"EF_HITLINE2", effectHitLine2, "effect\\맹호경파산.wav"},
 		{"EF_LINELINK2", effectLineLink2, "effect\\소울 체인지.wav"},
@@ -2104,8 +2101,6 @@ func TestRobrowserCombatEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		duplicate int
 	}{
 		{"EF_BASH3D2", effectBash3D2, "Bash3D2", "effect\\mon_폭기.wav", 400 * time.Millisecond, 50 * time.Millisecond, 8},
-		{"EF_BASH3D3", effectBash3D3, "Bash3D3", "effect\\헤드 크러쉬.wav", 675 * time.Millisecond, 500 * time.Millisecond, 6},
-		{"EF_BASH3D4", effectBash3D4, "Bash3D4", "effect\\비트 조인트.wav", 675 * time.Millisecond, 500 * time.Millisecond, 6},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 3 || spec.duration != tc.duration {

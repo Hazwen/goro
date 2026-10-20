@@ -39,6 +39,9 @@ func (m *WorldMode) syncCurrentActorEffectStateEffects(ctx client.Context) {
 		m.applyActorEffectStateEffects(ctx, ctx.World.Player.ID, 0, ctx.World.Player.EffectState)
 	}
 	if ctx.Session != nil {
+		if status, ok := ctx.Session.Statuses.Active[db.StatusLkconcentration]; ok && (!status.HasDuration || time.Now().Before(status.ExpiresAt)) {
+			m.setActorStateEffect(ctx, localSkillTarget(ctx), effectLKConcentration, true)
+		}
 		for _, id := range []uint16{db.StatusRgCconfineM, db.StatusRgCconfineS} {
 			if status, ok := ctx.Session.Statuses.Active[id]; ok {
 				remaining := time.Until(status.ExpiresAt)
@@ -65,6 +68,8 @@ func (m *WorldMode) removeActorEffectStateEffects(actorID uint32) {
 	m.removeWorldEffect(effectNPCStop2, actorID)
 	m.removeWorldEffect(effectGumgang, actorID)
 	m.removeWorldEffect(effectSteelBody, actorID)
+	m.removeWorldEffect(effectRedBody, actorID)
+	m.removeWorldEffect(effectLKConcentration, actorID)
 	m.removeWorldEffect(effectAsuraBody, actorID)
 	m.removeWorldEffect(effectAsuraBodyMonster, actorID)
 	m.removeWorldEffect(effectBabyBody, actorID)
@@ -165,6 +170,7 @@ func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
 	}
 	m.setActorStateEffect(ctx, actorID, effectGumgang, visible && actor.Opt3State&db.Opt3Explosionspirits != 0)
 	m.setActorStateEffect(ctx, actorID, effectSteelBody, visible && actor.Opt3State&db.Opt3Steelbody != 0)
+	m.setActorStateEffect(ctx, actorID, effectRedBody, visible && actor.Opt3State&db.Opt3Berserk != 0)
 	sphereEffect := effectChookgi
 	switch actor.Job {
 	case db.JobMonkB:
@@ -177,7 +183,7 @@ func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
 	}
 }
 
-// A state effect loops until the server clears it. Ground skill units still use
+// A state effect lives until the server clears it. Ground skill units still use
 // persistent=true with a deadline; a zero deadline means explicitly removed.
 func (m *WorldMode) setActorStateEffect(ctx client.Context, actorID uint32, effectID int, active bool) {
 	if !active {

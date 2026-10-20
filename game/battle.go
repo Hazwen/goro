@@ -626,6 +626,8 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
+	case db.SkillLKSpiralpierce, db.SkillLKHeadcrush, db.SkillLKJointbeat:
+		return true
 	case db.SkillCRShieldcharge, db.SkillCRShieldboomerang, db.SkillCRHolycross, db.SkillCRGrandcross, db.SkillPaPressure, db.SkillPaSacrifice, db.SkillPaShieldchain,
 		db.SkillKNPierce, db.SkillKNBrandishspear, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNBowlingbash, db.SkillKNChargeatk:
 		return true
@@ -830,7 +832,7 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 	}
 	count := actionVisualHitCount(action)
 	switch action.SkillID {
-	case db.SkillKNPierce, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNChargeatk:
+	case db.SkillKNPierce, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNChargeatk, db.SkillLKSpiralpierce:
 		// The original clears its secondary impact effect after the first hit.
 		count = 1
 	}
