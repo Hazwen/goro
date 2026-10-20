@@ -78,6 +78,7 @@ const (
 	effectFuncJupitel
 	effectFuncSightTrasher
 	effectFuncFirePillar
+	effectFuncSageGroundCast
 )
 
 const (
@@ -179,7 +180,9 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncLevel99Bubble:
 		m.drawLevel99BubbleEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncPropertyGround:
-		m.drawPropertyGroundEffect(screen, ctx, component, effect, componentIndex, worldX, worldY, worldZ, now)
+		m.drawPropertyGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncSageGroundCast:
+		m.drawSageGroundCastEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncLandProtectorGround:
 		m.drawLandProtectorGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncSpiritSphere:
@@ -387,21 +390,6 @@ func (m *WorldMode) drawGroundAuraEffect(screen *render.Frame, ctx client.Contex
 	}
 }
 
-func (m *WorldMode) drawPropertyGroundEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, componentIndex int, x, y, z float64, now time.Time) {
-	texture := m.effectTexture(ctx.Resources, component.textureName)
-	if texture == nil {
-		return
-	}
-	elapsed := now.Sub(effect.starts).Seconds()
-	phase := elapsed*2 + deterministicAngle(effect, componentIndex+811)
-	sizeMult := math.Sin(phase)
-	if sizeMult < 0.5 {
-		sizeMult = 0.5
-	}
-	tint := effectComponentTint(component, 1)
-	drawWorldCylinderBandRotated(screen, m.whitePixel, texture, x, y, z+0.05, component.bottomSize*sizeMult, component.topSize*sizeMult, component.height, tint, maxInt(component.circleSides, component.totalCircleSides), phase)
-}
-
 const (
 	mapPillarBands          = 4
 	mapPillarSegments       = 20
@@ -488,19 +476,6 @@ func drawMapPillarBand(screen *render.Frame, texture *render.Image, x, y, z, rad
 	options := triangleDrawOptions(render.FilterLinear, render.AddressRepeat)
 	options.Blend = render.BlendLighter
 	screen.DrawTriangles3D(vertices, indices, texture, options)
-}
-
-func (m *WorldMode) drawLandProtectorGroundEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
-	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
-	if texture == nil {
-		return
-	}
-	elapsed := now.Sub(effect.starts).Seconds()
-	size := component.sizeStart + (component.sizeEnd-component.sizeStart)*(0.5+0.5*math.Sin(elapsed*4))
-	if size <= 0 {
-		size = 0.8
-	}
-	drawGroundTextureQuad(screen, texture, x, y, z+component.posZ, size, size, 0, color.RGBA{R: 255, G: 255, B: 255, A: 255}, true)
 }
 
 func (m *WorldMode) drawFlatColorTileEffect(screen *render.Frame, component worldEffectComponent, x, y, z float64) {

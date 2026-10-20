@@ -226,12 +226,16 @@ const (
 	effectItemFast2      = 219
 	effectItemFast3      = 220
 	effectCrusaderDef    = 222
+	effectVolcano        = 225
 	effectGrandCross     = 226
 	effectIntimidate     = 227
 	effectChookgi        = 228
 	effectLineLink       = 232
 	effectSpellBreaker   = 234
 	effectDispell        = 235
+	effectDeluge         = 236
+	effectViolentGale    = 237
+	effectLandProtector  = 238
 	effectBottomVolcano  = 239
 	effectBottomDeluge   = 240
 	effectBottomViolent  = 241
@@ -2296,40 +2300,6 @@ func mildWindComponent(texture string, alphaMax, red, green, blue, sizeStart, si
 	}
 }
 
-func propertyGroundEffectSpec(name, texture string) EffectSpec {
-	return EffectSpec{
-		Duration: 1500 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponentFUNC,
-			FuncName:         name,
-			TextureName:      texture,
-			Duration:         1500 * time.Millisecond,
-			Repeat:           true,
-			BottomSize:       1,
-			TopSize:          3,
-			Height:           2,
-			TotalCircleSides: 20,
-			CircleSides:      20,
-		}},
-	}
-}
-
-func landProtectorGroundEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 1500 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:        EffectComponentFUNC,
-			FuncName:    "LandProtectorGround",
-			TextureFile: "effect/aaa copy.bmp",
-			Duration:    1500 * time.Millisecond,
-			Repeat:      true,
-			SizeStart:   0.8,
-			SizeEnd:     0.85,
-			PosZ:        0.05,
-		}},
-	}
-}
-
 func soundOnlyEffectSpec(paths ...string) EffectSpec {
 	return EffectSpec{
 		Duration: 500 * time.Millisecond,
@@ -4146,9 +4116,13 @@ var EffectSpecs = map[int]EffectSpec{
 
 	effectSpellBreaker:  strEffectSpecAttached("spell", "effect\\sage_spell breake.wav", false),
 	effectDispell:       strEffectSpecAttached("디스펠", "", false),
-	effectBottomVolcano: propertyGroundEffectSpec("PropertyGround", "ring_red"),
-	effectBottomDeluge:  propertyGroundEffectSpec("PropertyGround", "ring_blue"),
-	effectBottomViolent: propertyGroundEffectSpec("PropertyGround", "ring_yellow"),
+	effectVolcano:       sageGroundCastEffectSpec("ring_red", 300),
+	effectDeluge:        sageGroundCastEffectSpec("ring_blue", 999),
+	effectViolentGale:   sageGroundCastEffectSpec("magic_green", 999),
+	effectLandProtector: sageGroundCastEffectSpec("ring_white", 999),
+	effectBottomVolcano: propertyGroundEffectSpec("ring_red"),
+	effectBottomDeluge:  propertyGroundEffectSpec("ring_blue"),
+	effectBottomViolent: propertyGroundEffectSpec("magic_green"),
 	effectBottomLand:    landProtectorGroundEffectSpec(),
 	effectMagicRod:      strEffectSpecAttached("매직로드", "effect\\sage_magic rod.wav", false),
 	effectHolyCross:     strEffectSpecAttached("holy_cross", "effect\\cru_holy cross.wav", false),
@@ -4162,10 +4136,10 @@ var EffectSpecs = map[int]EffectSpec{
 	effectAbsorbSpirits: absorbSpiritsEffectSpec(),
 	effectSteelBody:     steelBodyEffectSpec(),
 	effectSteelBodyRing: gumgangRingEffectSpec(1500*time.Millisecond, 0.5, 2, 5, ""),
-	effectFlameLauncher: strEffectSpecAttached("enc_fire", "_enemy_hit_wind1.wav", false),
-	effectFrostWeapon:   strEffectSpecAttached("enc_ice", "_enemy_hit_wind1.wav", false),
-	effectLightningLoad: strEffectSpecAttached("enc_wind", "effect\\_enemy_hit_wind1.wav", false),
-	effectSeismicWeapon: strEffectSpecAttached("enc_earth", "_enemy_hit_wind1.wav", false),
+	effectFlameLauncher: sageEndowEffectSpec("enc_fire"),
+	effectFrostWeapon:   sageEndowEffectSpec("enc_ice"),
+	effectLightningLoad: sageEndowEffectSpec("enc_wind"),
+	effectSeismicWeapon: sageEndowEffectSpec("enc_earth"),
 	effectGumgang2:      gumgangRingEffectSpec(1500*time.Millisecond, 0.5, 2, 5, ""),
 	effectTeiHit1:       teiHitEffectSpec(false),
 	effectGumgang3:      gumgangRingEffectSpec(1000*time.Millisecond, 0.3, 3, 6, ""),

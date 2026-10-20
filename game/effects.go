@@ -232,12 +232,16 @@ const (
 	effectItemFast2      = 219
 	effectItemFast3      = 220
 	effectCrusaderDef    = 222
+	effectVolcano        = 225
 	effectGrandCross     = 226
 	effectIntimidate     = 227
 	effectChookgi        = 228
 	effectLineLink       = 232
 	effectSpellBreaker   = 234
 	effectDispell        = 235
+	effectDeluge         = 236
+	effectViolentGale    = 237
+	effectLandProtector  = 238
 	effectBottomVolcano  = 239
 	effectBottomDeluge   = 240
 	effectBottomViolent  = 241
@@ -1246,7 +1250,8 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 	now := time.Now()
 	switch notify.SkillID {
 	case db.SkillPRMagnus, db.SkillPRBenedictio, db.SkillMGThunderstorm,
-		db.SkillWZStormgust, db.SkillWZVermilion, db.SkillWZMeteor, db.SkillWZHeavendrive:
+		db.SkillWZStormgust, db.SkillWZVermilion, db.SkillWZMeteor, db.SkillWZHeavendrive,
+		db.SkillSAVolcano, db.SkillSADeluge, db.SkillSAViolentgale, db.SkillSALandprotector:
 		if notify.SkillID != db.SkillWZMeteor {
 			m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		}
@@ -1877,6 +1882,16 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion {
 		effectID = effectBeginSpell
 	}
+	switch skillID {
+	case db.SkillSAElementwater:
+		effectID = effectBeginSpell2
+	case db.SkillSAElementfire:
+		effectID = effectBeginSpell3
+	case db.SkillSAElementground:
+		effectID = effectBeginSpell4
+	case db.SkillSAElementwind:
+		effectID = effectBeginSpell5
+	}
 	if db.IsSoulLinkerActiveSkill(skillID) {
 		effectID = effectBlueCasting
 	}
@@ -2412,11 +2427,11 @@ func skillCastAuraEffectID(property uint32) int {
 	case 1:
 		return effectBeginSpell2
 	case 2:
-		return effectBeginSpell5
+		return effectBeginSpell4
 	case 3:
 		return effectBeginSpell3
 	case 4:
-		return effectBeginSpell4
+		return effectBeginSpell5
 	case 5:
 		return effectBeginSpell7
 	case 6, 8:
@@ -2659,6 +2674,8 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "SageGroundCast":
+		return effectFuncSageGroundCast
 	case "WizardSpikes":
 		return effectFuncWizardSpikes
 	case "WaterBall":

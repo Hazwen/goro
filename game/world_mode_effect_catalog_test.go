@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 688 {
-		t.Fatalf("implemented effects = %d, want 688", coverage.Implemented)
+	if coverage.Implemented != 692 {
+		t.Fatalf("implemented effects = %d, want 692", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 113.33 || coverage.ActivePercent > 113.35 {
-		t.Fatalf("active coverage = %.3f, want about 113.34", coverage.ActivePercent)
+	if coverage.ActivePercent < 113.99 || coverage.ActivePercent > 114.01 {
+		t.Fatalf("active coverage = %.3f, want about 114.00", coverage.ActivePercent)
 	}
 }
 
@@ -719,24 +719,6 @@ func TestRobrowserSpecialEffectsTwoHundredToTwoFiftyMatchTableRows(t *testing.T)
 		}
 	}
 
-	for _, tc := range []struct {
-		name    string
-		id      int
-		texture string
-	}{
-		{"EF_BOTTOM_VO", effectBottomVolcano, "ring_red"},
-		{"EF_BOTTOM_DE", effectBottomDeluge, "ring_blue"},
-		{"EF_BOTTOM_VI", effectBottomViolent, "ring_yellow"},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 1 {
-			t.Fatalf("%s spec = %+v ok=%t", tc.name, spec, ok)
-		}
-		component := spec.components[0]
-		if component.kind != effectComponentFUNC || component.funcName != "PropertyGround" || component.funcAdapter != effectFuncPropertyGround || component.textureName != tc.texture || component.topSize != 3 || component.bottomSize != 1 || component.height != 2 || !component.repeat {
-			t.Fatalf("%s component = %+v", tc.name, component)
-		}
-	}
 }
 
 func TestRobrowserActiveEffectsTwoFiftyToThreeHundredHaveSpecs(t *testing.T) {
@@ -1344,7 +1326,7 @@ func TestRobrowserSimpleEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.T
 		{"EF_DEVOTION", effectDevotion, "devotion", "", true, false},
 		{"EF_FLAMELAUNCHER", effectFlameLauncher, "enc_fire", "_enemy_hit_wind1.wav", true, false},
 		{"EF_FROSTWEAPON", effectFrostWeapon, "enc_ice", "_enemy_hit_wind1.wav", true, false},
-		{"EF_LIGHTNINGLOADER", effectLightningLoad, "enc_wind", "effect\\_enemy_hit_wind1.wav", true, false},
+		{"EF_LIGHTNINGLOADER", effectLightningLoad, "enc_wind", "_enemy_hit_wind1.wav", true, false},
 		{"EF_SEISMICWEAPON", effectSeismicWeapon, "enc_earth", "_enemy_hit_wind1.wav", true, false},
 		{"EF_STEALCOIN", effectStealCoin, "steal_coin", "", true, false},
 		{"EF_STRIPWEAPON", effectStripWeapon, "strip_weapon", "effect\\복호격.wav", true, false},

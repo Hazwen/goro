@@ -9,6 +9,25 @@ import (
 	"github.com/kivutar/goro/render"
 )
 
+func appendEffectBand(vertices *[]render.Vertex3D, indices *[]uint16, texture *render.Image, origin modelPoint3, radius, angle, sweep, flare float64, segments int, tint color.RGBA, height func(int) float64) {
+	point := func(i int) (modelPoint3, modelPoint3) {
+		a, h := angle+sweep*float64(i)/float64(segments), height(i)
+		c, s := math.Cos(a), math.Sin(a)
+		bottom := add3(origin, modelPoint3{x: radius * c, z: radius * s})
+		top := add3(origin, modelPoint3{x: (radius + h*flare) * c, y: h, z: (radius + h*flare) * s})
+		return bottom, top
+	}
+	for i := 0; i < segments; i++ {
+		b1, t1 := point(i)
+		b2, t2 := point(i + 1)
+		start := len(*vertices)
+		appendEffectQuad(vertices, indices, texture, [4]modelPoint3{t1, t2, b2, b1}, tint)
+		for j, u := range []float32{float32(i) / 21, float32(i+1) / 21, float32(i+1) / 21, float32(i) / 21} {
+			(*vertices)[start+j].SrcX = u * float32(texture.Bounds().Dx())
+		}
+	}
+}
+
 func (m *WorldMode) drawCylinderEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, x, y, z float64, componentDuration time.Duration, now time.Time) {
 	texture := m.effectTexture(ctx.Resources, component.textureName)
 	if texture == nil {

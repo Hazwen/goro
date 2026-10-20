@@ -354,25 +354,6 @@ func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context
 }
 
 // The native ring primitives have a height at each of their 21 vertices.
-func appendPaladinBand(vertices *[]render.Vertex3D, indices *[]uint16, texture *render.Image, origin modelPoint3, radius, angle, sweep, flare float64, segments int, tint color.RGBA, height func(int) float64) {
-	point := func(i int) (modelPoint3, modelPoint3) {
-		a, h := angle+sweep*float64(i)/float64(segments), height(i)
-		c, s := math.Cos(a), math.Sin(a)
-		bottom := add3(origin, modelPoint3{x: radius * c, z: radius * s})
-		top := add3(origin, modelPoint3{x: (radius + h*flare) * c, y: h, z: (radius + h*flare) * s})
-		return bottom, top
-	}
-	for i := 0; i < segments; i++ {
-		b1, t1 := point(i)
-		b2, t2 := point(i + 1)
-		start := len(*vertices)
-		appendEffectQuad(vertices, indices, texture, [4]modelPoint3{t1, t2, b2, b1}, tint)
-		for j, u := range []float32{float32(i) / 21, float32(i+1) / 21, float32(i+1) / 21, float32(i) / 21} {
-			(*vertices)[start+j].SrcX = u * float32(texture.Bounds().Dx())
-		}
-	}
-}
-
 func (m *WorldMode) drawCrusaderDefenseEffect(screen *render.Frame, ctx client.Context, _ sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
 	n := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
 	alpha := min(n, 80) - 5*max(0, n-179)
@@ -385,7 +366,7 @@ func (m *WorldMode) drawCrusaderDefenseEffect(screen *render.Frame, ctx client.C
 	for i := 0; i < 4; i++ {
 		rotationSpeed, waveSpeed := 1+i%2, 1+i/2
 		height := float64(40-i) / 5 * (1 + .3*math.Sin(degreesToRadians(float64(n*waveSpeed+i*90))))
-		appendPaladinBand(&vertices, &indices, texture, origin, (8-.1*float64(i))/5,
+		appendEffectBand(&vertices, &indices, texture, origin, (8-.1*float64(i))/5,
 			degreesToRadians(float64(180+90*i+n*rotationSpeed)), 2*math.Pi, 0, 20, color.RGBA{255, 255, 255, uint8(alpha)},
 			func(j int) float64 { return height * math.Sin(degreesToRadians(float64(j*9))) })
 	}
@@ -404,7 +385,7 @@ func (m *WorldMode) drawProvidenceEffect(screen *render.Frame, ctx client.Contex
 	for i := 0; i < 4; i++ {
 		rise := degreesToRadians(float64(83 - i))
 		height := 24 * math.Sin(degreesToRadians(float64(min(n, 90)))) * math.Sin(rise)
-		appendPaladinBand(&vertices, &indices, texture, origin, (6+.5*float64(i))/5,
+		appendEffectBand(&vertices, &indices, texture, origin, (6+.5*float64(i))/5,
 			degreesToRadians(float64(90*i+n)), 2*math.Pi, 1/math.Tan(rise), 20, color.RGBA{255, 255, 255, uint8(alpha)},
 			func(int) float64 { return height })
 	}
@@ -420,7 +401,7 @@ func (m *WorldMode) drawGrandCrossEffect(screen *render.Frame, ctx client.Contex
 			vertices, indices := []render.Vertex3D{}, []uint16{}
 			for i, offset := range []modelPoint3{{x: 4.6, z: 4.6}, {x: 4.6, z: -4.6}, {x: -4.6, z: -4.6}, {x: -4.6, z: 4.6}} {
 				height := 24 * math.Sin(degreesToRadians(float64(n)))
-				appendPaladinBand(&vertices, &indices, texture, add3(origin, offset), (19.9-.01*float64(n))/5,
+				appendEffectBand(&vertices, &indices, texture, add3(origin, offset), (19.9-.01*float64(n))/5,
 					degreesToRadians(float64(180-90*i)), degreesToRadians(80), 0, 8, color.RGBA{255, 175, 175, uint8(alpha)}, func(int) float64 { return height })
 			}
 			screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))

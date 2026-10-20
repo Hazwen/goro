@@ -55,7 +55,7 @@ func (m *WorldMode) drawSpiralPierceEffect(screen *render.Frame, ctx client.Cont
 			}
 			rise := degreesToRadians(70 - float64(layer*8) - offset*2)
 			height := (20 - offset*.7) / 5
-			appendPaladinBand(&vertices, &indices, texture, origin, (5+offset*.2)/5,
+			appendEffectBand(&vertices, &indices, texture, origin, (5+offset*.2)/5,
 				degreesToRadians(float64(layer*9)+offset*6), 2*math.Pi, 1/math.Tan(rise), 20,
 				color.RGBA{255, 255, 255, uint8(alpha)}, func(int) float64 { return height * math.Sin(rise) })
 		}

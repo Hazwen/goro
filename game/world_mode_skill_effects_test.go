@@ -1075,9 +1075,9 @@ func TestSkillCastAuraEffectMappings(t *testing.T) {
 	}{
 		{property: 0, want: effectBeginSpell},
 		{property: 1, want: effectBeginSpell2},
-		{property: 2, want: effectBeginSpell5},
+		{property: 2, want: effectBeginSpell4},
 		{property: 3, want: effectBeginSpell3},
-		{property: 4, want: effectBeginSpell4},
+		{property: 4, want: effectBeginSpell5},
 		{property: 5, want: effectBeginSpell7},
 		{property: 6, want: effectBeginSpell6},
 		{property: 8, want: effectBeginSpell6},
@@ -1514,7 +1514,7 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "MO_CHAINCOMBO imported caster", skillEffectOnCasterIDs(db.SkillMOChaincombo), effectGumgang3)
 	expectEffectIDs(t, "MO_COMBOFINISH imported", skillEffectOnCasterIDs(db.SkillMOCombofinish), effectGumgang3, effectHitLine, effectQuake)
 	expectEffectIDs(t, "SA_CASTCANCEL imported empty", skillEffectIDs(db.SkillSACastcancel))
-	expectEffectIDs(t, "SA_MAGICROD imported success", skillSuccessEffectIDs(db.SkillSAMagicrod), effectMagicRod)
+	expectEffectIDs(t, "SA_MAGICROD success on caster", skillSuccessEffectSelfIDs(db.SkillSAMagicrod), effectMagicRod)
 	expectEffectIDs(t, "SA_SPELLBREAKER imported success", skillSuccessEffectIDs(db.SkillSASpellbreaker), effectSpellBreaker)
 	expectEffectIDs(t, "SA_AUTOSPELL imported empty", skillEffectIDs(db.SkillSAAutospell))
 	expectEffectIDs(t, "SA_FLAMELAUNCHER imported success", skillSuccessEffectIDs(db.SkillSAFlamelauncher), effectFlameLauncher)
@@ -1522,14 +1522,10 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "SA_LIGHTNINGLOADER imported success", skillSuccessEffectIDs(db.SkillSALightningloader), effectLightningLoad)
 	expectEffectIDs(t, "SA_SEISMICWEAPON imported success", skillSuccessEffectIDs(db.SkillSASeismicweapon), effectSeismicWeapon)
 	expectEffectIDs(t, "SA_DISPELL imported success", skillSuccessEffectIDs(db.SkillSADispell), effectDispell)
-	expectEffectIDs(t, "SA_VOLCANO imported caster", skillEffectOnCasterIDs(db.SkillSAVolcano), 225)
-	expectEffectIDs(t, "SA_VOLCANO imported ground", skillGroundEffectIDs(db.SkillSAVolcano), effectBottomVolcano)
-	expectEffectIDs(t, "SA_DELUGE imported caster", skillEffectOnCasterIDs(db.SkillSADeluge), 236)
-	expectEffectIDs(t, "SA_DELUGE imported ground", skillGroundEffectIDs(db.SkillSADeluge), effectBottomDeluge)
-	expectEffectIDs(t, "SA_VIOLENTGALE imported caster", skillEffectOnCasterIDs(db.SkillSAViolentgale), 237)
-	expectEffectIDs(t, "SA_VIOLENTGALE imported ground", skillGroundEffectIDs(db.SkillSAViolentgale), effectBottomViolent)
-	expectEffectIDs(t, "SA_LANDPROTECTOR imported caster", skillEffectOnCasterIDs(db.SkillSALandprotector), 238)
-	expectEffectIDs(t, "SA_LANDPROTECTOR imported ground", skillGroundEffectIDs(db.SkillSALandprotector), effectBottomLand)
+	expectEffectIDs(t, "SA_VOLCANO ground activation", skillGroundEffectIDs(db.SkillSAVolcano), effectVolcano)
+	expectEffectIDs(t, "SA_DELUGE ground activation", skillGroundEffectIDs(db.SkillSADeluge), effectDeluge)
+	expectEffectIDs(t, "SA_VIOLENTGALE ground activation", skillGroundEffectIDs(db.SkillSAViolentgale), effectViolentGale)
+	expectEffectIDs(t, "SA_LANDPROTECTOR ground activation", skillGroundEffectIDs(db.SkillSALandprotector), effectLandProtector)
 	expectEffectIDs(t, "SA_ABRACADABRA imported empty", skillEffectIDs(db.SkillSAAbracadabra))
 	for _, skillID := range []uint16{
 		db.SkillSAMonocell,
@@ -1613,10 +1609,10 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "CR_FULLPROTECTION imported", skillEffectIDs(db.SkillCRFullprotection), effectChemicalProt, 500)
 	expectEffectIDs(t, "CR_CULTIVATION imported empty", skillEffectIDs(db.SkillCRCultivation))
 	expectEffectIDs(t, "SA_CREATECON imported empty", skillEffectIDs(db.SkillSACreatecon))
-	expectEffectIDs(t, "SA_ELEMENTWATER imported", skillEffectIDs(db.SkillSAElementwater), effectFrostWeapon)
-	expectEffectIDs(t, "SA_ELEMENTGROUND imported", skillEffectIDs(db.SkillSAElementground), effectSeismicWeapon)
-	expectEffectIDs(t, "SA_ELEMENTFIRE imported", skillEffectIDs(db.SkillSAElementfire), effectFlameLauncher)
-	expectEffectIDs(t, "SA_ELEMENTWIND imported", skillEffectIDs(db.SkillSAElementwind), effectLightningLoad)
+	expectEffectIDs(t, "SA_ELEMENTWATER success", skillSuccessEffectIDs(db.SkillSAElementwater), effectFrostWeapon)
+	expectEffectIDs(t, "SA_ELEMENTGROUND success", skillSuccessEffectIDs(db.SkillSAElementground), effectSeismicWeapon)
+	expectEffectIDs(t, "SA_ELEMENTFIRE success", skillSuccessEffectIDs(db.SkillSAElementfire), effectFlameLauncher)
+	expectEffectIDs(t, "SA_ELEMENTWIND success", skillSuccessEffectIDs(db.SkillSAElementwind), effectLightningLoad)
 	expectEffectIDs(t, "MO_KITRANSLATION imported empty", skillEffectIDs(db.SkillMOKitranslation))
 	expectEffectIDs(t, "MO_BALKYOUNG imported", skillHitEffectIDs(db.SkillMOBalkyoung), effectHit3)
 	expectEffectIDs(t, "HP_ASSUMPTIO", skillEffectIDs(db.SkillHPAssumptio), effectAssumptio, effectAssumptio2)
