@@ -128,12 +128,13 @@ func TestKnightQuickenAndAutoCounter(t *testing.T) {
 			t.Fatal("Quicken must play once on the caster")
 		}
 	}
+	ctx.Session.Selected = session.Character{ID: 100, Job: db.JobKnight, Weapon: db.WeaponSword}
 	for _, state := range []string{"ready", "expired", "cancelled"} {
 		m := &WorldMode{}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: db.SkillKNAutocounter, SourceID: 2000000, TargetID: 2000000, Result: 1})
 		anim := m.actorAnims[2000000]
-		if !anim.autoCounter || anim.fixedMotion != 4 || anim.duration != 1500*time.Millisecond || len(m.worldEffects) != 0 || len(m.scheduledSounds) != 0 {
-			t.Fatalf("Auto Counter must silently hold attack frame four: %+v", anim)
+		if !anim.autoCounter || anim.actionFamily != spriteActionPCAttack2 || !anim.hasFixedMotion || anim.fixedMotion != 0 || anim.duration != 1500*time.Millisecond || len(m.worldEffects) != 0 || len(m.scheduledSounds) != 0 {
+			t.Fatalf("Auto Counter must silently hold the first attack frame: %+v", anim)
 		}
 		if state == "expired" {
 			anim.started = time.Now().Add(-2 * time.Second)

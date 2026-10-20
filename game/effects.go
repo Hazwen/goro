@@ -1103,10 +1103,11 @@ func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify
 	}
 	m.faceSkillSource(ctx, notify.SourceID, notify.TargetID, 0, 0)
 	if notify.SkillID == db.SkillKNAutocounter {
+		// Native SetAction's second argument is speed; the frozen motion is zero.
 		m.setCombatActorAction(ctx, notify.SourceID, actorAnimation{
 			actionFamily: attackActionFamilyForActorWithResources(ctx.Resources, source),
 			started:      now, duration: 1500 * time.Millisecond,
-			hasPlay: true, hasFixedMotion: true, fixedMotion: 4, autoCounter: true,
+			hasPlay: true, hasFixedMotion: true, fixedMotion: 0, autoCounter: true,
 		})
 		return
 	}
