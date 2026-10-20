@@ -103,6 +103,7 @@ const (
 	effectInvenom        = 65
 	effectSkidTrap       = 69
 	effectBrandishSpear  = 70
+	effectBowlingBash    = 73
 	effectIceWall        = 74
 	effectRecovery       = 78
 	effectEarthSpike     = 79
@@ -1101,6 +1102,14 @@ func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify
 		return
 	}
 	m.faceSkillSource(ctx, notify.SourceID, notify.TargetID, 0, 0)
+	if notify.SkillID == db.SkillKNAutocounter {
+		m.setCombatActorAction(ctx, notify.SourceID, actorAnimation{
+			actionFamily: attackActionFamilyForActorWithResources(ctx.Resources, source),
+			started:      now, duration: 1500 * time.Millisecond,
+			hasPlay: true, hasFixedMotion: true, fixedMotion: 4, autoCounter: true,
+		})
+		return
+	}
 	m.startSkillActionAnimation(ctx, notify.SourceID, source, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
 }
 
@@ -1508,6 +1517,9 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectGrimtooth || effectID == effectThrowItem6 {
 		initAssassinProjectile(ctx, &effect)
 	}
+	if effectID == effectSpearBoomerang {
+		initSpearBoomerang(ctx, &effect)
+	}
 	if effectID == effectStin || effectID == effectStin3 || effectID == effectStin2 {
 		initSoulLinkerProjectile(ctx, &effect)
 	}
@@ -1733,6 +1745,9 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		return
 	}
 	effectID := skillCastAuraEffectID(property)
+	if skillID == db.SkillKNChargeatk {
+		effectID = effectBeginSpell6
+	}
 	if db.IsSoulLinkerActiveSkill(skillID) {
 		effectID = effectBlueCasting
 	}
@@ -2514,6 +2529,10 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "BowlingBash":
+		return effectFuncBowlingBash
+	case "SpearBoomerang":
+		return effectFuncSpearBoomerang
 	case "BashHit":
 		return effectFuncBashHit
 	case "Bash":

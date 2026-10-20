@@ -149,7 +149,7 @@ func TestRobrowserSimpleEffectsFiftyToOneHundredMatchTableRows(t *testing.T) {
 		{"EF_ARROWSHOT", effectArrowShotRO, "arrowshot", "", true},
 		{"EF_INVENOM", effectInvenom, "invenom", "effect\\thief_invenom.wav", true},
 		{"EF_SKIDTRAP", effectSkidTrap, "skidtrap", "effect\\hunter_skidtrap.wav", false},
-		{"EF_BRANDISHSPEAR", effectBrandishSpear, "brandish", "effect\\knight_brandish_spear.wav", false},
+		{"EF_BRANDISHSPEAR", effectBrandishSpear, "brandish", "", true},
 		{"EF_RECOVERY", effectRecovery, "recovery", "effect\\priest_recovery.wav", true},
 		{"EF_SANCTUARY", effectSanctuary, "sanctuary", "effect\\priest_sanctuary.wav", true},
 		{"EF_IMPOSITIO", effectImpositio, "impositio", "effect\\priest_impositio.wav", true},
@@ -185,8 +185,6 @@ func TestRobrowserSimpleEffectsFiftyToOneHundredMatchTableRows(t *testing.T) {
 		id   int
 		wav  string
 	}{
-		{"EF_SPEARBMR", effectSpearBoomerang, "effect\\ef_fireball.wav"},
-		{"EF_PIERCE", effectPierce, "effect\\ef_bash.wav"},
 		{"EF_TURNUNDEAD", effectTurnUndead, "effect\\ef_bash.wav"},
 		{"EF_HASTEUP", effectHasteUp, "effect\\black_adrenalinerush_b.wav"},
 		{"EF_FLASHER", effectFlasher, "effect\\hunter_flasher.wav"},
@@ -419,7 +417,7 @@ func TestRobrowserSimpleEffectsOneHundredToOneFiftyMatchTableRows(t *testing.T) 
 		{"EF_POISONREACT", effectPoisonReact, "poisonreact_1st", "", true, false},
 		{"EF_POISONREACT2", effectPoisonReact2, "poisonreact", "effect\\assasin_poisonreact.wav", true, false},
 		{"EF_SPLASHER", effectVenomSplasher, "venomsplasher", "effect\\assasin_venomsplasher.wav", true, false},
-		{"EF_TWOHANDQUICKEN", effectTwoHandQuicken, "twohand", "effect\\knight_twohandquicken.wav", true, true},
+		{"EF_TWOHANDQUICKEN", effectTwoHandQuicken, "twohand", "effect\\knight_twohandquicken.wav", true, false},
 		{"EF_AUTOCOUNTER", effectAutoCounter, "autocounter", "effect\\knight_autocounter.wav", true, false},
 		{"EF_FREEZE", effectFreeze, "freeze", "", true, false},
 		{"EF_FREEZED", effectFreezed, "freezed", "", true, false},
@@ -427,12 +425,12 @@ func TestRobrowserSimpleEffectsOneHundredToOneFiftyMatchTableRows(t *testing.T) 
 		{"EF_SLOWPOISON", effectSlowPoison, "slowp", "effect\\priest_slowpoison.wav", false, false},
 		{"EF_SANDMAN", effectSandman, "sandman", "effect\\hunter_sandman.wav", false, false},
 		{"EF_SONICBLOW2", effectSonicBlow2, "sonicblow", "", true, false},
-		{"EF_BRANDISH2", effectBrandishSpear2, "brandish2", "effect\\knight_brandish_spear.wav", true, false},
+		{"EF_BRANDISH2", effectBrandishSpear2, "brandish2", "", true, false},
 		{"EF_SHOCKWAVEHIT", effectShockwaveHit, "shockwavehit", "", true, false},
 		{"EF_EARTHHIT", effectEarthHit, "earthhit", "", true, false},
 		{"EF_PIERCESELF", effectPierceSelf, "pierce", "", true, false},
-		{"EF_BOWLINGSELF", effectBowlingSelf, "bowling", "_enemy_hit_normal1.wav", true, true},
-		{"EF_SPEARSTABSELF", effectSpearStabSelf, "spearstab", "_enemy_hit_normal1.wav", true, false},
+		{"EF_BOWLINGSELF", effectBowlingSelf, "bowling", "", true, false},
+		{"EF_SPEARSTABSELF", effectSpearStabSelf, "spearstab", "", true, false},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 1 {
@@ -526,7 +524,7 @@ func TestRobrowserSimpleEffectsOneFiftyToTwoHundredMatchTableRows(t *testing.T) 
 		attached bool
 		head     bool
 	}{
-		{"EF_SPEARBMRSELF", effectSpearBmrSelf, "spearboomerang", "effect\\knight_spear_boomerang.wav", true, true},
+		{"EF_SPEARBMRSELF", effectSpearBmrSelf, "spearboomerang", "", true, false},
 		{"EF_HOLYHIT", effectHolyLight, "holyhit", "", true, false},
 		{"EF_CONCENTRATION", effectConcentration, "concentration", "effect\\ac_concentration.wav", true, false},
 		{"EF_REFINEOK", effectRefineOK, "bs_refinesuccess", "effect\\bs_refinesuccess.wav", true, false},

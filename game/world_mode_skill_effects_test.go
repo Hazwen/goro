@@ -1638,19 +1638,19 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "BS_ADRENALINE2 imported", skillEffectIDs(db.SkillBSAdrenaline2), effectHasteUp)
 	expectEffectIDs(t, "BS_ADRENALINE2 imported begin", skillBeginEffectIDs(db.SkillBSAdrenaline2), effectAdrenalineCast)
 	expectEffectIDs(t, "BS_GREED imported", skillEffectIDs(db.SkillBSGreed), effectGreedSound)
-	expectEffectIDs(t, "KN_PIERCE imported caster", skillEffectOnCasterIDs(db.SkillKNPierce), effectPierceSelf)
-	expectEffectIDs(t, "KN_PIERCE imported hit", skillHitEffectIDs(db.SkillKNPierce), effectEarthHit)
+	expectEffectIDs(t, "KN_PIERCE begin", skillBeginEffectIDs(db.SkillKNPierce), effectPierceSelf)
+	expectEffectIDs(t, "KN_PIERCE imported hit", skillHitEffectIDs(db.SkillKNPierce), effectPierce)
 	expectEffectIDs(t, "KN_BRANDISHSPEAR imported", skillEffectIDs(db.SkillKNBrandishspear), effectBrandishSpear)
-	expectEffectIDs(t, "KN_BRANDISHSPEAR imported caster", skillEffectOnCasterIDs(db.SkillKNBrandishspear), effectBrandishSpear2)
-	expectEffectIDs(t, "KN_SPEARSTAB imported caster", skillEffectOnCasterIDs(db.SkillKNSpearstab), effectSpearStabSelf)
-	expectEffectIDs(t, "KN_SPEARBOOMERANG imported caster", skillEffectOnCasterIDs(db.SkillKNSpearboomerang), effectSpearBmrSelf)
-	expectEffectIDs(t, "KN_SPEARBOOMERANG imported before hit", skillBeforeHitEffectIDs(db.SkillKNSpearboomerang), effectSpearProjectile)
-	expectEffectIDs(t, "KN_SPEARBOOMERANG imported hit", skillHitEffectIDs(db.SkillKNSpearboomerang), effectSpearBoomerang)
-	expectEffectIDs(t, "KN_TWOHANDQUICKEN imported", skillEffectIDs(db.SkillKNTwohandquicken), effectTwoHandQuicken)
-	expectEffectIDs(t, "KN_ONEHAND imported", skillEffectIDs(db.SkillKNOnehand), effectTwoHandQuicken)
-	expectEffectIDs(t, "KN_CHARGEATK imported begin", skillBeginEffectIDs(db.SkillKNChargeatk), effectWhitePulse)
-	expectEffectIDs(t, "KN_CHARGEATK imported hit", skillHitEffectIDs(db.SkillKNChargeatk), effectEnemyHitNormal1)
-	expectEffectIDs(t, "KN_BOWLINGBASH imported caster", skillEffectOnCasterIDs(db.SkillKNBowlingbash), effectBowlingSelf)
+	expectEffectIDs(t, "KN_BRANDISHSPEAR imported caster", skillBeginEffectIDs(db.SkillKNBrandishspear), effectBrandishSpear2)
+	expectEffectIDs(t, "KN_SPEARSTAB imported caster", skillBeginEffectIDs(db.SkillKNSpearstab), effectSpearStabSelf)
+	expectEffectIDs(t, "KN_SPEARBOOMERANG imported caster", skillBeginEffectIDs(db.SkillKNSpearboomerang), effectSpearBmrSelf)
+	expectEffectIDs(t, "KN_SPEARBOOMERANG imported before hit", skillBeforeHitEffectIDs(db.SkillKNSpearboomerang), effectSpearBoomerang)
+	expectEffectIDs(t, "KN_SPEARBOOMERANG imported hit", skillHitEffectIDs(db.SkillKNSpearboomerang), effectHit4)
+	expectEffectIDs(t, "KN_TWOHANDQUICKEN imported", skillSuccessEffectSelfIDs(db.SkillKNTwohandquicken), effectTwoHandQuicken)
+	expectEffectIDs(t, "KN_ONEHAND imported", skillSuccessEffectSelfIDs(db.SkillKNOnehand), effectTwoHandQuicken)
+	expectEffectIDs(t, "KN_CHARGEATK imported begin", skillBeginEffectIDs(db.SkillKNChargeatk))
+	expectEffectIDs(t, "KN_CHARGEATK imported hit", skillHitEffectIDs(db.SkillKNChargeatk), effectBashHit)
+	expectEffectIDs(t, "KN_BOWLINGBASH imported caster", skillBeginEffectIDs(db.SkillKNBowlingbash), effectBowlingSelf)
 	expectEffectIDs(t, "HT_SKIDTRAP imported", skillEffectIDs(db.SkillHTSkidtrap), effectSkidTrap)
 	expectEffectIDs(t, "HT_LANDMINE imported empty", skillEffectIDs(db.SkillHTLandmine))
 	expectEffectIDs(t, "HT_ANKLESNARE imported ground", skillGroundEffectIDs(db.SkillHTAnklesnare), effectAnkleSnareGround)
@@ -2235,21 +2235,6 @@ func TestKnightStringKeyEffectsMatchRobrowser(t *testing.T) {
 	white, ok := worldEffectSpecForID(effectWhitePulse)
 	if !ok || white.duration != 500*time.Millisecond || len(white.components) != 0 || len(white.sfx) != 0 {
 		t.Fatalf("white_pulse spec = %+v ok=%t, want robr no-draw 500ms row", white, ok)
-	}
-
-	projectile, ok := worldEffectSpecForID(effectSpearProjectile)
-	if !ok || projectile.duration != 140*time.Millisecond || len(projectile.components) != 1 {
-		t.Fatalf("ef_spear_projectile spec = %+v ok=%t, want one 140ms 3D component", projectile, ok)
-	}
-	component := projectile.components[0]
-	if component.kind != effectComponent3D || component.spriteFile != "창" || !component.toSrc || !component.rotateToTarget || !component.rotateWithCamera || !component.attachedEntity {
-		t.Fatalf("ef_spear_projectile component flags = %+v", component)
-	}
-	if component.duration != 140*time.Millisecond || component.alphaMax != 1 || !component.fadeIn || !component.fadeOut || component.posZ != 1 || component.angleStart != 180 || component.angleEnd != 180 {
-		t.Fatalf("ef_spear_projectile component timing/shape = %+v", component)
-	}
-	if component.sizeStart != 100*effectPixelRatio || component.sizeEnd != 100*effectPixelRatio {
-		t.Fatalf("ef_spear_projectile size = %.3f/%.3f", component.sizeStart, component.sizeEnd)
 	}
 
 	for _, tc := range []struct {

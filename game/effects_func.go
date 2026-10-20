@@ -49,6 +49,8 @@ const (
 	effectFuncBashHit
 	effectFuncEndure
 	effectFuncMagnumBreak
+	effectFuncBowlingBash
+	effectFuncSpearBoomerang
 )
 
 const (
@@ -58,6 +60,10 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncBowlingBash:
+		m.drawBowlingBashEffect(screen, ctx, component, effect, now)
+	case effectFuncSpearBoomerang:
+		m.drawSpearBoomerangEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncBashHit:
 		m.drawBashHitEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncBash:

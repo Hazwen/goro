@@ -196,6 +196,7 @@ type actorAnimation struct {
 	hasFixedMotion bool
 	speed          time.Duration
 	hasSpeed       bool
+	autoCounter    bool
 	next           *actorAnimation
 }
 
@@ -498,22 +499,28 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	}
 	source, sourceOK, sourceLocal := actorForCombatID(ctx, action.SourceID)
 	target, targetOK, targetLocal := actorForCombatID(ctx, action.TargetID)
-	if action.SkillID > 0 {
+	splash := knightSplashAction(action)
+	if action.SkillID > 0 && !splash {
 		m.applySkillNameBubble(ctx, action.SourceID, action.SkillID, now)
 		m.applyFalconActorActionNotify(ctx, action, now)
 	}
-	if sourceOK && targetOK {
+	if sourceOK && targetOK && !splash {
 		m.faceCombatSource(ctx, source, sourceLocal, target)
 		source.Dir = directionFromDelta(source.X, source.Y, target.X, target.Y, source.Dir)
 	}
 	attackDuration := combatDuration(action.SourceSpeed, defaultAttackAnimationDuration)
 	attackFamily := spriteActionNonPCAttack
+	if sourceOK {
+		attackFamily = skillActionFamilyForActorWithResources(ctx.Resources, source, action.SkillID)
+	}
 	playerBowAttack := sourceOK && res.HasPlayerJobToken(int(source.Job)) && actorUsesBow(ctx.Resources, source)
 	normalPlayerBowAttack := action.SkillID == 0 && playerBowAttack
 	doubleStrafeBowAttack := action.SkillID == db.SkillACDouble && playerBowAttack
 	referenceBowFlightAttack := normalPlayerBowAttack || doubleStrafeBowAttack
-	if sourceOK {
-		attackFamily = skillActionFamilyForActorWithResources(ctx.Resources, source, action.SkillID)
+	if sourceOK && !splash {
+		if anim, ok := m.actorAnimation(action.SourceID, now); ok && anim.autoCounter && action.SkillID == 0 {
+			m.addWorldEffectAt(ctx, effectAutoCounter, action.SourceID, now)
+		}
 		if action.SkillID > 0 {
 			m.startSkillActionAnimation(ctx, action.SourceID, source, skillAction(action.SkillID), now, attackDuration)
 		} else if sourceLocal && res.HasPlayerJobToken(int(source.Job)) {
@@ -531,7 +538,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 				soundMotion = actionAttackMarkerMotion(actionACT, actionDef)
 			}
 			hitDelay = combatMotionDelayFromAction(actionDef, attackDuration, soundMotion)
-			if sounds := actionSFXCandidatesForActor(source, actionACT, actionDef, soundMotion); len(sounds) > 0 {
+			if sounds := actionSFXCandidatesForActor(source, actionACT, actionDef, soundMotion); len(sounds) > 0 && !splash {
 				m.scheduleSoundAtActor(now.Add(hitDelay), action.SourceID, sounds...)
 			}
 		}
@@ -615,6 +622,9 @@ func (m *WorldMode) applyActorActionAIState(ctx client.Context, action network.A
 }
 
 func (m *WorldMode) addSkillBeginEffect(ctx client.Context, action network.ActorActionNotify, starts time.Time) {
+	if knightSplashAction(action) {
+		return
+	}
 	m.addSkillBeginEffectsAt(ctx, action.SkillID, action.SourceID, action.TargetID, starts)
 }
 
@@ -704,7 +714,7 @@ func normalAttackProjectileEffectIDForName(name string) (int, bool) {
 }
 
 func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActionNotify, actionAt, hitAt time.Time) {
-	if action.SkillID == 0 {
+	if action.SkillID == 0 || knightSplashAction(action) {
 		return
 	}
 	if action.SkillID == db.SkillASSplasher {
@@ -753,7 +763,7 @@ func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActio
 }
 
 func (m *WorldMode) addSkillBeforeHitEffect(ctx client.Context, action network.ActorActionNotify, starts time.Time) {
-	if action.SkillID == 0 {
+	if action.SkillID == 0 || knightSplashAction(action) {
 		return
 	}
 	effectIDs := skillBeforeHitEffectIDs(action.SkillID)
@@ -762,6 +772,9 @@ func (m *WorldMode) addSkillBeforeHitEffect(ctx client.Context, action network.A
 		return
 	}
 	count := actionVisualHitCount(action)
+	if action.SkillID == db.SkillKNSpearboomerang {
+		count = 1
+	}
 	for i := 0; i < count; i++ {
 		effectStarts := starts.Add(multiHitDelay * time.Duration(i))
 		for _, effectID := range effectIDs {
@@ -794,7 +807,7 @@ func (m *WorldMode) addSkillBeforeHitEffectOnce(ctx client.Context, action netwo
 }
 
 func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorActionNotify, starts time.Time) {
-	if action.SkillID == 0 || action.Damage == 0 {
+	if action.SkillID == 0 || action.Damage == 0 || knightSplashAction(action) {
 		return
 	}
 	effectIDs := skillHitEffectIDs(action.SkillID)
@@ -803,9 +816,17 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 		return
 	}
 	count := actionVisualHitCount(action)
+	switch action.SkillID {
+	case db.SkillKNPierce, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNChargeatk:
+		// The original clears its secondary impact effect after the first hit.
+		count = 1
+	}
 	for i := 0; i < count; i++ {
 		effectStarts := starts.Add(multiHitDelay * time.Duration(i))
 		for _, effectID := range effectIDs {
+			if effectID == effectBowlingBash && i > 0 {
+				continue
+			}
 			if m.addWorldEffectAt(ctx, effectID, action.TargetID, effectStarts) {
 				glog.Debugf("skill hit effect skill=%d src=%d target=%d effect=%d hit=%d/%d", action.SkillID, action.SourceID, action.TargetID, effectID, i+1, count)
 			}
@@ -1382,7 +1403,7 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	if !res.HasPlayerJobToken(int(actor.Job)) {
 		return spriteActionNonPCAttack
 	}
-	if skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits {
+	if skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk {
 		return spriteActionIdle
 	}
 	return spriteActionPCReadyFight

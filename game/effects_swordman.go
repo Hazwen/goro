@@ -23,26 +23,6 @@ func swordmanAlpha(frame, life, rise, fade int, peak float64) uint8 {
 	return uint8(alpha)
 }
 
-func magnumRingMesh(texture *render.Image, center modelPoint3, inner, outer float64, alpha uint8) ([]render.Vertex3D, []uint16) {
-	vertices := make([]render.Vertex3D, 0, 22)
-	indices := make([]uint16, 0, 60)
-	w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
-	tint := color.RGBA{255, 255, 255, alpha}
-	for i := 0; i <= 10; i++ {
-		angle := float64(i) * math.Pi / 5
-		axis := modelPoint3{x: math.Cos(angle), z: math.Sin(angle)}
-		for j, radius := range [2]float64{inner, outer} {
-			point := add3(center, mul3(axis, radius))
-			vertices = append(vertices, texturedSurfaceVertex3D(point, texturePoint{u: float32(i) / 4, v: float32(1 - j)}, tint, w, h))
-		}
-		if i < 10 {
-			base := uint16(i * 2)
-			indices = append(indices, base, base+1, base+2, base+1, base+3, base+2)
-		}
-	}
-	return vertices, indices
-}
-
 func bashFlash(effect worldEffect, index, frame int) (angle, halfAngle, radius float64) {
 	n := float64(frame + 1)
 	speed := float64(10+hitEffectRandom(effect, index*5+1, 60)) / 10
@@ -247,7 +227,7 @@ func (m *WorldMode) drawMagnumBreakEffect(screen *render.Frame, ctx client.Conte
 	}
 	if texture := m.effectFileTexture(ctx.Resources, component.textureFile); texture != nil {
 		radius := magnumRadius(1.75, frame)
-		vertices, indices := magnumRingMesh(texture, effect.actorOrigin, math.Max(0, radius-2.4), radius, alpha)
+		vertices, indices := groundEffectRingMesh(texture, effect.actorOrigin, math.Max(0, radius-2.4), radius, alpha)
 		options := triangleDrawOptions(render.FilterLinear, render.AddressRepeat)
 		options.DepthTest = false
 		// The 2008 client deliberately launches two identical ground rings.

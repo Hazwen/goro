@@ -362,3 +362,23 @@ func drawTexturedEffectBillboardRotatedXYWithOptions(screen *render.Frame, proje
 		ColorA:      float32(tint.A) / 255,
 	})
 }
+
+func groundEffectRingMesh(texture *render.Image, center modelPoint3, inner, outer float64, alpha uint8) ([]render.Vertex3D, []uint16) {
+	vertices := make([]render.Vertex3D, 0, 22)
+	indices := make([]uint16, 0, 60)
+	w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
+	tint := color.RGBA{255, 255, 255, alpha}
+	for i := 0; i <= 10; i++ {
+		angle := float64(i) * math.Pi / 5
+		axis := modelPoint3{x: math.Cos(angle), z: math.Sin(angle)}
+		for j, radius := range [2]float64{inner, outer} {
+			point := add3(center, mul3(axis, radius))
+			vertices = append(vertices, texturedSurfaceVertex3D(point, texturePoint{u: float32(i) / 4, v: float32(1 - j)}, tint, w, h))
+		}
+		if i < 10 {
+			base := uint16(i * 2)
+			indices = append(indices, base, base+1, base+2, base+1, base+3, base+2)
+		}
+	}
+	return vertices, indices
+}

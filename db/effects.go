@@ -97,6 +97,7 @@ const (
 	effectInvenom        = 65
 	effectSkidTrap       = 69
 	effectBrandishSpear  = 70
+	effectBowlingBash    = 73
 	effectIceWall        = 74
 	effectRecovery       = 78
 	effectEarthSpike     = 79
@@ -2762,29 +2763,6 @@ func whitePulseEffectSpec() EffectSpec {
 	return EffectSpec{Duration: 500 * time.Millisecond}
 }
 
-func spearProjectileEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 140 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			SpriteFile:       "창",
-			ToSrc:            true,
-			RotateToTarget:   true,
-			RotateWithCamera: true,
-			Duration:         140 * time.Millisecond,
-			AlphaMax:         1,
-			FadeIn:           true,
-			FadeOut:          true,
-			PosZ:             1,
-			SizeStart:        effectTableSize(100),
-			SizeEnd:          effectTableSize(100),
-			AngleStart:       180,
-			AngleEnd:         180,
-			AttachedEntity:   true,
-		}},
-	}
-}
-
 func shieldProjectileEffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 140 * time.Millisecond,
@@ -4849,7 +4827,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectArrowShotRO:    strEffectSpecAttached("arrowshot", "", false),
 	effectInvenom:        strEffectSpecAttached("invenom", "effect\\thief_invenom.wav", false),
 	effectSkidTrap:       strEffectSpec("skidtrap", "effect\\hunter_skidtrap.wav"),
-	effectBrandishSpear:  strEffectSpec("brandish", "effect\\knight_brandish_spear.wav"),
+	effectBrandishSpear:  strEffectSpecAttached("brandish", "", false),
+	effectBowlingBash:    bowlingBashEffectSpec(),
 	effectCure:           strEffectSpecAttachedMin("cure", "cure_min", "effect\\acolyte_cure.wav", false),
 	effectMvp:            strEffectSpecAttached("mvp", "effect\\st_mvp.wav", false),
 	effectIceWall:        iceWallEffectSpec(),
@@ -4857,8 +4836,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectResurrection:   strEffectSpecAttachedMin("resurrection", "resurrection_min", "effect\\priest_resurrection.wav", false),
 	effectRecovery:       strEffectSpecAttached("recovery", "effect\\priest_recovery.wav", false),
 	effectEarthSpike:     earthSpikeEffectSpec(),
-	effectSpearBoomerang: soundOnlyEffectSpec("effect\\ef_fireball.wav"),
-	effectPierce:         soundOnlyEffectSpec("effect\\ef_bash.wav"),
+	effectSpearBoomerang: spearBoomerangEffectSpec(),
+	effectPierce:         pierceEffectSpec(),
 	effectTurnUndead:     soundOnlyEffectSpec("effect\\ef_bash.wav"),
 	effectSanctuary:      strEffectSpecAttached("sanctuary", "effect\\priest_sanctuary.wav", false),
 	effectImpositio:      strEffectSpecAttached("impositio", "effect\\priest_impositio.wav", false),
@@ -4932,7 +4911,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectPoisonReact2:   strEffectSpecAttached("poisonreact", "effect\\assasin_poisonreact.wav", false),
 	effectOverthrust:     soundOnlyEffectSpec("effect\\black_overthrust.wav"),
 	effectVenomSplasher:  venomSplasherEffectSpec(),
-	effectTwoHandQuicken: strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", true),
+	effectTwoHandQuicken: strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", false),
 	effectAutoCounter:    strEffectSpecAttached("autocounter", "effect\\knight_autocounter.wav", false),
 	effectGrimtoothAtk:   grimtoothEffectSpec(true),
 	effectFreeze:         strEffectSpecAttached("freeze", "", false),
@@ -4944,7 +4923,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectRevive:         soundOnlyEffectSpec("effect\\priest_resurrection.wav"),
 	effectHeavenDrive:    heavenDriveEffectSpec(),
 	effectSonicBlow2:     strEffectSpecAttached("sonicblow", "", false),
-	effectBrandishSpear2: strEffectSpecAttached("brandish2", "effect\\knight_brandish_spear.wav", false),
+	effectBrandishSpear2: strEffectSpecAttached("brandish2", "", false),
 	effectShockwave: {
 		SFX: []string{"effect\\hunter_shockwavetrap.wav"},
 		Components: []EffectComponent{{
@@ -4956,10 +4935,9 @@ var EffectSpecs = map[int]EffectSpec{
 	effectShockwaveHit:     strEffectSpecAttached("shockwavehit", "", false),
 	effectEarthHit:         strEffectSpecAttached("earthhit", "", false),
 	effectPierceSelf:       strEffectSpecAttached("pierce", "", false),
-	effectBowlingSelf:      strEffectSpecAttached("bowling", "_enemy_hit_normal1.wav", true),
-	effectSpearStabSelf:    strEffectSpecAttached("spearstab", "_enemy_hit_normal1.wav", false),
-	effectSpearBmrSelf:     strEffectSpecAttached("spearboomerang", "effect\\knight_spear_boomerang.wav", true),
-	effectSpearProjectile:  spearProjectileEffectSpec(),
+	effectBowlingSelf:      strEffectSpecAttached("bowling", "", false),
+	effectSpearStabSelf:    strEffectSpecAttached("spearstab", "", false),
+	effectSpearBmrSelf:     strEffectSpecAttached("spearboomerang", "", false),
 	effectSpearHitSound:    soundOnlyEffectSpec("_hit_spear.wav"),
 	effectShieldProjectile: shieldProjectileEffectSpec(),
 	effectEnemyHitNormal1:  soundOnlyEffectSpec("_enemy_hit_normal1.wav"),
