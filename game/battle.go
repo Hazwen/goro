@@ -629,6 +629,9 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
+	case db.SkillWZFirepillar, db.SkillWZSightrasher, db.SkillWZMeteor, db.SkillWZJupitel, db.SkillWZVermilion,
+		db.SkillWZWaterball, db.SkillWZFrostnova, db.SkillWZStormgust, db.SkillWZEarthspike, db.SkillWZHeavendrive:
+		return true
 	case db.SkillMGSight, db.SkillMGSoulstrike, db.SkillMGColdbolt, db.SkillMGFrostdiver, db.SkillMGStonecurse,
 		db.SkillMGFireball, db.SkillMGFirewall, db.SkillMGFirebolt, db.SkillMGLightningbolt, db.SkillMGThunderstorm:
 		return true
@@ -854,7 +857,10 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 	}
 	for i := 0; i < count; i++ {
 		effectStarts := starts.Add(multiHitDelay * time.Duration(i))
-		for _, effectID := range effectIDs {
+		for secondary, effectID := range effectIDs {
+			if i > 0 && secondary > 0 && action.SkillID >= db.SkillWZFirepillar && action.SkillID <= db.SkillWZQuagmire {
+				continue
+			}
 			if effectID == effectBowlingBash && i > 0 {
 				continue
 			}

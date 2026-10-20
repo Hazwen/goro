@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 687 {
-		t.Fatalf("implemented effects = %d, want 687", coverage.Implemented)
+	if coverage.Implemented != 688 {
+		t.Fatalf("implemented effects = %d, want 688", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 113.17 || coverage.ActivePercent > 113.19 {
-		t.Fatalf("active coverage = %.3f, want about 113.18", coverage.ActivePercent)
+	if coverage.ActivePercent < 113.33 || coverage.ActivePercent > 113.35 {
+		t.Fatalf("active coverage = %.3f, want about 113.34", coverage.ActivePercent)
 	}
 }
 
@@ -233,75 +233,12 @@ func TestRobrowserWarpZoneAndPoisonHitSpecs(t *testing.T) {
 	}
 }
 
-func TestRobrowserSightTrasherEffectSpec(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectSightTrasher)
-	if !ok || len(spec.components) != 16 || spec.duration != 800*time.Millisecond {
-		t.Fatalf("EF_SIGHTRASHER spec = %+v ok=%t", spec, ok)
-	}
-	if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\wizard_sightrasher.wav" {
-		t.Fatalf("EF_SIGHTRASHER sfx = %v", spec.sfx)
-	}
-	shadow, sight := spec.components[0], spec.components[1]
-	if shadow.kind != effectComponent3D || !shadow.shadowTexture || shadow.spriteFile != "data\\sprite\\shadow" || shadow.duplicate != 4 || shadow.duplicateDelay != 100*time.Millisecond {
-		t.Fatalf("EF_SIGHTRASHER shadow = %+v", shadow)
-	}
-	if shadow.posXEnd != 0 || shadow.posYEnd != -8 || shadow.posZ != 2 || shadow.posZEnd != 2 || shadow.sizeStart != effectTableSize(60) || shadow.sizeEnd != effectTableSize(160) || shadow.sizeDelta != -60 || shadow.blendMode != 8 {
-		t.Fatalf("EF_SIGHTRASHER shadow motion/size = %+v", shadow)
-	}
-	if sight.kind != effectComponent3D || sight.shadowTexture || sight.spriteFile != "sight" || sight.alphaMax != 123.0/255.0 || sight.alphaMaxDelta != 3.0/255.0 || sight.sizeStart != effectTableSize(20) || sight.sizeEnd != effectTableSize(260) {
-		t.Fatalf("EF_SIGHTRASHER sight = %+v", sight)
-	}
-	last := spec.components[len(spec.components)-1]
-	if last.posXEnd != -5.66 || last.posYEnd != -5.66 {
-		t.Fatalf("EF_SIGHTRASHER northwest component = %+v", last)
-	}
-}
-
-func TestRobrowserQuadHornEffectSpecs(t *testing.T) {
-	ice, ok := worldEffectSpecForID(effectIceWall)
-	if !ok || len(ice.components) != 3 || ice.duration != 5*time.Minute {
-		t.Fatalf("EF_ICEWALL spec = %+v ok=%t", ice, ok)
-	}
-	if len(ice.sfx) != 1 || ice.sfx[0] != "effect\\wizard_icewall.wav" {
-		t.Fatalf("EF_ICEWALL sfx = %v", ice.sfx)
-	}
-	firstIce := ice.components[0]
-	if firstIce.kind != effectComponentQuadHorn || firstIce.textureFile != "effect/ice.tga" || firstIce.duration != 5*time.Minute || firstIce.blendMode != 8 || firstIce.blendAdditive || firstIce.animation != 1 || firstIce.quadHornAnimSpeed != 50*time.Millisecond {
-		t.Fatalf("EF_ICEWALL first component = %+v", firstIce)
-	}
-	if firstIce.quadHornHeightMin != 2.8 || firstIce.quadHornHeightMax != 3.3 || firstIce.quadHornOffsetXMin != 0.25 || firstIce.quadHornOffsetXMax != 0.75 || firstIce.quadHornOffsetZ != -0.1 || firstIce.quadHornBottomMin != 0.3 || firstIce.quadHornBottomMax != 0.5 || firstIce.quadHornRotateYMin != 1 || firstIce.quadHornRotateYMax != 360 {
-		t.Fatalf("EF_ICEWALL robr ranges = %+v", firstIce)
-	}
-	if ice.components[2].quadHornHeightMin != 2.5 || ice.components[2].quadHornHeightMax != 2.9 {
-		t.Fatalf("EF_ICEWALL third height range = %+v", ice.components[2])
-	}
-
-	earth, ok := worldEffectSpecForID(effectEarthSpike)
-	if !ok || len(earth.components) != 5 || earth.duration != 5*time.Second || earth.cameraShake != 200*time.Millisecond {
-		t.Fatalf("EF_EARTHSPIKE spec = %+v ok=%t", earth, ok)
-	}
-	if len(earth.sfx) != 1 || earth.sfx[0] != "effect\\wizard_earthspike.wav" {
-		t.Fatalf("EF_EARTHSPIKE sfx = %v", earth.sfx)
-	}
-	main := earth.components[0]
-	if main.kind != effectComponentQuadHorn || main.textureFile != "effect/stone.bmp" || main.duration != 5*time.Second || main.blendMode != 1 || main.animation != 3 || main.quadHornAnimSpeed != 120*time.Millisecond || !main.quadHornAnimOut {
-		t.Fatalf("EF_EARTHSPIKE main = %+v", main)
-	}
-	if main.quadHornHeightMin != 0.95 || main.quadHornHeightMax != 1.5 || main.quadHornRotateZMin != -8 || main.quadHornRotateZMax != 8 {
-		t.Fatalf("EF_EARTHSPIKE main ranges = %+v", main)
-	}
-	last := earth.components[4]
-	if last.quadHornOffsetXMin != 0.5 || last.quadHornOffsetXMax != 0.7 || last.quadHornOffsetYMin != 0 || last.quadHornOffsetYMax != -0.2 || last.quadHornAnimSpeed != 100*time.Millisecond {
-		t.Fatalf("EF_EARTHSPIKE last ranges = %+v", last)
-	}
-}
-
-func TestRobrowserMeteorAndJupitelSpecs(t *testing.T) {
+func TestMeteorSpec(t *testing.T) {
 	meteor, ok := worldEffectSpecForID(effectMeteorStorm)
 	if !ok || len(meteor.components) != 1 {
 		t.Fatalf("EF_METEORSTORM spec = %+v ok=%t", meteor, ok)
 	}
-	if meteor.cameraShakeDelay != 600*time.Millisecond || meteor.cameraShake != 650*time.Millisecond {
+	if meteor.cameraShakeDelay != 40*db.EffectFrameDuration || meteor.cameraShake != 650*time.Millisecond {
 		t.Fatalf("EF_METEORSTORM camera shake = delay %s duration %s", meteor.cameraShakeDelay, meteor.cameraShake)
 	}
 	if len(meteor.sfx) != 1 || meteor.sfx[0] != "effect\\wizard_meteor.wav" {
@@ -312,32 +249,6 @@ func TestRobrowserMeteorAndJupitelSpecs(t *testing.T) {
 		t.Fatalf("EF_METEORSTORM component = %+v", component)
 	}
 
-	jupitel, ok := worldEffectSpecForID(effectJupitelThunder)
-	if !ok || len(jupitel.components) != 2 || jupitel.duration != 200*time.Millisecond {
-		t.Fatalf("EF_YUFITEL spec = %+v ok=%t", jupitel, ok)
-	}
-	if len(jupitel.sfx) != 1 || jupitel.sfx[0] != "effect\\hunter_shockwavetrap.wav" {
-		t.Fatalf("EF_YUFITEL sfx = %v", jupitel.sfx)
-	}
-	center, ball := jupitel.components[0], jupitel.components[1]
-	if center.kind != effectComponent3D || center.textureFile != "effect/thunder_center.bmp" || center.duration != 200*time.Millisecond || center.sizeStart != effectTableSize(35) || !center.toSrc || !center.blendAdditive || !center.overlay || center.alphaMax != 0.66 {
-		t.Fatalf("EF_YUFITEL center = %+v", center)
-	}
-	if ball.kind != effectComponent3D || len(ball.textureFiles) != 6 || ball.textureFiles[0] != "effect/thunder_ball_a.bmp" || ball.textureFiles[5] != "effect/thunder_ball_f.bmp" || ball.frameDelay != 10*time.Millisecond || ball.sizeStart != effectTableSize(45) || !ball.toSrc || !ball.blendAdditive || !ball.overlay {
-		t.Fatalf("EF_YUFITEL ball = %+v", ball)
-	}
-
-	hit, ok := worldEffectSpecForID(effectJupitelHit)
-	if !ok || len(hit.components) != 2 || hit.duration != 300*time.Millisecond {
-		t.Fatalf("EF_YUFITELHIT spec = %+v ok=%t", hit, ok)
-	}
-	pang, blast := hit.components[0], hit.components[1]
-	if pang.kind != effectComponent3D || pang.textureFile != "effect/thunder_pang.bmp" || pang.duration != 100*time.Millisecond || pang.sizeStart != 0 || pang.sizeEnd != effectTableSize(25) || !pang.rotateToTarget || !pang.fadeOut || !pang.overlay || !pang.attachedEntity || !pang.blendAdditive {
-		t.Fatalf("EF_YUFITELHIT pang = %+v", pang)
-	}
-	if blast.kind != effectComponent3D || len(blast.textureFiles) != 5 || blast.textureFiles[0] != "effect/thunder_plazma_blast_a.bmp" || blast.textureFiles[4] != "effect/thunder_ball_f.bmp" || blast.frameDelay != 10*time.Millisecond || blast.duration != 300*time.Millisecond || blast.sizeStart != effectTableSize(75) || !blast.overlay || !blast.attachedEntity || !blast.blendAdditive {
-		t.Fatalf("EF_YUFITELHIT blast = %+v", blast)
-	}
 }
 
 func TestRobrowserActiveEffectsOneHundredToOneFiftyHaveSpecs(t *testing.T) {

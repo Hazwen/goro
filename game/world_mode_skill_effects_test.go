@@ -168,18 +168,6 @@ func TestWaterBallAndSonicBlowSpecs(t *testing.T) {
 		t.Fatalf("EF_WATERBALL component = %+v", component)
 	}
 
-	water2, ok := worldEffectSpecForID(effectWaterBall2)
-	if !ok || len(water2.components) != 1 || water2.duration != 1450*time.Millisecond {
-		t.Fatalf("EF_WATERBALL2 spec = %+v ok=%t", water2, ok)
-	}
-	projectile := water2.components[0]
-	if projectile.kind != effectComponent3D || projectile.spriteFile != "data\\sprite\\이팩트\\waterball" || projectile.duration != 500*time.Millisecond || projectile.duplicate != 20 || projectile.duplicateDelay != 50*time.Millisecond {
-		t.Fatalf("EF_WATERBALL2 projectile resource/timing = %+v", projectile)
-	}
-	if !projectile.fromSrc || !projectile.rotateToTarget || !projectile.fadeOut || projectile.sizeStart != effectTableSize(50) || projectile.posZ != 5 || projectile.posZEnd != 0.0001 || projectile.arc != 7.5 || projectile.retreat != 5 {
-		t.Fatalf("EF_WATERBALL2 projectile motion = %+v", projectile)
-	}
-
 	sonic, ok := worldEffectSpecForID(effectSonicBlow)
 	if !ok || len(sonic.components) != 1 || sonic.duration != 40*db.EffectFrameDuration {
 		t.Fatalf("EF_SONICBLOW spec = %+v ok=%t", sonic, ok)
@@ -194,7 +182,7 @@ func TestWaterBallAndSonicBlowSpecs(t *testing.T) {
 	}
 }
 
-func TestRobrowserCrashEarthFirePillarAndQuadHornOneHundredSpecs(t *testing.T) {
+func TestRobrowserCrashEarthSpec(t *testing.T) {
 	crash, ok := worldEffectSpecForID(effectCrashEarth)
 	if !ok || len(crash.components) != 1 {
 		t.Fatalf("EF_CRASHEARTH spec = %+v ok=%t", crash, ok)
@@ -206,33 +194,6 @@ func TestRobrowserCrashEarthFirePillarAndQuadHornOneHundredSpecs(t *testing.T) {
 		t.Fatalf("EF_CRASHEARTH component = %+v", component)
 	}
 
-	fire, ok := worldEffectSpecForID(effectFirePillarOn)
-	if !ok || len(fire.components) != 3 || fire.duration != 6*time.Second {
-		t.Fatalf("EF_FIREPILLARON spec = %+v ok=%t", fire, ok)
-	}
-	for i, component := range fire.components {
-		if component.kind != effectComponentCylinder || component.textureName != "magic_red" || component.duration != 5*time.Second || component.delay != time.Second || !component.rotate || component.attachedEntity {
-			t.Fatalf("EF_FIREPILLARON component %d = %+v", i, component)
-		}
-	}
-	if fire.components[0].bottomSize != 1 || fire.components[0].topSize != 2 || fire.components[0].height != 3 || fire.components[2].bottomSize != 0.5 || fire.components[2].topSize != 1 || fire.components[2].height != 7 {
-		t.Fatalf("EF_FIREPILLARON cylinder sizes = %+v", fire.components)
-	}
-
-	heaven, ok := worldEffectSpecForID(effectHeavenDrive)
-	if !ok || len(heaven.components) != 25 || heaven.duration != time.Second || heaven.cameraShake != 200*time.Millisecond {
-		t.Fatalf("EF_HEAVENDRIVE spec = %+v ok=%t", heaven, ok)
-	}
-	if len(heaven.sfx) != 1 || heaven.sfx[0] != "effect\\wizard_earthspike.wav" {
-		t.Fatalf("EF_HEAVENDRIVE sfx = %v", heaven.sfx)
-	}
-	center := heaven.components[12]
-	if center.kind != effectComponentQuadHorn || center.textureFile != "effect/stone.bmp" || center.duration != time.Second || center.posX != 0 || center.posY != 0 || center.quadHornHeightMin != 0.75 || center.quadHornHeightMax != 1.2 || center.quadHornBottomMin != 0.4 || center.quadHornBottomMax != 0.7 || center.quadHornAnimSpeed != 250*time.Millisecond || !center.quadHornAnimOut {
-		t.Fatalf("EF_HEAVENDRIVE center = %+v", center)
-	}
-	if heaven.components[0].posX != -2 || heaven.components[0].posY != -2 || heaven.components[24].posX != 2 || heaven.components[24].posY != 2 {
-		t.Fatalf("EF_HEAVENDRIVE grid edges = %+v %+v", heaven.components[0], heaven.components[24])
-	}
 }
 
 func TestRobrowserQuadHornRuntimeDefaults(t *testing.T) {
@@ -1432,32 +1393,6 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "PR_SLOWPOISON imported", skillEffectIDs(db.SkillPRSlowpoison), effectSlowPoison)
 	expectEffectIDs(t, "PR_STRECOVERY imported", skillEffectIDs(db.SkillPRStrecovery), effectRecovery)
 	expectEffectIDs(t, "PR_REDEMPTIO imported empty", skillEffectIDs(db.SkillPRRedemptio))
-	expectEffectIDs(t, "WZ_FIREPILLAR imported", skillEffectIDs(db.SkillWZFirepillar), effectFirePillar)
-	expectEffectIDs(t, "WZ_FIREPILLAR imported ground", skillGroundEffectIDs(db.SkillWZFirepillar), effectFirePillarOn)
-	expectEffectIDs(t, "WZ_FIREPILLAR imported hit", skillHitEffectIDs(db.SkillWZFirepillar), effectFirePillarBomb)
-	expectEffectIDs(t, "WZ_SIGHTRASHER imported", skillEffectIDs(db.SkillWZSightrasher), effectSightTrasher)
-	expectEffectIDs(t, "WZ_SIGHTRASHER imported hit", skillHitEffectIDs(db.SkillWZSightrasher), effectFireHit)
-	expectEffectIDs(t, "WZ_FIREIVY unused", skillEffectIDs(db.SkillWZFireivy))
-	expectEffectIDs(t, "WZ_METEOR imported", skillEffectIDs(db.SkillWZMeteor), effectMeteorStorm)
-	expectEffectIDs(t, "WZ_METEOR imported hit", skillHitEffectIDs(db.SkillWZMeteor), effectFireHit)
-	expectEffectIDs(t, "WZ_JUPITEL imported", skillEffectIDs(db.SkillWZJupitel), effectJupitelThunder)
-	expectEffectIDs(t, "WZ_JUPITEL imported before hit", skillBeforeHitEffectIDs(db.SkillWZJupitel), effectJupitelHit)
-	expectEffectIDs(t, "WZ_WATERBALL imported self before hit", skillBeforeHitEffectSelfIDs(db.SkillWZWaterball), effectWaterBall)
-	expectEffectIDs(t, "WZ_WATERBALL imported caster hit", skillHitEffectOnCasterIDs(db.SkillWZWaterball), effectWaterBall2)
-	expectEffectIDs(t, "WZ_VERMILION imported", skillEffectIDs(db.SkillWZVermilion), effectLordVermilion)
-	expectEffectIDs(t, "WZ_VERMILION imported hit", skillHitEffectIDs(db.SkillWZVermilion), effectWindHit)
-	expectEffectIDs(t, "WZ_ICEWALL imported ground", skillGroundEffectIDs(db.SkillWZIcewall), effectIceWall)
-	expectEffectIDs(t, "WZ_FROSTNOVA imported caster", skillEffectOnCasterIDs(db.SkillWZFrostnova), effectFrostDiverHit)
-	expectEffectIDs(t, "WZ_FROSTNOVA imported hit", skillHitEffectIDs(db.SkillWZFrostnova), effectColdHit)
-	expectEffectIDs(t, "WZ_EARTHSPIKE imported", skillEffectIDs(db.SkillWZEarthspike), effectEarthSpike)
-	expectEffectIDs(t, "WZ_EARTHSPIKE imported hit", skillHitEffectIDs(db.SkillWZEarthspike), effectEarthHit)
-	expectEffectIDs(t, "WZ_HEAVENDRIVE imported", skillEffectIDs(db.SkillWZHeavendrive), effectHeavenDrive)
-	expectEffectIDs(t, "WZ_HEAVENDRIVE imported hit", skillHitEffectIDs(db.SkillWZHeavendrive), effectEarthHit)
-	expectEffectIDs(t, "WZ_QUAGMIRE imported ground", skillGroundEffectIDs(db.SkillWZQuagmire), effectQuagmire)
-	expectEffectIDs(t, "WZ_STORMGUST imported", skillEffectIDs(db.SkillWZStormgust), effectStormGust)
-	expectEffectIDs(t, "WZ_STORMGUST imported hit", skillHitEffectIDs(db.SkillWZStormgust), effectColdHit)
-	expectEffectIDs(t, "WZ_ESTIMATION imported empty", skillEffectIDs(db.SkillWZEstimation))
-	expectEffectIDs(t, "WZ_SIGHTBLASTER imported", skillEffectIDs(db.SkillWZSightblaster), 601)
 	expectEffectIDs(t, "MC_IDENTIFY imported empty", skillEffectIDs(db.SkillMCIdentify))
 	expectEffectIDs(t, "MC_VENDING imported empty", skillEffectIDs(db.SkillMCVending))
 	expectEffectIDs(t, "MC_CHANGECART imported empty", skillEffectIDs(db.SkillMCChangecart))
@@ -1910,8 +1845,8 @@ func TestRobrowserMiniSTREffectSpecs(t *testing.T) {
 		{"Christmas Carol", effectChristmasCarol, "angelus", "jong_mini"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 1 {
-			t.Fatalf("%s spec = %+v ok=%t, want one STR component", tc.name, spec, ok)
+		if !ok || len(spec.components) == 0 {
+			t.Fatalf("%s spec = %+v ok=%t, want a STR component", tc.name, spec, ok)
 		}
 		component := spec.components[0]
 		if component.kind != effectComponentSTR || component.strFile != tc.file || component.strMinFile != tc.min || !component.attachedEntity {

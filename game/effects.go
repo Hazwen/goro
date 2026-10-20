@@ -47,6 +47,7 @@ const (
 	effectMammonite      = 10
 	effectCartRevolution = 170
 	effectSight          = 22
+	effectSightBlaster   = 601
 	effectSoulStrike     = 15
 	effectGlassWall      = 13
 	effectHealSP         = 14
@@ -1211,7 +1212,8 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
 	switch notify.SkillID {
-	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillMGFirewall, db.SkillPRSanctuary, db.SkillHPBasilica:
+	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillMGFirewall, db.SkillPRSanctuary, db.SkillHPBasilica,
+		db.SkillWZFirepillar, db.SkillWZIcewall, db.SkillWZQuagmire:
 		now := time.Now()
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
@@ -1242,10 +1244,25 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 		return
 	}
 	now := time.Now()
-	if notify.SkillID == db.SkillPRMagnus || notify.SkillID == db.SkillPRBenedictio || notify.SkillID == db.SkillMGThunderstorm {
-		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
-		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
-			m.startSkillActionAnimation(ctx, notify.SourceID, actor, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
+	switch notify.SkillID {
+	case db.SkillPRMagnus, db.SkillPRBenedictio, db.SkillMGThunderstorm,
+		db.SkillWZStormgust, db.SkillWZVermilion, db.SkillWZMeteor, db.SkillWZHeavendrive:
+		if notify.SkillID != db.SkillWZMeteor {
+			m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
+		}
+		// Falling meteors must not interrupt a walk begun after casting.
+		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok &&
+			(notify.SkillID != db.SkillWZMeteor || !actorIsMovingAt(actor, now)) {
+			spec := skillAction(notify.SkillID)
+			if notify.SkillID == db.SkillWZMeteor {
+				// Each meteor holds the release pose instead of turning toward its impact.
+				spec = skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true}
+				actor.Dir = 0
+				if action, ok := m.actorResolvedAction(ctx, actor, spriteActionPCSkill); ok {
+					spec.frame = max(0, len(action.Animations)-1)
+				}
+			}
+			m.startSkillActionAnimation(ctx, notify.SourceID, actor, spec, now, defaultAttackAnimationDuration)
 		}
 		for _, effectID := range effectIDs {
 			m.addWorldEffectAtCellLifetime(ctx, effectID, 0, int(notify.X), int(notify.Y), now, 0, false)
@@ -1607,8 +1624,15 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectSpearBoomerang {
 		initSpearBoomerang(ctx, &effect)
 	}
-	if effectID == effectFrostDiver || effectID == effectFireBall || effectID == effectSoulStrike {
+	if effectID == effectFrostDiver || effectID == effectFireBall || effectID == effectSoulStrike ||
+		effectID == effectJupitelThunder || effectID == effectWaterBall2 {
 		initMageProjectile(ctx, &effect)
+	}
+	if effectID == effectSightTrasher {
+		m.removeWorldEffect(effectSight, actorID)
+		if isLocalActor(ctx, actorID) {
+			m.removeWorldEffect(effectSight, localSkillTarget(ctx))
+		}
 	}
 	if effectID == effectStin || effectID == effectStin3 || effectID == effectStin2 {
 		initSoulLinkerProjectile(ctx, &effect)
@@ -1749,6 +1773,10 @@ func (m *WorldMode) scheduleWorldEffectSound(starts time.Time, spec worldEffectS
 	if len(spec.sfx) == 0 {
 		return
 	}
+	// Quagmire has one effect per cell; the original only sounds one in twelve.
+	if effect.effectID == effectQuagmire && hitEffectRandom(effect, 0, 12) != 0 {
+		return
+	}
 	paths := resolveEffectSFX(spec, effect)
 	for i, path := range paths {
 		delay := time.Duration(0)
@@ -1844,6 +1872,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 	}
 	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
 		skillID == db.SkillALLResurrection || (skillID >= db.SkillMGSrecovery && skillID <= db.SkillMGThunderstorm) || skillID == db.SkillMGEnergycoat ||
+		(skillID >= db.SkillWZFirepillar && skillID <= db.SkillWZQuagmire) || skillID == db.SkillWZSightblaster ||
 		(skillID >= db.SkillPRImpositio && skillID <= db.SkillPRMagnus && skillID != db.SkillPRSlowpoison) ||
 		skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion {
 		effectID = effectBeginSpell
@@ -2324,6 +2353,7 @@ var skillUnitEffectSpecs = map[uint16]skillUnitEffectSpec{
 	132: {effectIDs: []int{effectBottomMagnus}},           // UNT_MAGNUS -> EF_BOTTOM_MAG
 	133: {effectIDs: []int{effectPneuma}},                 // UNT_PNEUMA -> EF_PNEUMA
 	135: {effectIDs: []int{effectFirePillarOn}},           // UNT_FIREPILLAR_WAITING -> EF_FIREPILLARON
+	136: {effectIDs: []int{effectFirePillarBomb}},         // UNT_FIREPILLAR_ACTIVE -> EF_FIREPILLARBOMB
 	141: {effectIDs: []int{effectIceWall}},                // UNT_ICEWALL -> EF_ICEWALL
 	142: {effectIDs: []int{effectQuagmire}},               // UNT_QUAGMIRE -> EF_QUAGMIRE
 	146: {effectIDs: []int{effectVenomDust2}},             // UNT_VENOMDUST -> EF_VENOMDUST2
@@ -2629,6 +2659,16 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "WizardSpikes":
+		return effectFuncWizardSpikes
+	case "WaterBall":
+		return effectFuncWaterBall
+	case "Jupitel":
+		return effectFuncJupitel
+	case "SightTrasher":
+		return effectFuncSightTrasher
+	case "FirePillar":
+		return effectFuncFirePillar
 	case "MageProjectile":
 		return effectFuncMageProjectile
 	case "FrostDiverHit":

@@ -73,6 +73,11 @@ const (
 	effectFuncFrostDiverHit
 	effectFuncMageBolt
 	effectFuncSight
+	effectFuncWizardSpikes
+	effectFuncWaterBall
+	effectFuncJupitel
+	effectFuncSightTrasher
+	effectFuncFirePillar
 )
 
 const (
@@ -82,6 +87,16 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncWizardSpikes:
+		m.drawWizardSpikes(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
+	case effectFuncWaterBall:
+		m.drawWizardWaterBall(screen, ctx, projection, component, effect, now)
+	case effectFuncJupitel:
+		m.drawJupitel(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
+	case effectFuncSightTrasher:
+		m.drawSightTrasher(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
+	case effectFuncFirePillar:
+		m.drawFirePillar(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncMageProjectile:
 		m.drawMageProjectile(screen, ctx, projection, component, effect, now)
 	case effectFuncFrostDiverHit:

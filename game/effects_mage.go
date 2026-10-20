@@ -133,6 +133,9 @@ func soulStrikePosition(effect worldEffect, tick int, roll float64) modelPoint3 
 }
 
 func (m *WorldMode) drawMageSprite(screen *render.Frame, ctx client.Context, projection sceneProjection, file string, position modelPoint3, motion int, scale, angle float64, tint color.RGBA) {
+	if tint.A == 0 || scale <= 0 {
+		return
+	}
 	view := m.effectSpriteView(ctx.Resources, file)
 	if view == nil || len(view.act.Actions) == 0 || len(view.act.Actions[0].Animations) == 0 {
 		return
@@ -201,32 +204,12 @@ func (m *WorldMode) drawFrostDiverSpikes(screen *render.Frame, ctx client.Contex
 		center.x += radius * math.Sin(placement) / 5
 		center.z -= radius * math.Cos(placement) / 5
 		center.y -= 6
-		rotate := func(p modelPoint3) modelPoint3 {
-			p = rotateModelPointY(rotateModelPointX(p, degreesToRadians(pitch)), yaw)
-			p.y = -p.y // Native coordinates point down.
-			return mul3(p, .2)
-		}
 		n := float64(min(age+1, 21))
-		center = add3(center, rotate(modelPoint3{z: 3*n - .15*n*(n+1)/2}))
 		if age >= 30 {
 			alpha = uint8(float64(alpha) * float64(39-age) / 10)
 		}
-		tint := color.RGBA{255, 255, 255, alpha}
-		base := [4]modelPoint3{{x: -size, y: -size}, {x: -size, y: size}, {x: size, y: size}, {x: size, y: -size}}
-		w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
-		for side, pair := range [4][2]int{{0, 3}, {0, 1}, {1, 2}, {2, 3}} {
-			start := uint16(len(vertices))
-			for j, p := range [3]modelPoint3{base[pair[0]], {z: height}, base[pair[1]]} {
-				uv := texturePoint{u: float32(side) * .2, v: 1}
-				if j == 1 {
-					uv.v = 0
-				} else if j == 2 {
-					uv.u += .2
-				}
-				vertices = append(vertices, texturedSurfaceVertex3D(add3(center, rotate(p)), uv, tint, w, h))
-				indices = append(indices, start+uint16(j))
-			}
-		}
+		appendEffectSpike(&vertices, &indices, texture, center, size, height, degreesToRadians(pitch), yaw,
+			3*n-.15*n*(n+1)/2, color.RGBA{255, 255, 255, alpha})
 	}
 	if len(indices) > 0 {
 		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(false, false))
@@ -340,7 +323,10 @@ func (m *WorldMode) drawSightEffect(screen *render.Frame, ctx client.Context, pr
 		angle := degreesToRadians(float64(birth) * -5)
 		p := add3(origin, modelPoint3{x: 3 * math.Sin(angle), z: -3 * math.Cos(angle)})
 		size, alpha, motion := 2.5-.1*n, 150-3*n, age/3+1
-		p.y += (20 - .1*n*(n+1)/2) / 5
+		if effect.effectID == effectSightBlaster {
+			alpha = max(0, 50-3*n)
+		}
+		p.y += 4
 		if component.shadowTexture {
 			size, alpha, motion = 1.5-.06*n, 120-n, age/2+1
 			p.y = terrainHeightAtRenderPoint(ctx.World, p.x, p.z) + actorShadowTerrainLift

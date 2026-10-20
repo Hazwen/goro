@@ -1,11 +1,35 @@
 package game
 
 import (
+	"image/color"
 	"time"
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/render"
 )
+
+// PP_3DQUADHORN uses a square base and four consecutive texture strips.
+// Sizes and travel are native units; origin is already in world coordinates.
+func appendEffectSpike(vertices *[]render.Vertex3D, indices *[]uint16, texture *render.Image, origin modelPoint3, size, height, pitch, yaw, travel float64, tint color.RGBA) {
+	base := [4]modelPoint3{{x: -size, y: -size}, {x: -size, y: size}, {x: size, y: size}, {x: size, y: -size}}
+	w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
+	for side, pair := range [4][2]int{{0, 3}, {0, 1}, {1, 2}, {2, 3}} {
+		start := uint16(len(*vertices))
+		for j, p := range [3]modelPoint3{base[pair[0]], {z: height}, base[pair[1]]} {
+			p.z += travel
+			p = rotateModelPointY(rotateModelPointX(p, pitch), yaw)
+			p.y = -p.y
+			uv := texturePoint{u: float32(side) * .2, v: 1}
+			if j == 1 {
+				uv.v = 0
+			} else if j == 2 {
+				uv.u += .2
+			}
+			*vertices = append(*vertices, texturedSurfaceVertex3D(add3(origin, mul3(p, .2)), uv, tint, w, h))
+			*indices = append(*indices, start+uint16(j))
+		}
+	}
+}
 
 var quadHornUVs = []texturePoint{
 	{u: 0.0, v: 0}, {u: 0.0, v: 1}, {u: 0.2, v: 1},

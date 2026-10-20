@@ -201,7 +201,7 @@ func TestWizardSkillUnitEntrySchedulesCellSound(t *testing.T) {
 		path   string
 	}{
 		{name: "ice wall", unitID: 141, path: "effect\\wizard_icewall.wav"},
-		{name: "quagmire", unitID: 142, path: "effect\\wizard_quagmire.wav"},
+		{name: "fire pillar", unitID: 136, path: "effect\\wizard_fire_pillar_b.wav"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			world := worldstate.New()
@@ -229,14 +229,14 @@ func TestWizardSkillUnitEntrySchedulesCellSound(t *testing.T) {
 	}
 }
 
-func TestStormGustSkillNotifySchedulesSound(t *testing.T) {
+func TestStormGustGroundNotifySchedulesSound(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	world.Actors[1100] = worldstate.Actor{ID: 1100, X: 12, Y: 34}
 	mode := &WorldMode{}
 	ctx := client.Context{Session: &session.Session{AccountID: 2000000}, World: world}
 
-	mode.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: db.SkillWZStormgust, TargetID: 1100, SourceID: 2000000, Result: 1})
+	mode.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillWZStormgust, SourceID: 2000000, X: 12, Y: 34})
 
 	if len(mode.scheduledSounds) != 1 {
 		t.Fatalf("scheduled sounds = %+v, want one", mode.scheduledSounds)

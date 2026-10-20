@@ -218,6 +218,33 @@ func TestMageSpriteSequencesAndSightLifetime(t *testing.T) {
 	}
 }
 
+func TestSightFlamesStayAtOrbitHeight(t *testing.T) {
+	ctx := knightEffectContext()
+	view := effectRenderTestSprite()
+	view.billboards[singleSpriteBillboardKey{}].anchorY = 4
+	m := &WorldMode{effectViews: map[string]*spriteView{"sight": view}}
+	start := time.Unix(100, 0)
+	projection := newSceneProjectionForTarget(800, 600, 20, 20, 0)
+	for _, id := range []int{effectSight, effectSightBlaster} {
+		spec, _ := worldEffectSpecForID(id)
+		for _, tick := range []int{0, 12, 60, 600} {
+			frame := render.NewFrame(800, 600)
+			m.drawSightEffect(frame, ctx, projection, spec.components[0],
+				worldEffect{effectID: id, starts: start}, modelPoint3{y: 2}, start.Add(time.Duration(tick)*db.EffectFrameDuration))
+			cmds := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
+			if cmds.Len() == 0 {
+				t.Fatalf("effect %d tick %d: no flames", id, tick)
+			}
+			for i := 0; i < cmds.Len(); i++ {
+				y := cmds.Index(i).FieldByName("Center").Index(1).Float()
+				if math.Abs(y-6) > 1e-5 {
+					t.Fatalf("effect %d tick %d: flame height=%g, want 6", id, tick, y)
+				}
+			}
+		}
+	}
+}
+
 func TestMageSoulStrikeFlight(t *testing.T) {
 	effect := worldEffect{actorOrigin: modelPoint3{x: 10}, projectileDirection: modelPoint3{x: 20}}
 	a, b := soulStrikePosition(effect, 1, 90), soulStrikePosition(effect, 20, 90)
