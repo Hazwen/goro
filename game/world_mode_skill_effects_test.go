@@ -528,13 +528,13 @@ func TestWorldEffectSpecLookupReturnsCopy(t *testing.T) {
 		t.Fatal("bash begin effect spec missing")
 	}
 	spec.sfx[0] = "mutated.wav"
-	spec.components[0].textureName = "mutated"
+	spec.components[0].textureFiles[0] = "mutated"
 
 	again, ok := worldEffectSpecForID(effectBashBegin)
 	if !ok {
 		t.Fatal("bash begin effect spec missing after mutation")
 	}
-	if again.sfx[0] != "effect\\ef_bash.wav" || again.components[0].textureName != "alpha_down" {
+	if again.sfx[0] != "effect\\ef_bash.wav" || again.components[0].textureFiles[0] != "effect/alpha_center.tga" {
 		t.Fatalf("catalog mutated: %+v", again)
 	}
 }
@@ -576,9 +576,10 @@ func TestSwordmanSkillEffectMappings(t *testing.T) {
 	expectEffectIDs(t, "SM_BASH begin", skillBeginEffectIDs(5), effectBashBegin)
 	expectEffectIDs(t, "SM_BASH hit", skillHitEffectIDs(5), effectBashHit)
 	expectEffectIDs(t, "SM_PROVOKE success", skillSuccessEffectIDs(6), effectProvoke)
-	expectEffectIDs(t, "SM_MAGNUM target", skillEffectIDs(7), effectQuakeMagnum)
-	expectEffectIDs(t, "SM_MAGNUM caster", skillEffectOnCasterIDs(7), effectMagnumBreak)
-	expectEffectIDs(t, "SM_ENDURE", skillEffectIDs(8), effectEndure)
+	expectEffectIDs(t, "SM_MAGNUM damage", skillEffectIDs(7))
+	expectEffectIDs(t, "SM_MAGNUM caster damage", skillEffectOnCasterIDs(7))
+	expectEffectIDs(t, "SM_MAGNUM success", skillSuccessEffectSelfIDs(7), effectMagnumBreak, effectQuakeMagnum)
+	expectEffectIDs(t, "SM_ENDURE", skillSuccessEffectSelfIDs(8), effectEndure)
 }
 
 func TestNoviceSkillEffectMappings(t *testing.T) {
@@ -742,56 +743,6 @@ func TestCylinderAnimationThreeScalesRadiusAndPulsesHeightLikeRobrowser(t *testi
 		if math.Abs(gotBottom-tc.wantBottom) > 0.000001 || math.Abs(gotTop-tc.wantTop) > 0.000001 || math.Abs(gotHeight-tc.wantHeight) > 0.000001 {
 			t.Fatalf("progress %.2f dimensions = %.6f %.6f %.6f, want %.6f %.6f %.6f", tc.progress, gotBottom, gotTop, gotHeight, tc.wantBottom, tc.wantTop, tc.wantHeight)
 		}
-	}
-}
-
-func TestBashHitEffectSpecMatchesRobrowserLensCircle(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectBashHit)
-	if !ok {
-		t.Fatal("bash hit effect missing")
-	}
-	if spec.duration != 350*time.Millisecond {
-		t.Fatalf("duration = %s, want 350ms", spec.duration)
-	}
-	if len(spec.components) != 8 {
-		t.Fatalf("components = %d, want 8 reference client lens slashes", len(spec.components))
-	}
-	for i, component := range spec.components {
-		if component.kind != effectComponent2D {
-			t.Fatalf("component %d kind = %d, want 2D", i, component.kind)
-		}
-		wantTexture := "effect/lens1.tga"
-		if i%2 == 1 {
-			wantTexture = "effect/lens2.tga"
-		}
-		if component.textureFile != wantTexture || component.duration != 250*time.Millisecond || !component.fadeOut || !component.overlay {
-			t.Fatalf("component %d = %+v", i, component)
-		}
-		if component.durationRandMin != 200*time.Millisecond || component.durationRandMax != 350*time.Millisecond {
-			t.Fatalf("component %d duration rand = %s..%s", i, component.durationRandMin, component.durationRandMax)
-		}
-		if component.sizeStartXRandMin != 25*effectPixelRatio || component.sizeStartXRandMax != 40*effectPixelRatio {
-			t.Fatalf("component %d start x range = %.3f..%.3f", i, component.sizeStartXRandMin, component.sizeStartXRandMax)
-		}
-		if component.sizeStartY != 10*effectPixelRatio || component.sizeEndX != 1*effectPixelRatio {
-			t.Fatalf("component %d fixed axis sizes = %.3f %.3f", i, component.sizeStartY, component.sizeEndX)
-		}
-		if component.sizeEndYRandMin != 250*effectPixelRatio || component.sizeEndYRandMax != 300*effectPixelRatio {
-			t.Fatalf("component %d end y range = %.3f..%.3f", i, component.sizeEndYRandMin, component.sizeEndYRandMax)
-		}
-		if !component.circlePattern || component.circleInnerSize != 2.2 || component.circleOuterRandMin != 5 || component.circleOuterRandMax != 6 {
-			t.Fatalf("component %d circle pattern = %+v", i, component)
-		}
-		if component.angleRandMax <= component.angleRandMin {
-			t.Fatalf("component %d angle range = %.1f..%.1f", i, component.angleRandMin, component.angleRandMax)
-		}
-	}
-	mode := &WorldMode{}
-	effect := worldEffect{effectID: effectBashHit, actorID: 300, starts: time.Unix(10, 20)}
-	startX, startY, _ := mode.effect3DOffset(client.Context{}, spec.components[0], effect, 0, 0, 0, 0, 0, 0)
-	endX, endY, _ := mode.effect3DOffset(client.Context{}, spec.components[0], effect, 0, 0, 1, 0, 0, 0)
-	if math.Hypot(endX, endY) <= math.Hypot(startX, startY) {
-		t.Fatalf("circle pattern does not move outward: start=(%.2f,%.2f) end=(%.2f,%.2f)", startX, startY, endX, endY)
 	}
 }
 
@@ -2610,30 +2561,6 @@ func TestSkillUnitEffectMappings(t *testing.T) {
 	expectEffectIDs(t, "UNT_NETHERWORLD", skillUnitEffectIDs(222), effectBotReverb2)
 }
 
-func TestMagnumBreakEffectSpecUsesWorldCylinders(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectMagnumBreak)
-	if !ok {
-		t.Fatal("magnum break effect spec missing")
-	}
-	if spec.cameraShake != 0 {
-		t.Fatalf("camera shake = %s, want none; quake_magnum carries shake", spec.cameraShake)
-	}
-	if len(spec.components) != 2 {
-		t.Fatalf("components = %d, want 2", len(spec.components))
-	}
-	for i, component := range spec.components {
-		if component.kind != effectComponentCylinder {
-			t.Fatalf("component %d kind = %d, want cylinder", i, component.kind)
-		}
-		if component.fixedPerspective {
-			t.Fatalf("component %d is fixed perspective, want world-space cylinder", i)
-		}
-		if component.animation != 4 || component.height <= 0 {
-			t.Fatalf("component %d = %+v, want animation 4 with height", i, component)
-		}
-	}
-}
-
 func TestQuakeMagnumEffectStartsCameraShake(t *testing.T) {
 	spec, ok := worldEffectSpecForID(effectQuakeMagnum)
 	if !ok {
@@ -2713,26 +2640,6 @@ func TestBerserkPotionEffectStartsDelayedCameraShake(t *testing.T) {
 	}
 	if x, y := mode.cameraShakeOffset(starts.Add(250 * time.Millisecond)); x == 0 && y == 0 {
 		t.Fatalf("active camera shake offset = %.3f, %.3f, want non-zero", x, y)
-	}
-}
-
-func TestEndureEffectSpecMatchesRobrowser3DTexture(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectEndure)
-	if !ok {
-		t.Fatal("endure effect spec missing")
-	}
-	if len(spec.components) != 1 {
-		t.Fatalf("components = %d, want 1", len(spec.components))
-	}
-	component := spec.components[0]
-	if component.kind != effectComponent3D || component.textureFile != "effect/endure.tga" || component.duration != time.Second {
-		t.Fatalf("component = %+v", component)
-	}
-	if !component.fadeIn || !component.fadeOut || !component.sizeSmooth {
-		t.Fatalf("component fade/size flags = %+v", component)
-	}
-	if component.posZ != 2 || component.sizeStart != 200*effectPixelRatio || component.sizeEnd != 70*effectPixelRatio {
-		t.Fatalf("component position/size = %+v", component)
 	}
 }
 

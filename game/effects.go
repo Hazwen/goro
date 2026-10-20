@@ -1501,7 +1501,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectBackStab {
 		initBackStabEffect(ctx, &effect)
 	}
-	if effectID == effectRogueCoin || effectID == effectIntimidate || effectID == effectTeiHit3 {
+	if effectID == effectRogueCoin || effectID == effectIntimidate || effectID == effectTeiHit3 || effectID == effectMagnumBreak {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -2514,6 +2514,14 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "BashHit":
+		return effectFuncBashHit
+	case "Bash":
+		return effectFuncBash
+	case "Endure":
+		return effectFuncEndure
+	case "MagnumBreak":
+		return effectFuncMagnumBreak
 	case "MagicTarget":
 		return effectFuncGroundSample
 	case "CastRing":

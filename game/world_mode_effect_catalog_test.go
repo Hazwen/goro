@@ -11,34 +11,6 @@ import (
 	"github.com/kivutar/goro/db"
 )
 
-func TestBashBeginEffectSpecUsesCylinderComponents(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectBashBegin)
-	if !ok {
-		t.Fatal("bash begin effect spec missing")
-	}
-	if spec.duration != time.Second {
-		t.Fatalf("duration = %s, want 1s", spec.duration)
-	}
-	if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\ef_bash.wav" {
-		t.Fatalf("sfx = %#v", spec.sfx)
-	}
-	if len(spec.components) != 3 {
-		t.Fatalf("components = %d, want 3", len(spec.components))
-	}
-	first := spec.components[0]
-	if first.kind != effectComponentCylinder || first.textureName != "alpha_down" || first.circleSides != 20 || first.totalCircleSides != 20 {
-		t.Fatalf("first component = %+v", first)
-	}
-	second := spec.components[1]
-	if second.kind != effectComponentCylinder || second.textureName != "alpha_center" || second.duplicate != 10 || second.circleSides != 1 || second.totalCircleSides != 30 {
-		t.Fatalf("second component = %+v", second)
-	}
-	third := spec.components[2]
-	if third.kind != effectComponentCylinder || third.textureName != "alpha_center" || third.duplicate != 8 || third.topSize != 4.0 {
-		t.Fatalf("third component = %+v", third)
-	}
-}
-
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
 	if coverage.Implemented != 683 {

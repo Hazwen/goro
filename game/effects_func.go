@@ -45,6 +45,10 @@ const (
 	effectFuncPoisonParticles
 	effectFuncRogueBurst
 	effectFuncBackStab
+	effectFuncBash
+	effectFuncBashHit
+	effectFuncEndure
+	effectFuncMagnumBreak
 )
 
 const (
@@ -54,6 +58,14 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncBashHit:
+		m.drawBashHitEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncBash:
+		m.drawBashEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncEndure:
+		m.drawEndureEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncMagnumBreak:
+		m.drawMagnumBreakEffect(screen, ctx, component, effect, now)
 	case effectFuncRogueBurst:
 		m.drawRogueBurst(screen, ctx, component, effect, now)
 	case effectFuncBackStab:

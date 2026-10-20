@@ -3823,8 +3823,8 @@ const (
 var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillSMBash:                     {HitEffectIDs: []int{1}, BeginCastEffectIDs: []int{16}},
 	SkillSMProvoke:                  {SuccessEffectIDs: []int{67}},
-	SkillSMMagnum:                   {EffectIDs: []int{SkillEffectQuakeMagnum}, EffectIDsOnCaster: []int{17}},
-	SkillSMEndure:                   {EffectIDs: []int{11}},
+	SkillSMMagnum:                   {SuccessEffectIDsSelf: []int{effectMagnumBreak, SkillEffectQuakeMagnum}},
+	SkillSMEndure:                   {SuccessEffectIDsSelf: []int{effectEndure}},
 	SkillMGNapalmbeat:               {HitEffectIDs: []int{1}},
 	SkillMGSoulstrike:               {HitEffectIDs: []int{1}, BeforeHitEffectIDs: []int{15}},
 	SkillMGColdbolt:                 {HitEffectIDs: []int{51}, BeforeHitEffectIDs: []int{SkillEffectColdBolt}},
