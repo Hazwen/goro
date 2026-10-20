@@ -2042,9 +2042,9 @@ func TestArcherThiefMerchantSkillEffectMappings(t *testing.T) {
 	expectEffectIDs(t, "TF_MISS passive", skillEffectIDs(49))
 	expectEffectIDs(t, "TF_STEAL success", skillSuccessEffectIDs(50), effectSteal)
 	expectEffectIDs(t, "TF_HIDING", skillEffectIDs(51))
-	expectEffectIDs(t, "TF_POISON hit", skillHitEffectIDs(52), effectPoisonAttack)
+	expectEffectIDs(t, "TF_POISON hit", skillHitEffectIDs(52), effectBashHit)
 	expectEffectIDs(t, "TF_DETOXIFY", skillEffectIDs(53), effectDetoxication)
-	expectEffectIDs(t, "TF_SPRINKLESAND", skillEffectIDs(149), effectSprinkleSand)
+	expectEffectIDs(t, "TF_SPRINKLESAND before-hit", skillBeforeHitEffectIDs(149), effectSprinkleSand)
 	expectEffectIDs(t, "TF_BACKSLIDING", skillEffectIDs(150))
 	expectEffectIDs(t, "TF_PICKSTONE", skillEffectIDs(151))
 	if !skillHidesCastAura(db.SkillTFPickstone) {
@@ -2056,20 +2056,6 @@ func TestArcherThiefMerchantSkillEffectMappings(t *testing.T) {
 	expectEffectIDs(t, "MC_CARTREVOLUTION hit", skillHitEffectIDs(153), effectCartRevolution)
 	expectEffectIDs(t, "MC_LOUD", skillEffectIDs(155), effectLoud)
 	expectEffectIDs(t, "AL_HOLYLIGHT", skillHitEffectIDs(156), effectHit1, effectHolyLight)
-}
-
-func TestThiefThrowStoneEffectFollowsRoBrowserTable(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectThrowItem3)
-	if !ok || len(spec.components) != 1 {
-		t.Fatalf("throw stone spec = %#v ok=%t, want one component", spec, ok)
-	}
-	component := spec.components[0]
-	if component.kind != effectComponent3D || component.textureFile != "유저인터페이스/item/돌.bmp" {
-		t.Fatalf("throw stone component = %#v, want stone texture 3D component", component)
-	}
-	if !component.toSrc || !component.rotateToTarget || !component.rotateWithCamera || !component.rotate || component.posZ != 1 {
-		t.Fatalf("throw stone trajectory flags = %#v", component)
-	}
 }
 
 func TestArcherProjectileEffectsFollowRoBrowserTable(t *testing.T) {

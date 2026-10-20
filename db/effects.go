@@ -1048,7 +1048,7 @@ func banjjakiiEffectSpec() EffectSpec {
 }
 
 func poisonParticlesEffectSpec(enchant bool) EffectSpec {
-	spec := funcEffectSpec("PoisonParticles", 10*EffectFrameDuration, false)
+	spec := funcEffectSpec("RisingParticles", 10*EffectFrameDuration, false)
 	spec.Components[0].SpriteFile = "particle3"
 	if enchant {
 		spec.Duration = 250 * EffectFrameDuration
@@ -1058,9 +1058,9 @@ func poisonParticlesEffectSpec(enchant bool) EffectSpec {
 	return spec
 }
 
-func venomKnifeEffectSpec() EffectSpec {
-	spec := funcEffectSpec("VenomKnife", 200*EffectFrameDuration, false)
-	spec.Components[0].TextureFile = "유저인터페이스/item/베넘나이프.bmp"
+func throwItemFlightEffectSpec(texture string) EffectSpec {
+	spec := funcEffectSpec("ThrowItem", 200*EffectFrameDuration, false)
+	spec.Components[0].TextureFile = texture
 	return spec
 }
 
@@ -3565,45 +3565,9 @@ var EffectSpecs = map[int]EffectSpec{
 		Duration:    50 * time.Millisecond,
 		CameraShake: 50 * time.Millisecond,
 	},
-	effectSteal: {
-		Duration: 500 * time.Millisecond,
-		SFX:      []string{"effect\\ef_steal.wav"},
-		Components: []EffectComponent{{
-			Kind:          EffectComponent3D,
-			Color:         color.RGBA{R: 255, G: 255, B: 216, A: 255},
-			TextureFile:   "effect/pok1.tga",
-			Duration:      500 * time.Millisecond,
-			AlphaMax:      1,
-			FadeOut:       true,
-			PosXEndRand:   3.5,
-			PosYEndRand:   3.5,
-			PosZEndRand:   1,
-			PosZEndMiddle: 3,
-			SizeStart:     200 * EffectPixelRatio,
-			SizeEnd:       10 * EffectPixelRatio,
-			Duplicate:     7,
-		}},
-	},
-	effectThrowItem3: {
-		Duration: 200 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			TextureFile:      "유저인터페이스/item/돌.bmp",
-			Duration:         200 * time.Millisecond,
-			AlphaMax:         1,
-			FadeIn:           true,
-			FadeOut:          true,
-			ToSrc:            true,
-			RotateToTarget:   true,
-			RotateWithCamera: true,
-			Rotate:           true,
-			AngleStart:       180,
-			AngleEnd:         360,
-			PosZ:             1,
-			SizeStart:        effectTableSize(20),
-			SizeEnd:          effectTableSize(20),
-		}},
-	},
+	effectSteal:        stealEffectSpec(),
+	effectThrowItem3:   throwItemFlightEffectSpec("유저인터페이스/item/돌.bmp"),
+	effectSprinkleSand: sprinkleSandEffectSpec(),
 	effectSummonSlave: {
 		Components: []EffectComponent{{
 			Kind:           EffectComponentSPR,
@@ -3632,27 +3596,7 @@ var EffectSpecs = map[int]EffectSpec{
 			DuplicateDelay: 200 * time.Millisecond,
 		}},
 	},
-	effectDetoxication: {
-		Duration: 2800 * time.Millisecond,
-		SFX:      []string{"effect\\ef_detoxication.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			Color:          color.RGBA{R: 178, G: 255, B: 255, A: 255},
-			TextureFile:    "effect/pok1.tga",
-			Duration:       1000 * time.Millisecond,
-			AlphaMax:       1,
-			FadeIn:         true,
-			FadeOut:        true,
-			PosXRand:       1,
-			PosYRand:       1,
-			PosZEnd:        5,
-			SizeStart:      100 * EffectPixelRatio,
-			SizeEnd:        100 * EffectPixelRatio,
-			SizeRand:       20 * EffectPixelRatio,
-			Duplicate:      10,
-			DuplicateDelay: 200 * time.Millisecond,
-		}},
-	},
+	effectDetoxication:  detoxicationEffectSpec(),
 	effectStoneCurse:    strEffectSpecAttached("stonecurse", "", false),
 	effectIceArrow:      mageBoltEffectSpec(false),
 	effectColdBolt:      mageBoltEffectSpec(false),
@@ -4378,7 +4322,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectStatFoodAGI:       strEffectSpecAttached("food_agi", "_heal_effect.wav", false),
 	effectStatFoodDEX:       strEffectSpecAttached("food_dex", "_heal_effect.wav", false),
 	effectStatFoodLUK:       strEffectSpecAttached("food_luk", "_heal_effect.wav", false),
-	effectThrowItem6:        venomKnifeEffectSpec(),
+	effectThrowItem6:        throwItemFlightEffectSpec("유저인터페이스/item/베넘나이프.bmp"),
 	effectFireHit2:          strEffectSpecRandomAttached("firehit%d", "", 1, 3, true, false),
 	effectQuakeBody4:        closeConfineHitEffectSpec(),
 	effectNPCStop2:          closeConfineRingEffectSpec(),

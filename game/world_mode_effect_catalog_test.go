@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 692 {
-		t.Fatalf("implemented effects = %d, want 692", coverage.Implemented)
+	if coverage.Implemented != 693 {
+		t.Fatalf("implemented effects = %d, want 693", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 113.99 || coverage.ActivePercent > 114.01 {
-		t.Fatalf("active coverage = %.3f, want about 114.00", coverage.ActivePercent)
+	if coverage.ActivePercent < 114.16 || coverage.ActivePercent > 114.18 {
+		t.Fatalf("active coverage = %.3f, want about 114.17", coverage.ActivePercent)
 	}
 }
 
@@ -2514,7 +2514,7 @@ func TestRobrowserFunctionAndProjectileEffectsFiveFiftyToSixHundredMatchTableRow
 		t.Fatalf("EF_THROWITEM6 spec = %+v ok=%t", throw, ok)
 	}
 	component := throw.components[0]
-	if component.kind != effectComponentFUNC || component.funcAdapter != effectFuncVenomKnife || component.textureFile != "유저인터페이스/item/베넘나이프.bmp" || component.attachedEntity {
+	if component.kind != effectComponentFUNC || component.funcAdapter != effectFuncThrowItem || component.textureFile != "유저인터페이스/item/베넘나이프.bmp" || component.attachedEntity {
 		t.Fatalf("EF_THROWITEM6 component = %+v", component)
 	}
 }

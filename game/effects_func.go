@@ -40,9 +40,11 @@ const (
 	effectFuncKaupeDodge
 	effectFuncBlueCasting
 	effectFuncSonicBlow
-	effectFuncVenomKnife
+	effectFuncThrowItem
 	effectFuncGrimtooth
-	effectFuncPoisonParticles
+	effectFuncRisingParticles
+	effectFuncSteal
+	effectFuncSprinkleSand
 	effectFuncRogueBurst
 	effectFuncImpactParticles
 	effectFuncBash
@@ -159,14 +161,18 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawRogueBurst(screen, ctx, component, effect, now)
 	case effectFuncImpactParticles:
 		m.drawImpactParticles(screen, ctx, projection, component, effect, now)
-	case effectFuncVenomKnife:
-		m.drawVenomKnifeEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncThrowItem:
+		m.drawThrowItemEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncSonicBlow:
 		m.drawSonicBlowEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncGrimtooth:
 		m.drawGrimtoothEffect(screen, ctx, component, effect, now)
-	case effectFuncPoisonParticles:
-		m.drawPoisonParticlesEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncRisingParticles:
+		m.drawRisingParticlesEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncSteal:
+		m.drawStealEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncSprinkleSand:
+		m.drawSprinkleSandEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncGroundSample:
 		m.drawGroundPlaneEffect(screen, ctx, component, effect, worldX, worldY, progress, now)
 	case effectFuncCastRing:

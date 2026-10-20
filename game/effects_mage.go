@@ -91,7 +91,7 @@ func (m *WorldMode) drawMageProjectile(screen *render.Frame, ctx client.Context,
 			if i > 0 {
 				tint.R, tint.G, tint.B = 246, 199, 76
 			}
-			m.drawMageSprite(screen, ctx, projection, component.spriteFile, p, age+1, 1.3, angle, tint)
+			m.drawEffectParticleSprite(screen, ctx, projection, component.spriteFile, p, age+1, 1.3, angle, tint)
 		}
 		return
 	}
@@ -109,7 +109,7 @@ func (m *WorldMode) drawMageProjectile(screen *render.Frame, ctx client.Context,
 			p := soulStrikePosition(effect, max(0, age+1-segment), roll)
 			scale := 2.75 * (1 - float64(segment)/24)
 			alpha := uint8(255 * (1 - float64(segment)/12))
-			m.drawMageSprite(screen, ctx, projection, component.spriteFile, p, age/4+1, scale, 0, color.RGBA{255, 255, 255, alpha})
+			m.drawEffectParticleSprite(screen, ctx, projection, component.spriteFile, p, age/4+1, scale, 0, color.RGBA{255, 255, 255, alpha})
 		}
 	}
 }
@@ -130,30 +130,6 @@ func soulStrikePosition(effect worldEffect, tick int, roll float64) modelPoint3 
 	p.x -= direction.z * arc * s
 	p.z += direction.x * arc * s
 	return p
-}
-
-func (m *WorldMode) drawMageSprite(screen *render.Frame, ctx client.Context, projection sceneProjection, file string, position modelPoint3, motion int, scale, angle float64, tint color.RGBA) {
-	if tint.A == 0 || scale <= 0 {
-		return
-	}
-	view := m.effectSpriteView(ctx.Resources, file)
-	if view == nil || len(view.act.Actions) == 0 || len(view.act.Actions[0].Animations) == 0 {
-		return
-	}
-	motion %= len(view.act.Actions[0].Animations)
-	key := singleSpriteBillboardKey{motion: motion}
-	billboard, ok := view.billboards[key]
-	if !ok {
-		billboard, ok = composeSingleSpriteBillboard(view, view.act.Actions[0].Animations[motion])
-		if !ok {
-			return
-		}
-		view.billboards[key] = billboard
-	}
-	alpha := float64(tint.A) / 255
-	tint.A = 255
-	drawSpriteBillboardTintAlphaWorld3DWithOptions(screen, projection, billboard, position.x, position.z, position.y,
-		scale*effectPixelRatio, angle, alpha, 1, tint, spriteBillboardTriangleDrawOptions())
 }
 
 func (m *WorldMode) drawFrostDiverSpikes(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, origin modelPoint3, now time.Time) {
@@ -308,7 +284,7 @@ func (m *WorldMode) drawFireBoltEmbers(screen *render.Frame, ctx client.Context,
 		position = add3(position, delta)
 		scale := float64(20+hitEffectRandom(effect, salt+4, 30)) / 100 * (1 - n/float64(life))
 		alpha := uint8(254 * max(0, 1-n/float64(min(life, 160-birth))))
-		m.drawMageSprite(screen, ctx, projection, component.spriteFile, position, age/4+1, scale, 0, color.RGBA{255, 255, 255, alpha})
+		m.drawEffectParticleSprite(screen, ctx, projection, component.spriteFile, position, age/4+1, scale, 0, color.RGBA{255, 255, 255, alpha})
 	}
 }
 
@@ -331,7 +307,7 @@ func (m *WorldMode) drawSightEffect(screen *render.Frame, ctx client.Context, pr
 			size, alpha, motion = 1.5-.06*n, 120-n, age/2+1
 			p.y = terrainHeightAtRenderPoint(ctx.World, p.x, p.z) + actorShadowTerrainLift
 		}
-		m.drawMageSprite(screen, ctx, projection, component.spriteFile, p, motion, size, 0,
+		m.drawEffectParticleSprite(screen, ctx, projection, component.spriteFile, p, motion, size, 0,
 			color.RGBA{255, 255, 255, uint8(alpha)})
 	}
 }

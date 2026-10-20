@@ -107,7 +107,7 @@ func (m *WorldMode) drawWizardWaterBall(screen *render.Frame, ctx client.Context
 	}
 	for i := 11; i >= 0; i-- {
 		p := soulStrikePosition(effect, max(0, frame+1-i), 0)
-		m.drawMageSprite(screen, ctx, projection, component.spriteFile, p, frame/4+1,
+		m.drawEffectParticleSprite(screen, ctx, projection, component.spriteFile, p, frame/4+1,
 			.75*(1-float64(i)/24), 0, color.RGBA{255, 255, 255, uint8(254 * (1 - float64(i)/12))})
 	}
 }
@@ -171,7 +171,7 @@ func (m *WorldMode) drawSightTrasher(screen *render.Frame, ctx client.Context, p
 				position.y = terrainHeightAtRenderPoint(ctx.World, position.x, position.z) + actorShadowTerrainLift
 			}
 			alpha := float64(150-2*birth) * clampFloat(float64(84-frame)/20, 0, 1)
-			m.drawMageSprite(screen, ctx, projection, component.spriteFile, position, int(n-1)/speed+1, size, 0, color.RGBA{255, 255, 255, uint8(alpha)})
+			m.drawEffectParticleSprite(screen, ctx, projection, component.spriteFile, position, int(n-1)/speed+1, size, 0, color.RGBA{255, 255, 255, uint8(alpha)})
 		}
 	}
 	age := frame - 10

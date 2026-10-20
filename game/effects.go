@@ -1179,7 +1179,11 @@ func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID u
 	if !ok {
 		return
 	}
-	m.startCombatAnimation(ctx, sourceID, skillCastActionFamilyForActor(source, skillID), now, duration)
+	actionFamily := skillCastActionFamilyForActor(source, skillID)
+	if actionFamily == spriteActionPickup {
+		duration = m.actorActionDuration(ctx, source, actionFamily, 300*time.Millisecond)
+	}
+	m.startCombatAnimation(ctx, sourceID, actionFamily, now, duration)
 }
 
 func (m *WorldMode) startSkillActionAnimation(ctx client.Context, id uint32, actor worldstate.Actor, spec skillActionSpec, started time.Time, duration time.Duration) {
@@ -1617,8 +1621,12 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
-	if effectID == effectGrimtooth || effectID == effectThrowItem6 {
-		initAssassinProjectile(ctx, &effect)
+	if effectID == effectSteal || effectID == effectDetoxication || effectID == effectSprinkleSand {
+		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
+		effect.hasActorTransform = true
+	}
+	if effectID == effectGrimtooth || effectID == effectThrowItem6 || effectID == effectThrowItem3 {
+		initDirectedEffect(ctx, &effect)
 	}
 	if effectID == effectShieldBoomer || effectID == effectTanji {
 		initShieldBoomerang(ctx, &effect)
@@ -2786,12 +2794,16 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncShieldBoomerang
 	case "SonicBlow":
 		return effectFuncSonicBlow
-	case "VenomKnife":
-		return effectFuncVenomKnife
+	case "ThrowItem":
+		return effectFuncThrowItem
 	case "Grimtooth":
 		return effectFuncGrimtooth
-	case "PoisonParticles":
-		return effectFuncPoisonParticles
+	case "RisingParticles":
+		return effectFuncRisingParticles
+	case "Steal":
+		return effectFuncSteal
+	case "SprinkleSand":
+		return effectFuncSprinkleSand
 	case "BlueCasting":
 		return effectFuncBlueCasting
 	case "SpiralPierce":

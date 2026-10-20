@@ -1446,6 +1446,9 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	if !res.HasPlayerJobToken(int(actor.Job)) {
 		return spriteActionNonPCAttack
 	}
+	if skillID == db.SkillTFPickstone {
+		return spriteActionPickup
+	}
 	if skillID == db.SkillALBlessing || skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk || skillID == db.SkillPRRedemptio {
 		return spriteActionIdle
 	}

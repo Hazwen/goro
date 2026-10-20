@@ -125,18 +125,18 @@ func TestVenomKnifeFlightAndAfterimages(t *testing.T) {
 		t.Fatal("Venom Knife must launch exactly one projectile")
 	}
 	effect := m.worldEffects[0]
-	first, angle, alpha := venomKnifeAt(effect, 1)
+	first, angle, alpha := throwItemAt(effect, 1)
 	if math.Abs(first.x-11.1) > 1e-9 || angle != degreesToRadians(15) || alpha != 255 {
 		t.Fatalf("knife should immediately advance three native units: %+v, %g, %d", first, angle, alpha)
 	}
 	near := effect
 	near.projectileDirection.x = 1.2
-	_, _, nearAlpha := venomKnifeAt(near, 10)
-	_, _, farAlpha := venomKnifeAt(effect, 10)
+	_, _, nearAlpha := throwItemAt(near, 10)
+	_, _, farAlpha := throwItemAt(effect, 10)
 	if nearAlpha >= farAlpha {
 		t.Fatal("flight time must depend on distance")
 	}
-	if _, _, alpha := venomKnifeAt(effect, 30); alpha != 0 {
+	if _, _, alpha := throwItemAt(effect, 30); alpha != 0 {
 		t.Fatal("knife must fade after arriving")
 	}
 	m.textures = map[string]*render.Image{"__effectfile_유저인터페이스/item/베넘나이프.bmp|blackkey=true": render.NewImage(8, 8)}
@@ -148,7 +148,7 @@ func TestVenomKnifeFlightAndAfterimages(t *testing.T) {
 		t.Fatalf("knife and three afterimages: got %d commands", commands.Len())
 	}
 	for i, process := range []int{7, 6, 4, 2} {
-		want, _, _ := venomKnifeAt(effect, process)
+		want, _, _ := throwItemAt(effect, process)
 		billboard := commands.Index(i)
 		if math.Abs(billboard.FieldByName("Center").Index(0).Float()-want.x) > 1e-5 {
 			t.Fatalf("afterimage %d did not use the previous two-tick sample", i)
@@ -274,9 +274,9 @@ func TestAssassinPoisonParticleMotionAndFieldLifetime(t *testing.T) {
 		if id == effectVenomDust2 {
 			life = 10
 		}
-		first := poisonParticleAt(effect, 0, 0)
-		later := poisonParticleAt(effect, 0, life-3)
-		if first.alpha <= 0 || later.position.y <= first.position.y || later.angle <= first.angle || poisonParticleAt(effect, 0, life-1).alpha != 0 {
+		first := risingParticleAt(effect, 0, 0)
+		later := risingParticleAt(effect, 0, life-3)
+		if first.alpha <= 0 || later.position.y <= first.position.y || later.angle <= first.angle || risingParticleAt(effect, 0, life-1).alpha != 0 {
 			t.Fatalf("effect %d has wrong rise, rotation or fade: %+v / %+v", id, first, later)
 		}
 		if id == effectVenomDust2 && (first.position.x != 0 || first.position.z != 0) {
