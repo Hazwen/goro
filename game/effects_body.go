@@ -52,6 +52,8 @@ func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *ren
 		}
 		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 		switch effect.effectID {
+		case effectAssumptio:
+			doubleBody = billboard.layerGroup == 0
 		case effectRedBody:
 			tint.R, tint.G, tint.B = 255, 100, 100
 			if billboard.layerGroup == 0 {

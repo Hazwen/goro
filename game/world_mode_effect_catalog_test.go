@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 686 {
-		t.Fatalf("implemented effects = %d, want 686", coverage.Implemented)
+	if coverage.Implemented != 687 {
+		t.Fatalf("implemented effects = %d, want 687", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 113.01 || coverage.ActivePercent > 113.02 {
-		t.Fatalf("active coverage = %.3f, want about 113.01", coverage.ActivePercent)
+	if coverage.ActivePercent < 113.17 || coverage.ActivePercent > 113.19 {
+		t.Fatalf("active coverage = %.3f, want about 113.18", coverage.ActivePercent)
 	}
 }
 
@@ -185,7 +185,6 @@ func TestRobrowserSimpleEffectsFiftyToOneHundredMatchTableRows(t *testing.T) {
 		id   int
 		wav  string
 	}{
-		{"EF_TURNUNDEAD", effectTurnUndead, "effect\\ef_bash.wav"},
 		{"EF_HASTEUP", effectHasteUp, "effect\\black_adrenalinerush_b.wav"},
 		{"EF_FLASHER", effectFlasher, "effect\\hunter_flasher.wav"},
 		{"EF_REMOVETRAP", effectRemoveTrap, "effect\\hunter_removetrap.wav"},
@@ -461,7 +460,6 @@ func TestRobrowserSimpleEffectsOneHundredToOneFiftyMatchTableRows(t *testing.T) 
 		{"EF_DETECTING", effectDetecting, "effect\\hunter_detecting.wav"},
 		{"EF_CLOAKING", effectCloaking, "effect\\assasin_cloaking.wav"},
 		{"EF_OVERTHRUST", effectOverthrust, "effect\\black_overthrust.wav"},
-		{"EF_REVIVE", effectRevive, "effect\\priest_resurrection.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
@@ -1739,38 +1737,6 @@ func TestRobrowserPortalAndGroundEffectsThreeHundredToThreeFiftyMatchTableRows(t
 		}
 	}
 
-	for _, tc := range []struct {
-		name    string
-		id      int
-		texture string
-		color   color.RGBA
-		alpha   float64
-		height  float64
-	}{
-		{"EF_BOTTOM_MAG", effectBottomMagnus, "ring_red", color.RGBA{}, 0.2, 5},
-		{"EF_BOTTOM_SANC", effectBottomSanc, "magic_green", color.RGBA{R: 128, G: 230, B: 128, A: 255}, 0.3, 2},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 2 || spec.duration != 50*time.Second {
-			t.Fatalf("%s spec = %+v ok=%t", tc.name, spec, ok)
-		}
-		first, second := spec.components[0], spec.components[1]
-		for i, component := range []worldEffectComponent{first, second} {
-			if component.kind != effectComponentCylinder || component.textureName != tc.texture || component.totalCircleSides != 4 || component.circleSides != 4 || component.bottomSize != 0.7 || component.topSize != 0.7 || component.height != tc.height || component.angleY != 45 || component.blendMode != 2 || !component.blendAdditive || component.rotate || !component.attachedEntity {
-				t.Fatalf("%s component %d = %+v", tc.name, i, component)
-			}
-			if component.color != tc.color {
-				t.Fatalf("%s component %d color = %+v", tc.name, i, component.color)
-			}
-		}
-		if first.duration != 50*time.Second || first.alphaMax != tc.alpha || first.fade || first.repeat || first.animation != 0 {
-			t.Fatalf("%s first cylinder = %+v", tc.name, first)
-		}
-		if second.duration != 2*time.Second || second.alphaMax != 0.1 || !second.fade || !second.repeat || second.animation != 1 {
-			t.Fatalf("%s second cylinder = %+v", tc.name, second)
-		}
-	}
-
 	warp, ok := worldEffectSpecForID(effectWarpZone2)
 	if !ok || len(warp.components) != 3 || warp.duration != 7*time.Second {
 		t.Fatalf("EF_WARPZONE2 spec = %+v ok=%t", warp, ok)
@@ -2066,28 +2032,7 @@ func TestRobrowserCombatEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 	}
 }
 
-func TestRobrowserBasilicaDrainAndMagicEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.T) {
-	basilica, ok := worldEffectSpecForID(effectBottomBasilica)
-	if !ok || len(basilica.components) != 4 || basilica.duration != 20*time.Second {
-		t.Fatalf("EF_BOTTOM_BASILICA spec = %+v ok=%t", basilica, ok)
-	}
-	for i, want := range []struct {
-		size   float64
-		height float64
-		alpha  float64
-		angleY float64
-	}{
-		{2.45, 2.0, 32.0 / 255.0, 0},
-		{2.52, 2.1, 32.0 / 255.0, 10},
-		{2.6, 2.0, 15.0 / 255.0, 26.6},
-		{2.6, 2.0, 15.0 / 255.0, 79.8},
-	} {
-		component := basilica.components[i]
-		if component.kind != effectComponentCylinder || component.textureName != "alpha_down" || component.duration != 20*time.Second || component.totalCircleSides != 4 || component.circleSides != 4 || component.bottomSize != want.size || component.topSize != want.size || component.height != want.height || math.Abs(component.alphaMax-want.alpha) > 0.0001 || component.blendMode != 2 || !component.blendAdditive || !component.rotateWithCamera || component.angleY != want.angleY || !component.attachedEntity {
-			t.Fatalf("EF_BOTTOM_BASILICA component %d = %+v", i, component)
-		}
-	}
-
+func TestRobrowserDrainAndMagicEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		id        int

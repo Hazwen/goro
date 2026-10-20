@@ -373,6 +373,7 @@ const (
 	effectBottomGospel      = 370
 	effectDeath             = 372
 	effectBottomBasilica    = 374
+	effectAssumptio         = 375
 	effectHitLine2          = 376
 	effectBash3D2           = 377
 	effectEnergyDrain2      = 378
@@ -1650,28 +1651,6 @@ func exit2EffectSpec() EffectSpec {
 	}
 }
 
-func bottomSquareEffectSpec(texture string, tint color.RGBA, alpha, bottomSize, topSize, height float64, fade bool) EffectSpec {
-	return EffectSpec{
-		Duration: 50 * time.Second,
-		Components: []EffectComponent{
-			bottomSquareCylinder(texture, tint, alpha, bottomSize, topSize, height, 50*time.Second, false, fade),
-			bottomSquareCylinder(texture, tint, 0.1, bottomSize, topSize, height, 2*time.Second, true, true),
-		},
-	}
-}
-
-func bottomSquareCylinder(texture string, tint color.RGBA, alpha, bottomSize, topSize, height float64, duration time.Duration, repeat, fade bool) EffectComponent {
-	component := robrCylinderBlendComponent(texture, tint, duration, alpha, 0, bottomSize, topSize, height, true, false, fade, 2)
-	component.TotalCircleSides = 4
-	component.CircleSides = 4
-	component.AngleY = 45
-	component.Repeat = repeat
-	if repeat {
-		component.Animation = 1
-	}
-	return component
-}
-
 func warpZone2EffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 7 * time.Second,
@@ -1965,18 +1944,6 @@ func bash3DCylinderComponent(topSize float64, delay time.Duration, duplicate int
 		AttachedEntity:   true,
 		TotalCircleSides: 30,
 		CircleSides:      1,
-	}
-}
-
-func basilicaEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 20 * time.Second,
-		Components: []EffectComponent{
-			basilicaCylinderComponent(2.45, 2.0, 32.0/255.0, 0),
-			basilicaCylinderComponent(2.52, 2.1, 32.0/255.0, 10),
-			basilicaCylinderComponent(2.6, 2.0, 15.0/255.0, 26.6),
-			basilicaCylinderComponent(2.6, 2.0, 15.0/255.0, 79.8),
-		},
 	}
 }
 
@@ -4350,7 +4317,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectEarthSpike:     earthSpikeEffectSpec(),
 	effectSpearBoomerang: spearBoomerangEffectSpec(),
 	effectPierce:         pierceEffectSpec(),
-	effectTurnUndead:     soundOnlyEffectSpec("effect\\ef_bash.wav"),
+	effectTurnUndead:     turnUndeadEffectSpec(),
 	effectSanctuary:      strEffectSpecAttached("sanctuary", "effect\\priest_sanctuary.wav", false),
 	effectImpositio:      strEffectSpecAttached("impositio", "effect\\priest_impositio.wav", false),
 	effectLexAeterna:     strEffectSpecAttachedMin("lexaeterna", "lexaeterna_min", "effect\\priest_lexaeterna.wav", false),
@@ -4432,7 +4399,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectSlowPoison:     strEffectSpec("slowp", "effect\\priest_slowpoison.wav"),
 	effectFirePillarOn:   firePillarOnEffectSpec(),
 	effectSandman:        strEffectSpec("sandman", "effect\\hunter_sandman.wav"),
-	effectRevive:         soundOnlyEffectSpec("effect\\priest_resurrection.wav"),
+	effectRevive:         reviveEffectSpec(),
 	effectHeavenDrive:    heavenDriveEffectSpec(),
 	effectSonicBlow2:     strEffectSpecAttached("sonicblow", "", false),
 	effectBrandishSpear2: strEffectSpecAttached("brandish2", "", false),
@@ -4683,8 +4650,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectChemical2:    chemical2EffectSpec(),
 	effectHeal2:        heal2EffectSpec(),
 	effectExit2:        exit2EffectSpec(),
-	effectBottomMagnus: bottomSquareEffectSpec("ring_red", color.RGBA{}, 0.2, 0.7, 0.7, 5, false),
-	effectBottomSanc:   bottomSquareEffectSpec("magic_green", color.RGBA{R: 128, G: 230, B: 128, A: 255}, 0.3, 0.7, 0.7, 2, false),
+	effectBottomMagnus: priestGroundEffectSpec(effectBottomMagnus),
+	effectBottomSanc:   priestGroundEffectSpec(effectBottomSanc),
 	effectWarpZone2:    warpZone2EffectSpec(),
 	effectHeal4:        heal4EffectSpec(),
 	effectBeginAsura:   beginAsuraEffectSpec(),
@@ -4726,7 +4693,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectGospelGround:      gospelGroundEffectSpec(),
 	effectFogWallGround:     fogWallGroundEffectSpec(),
 	effectDeath:             strEffectSpecAttached("devil", "", false),
-	effectBottomBasilica:    basilicaEffectSpec(),
+	effectBottomBasilica:    priestGroundEffectSpec(effectBottomBasilica),
+	effectAssumptio:         funcEffectSpec("EffectBodyColor", 2*time.Second, true),
 	effectHitLine2:          soundOnlyEffectSpec("effect\\맹호경파산.wav"),
 	effectBash3D2:           bash3DEffectSpec("Bash3D2", "effect\\mon_폭기.wav", 400*time.Millisecond, 50*time.Millisecond, 8),
 	effectEnergyDrain2:      energyDrainProjectileEffectSpec(color.RGBA{R: 204, G: 204, B: 255, A: 255}, 160, 190),

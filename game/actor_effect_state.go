@@ -68,6 +68,7 @@ func (m *WorldMode) removeActorEffectStateEffects(actorID uint32) {
 	m.removeWorldEffect(effectNPCStop2, actorID)
 	m.removeWorldEffect(effectGumgang, actorID)
 	m.removeWorldEffect(effectSteelBody, actorID)
+	m.removeWorldEffect(effectAssumptio, actorID)
 	m.removeWorldEffect(effectRedBody, actorID)
 	m.removeWorldEffect(effectLKConcentration, actorID)
 	m.removeWorldEffect(effectAsuraBody, actorID)
@@ -170,6 +171,7 @@ func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
 	}
 	m.setActorStateEffect(ctx, actorID, effectGumgang, visible && actor.Opt3State&db.Opt3Explosionspirits != 0)
 	m.setActorStateEffect(ctx, actorID, effectSteelBody, visible && actor.Opt3State&db.Opt3Steelbody != 0)
+	m.setActorStateEffect(ctx, actorID, effectAssumptio, visible && actor.Opt3State&db.Opt3Assumptio != 0)
 	m.setActorStateEffect(ctx, actorID, effectRedBody, visible && actor.Opt3State&db.Opt3Berserk != 0)
 	sphereEffect := effectChookgi
 	switch actor.Job {

@@ -66,6 +66,9 @@ const (
 	effectFuncMonkRays
 	effectFuncTripleAttack
 	effectFuncHitLine
+	effectFuncTurnUndead
+	effectFuncRevive
+	effectFuncPriestGround
 )
 
 const (
@@ -75,6 +78,12 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncTurnUndead:
+		m.drawTurnUndeadEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncRevive:
+		m.drawReviveEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncPriestGround:
+		m.drawPriestGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncMonkRays:
 		m.drawMonkRays(screen, ctx, component, effect, now)
 	case effectFuncTripleAttack:

@@ -375,6 +375,7 @@ const (
 	effectBottomGospel      = 370
 	effectDeath             = 372
 	effectBottomBasilica    = 374
+	effectAssumptio         = 375
 	effectHitLine2          = 376
 	effectBash3D2           = 377
 	effectEnergyDrain2      = 378
@@ -996,6 +997,16 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 		return
 	}
 	now := time.Now()
+	if notify.SkillID == db.SkillPRSanctuary || notify.SkillID == db.SkillMGSrecovery {
+		if actor, ok, _ := actorForCombatID(ctx, notify.TargetID); ok && notify.Amount > 0 {
+			kind := damageFloaterRecoveryHP
+			if notify.SkillID == db.SkillMGSrecovery {
+				kind = damageFloaterRecoverySP
+			}
+			m.addDamageFloater(notify.TargetID, actor.X, actor.Y, strconv.FormatUint(uint64(notify.Amount), 10), damageFloaterWhite, kind, now)
+		}
+		return
+	}
 	m.applySkillNameBubble(ctx, notify.SourceID, notify.SkillID, now)
 	m.startSkillNoDamageSourceAnimation(ctx, notify, now)
 	if notify.SkillID == db.SkillPaSacrifice {
@@ -1020,7 +1031,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	for _, effectID := range effectIDs {
 		actorID := notify.TargetID
 		// The status packet may already have installed the persistent aura.
-		if effectID == effectSteelBody || effectID == effectAsuraBody || effectID == effectBabyBody {
+		if effectID == effectSteelBody || effectID == effectAsuraBody || effectID == effectBabyBody || effectID == effectAssumptio {
 			if isLocalActor(ctx, actorID) {
 				actorID = localSkillTarget(ctx)
 			}
@@ -1038,6 +1049,11 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 		}
 	}
 	for _, effectID := range skillSuccessEffectIDs(notify.SkillID) {
+		if notify.SkillID == db.SkillALLResurrection && effectID == effectRevive {
+			if actor, ok, _ := actorForCombatID(ctx, notify.TargetID); !ok || !res.HasPlayerJobToken(int(actor.Job)) {
+				continue
+			}
+		}
 		if m.addWorldEffectBetweenAt(ctx, effectID, notify.TargetID, notify.SourceID, now) {
 			glog.Debugf("skill success effect skill=%d src=%d target=%d effect=%d amount=%d", notify.SkillID, notify.SourceID, notify.TargetID, effectID, notify.Amount)
 		}
@@ -1193,11 +1209,15 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 }
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
-	if notify.SkillID == db.SkillALPneuma || notify.SkillID == db.SkillALWarp {
+	switch notify.SkillID {
+	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillPRSanctuary, db.SkillHPBasilica:
 		now := time.Now()
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
 			m.startSkillActionAnimation(ctx, notify.SourceID, actor, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
+		}
+		if notify.SkillID == db.SkillHPBasilica {
+			m.scheduleSoundAtActor(now, notify.SourceID, "effect\\바실리카.wav")
 		}
 		// The subsequent skill-unit entry owns the ground visual and its lifetime.
 		return
@@ -1221,6 +1241,16 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 		return
 	}
 	now := time.Now()
+	if notify.SkillID == db.SkillPRMagnus || notify.SkillID == db.SkillPRBenedictio {
+		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
+		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
+			m.startSkillActionAnimation(ctx, notify.SourceID, actor, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
+		}
+		for _, effectID := range effectIDs {
+			m.addWorldEffectAtCellLifetime(ctx, effectID, 0, int(notify.X), int(notify.Y), now, 0, false)
+		}
+		return
+	}
 	m.applyFalconGroundSkillNotify(ctx, notify, now)
 	for _, effectID := range effectIDs {
 		if m.addWorldEffectAtCellIfMissing(ctx, effectID, int(notify.X), int(notify.Y), now) {
@@ -1804,10 +1834,13 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 	if skillID == db.SkillLKSpiralpierce {
 		effectID = effectPierceBody
 	}
-	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain {
+	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain ||
+		skillID == db.SkillHPAssumptio || skillID == db.SkillHPBasilica || skillID == db.SkillPRRedemptio {
 		effectID = effectBeginSpell6
 	}
 	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
+		skillID == db.SkillALLResurrection || skillID == db.SkillMGSafetywall ||
+		(skillID >= db.SkillPRImpositio && skillID <= db.SkillPRMagnus && skillID != db.SkillPRSlowpoison) ||
 		skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion {
 		effectID = effectBeginSpell
 	}
@@ -2592,6 +2625,12 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "TurnUndead":
+		return effectFuncTurnUndead
+	case "Revive":
+		return effectFuncRevive
+	case "PriestGround":
+		return effectFuncPriestGround
 	case "Agility":
 		return effectFuncAgility
 	case "Guard":

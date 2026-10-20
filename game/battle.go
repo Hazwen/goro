@@ -545,6 +545,9 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	}
 	releaseAt := now.Add(hitDelay)
 	hitAt := releaseAt
+	if action.SkillID == db.SkillPRTurnundead && !splash {
+		hitAt = hitAt.Add(500 * time.Millisecond)
+	}
 	projectileAt := now
 	projectileDuration := time.Duration(0)
 	if referenceBowFlightAttack {
@@ -626,6 +629,8 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
+	case db.SkillALLResurrection, db.SkillPRAspersio, db.SkillPRBenedictio, db.SkillPRSanctuary, db.SkillPRTurnundead, db.SkillPRMagnus:
+		return true
 	case db.SkillMOTripleattack, db.SkillMOInvestigate, db.SkillMOFingeroffensive, db.SkillMOExtremityfist, db.SkillMOChaincombo, db.SkillMOBalkyoung:
 		return true
 	case db.SkillLKSpiralpierce, db.SkillLKHeadcrush, db.SkillLKJointbeat:
@@ -1426,7 +1431,7 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	if !res.HasPlayerJobToken(int(actor.Job)) {
 		return spriteActionNonPCAttack
 	}
-	if skillID == db.SkillALBlessing || skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk {
+	if skillID == db.SkillALBlessing || skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk || skillID == db.SkillPRRedemptio {
 		return spriteActionIdle
 	}
 	if skillID == db.SkillALIncagi {
