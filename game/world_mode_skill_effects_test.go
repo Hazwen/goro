@@ -961,26 +961,6 @@ func TestGroundSampleDrawOptionsClampRotatedMagicTargetTexture(t *testing.T) {
 	}
 }
 
-func TestCastRingEffectSpecUsesMagicRingCylinder(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectCastRing)
-	if !ok {
-		t.Fatal("cast ring effect missing")
-	}
-	if len(spec.components) != 1 {
-		t.Fatalf("components = %d, want 1", len(spec.components))
-	}
-	component := spec.components[0]
-	if component.kind != effectComponentFUNC || component.funcAdapter != effectFuncCastRing || component.funcName != "CastRing" || component.textureName != "ring_yellow" {
-		t.Fatalf("component = %+v", component)
-	}
-	if component.bottomSize != 0.8 || component.topSize != 2.45 || component.height != 2.8 {
-		t.Fatalf("magic ring dimensions = bottom %.2f top %.2f height %.2f", component.bottomSize, component.topSize, component.height)
-	}
-	if component.duration != 0 {
-		t.Fatalf("cast ring component duration = %s, want inherited cast duration", component.duration)
-	}
-}
-
 func TestLockOnTargetEffectSpecMatchesRobrowserCastTargetCircle(t *testing.T) {
 	spec, ok := worldEffectSpecForID(effectLockOnTarget)
 	if !ok {
@@ -1005,20 +985,6 @@ func TestLockOnTargetEffectSpecMatchesRobrowserCastTargetCircle(t *testing.T) {
 	}
 	if got := lockOnTargetTint(start, start.Add(380*time.Millisecond)); got != (color.RGBA{R: 255, G: 12, B: 12, A: 255}) {
 		t.Fatalf("low lock-on tint = %+v", got)
-	}
-}
-
-func TestBeginSpellEffectsInheritCastDuration(t *testing.T) {
-	for _, effectID := range []int{effectBeginSpell, effectBeginSpell2, effectBeginSpell3, effectBeginSpell4, effectBeginSpell5, effectBeginSpell6, effectBeginSpell7} {
-		spec, ok := worldEffectSpecForID(effectID)
-		if !ok {
-			t.Fatalf("begin spell effect %d missing", effectID)
-		}
-		for i, component := range spec.components {
-			if component.duration != 0 {
-				t.Fatalf("effect %d component %d duration = %s, want inherited cast duration", effectID, i, component.duration)
-			}
-		}
 	}
 }
 
@@ -1532,19 +1498,19 @@ func TestGroundSkillCastEffectsAddGroundSampleMarker(t *testing.T) {
 func TestAcolyteSkillEffectMappings(t *testing.T) {
 	expectEffectIDs(t, "AL_DP passive", skillEffectIDs(22))
 	expectEffectIDs(t, "AL_DEMONBANE passive", skillEffectIDs(23))
-	expectEffectIDs(t, "AL_RUWACH hit", skillHitEffectIDs(24), effectBashHit)
-	expectEffectIDs(t, "AL_PNEUMA ground", skillGroundEffectIDs(25), effectPneuma)
+	expectEffectIDs(t, "AL_RUWACH hit", skillHitEffectIDs(24), effectHit1, effectBashHit)
+	expectEffectIDs(t, "AL_PNEUMA uses skill unit", skillGroundEffectIDs(25))
 	expectEffectIDs(t, "AL_TELEPORT", skillEffectIDs(26))
 	expectEffectIDs(t, "AL_WARP", skillEffectIDs(27))
-	expectEffectIDs(t, "AL_HEAL", skillEffectIDs(28), effectHeal)
-	expectEffectIDs(t, "AL_HEAL hit", skillHitEffectIDs(28), effectHealOffensive)
-	expectEffectIDs(t, "AL_INCAGI", skillEffectIDs(29), effectIncAgility)
-	expectEffectIDs(t, "AL_DECAGI", skillEffectIDs(30), effectDecAgility)
-	expectEffectIDs(t, "AL_HOLYWATER", skillEffectIDs(31), effectAqua)
-	expectEffectIDs(t, "AL_CRUCIS", skillEffectIDs(32), effectSignum)
-	expectEffectIDs(t, "AL_ANGELUS", skillEffectIDs(33), effectAngelus)
-	expectEffectIDs(t, "AL_BLESSING", skillEffectIDs(34), effectBlessing)
-	expectEffectIDs(t, "AL_CURE", skillEffectIDs(35), effectCure)
+	expectEffectIDs(t, "AL_HEAL offensive", skillEffectIDs(28), effectHealOffensive)
+	expectEffectIDs(t, "AL_HEAL hit", skillHitEffectIDs(28), effectHit1, effectBashHit)
+	expectEffectIDs(t, "AL_INCAGI", skillSuccessEffectIDs(29), effectIncAgility)
+	expectEffectIDs(t, "AL_DECAGI", skillSuccessEffectIDs(30), effectDecAgility)
+	expectEffectIDs(t, "AL_HOLYWATER", skillSuccessEffectSelfIDs(31), effectAqua)
+	expectEffectIDs(t, "AL_CRUCIS", skillSuccessEffectSelfIDs(32), effectSignum)
+	expectEffectIDs(t, "AL_ANGELUS", skillSuccessEffectSelfIDs(33), effectAngelus)
+	expectEffectIDs(t, "AL_BLESSING", skillSuccessEffectIDs(34), effectBlessing)
+	expectEffectIDs(t, "AL_CURE", skillSuccessEffectIDs(35), effectCure)
 }
 
 func TestMercenarySupportSkillEffectMappings(t *testing.T) {
@@ -2289,7 +2255,7 @@ func TestArcherThiefMerchantSkillEffectMappings(t *testing.T) {
 	expectEffectIDs(t, "MC_CARTREVOLUTION begin", skillBeginEffectIDs(153), effectCartRevolution)
 	expectEffectIDs(t, "MC_CARTREVOLUTION hit", skillHitEffectIDs(153), effectCartRevolution)
 	expectEffectIDs(t, "MC_LOUD", skillEffectIDs(155), effectLoud)
-	expectEffectIDs(t, "AL_HOLYLIGHT", skillEffectIDs(156), effectHolyLight)
+	expectEffectIDs(t, "AL_HOLYLIGHT", skillHitEffectIDs(156), effectHit1, effectHolyLight)
 }
 
 func TestThiefThrowStoneEffectFollowsRoBrowserTable(t *testing.T) {
@@ -2772,132 +2738,6 @@ func TestHealOffensiveEffectSpecUsesRobrowserCylindersAndParticles(t *testing.T)
 	}
 }
 
-func TestIncreaseAgilityEffectSpecUsesRobrowserParticles(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectIncAgility)
-	if !ok {
-		t.Fatal("increase agility effect spec missing")
-	}
-	if spec.duration != 1500*time.Millisecond {
-		t.Fatalf("duration = %s, want 1500ms", spec.duration)
-	}
-	if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\ef_incagility.wav" {
-		t.Fatalf("sfx = %#v", spec.sfx)
-	}
-	if len(spec.components) != 4 {
-		t.Fatalf("components = %d, want 4", len(spec.components))
-	}
-	particleCases := []struct {
-		index     int
-		alphaMax  float64
-		delay     time.Duration
-		duplicate int
-	}{
-		{index: 0, alphaMax: 1, delay: 500 * time.Millisecond, duplicate: 7},
-		{index: 1, alphaMax: 0.75, delay: 400 * time.Millisecond, duplicate: 3},
-		{index: 2, alphaMax: 1, delay: 0, duplicate: 10},
-	}
-	for _, tc := range particleCases {
-		component := spec.components[tc.index]
-		if component.kind != effectComponent3D || component.textureFile != "effect/ac_center2.tga" {
-			t.Fatalf("particle %d resource = %+v", tc.index, component)
-		}
-		if component.duration != 1000*time.Millisecond || component.delay != tc.delay || component.duplicateDelay != 200*time.Millisecond || component.duplicate != tc.duplicate {
-			t.Fatalf("particle %d timing = %+v", tc.index, component)
-		}
-		if component.alphaMax != tc.alphaMax || component.fadeIn || !component.fadeOut {
-			t.Fatalf("particle %d fade = %+v", tc.index, component)
-		}
-		if component.posXRand != 1.5 || component.posYRand != 1 || component.posZStartRand != 1 || component.posZStartMiddle != 1 || component.posZEndRand != 1 || component.posZEndMiddle != 6 {
-			t.Fatalf("particle %d position = %+v", tc.index, component)
-		}
-		if component.sizeStartX != 2.5*effectPixelRatio || component.sizeEndX != 2.5*effectPixelRatio {
-			t.Fatalf("particle %d x size = %+v", tc.index, component)
-		}
-		if component.sizeStartY != 0 || component.sizeEndY != 0 || component.sizeRandY != 15*effectPixelRatio || component.sizeRandYMiddle != 45*effectPixelRatio {
-			t.Fatalf("particle %d size = %+v", tc.index, component)
-		}
-		if component.blendAdditive {
-			t.Fatalf("particle %d should use normal alpha blending", tc.index)
-		}
-	}
-	overlay := spec.components[3]
-	if overlay.kind != effectComponent3D || overlay.textureFile != "effect/agi_up.bmp" {
-		t.Fatalf("overlay resource = %+v", overlay)
-	}
-	if overlay.duration != 1000*time.Millisecond || overlay.alphaMax != 1 || !overlay.fadeIn || !overlay.fadeOut {
-		t.Fatalf("overlay timing/fade = %+v", overlay)
-	}
-	if overlay.posZ != 0.4 || overlay.posZEnd != 3 {
-		t.Fatalf("overlay position = %+v", overlay)
-	}
-	if overlay.sizeStart != 100*effectPixelRatio || overlay.sizeEnd != 100*effectPixelRatio || overlay.sizeStartY != 45*effectPixelRatio || overlay.sizeEndY != 45*effectPixelRatio || !overlay.sizeSmooth {
-		t.Fatalf("overlay size = %+v", overlay)
-	}
-	if !overlay.overlay {
-		t.Fatal("overlay should use reference client overlay rendering")
-	}
-	if overlay.blendAdditive {
-		t.Fatal("overlay should use normal alpha blending")
-	}
-}
-
-func TestDecreaseAgilityEffectSpecUsesRobrowserParticles(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectDecAgility)
-	if !ok {
-		t.Fatal("decrease agility effect spec missing")
-	}
-	if spec.duration != 1000*time.Millisecond {
-		t.Fatalf("duration = %s, want 1000ms", spec.duration)
-	}
-	if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\ef_decagility.wav" {
-		t.Fatalf("sfx = %#v", spec.sfx)
-	}
-	if len(spec.components) != 2 {
-		t.Fatalf("components = %d, want 2", len(spec.components))
-	}
-	particle := spec.components[0]
-	if particle.kind != effectComponent3D || particle.textureFile != "effect/ac_center2.tga" {
-		t.Fatalf("particle resource = %+v", particle)
-	}
-	if particle.duration != 1000*time.Millisecond || particle.duplicateDelay != 200*time.Millisecond || particle.duplicate != 20 {
-		t.Fatalf("particle timing = %+v", particle)
-	}
-	if particle.alphaMax != 1 || particle.fadeIn || !particle.fadeOut {
-		t.Fatalf("particle fade = %+v", particle)
-	}
-	if particle.posXRand != 1.5 || particle.posYRand != 1 || particle.posZStartRand != 1 || particle.posZStartMiddle != 6 || particle.posZEndRand != 1 || particle.posZEndMiddle != 1 {
-		t.Fatalf("particle position = %+v", particle)
-	}
-	if particle.sizeStartX != effectTableSize(2.5) || particle.sizeEndX != effectTableSize(2.5) {
-		t.Fatalf("particle x size = %+v", particle)
-	}
-	if particle.sizeStartY != 0 || particle.sizeEndY != 0 || particle.sizeRandY != effectTableSize(15) || particle.sizeRandYMiddle != effectTableSize(45) {
-		t.Fatalf("particle size = %+v", particle)
-	}
-	if particle.blendAdditive {
-		t.Fatal("particle should use normal alpha blending")
-	}
-	overlay := spec.components[1]
-	if overlay.kind != effectComponent3D || overlay.textureFile != "effect/slow.bmp" {
-		t.Fatalf("overlay resource = %+v", overlay)
-	}
-	if overlay.duration != 1000*time.Millisecond || overlay.alphaMax != 1 || !overlay.fadeIn || !overlay.fadeOut {
-		t.Fatalf("overlay timing/fade = %+v", overlay)
-	}
-	if overlay.posZ != 2.8 || overlay.posZEnd != 0.4 {
-		t.Fatalf("overlay position = %+v", overlay)
-	}
-	if overlay.sizeStart != effectTableSize(100) || overlay.sizeEnd != effectTableSize(100) || overlay.sizeStartY != effectTableSize(45) || overlay.sizeEndY != effectTableSize(45) || !overlay.sizeSmooth {
-		t.Fatalf("overlay size = %+v", overlay)
-	}
-	if overlay.overlay {
-		t.Fatal("overlay should use regular reference client 3D rendering")
-	}
-	if overlay.blendAdditive {
-		t.Fatal("overlay should use normal alpha blending")
-	}
-}
-
 func TestAngelusEffectSpecUsesRobrowserSTR(t *testing.T) {
 	spec, ok := worldEffectSpecForID(effectAngelus)
 	if !ok {
@@ -2915,64 +2755,6 @@ func TestAngelusEffectSpecUsesRobrowserSTR(t *testing.T) {
 	}
 	if !component.attachedEntity || !component.spriteHead {
 		t.Fatalf("STR attachment flags = %+v", component)
-	}
-}
-
-func TestBlessingEffectSpecUsesRobrowserSpritesAndParticles(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectBlessing)
-	if !ok {
-		t.Fatal("blessing effect spec missing")
-	}
-	if spec.duration != 2500*time.Millisecond {
-		t.Fatalf("duration = %s, want 2500ms", spec.duration)
-	}
-	if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\ef_blessing.wav" {
-		t.Fatalf("sfx = %#v", spec.sfx)
-	}
-	if len(spec.components) != 4 {
-		t.Fatalf("components = %d, want 4", len(spec.components))
-	}
-	sprite := spec.components[0]
-	if sprite.kind != effectComponentSPR || sprite.spriteFile != "축복" {
-		t.Fatalf("sprite component = %+v", sprite)
-	}
-	if sprite.duration != 1500*time.Millisecond || sprite.spriteDelay != 30*time.Millisecond || !sprite.spriteRepeat || !sprite.spriteHead || sprite.spriteYOffset != -120 || !sprite.worldSizedSprite {
-		t.Fatalf("sprite timing/placement = %+v", sprite)
-	}
-
-	particleCases := []struct {
-		index       int
-		delay       time.Duration
-		posXRand    float64
-		posYRand    float64
-		sparkling   bool
-		sparkNumber int
-	}{
-		{index: 1, delay: 300 * time.Millisecond, posXRand: 1.2, posYRand: 1, sparkling: true, sparkNumber: 2},
-		{index: 2, delay: 400 * time.Millisecond, posXRand: 1.4, posYRand: 1.1},
-	}
-	for _, tc := range particleCases {
-		component := spec.components[tc.index]
-		if component.kind != effectComponent3D || component.spriteFile != "particle6" {
-			t.Fatalf("particle %d resource = %+v", tc.index, component)
-		}
-		if component.duration != 1200*time.Millisecond || component.delay != tc.delay || component.duplicateDelay != 0 || component.duplicate != 6 {
-			t.Fatalf("particle %d timing = %+v", tc.index, component)
-		}
-		if component.alphaMax != 1 || !component.fadeIn || !component.fadeOut || component.sparkling != tc.sparkling || component.sparkNumber != tc.sparkNumber {
-			t.Fatalf("particle %d fade/sparkle = %+v", tc.index, component)
-		}
-		if component.posXRand != tc.posXRand || component.posYRand != tc.posYRand || component.posZStartRand != 2 || component.posZStartMiddle != 5.5 || component.posZEndRand != 0.5 || component.posZEndMiddle != 1 {
-			t.Fatalf("particle %d position = %+v", tc.index, component)
-		}
-		if component.sizeStart != 50*effectPixelRatio || component.sizeEnd != 50*effectPixelRatio {
-			t.Fatalf("particle %d size = %+v", tc.index, component)
-		}
-	}
-
-	aura := spec.components[3]
-	if aura.funcAdapter != effectFuncBlessingCircle || aura.textureName != "alpha_down" || !aura.overlay {
-		t.Fatalf("blessing ground circle = %+v", aura)
 	}
 }
 

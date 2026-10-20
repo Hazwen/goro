@@ -2520,30 +2520,6 @@ func darkJupitelHitEffectSpec() EffectSpec {
 	}
 }
 
-func darkCastingEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 900 * time.Millisecond,
-		SFX:      []string{"effect\\ef_beginspell.wav"},
-		Components: []EffectComponent{{
-			Kind:             EffectComponentCylinder,
-			TextureName:      "ring_black",
-			Color:            color.RGBA{R: 255, G: 255, B: 255, A: 255},
-			AlphaMax:         0.8,
-			Animation:        2,
-			AttachedEntity:   true,
-			BlendMode:        2,
-			BlendAdditive:    true,
-			BottomSize:       1,
-			TopSize:          5,
-			Height:           4,
-			Fade:             true,
-			Rotate:           true,
-			TotalCircleSides: 32,
-			CircleSides:      32,
-		}},
-	}
-}
-
 func mildWindEffectSpec(texture string) EffectSpec {
 	components := []EffectComponent{
 		mildWindComponent(texture, 1, 1, 1, 1, 300, 100),
@@ -2621,25 +2597,6 @@ func soundOnlyEffectSpec(paths ...string) EffectSpec {
 
 func whitePulseEffectSpec() EffectSpec {
 	return EffectSpec{Duration: 500 * time.Millisecond}
-}
-
-func gospelGroundEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 1500 * time.Millisecond,
-		Components: []EffectComponent{
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "FlatColorTile",
-				Color:          color.RGBA{R: 255, G: 255, B: 255, A: 13},
-				SizeStart:      1,
-				RenderBefore:   true,
-				AttachedEntity: false,
-			},
-			{
-				Kind: EffectComponentFUNC, FuncName: "GospelCross", TextureFile: "effect/cross_old.bmp", Repeat: true,
-			},
-		},
-	}
 }
 
 func fogWallGroundEffectSpec() EffectSpec {
@@ -4473,54 +4430,8 @@ var EffectSpecs = map[int]EffectSpec{
 			},
 		},
 	},
-	effectIncAgility: {
-		Duration: 1500 * time.Millisecond,
-		SFX:      []string{"effect\\ef_incagility.wav"},
-		Components: []EffectComponent{
-			incAgilityParticleComponent(1, 500*time.Millisecond, 7),
-			incAgilityParticleComponent(0.75, 400*time.Millisecond, 3),
-			incAgilityParticleComponent(1, 0, 10),
-			{
-				Kind:        EffectComponent3D,
-				Color:       color.RGBA{R: 255, G: 255, B: 255, A: 255},
-				TextureFile: "effect/agi_up.bmp",
-				Duration:    1000 * time.Millisecond,
-				AlphaMax:    1,
-				FadeIn:      true,
-				FadeOut:     true,
-				PosZ:        0.4,
-				PosZEnd:     3,
-				SizeStart:   100 * EffectPixelRatio,
-				SizeEnd:     100 * EffectPixelRatio,
-				SizeStartY:  45 * EffectPixelRatio,
-				SizeEndY:    45 * EffectPixelRatio,
-				SizeSmooth:  true,
-				Overlay:     true,
-			},
-		},
-	},
-	effectDecAgility: {
-		Duration: 1000 * time.Millisecond,
-		SFX:      []string{"effect\\ef_decagility.wav"},
-		Components: []EffectComponent{
-			decAgilityParticleComponent(),
-			{
-				Kind:        EffectComponent3D,
-				TextureFile: "effect/slow.bmp",
-				Duration:    1000 * time.Millisecond,
-				AlphaMax:    1,
-				FadeIn:      true,
-				FadeOut:     true,
-				PosZ:        2.8,
-				PosZEnd:     0.4,
-				SizeStart:   effectTableSize(100),
-				SizeEnd:     effectTableSize(100),
-				SizeStartY:  effectTableSize(45),
-				SizeEndY:    effectTableSize(45),
-				SizeSmooth:  true,
-			},
-		},
-	},
+	effectIncAgility: agilityEffectSpec(false),
+	effectDecAgility: agilityEffectSpec(true),
 	effectIncAgiDex: {
 		Duration: 1000 * time.Millisecond,
 		SFX:      []string{"effect\\ef_incagidex.wav"},
@@ -4547,7 +4458,9 @@ var EffectSpecs = map[int]EffectSpec{
 		Components: []EffectComponent{{
 			Kind:             EffectComponentSPR,
 			SpriteFile:       "성수뜨기",
-			SpriteHead:       true,
+			SpriteDelay:      2 * EffectFrameDuration,
+			PosZ:             4,
+			AttachedEntity:   true,
 			WorldSizedSprite: true,
 		}},
 	},
@@ -5406,78 +5319,6 @@ func hitSlashComponent(kind EffectComponentKind, sizeX, sizeEndY, angleStart, an
 	}
 }
 
-func castAuraEffectSpec(texture string, tint color.RGBA, alphaMax, height, topSize float64, rotate bool) EffectSpec {
-	return EffectSpec{
-		Duration: 900 * time.Millisecond,
-		SFX:      []string{"effect\\ef_beginspell.wav"},
-		Components: []EffectComponent{{
-			Kind:             EffectComponentCylinder,
-			TextureName:      texture,
-			AlphaMax:         alphaMax,
-			Fade:             true,
-			Rotate:           rotate,
-			Animation:        2,
-			BottomSize:       1,
-			TopSize:          topSize,
-			Height:           height,
-			TotalCircleSides: 32,
-			CircleSides:      32,
-			Color:            tint,
-		}},
-	}
-}
-
-func elementalCastAuraEffectSpec(texture string, tint color.RGBA, alphaMax float64) EffectSpec {
-	return EffectSpec{
-		Duration: 900 * time.Millisecond,
-		SFX:      []string{"effect\\ef_beginspell.wav"},
-		Components: []EffectComponent{
-			{
-				Kind:             EffectComponentCylinder,
-				TextureName:      texture,
-				AlphaMax:         0.3,
-				Fade:             true,
-				Rotate:           true,
-				Animation:        1,
-				BottomSize:       1,
-				TopSize:          1,
-				Height:           30,
-				TotalCircleSides: 32,
-				CircleSides:      32,
-				Color:            tint,
-			},
-			{
-				Kind:             EffectComponentCylinder,
-				TextureName:      texture,
-				AlphaMax:         alphaMax,
-				Fade:             true,
-				Rotate:           true,
-				Animation:        1,
-				BottomSize:       1,
-				TopSize:          1.3,
-				Height:           2,
-				TotalCircleSides: 32,
-				CircleSides:      32,
-				Color:            tint,
-			},
-			{
-				Kind:             EffectComponentCylinder,
-				TextureName:      texture,
-				AlphaMax:         alphaMax,
-				Fade:             true,
-				Rotate:           true,
-				Animation:        2,
-				BottomSize:       1,
-				TopSize:          4,
-				Height:           3,
-				TotalCircleSides: 32,
-				CircleSides:      32,
-				Color:            tint,
-			},
-		},
-	}
-}
-
 func bluePotionEffectSpec() EffectSpec {
 	spec := potionEffectSpec("파란포션", color.RGBA{R: 92, G: 150, B: 255, A: 255})
 	spec.SFX = []string{"effect\\흡기.wav"}
@@ -5505,27 +5346,5 @@ func incAgilityParticleComponent(alpha float64, delay time.Duration, duplicate i
 		SizeRandY:       15 * EffectPixelRatio,
 		SizeRandYMiddle: 45 * EffectPixelRatio,
 		Duplicate:       duplicate,
-	}
-}
-
-func decAgilityParticleComponent() EffectComponent {
-	return EffectComponent{
-		Kind:            EffectComponent3D,
-		TextureFile:     "effect/ac_center2.tga",
-		Duration:        1000 * time.Millisecond,
-		DuplicateDelay:  200 * time.Millisecond,
-		AlphaMax:        1,
-		FadeOut:         true,
-		PosXRand:        1.5,
-		PosYRand:        1,
-		PosZStartRand:   1,
-		PosZStartMiddle: 6,
-		PosZEndRand:     1,
-		PosZEndMiddle:   1,
-		SizeStartX:      effectTableSize(2.5),
-		SizeEndX:        effectTableSize(2.5),
-		SizeRandY:       effectTableSize(15),
-		SizeRandYMiddle: effectTableSize(45),
-		Duplicate:       20,
 	}
 }

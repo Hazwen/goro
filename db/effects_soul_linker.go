@@ -118,10 +118,3 @@ func kaupeDodgeEffectSpec() EffectSpec {
 		Components: []EffectComponent{{Kind: EffectComponentFUNC, FuncName: "KaupeDodge", TextureFile: "effect/whitelight.tga"}},
 	}
 }
-
-func blueCastingEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 60 * EffectFrameDuration, SFX: []string{"effect\\EF_BeginSpell.wav"},
-		Components: []EffectComponent{{Kind: EffectComponentFUNC, FuncName: "BlueCasting", TextureFile: "effect/ring_blue.tga", AttachedEntity: true}},
-	}
-}

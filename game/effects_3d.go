@@ -382,3 +382,12 @@ func groundEffectRingMesh(texture *render.Image, center modelPoint3, inner, oute
 	}
 	return vertices, indices
 }
+
+func appendEffectQuad(vertices *[]render.Vertex3D, indices *[]uint16, texture *render.Image, corners [4]modelPoint3, tint color.RGBA) {
+	w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
+	base := uint16(len(*vertices))
+	for i, uv := range [...]texturePoint{{u: 0, v: 0}, {u: 1, v: 0}, {u: 1, v: 1}, {u: 0, v: 1}} {
+		*vertices = append(*vertices, texturedSurfaceVertex3D(corners[i], uv, tint, w, h))
+	}
+	*indices = append(*indices, base, base+1, base+2, base, base+2, base+3)
+}

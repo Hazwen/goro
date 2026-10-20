@@ -126,3 +126,24 @@ func (m *WorldMode) drawBlueCastingEffect(screen *render.Frame, ctx client.Conte
 		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
 	}
 }
+
+func (m *WorldMode) drawCastRingEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, componentIndex int, x, y, z, progress float64) {
+	alpha := effectComponentAlpha(progress, component)
+	if alpha <= 0 {
+		return
+	}
+	texture := m.effectTexture(ctx.Resources, component.textureName)
+	tint := effectComponentTint(component, alpha)
+	z += component.posZ
+	angleOffset := 0.0
+	if component.rotate {
+		angleOffset = progress * 2 * math.Pi
+		angleOffset += deterministicAngle(effect, componentIndex+17) * 0.08
+	}
+	drawWorldSoftRing(screen, m.whitePixel, x, y, z+0.015, component.bottomSize*1.15, 0.16, withAlpha(component.color, alpha*0.75), maxInt(component.circleSides, 20))
+	if texture != nil {
+		drawWorldCylinderBandRotated(screen, m.whitePixel, texture, x, y, z+0.035, component.bottomSize, component.topSize, component.height, tint, maxInt(component.circleSides, component.totalCircleSides), angleOffset)
+		return
+	}
+	drawWorldCylinderBandRotated(screen, m.whitePixel, nil, x, y, z+0.035, component.bottomSize, component.topSize, component.height, tint, maxInt(component.circleSides, component.totalCircleSides), angleOffset)
+}

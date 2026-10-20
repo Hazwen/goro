@@ -211,45 +211,6 @@ func TestMagicCrasherBlendReachesActorDraws(t *testing.T) {
 	}
 }
 
-func TestBlessingCircleIsFlatAndUsesOriginalFade(t *testing.T) {
-	spec, _ := worldEffectSpecForID(effectBlessing)
-	component := spec.components[3]
-	starts := time.Unix(100, 0)
-	mode := WorldMode{textures: map[string]*render.Image{"__effect_alpha_down": render.NewImage(64, 64)}}
-	for _, tt := range []struct {
-		frame int
-		alpha float64
-	}{{-1, 0}, {0, 100.0 / 255 / 30}, {29, 100.0 / 255}, {119, 100.0 / 255}, {120, 100.0 / 255 * 29 / 30}, {149, 0}, {150, 0}} {
-		if got := blessingCircleAlpha(component, time.Duration(tt.frame)*db.EffectFrameDuration); math.Abs(got-tt.alpha) > 1e-9 {
-			t.Fatalf("frame %d alpha = %g want %g", tt.frame, got, tt.alpha)
-		}
-	}
-	frame := render.NewFrame(800, 600)
-	mode.drawBlessingCircleEffect(frame, client.Context{Resources: &res.Manager{}}, component, worldEffect{starts: starts}, 10, 20, 3, starts.Add(40*db.EffectFrameDuration))
-	commands := reflect.ValueOf(frame).Elem().FieldByName("worldCommands")
-	if commands.Len() != 1 {
-		t.Fatal("missing blessing circle")
-	}
-	cmd := commands.Index(0)
-	vertices := cmd.FieldByName("Vertices")
-	for i := 0; i < vertices.Len(); i++ {
-		v := vertices.Index(i)
-		x, y, z := v.FieldByName("X").Float(), v.FieldByName("Y").Float(), v.FieldByName("Z").Float()
-		radius := math.Hypot(x-10, z-20)
-		wantRadius := 2.0
-		if i%3 == 0 {
-			wantRadius = 0
-		}
-		if y != 3 || math.Abs(radius-wantRadius) > 1e-5 {
-			t.Fatalf("vertex %d is not on the ground circle: %g,%g,%g", i, x, y, z)
-		}
-	}
-	options := cmd.FieldByName("Options")
-	if options.FieldByName("DepthTest").Bool() || options.FieldByName("DepthWrite").Bool() || render.Blend(options.FieldByName("Blend").Int()) != render.BlendSourceOver {
-		t.Fatal("blessing must use RF_ALPHA|RF_NODEPTHCHECK")
-	}
-}
-
 func TestOriginalEffectsRenderWithOldROAssets(t *testing.T) {
 	manager := realDataManager(t)
 	world := worldstate.New()

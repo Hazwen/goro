@@ -10,19 +10,6 @@ import (
 	"github.com/kivutar/goro/render"
 )
 
-// These primitives use the 2008 client's 60 Hz updates, including the first
-// update before drawing. Fade-out starts from the opacity reached at that tick.
-func swordmanAlpha(frame, life, rise, fade int, peak float64) uint8 {
-	if frame < 0 || frame >= life {
-		return 0
-	}
-	alpha := peak * math.Min(1, float64(frame+1)/float64(rise))
-	if frame >= fade {
-		alpha = peak * math.Min(1, float64(fade)/float64(rise)) * float64(life-frame-1) / float64(life-fade)
-	}
-	return uint8(alpha)
-}
-
 func bashFlash(effect worldEffect, index, frame int) (angle, halfAngle, radius float64) {
 	n := float64(frame + 1)
 	speed := float64(10+hitEffectRandom(effect, index*5+1, 60)) / 10
@@ -52,7 +39,7 @@ func (m *WorldMode) drawBashEffect(screen *render.Frame, ctx client.Context, pro
 		vertices := make([]render.Vertex, 0, 30)
 		indices := make([]uint16, 0, 30)
 		w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
-		alpha := float32(swordmanAlpha(frame, 40, 6, 30, 170)) / 255
+		alpha := float32(effectParticleAlpha(frame, 40, 6, 30, 170)) / 255
 		for i := 0; i < 10; i++ {
 			u := float32(i%4) * w / 4
 			base := uint16(len(vertices))
@@ -71,7 +58,7 @@ func (m *WorldMode) drawBashEffect(screen *render.Frame, ctx client.Context, pro
 	vertices := make([]render.Vertex, 0, 60)
 	indices := make([]uint16, 0, 60)
 	w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
-	alpha := float32(swordmanAlpha(frame, 40, 10, 27, 200)) / 255
+	alpha := float32(effectParticleAlpha(frame, 40, 10, 27, 200)) / 255
 	for i := 0; i < 20; i++ {
 		angle, halfAngle, radius := bashFlash(effect, i, frame)
 		base := uint16(len(vertices))
@@ -85,29 +72,10 @@ func (m *WorldMode) drawBashEffect(screen *render.Frame, ctx client.Context, pro
 	screen.DrawTrianglesOwned(vertices, indices, texture, options)
 }
 
-type swordmanParticle struct {
-	x, y, halfWidth, halfHeight, angle float64
-	alpha                              uint8
-}
-
-func drawSwordmanParticle(screen *render.Frame, texture *render.Image, origin screenPoint, particle swordmanParticle) {
-	if texture == nil || particle.alpha == 0 || particle.halfWidth <= 0 || particle.halfHeight <= 0 {
-		return
-	}
-	w, h := float64(texture.Bounds().Dx()), float64(texture.Bounds().Dy())
-	options := &render.DrawImageOptions{Filter: render.FilterLinear}
-	options.GeoM.Translate(-w/2, -h/2)
-	options.GeoM.Scale(particle.halfWidth*2/w, particle.halfHeight*2/h)
-	options.GeoM.Rotate(particle.angle)
-	options.GeoM.Translate(float64(origin.x)+particle.x, float64(origin.y)+particle.y)
-	options.ColorScale.ScaleAlpha(float32(particle.alpha) / 255)
-	screen.DrawImage(texture, options)
-}
-
-func bashHitParticle(effect worldEffect, index, frame int) swordmanParticle {
+func bashHitParticle(effect worldEffect, index, frame int) effectScreenParticle {
 	life := 10 + hitEffectRandom(effect, index*6, 20)
 	if frame < 0 || frame >= life {
-		return swordmanParticle{}
+		return effectScreenParticle{}
 	}
 	n := float64(frame + 1)
 	axis := degreesToRadians(float64(index * 45))
@@ -118,7 +86,7 @@ func bashHitParticle(effect worldEffect, index, frame int) swordmanParticle {
 	halfHeight := float64(20+hitEffectRandom(effect, index*6+4, 20)) + 1.5*n + .25*n*(n+1)/2
 	radius := float64(hitEffectRandom(effect, index*6+5, 5))
 	// SIZEUP anchors the bottom edge, so shift the centered quad outward.
-	return swordmanParticle{
+	return effectScreenParticle{
 		x:         math.Sin(axis)*radius + math.Sin(angle)*(distance+halfHeight),
 		y:         -math.Cos(axis)*radius - math.Cos(angle)*(distance+halfHeight) - 20,
 		halfWidth: halfWidth, halfHeight: halfHeight, angle: angle,
@@ -134,26 +102,26 @@ func (m *WorldMode) drawBashHitEffect(screen *render.Frame, ctx client.Context, 
 	textures := [2]*render.Image{m.effectFileTexture(ctx.Resources, component.textureFile), m.effectFileTexture(ctx.Resources, component.textureFiles[0])}
 	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 	for i := 0; i < 8; i++ {
-		drawSwordmanParticle(screen, textures[i%2], origin, bashHitParticle(effect, i, frame))
+		drawEffectScreenParticle(screen, textures[i%2], origin, bashHitParticle(effect, i, frame))
 	}
 }
 
-func endureStreak(effect worldEffect, birth, frame int) swordmanParticle {
+func endureStreak(effect worldEffect, birth, frame int) effectScreenParticle {
 	age := frame - birth
 	// The parent increments its tick before ProcessAlpha runs. A new primitive
 	// with more remaining life is immediately faded from zero and stays invisible.
 	if birth < 0 || birth >= 50 || 40 > 80-birth || age < 0 || age >= 40 || frame >= 80 {
-		return swordmanParticle{}
+		return effectScreenParticle{}
 	}
 	n := float64(age + 1)
 	angle := degreesToRadians(float64(hitEffectRandom(effect, birth*4, 360)))
 	radius := float64(100+hitEffectRandom(effect, birth*4+3, 40)) - 4*n + .1*n*(n+1)/2
-	return swordmanParticle{
+	return effectScreenParticle{
 		x: math.Sin(angle) * radius, y: -math.Cos(angle)*radius - 20,
 		halfWidth:  float64(60+hitEffectRandom(effect, birth*4+1, 100)) / 100,
 		halfHeight: float64(30 + hitEffectRandom(effect, birth*4+2, 20)),
 		angle:      angle,
-		alpha:      swordmanAlpha(age, 40, 20, 27, 254),
+		alpha:      effectParticleAlpha(age, 40, 20, 27, 254),
 	}
 }
 
@@ -166,9 +134,9 @@ func (m *WorldMode) drawEndureEffect(screen *render.Frame, ctx client.Context, p
 	if texture := m.effectFileTexture(ctx.Resources, component.textureFile); texture != nil {
 		n := float64(min(frame+1, 45))
 		halfSize := 150 - 5*n + (5.0/45)*n*(n+1)/2
-		drawSwordmanParticle(screen, texture, origin, swordmanParticle{
+		drawEffectScreenParticle(screen, texture, origin, effectScreenParticle{
 			y: -20, halfWidth: halfSize, halfHeight: halfSize,
-			alpha: swordmanAlpha(frame, 80, 20, 54, 254),
+			alpha: effectParticleAlpha(frame, 80, 20, 54, 254),
 		})
 	}
 	texture := m.effectFileTexture(ctx.Resources, component.textureFiles[0])
@@ -176,7 +144,7 @@ func (m *WorldMode) drawEndureEffect(screen *render.Frame, ctx client.Context, p
 		return
 	}
 	for birth := max(0, frame-39); birth <= min(frame, 49); birth++ {
-		drawSwordmanParticle(screen, texture, origin, endureStreak(effect, birth, frame))
+		drawEffectScreenParticle(screen, texture, origin, endureStreak(effect, birth, frame))
 	}
 }
 
@@ -217,7 +185,7 @@ func magnumSphereMesh(texture *render.Image, center modelPoint3, frame int, alph
 
 func (m *WorldMode) drawMagnumBreakEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, now time.Time) {
 	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
-	alpha := swordmanAlpha(frame, 30, 15, 15, 254)
+	alpha := effectParticleAlpha(frame, 30, 15, 15, 254)
 	if alpha == 0 {
 		return
 	}

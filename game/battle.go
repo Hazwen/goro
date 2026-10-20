@@ -1418,8 +1418,11 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	if !res.HasPlayerJobToken(int(actor.Job)) {
 		return spriteActionNonPCAttack
 	}
-	if skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk {
+	if skillID == db.SkillALBlessing || skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk {
 		return spriteActionIdle
+	}
+	if skillID == db.SkillALIncagi {
+		return spriteActionPCSkill
 	}
 	return spriteActionPCReadyFight
 }

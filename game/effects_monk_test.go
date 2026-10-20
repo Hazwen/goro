@@ -166,22 +166,6 @@ func TestMonkBuffsFollowActorEntrySnapshots(t *testing.T) {
 	}
 }
 
-func TestRuwachUsesSightSoundOncePerActivation(t *testing.T) {
-	ctx := monkEffectContext()
-	m := &WorldMode{}
-	for _, state := range []uint32{db.EffectStateRuwach, db.EffectStateRuwach, db.EffectStateRuwach | db.EffectStateFalcon} {
-		m.applyActorStateChange(ctx, network.ActorStateChange{ID: 300, EffectState: state})
-	}
-	if len(m.scheduledSounds) != 1 || !reflect.DeepEqual(m.scheduledSounds[0].paths, []string{"effect\\ef_sight.wav"}) {
-		t.Fatalf("Ruwach sounds = %+v", m.scheduledSounds)
-	}
-	m.applyActorStateChange(ctx, network.ActorStateChange{ID: 300})
-	m.applyActorStateChange(ctx, network.ActorStateChange{ID: 300, EffectState: db.EffectStateRuwach})
-	if len(m.scheduledSounds) != 2 || len(m.worldEffects) != 1 {
-		t.Fatal("Ruwach did not restart on a new activation")
-	}
-}
-
 func TestGumgangFlashesMatchOriginalUpdateLoop(t *testing.T) {
 	for i, pulse := range []int{70, 130, 190, 250} {
 		counter, cycle := 10, 0

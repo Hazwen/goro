@@ -78,7 +78,7 @@ func (m *WorldMode) drawRogueBurst(screen *render.Frame, ctx client.Context, com
 		for j := range corners {
 			corners[j] = add3(corners[j], effect.actorOrigin)
 		}
-		appendSoulLinkerQuad(&vertices, &indices, texture,
+		appendEffectQuad(&vertices, &indices, texture,
 			[4]modelPoint3{corners[3], corners[2], corners[1], corners[0]}, tint)
 	}
 	if len(indices) > 0 {

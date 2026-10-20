@@ -121,7 +121,7 @@ func TestSwordmanNativeTimings(t *testing.T) {
 		{0, 80, 20, 54, 254, 12}, {19, 80, 20, 54, 254, 254}, {79, 80, 20, 54, 254, 0},
 		{0, 30, 15, 15, 254, 16}, {14, 30, 15, 15, 254, 254}, {29, 30, 15, 15, 254, 0},
 	} {
-		if got := swordmanAlpha(tc.frame, tc.life, tc.rise, tc.fade, tc.peak); got != tc.want {
+		if got := effectParticleAlpha(tc.frame, tc.life, tc.rise, tc.fade, tc.peak); got != tc.want {
 			t.Fatalf("phase %+v: alpha %d", tc, got)
 		}
 	}

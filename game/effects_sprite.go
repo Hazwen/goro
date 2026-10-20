@@ -24,7 +24,7 @@ func (m *WorldMode) draw3DSpriteEffect(screen *render.Frame, ctx client.Context,
 	}
 	delayMS := float64(action.DelayMS)
 	if component.spriteDelay > 0 {
-		delayMS = float64(component.spriteDelay / time.Millisecond)
+		delayMS = float64(component.spriteDelay) / float64(time.Millisecond)
 	}
 	motion := 0
 	if component.spriteRepeat {
@@ -180,7 +180,7 @@ func (m *WorldMode) drawSPREffect(screen *render.Frame, ctx client.Context, proj
 	}
 	delayMS := float64(action.DelayMS)
 	if component.spriteDelay > 0 {
-		delayMS = float64(component.spriteDelay / time.Millisecond)
+		delayMS = float64(component.spriteDelay) / float64(time.Millisecond)
 	}
 	motion := 0
 	if component.spriteRepeat {

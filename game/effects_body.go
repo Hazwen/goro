@@ -10,39 +10,6 @@ import (
 	"github.com/kivutar/goro/render"
 )
 
-func (m *WorldMode) drawKaizelEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
-	// EF_KAIZEL launches JobLvUp50_2(0) and (45) at tick 15.
-	age := int(now.Sub(effect.starts)/db.EffectFrameDuration) - 15 + 1
-	alpha := 5*min(age, 7) - 2*max(age-9, 0)
-	if now.Before(effect.starts) || age <= 0 || alpha <= 0 {
-		return
-	}
-	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
-	if texture == nil {
-		return
-	}
-	inner, outer := float64(1+age)/5, float64(3+3*age)/5
-	height := (1.5 + .4*float64(min(age, 7))) / 5
-	var vertices []render.Vertex3D
-	var indices []uint16
-	for blade := 0; blade < 8; blade++ {
-		for slice := 0; slice < 3; slice++ {
-			sin, cos := math.Sincos(degreesToRadians(float64(blade*45 - 1 + slice)))
-			low, high, a := height*.1, height*.4, alpha/3
-			if slice == 1 {
-				low, high, a = height*.2, height, alpha
-			}
-			appendSoulLinkerQuad(&vertices, &indices, texture, [4]modelPoint3{
-				{x: x + cos*inner, y: z + low, z: y + sin*inner},
-				{x: x + cos*outer, y: z + high, z: y + sin*outer},
-				{x: x + cos*outer, y: z, z: y + sin*outer},
-				{x: x + cos*inner, y: z, z: y + sin*inner},
-			}, color.RGBA{255, 255, 255, uint8(a)})
-		}
-	}
-	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
-}
-
 func blueBodyAlpha(bodyTime int) float64 {
 	if bodyTime < 0 || bodyTime > 50 {
 		return 0

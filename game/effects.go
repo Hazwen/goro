@@ -1011,7 +1011,11 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 			glog.Debugf("mild wind effect skill=%d target=%d effect=%d level=%d", notify.SkillID, notify.TargetID, effectID, notify.Amount)
 		}
 	}
-	for _, effectID := range skillEffectIDs(notify.SkillID) {
+	effectIDs := skillEffectIDs(notify.SkillID)
+	if notify.SkillID == db.SkillALHeal {
+		effectIDs = []int{healEffectID(notify.Amount)}
+	}
+	for _, effectID := range effectIDs {
 		actorID := notify.TargetID
 		// The status packet may already have installed the persistent aura.
 		if effectID == effectSteelBody || effectID == effectAsuraBody || effectID == effectBabyBody {
@@ -1187,6 +1191,15 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 }
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
+	if notify.SkillID == db.SkillALPneuma || notify.SkillID == db.SkillALWarp {
+		now := time.Now()
+		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
+		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
+			m.startSkillActionAnimation(ctx, notify.SourceID, actor, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
+		}
+		// The subsequent skill-unit entry owns the ground visual and its lifetime.
+		return
+	}
 	// rAthena sends Battle Chant's cast notification at 0,0 and follows it with
 	// one UNT_GOSPEL entry per field cell. Play EF_BOTTOM_GOSPEL once on the
 	// caster here; the unit entries own the persistent ground visuals.
@@ -1785,7 +1798,8 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain {
 		effectID = effectBeginSpell6
 	}
-	if skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion {
+	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
+		skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion {
 		effectID = effectBeginSpell
 	}
 	if db.IsSoulLinkerActiveSkill(skillID) {
@@ -2569,6 +2583,8 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "Agility":
+		return effectFuncAgility
 	case "Guard":
 		return effectFuncGuard
 	case "GospelCross":
@@ -2762,7 +2778,12 @@ func (m *WorldMode) worldEffectResolvedComponentDuration(ctx client.Context, spe
 			if actionIndex < 0 || actionIndex >= len(view.act.Actions) {
 				actionIndex = 0
 			}
-			duration = actionAnimationDuration(view.act.Actions[actionIndex], duration)
+			action := view.act.Actions[actionIndex]
+			if component.spriteDelay > 0 && len(action.Animations) > 0 {
+				duration = component.spriteDelay * time.Duration(len(action.Animations))
+			} else {
+				duration = actionAnimationDuration(action, duration)
+			}
 		}
 	}
 	return duration

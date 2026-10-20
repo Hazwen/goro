@@ -50,18 +50,31 @@ func TestGroundSkillNotifyPrefersDancerGroundEffect(t *testing.T) {
 	}
 }
 
-func TestPneumaGroundSkillNotifyAddsCellEffect(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	mode := &WorldMode{}
-	ctx := client.Context{Session: &session.Session{AccountID: 2000000}, World: world}
-
-	mode.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: 25, SourceID: 2000000, Level: 1, X: 123, Y: 456})
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
-	}
-	if effect := mode.worldEffects[0]; effect.actorID != 0 || effect.effectID != effectPneuma || effect.x != 123 || effect.y != 456 {
-		t.Fatalf("effect = %+v", effect)
+func TestPneumaGroundSkillAndUnitDoNotDuplicate(t *testing.T) {
+	for _, unitFirst := range []bool{false, true} {
+		ctx := knightEffectContext()
+		mode := &WorldMode{}
+		cast := network.GroundSkillNotify{SkillID: db.SkillALPneuma, SourceID: 2000000, Level: 1, X: 12, Y: 23}
+		unit := network.SkillUnitEntry{ID: 9001, CreatorID: 2000000, UnitID: 133, X: 12, Y: 23, Visible: true}
+		if unitFirst {
+			mode.applySkillUnitEntry(ctx, unit)
+		}
+		mode.applyGroundSkillNotify(ctx, cast)
+		mode.applySkillUnitEntry(ctx, unit)
+		if len(mode.worldEffects) != 1 {
+			t.Fatalf("Pneuma must render once: %+v", mode.worldEffects)
+		}
+		effect := mode.worldEffects[0]
+		if effect.effectID != effectPneuma || effect.actorID != unit.ID || !effect.persistent || effect.x != 12 || effect.y != 23 {
+			t.Fatal("Pneuma must belong to its ground unit")
+		}
+		if mode.actorAnims[2000000].actionFamily != spriteActionPCSkill {
+			t.Fatal("Pneuma release must animate its caster")
+		}
+		mode.applySkillUnitDisappear(network.SkillUnitDisappear{ID: unit.ID})
+		if len(mode.worldEffects) != 0 {
+			t.Fatal("Pneuma remained visible after its unit disappeared")
+		}
 	}
 }
 
@@ -855,8 +868,8 @@ func TestActorActionNotifyHealDoesNotOverwriteLocalCastWithHurt(t *testing.T) {
 	if anim.actionFamily != spriteActionPCSkill || anim.hasFixedMotion {
 		t.Fatalf("source animation = %+v, want reference client DEFAULT skill action", anim)
 	}
-	if len(mode.worldEffects) != 2 || mode.worldEffects[0].effectID != effectHeal || mode.worldEffects[1].effectID != effectHealOffensive {
-		t.Fatalf("world effects = %+v, want reference client heal effect followed by hit effect", mode.worldEffects)
+	if len(mode.worldEffects) != 3 || mode.worldEffects[0].effectID != effectHealOffensive || mode.worldEffects[1].effectID != effectHit1 || mode.worldEffects[2].effectID != effectBashHit {
+		t.Fatalf("world effects = %+v, want offensive Heal followed by the native impact pair", mode.worldEffects)
 	}
 }
 

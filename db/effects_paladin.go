@@ -1,6 +1,9 @@
 package db
 
-import "time"
+import (
+	"image/color"
+	"time"
+)
 
 const (
 	effectShieldBoomerang3 = 520
@@ -106,5 +109,24 @@ func guardEffectSpec() EffectSpec {
 			Kind: EffectComponentFUNC, FuncName: "Guard",
 			TextureFile: "effect/guardk.tga", TextureFiles: []string{"effect/guardk2.tga"},
 		}},
+	}
+}
+
+func gospelGroundEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 1500 * time.Millisecond,
+		Components: []EffectComponent{
+			{
+				Kind:           EffectComponentFUNC,
+				FuncName:       "FlatColorTile",
+				Color:          color.RGBA{R: 255, G: 255, B: 255, A: 13},
+				SizeStart:      1,
+				RenderBefore:   true,
+				AttachedEntity: false,
+			},
+			{
+				Kind: EffectComponentFUNC, FuncName: "GospelCross", TextureFile: "effect/cross_old.bmp", Repeat: true,
+			},
+		},
 	}
 }
