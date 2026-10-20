@@ -517,7 +517,8 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	normalPlayerBowAttack := action.SkillID == 0 && playerBowAttack
 	doubleStrafeBowAttack := action.SkillID == db.SkillACDouble && playerBowAttack
 	showerBowAttack := action.SkillID == db.SkillACShower && playerBowAttack
-	referenceBowFlightAttack := normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack
+	phantasmicBowAttack := (action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower) && playerBowAttack
+	referenceBowFlightAttack := normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack
 	if sourceOK && !splash {
 		if anim, ok := m.actorAnimation(action.SourceID, now); ok && anim.autoCounter && action.SkillID == 0 {
 			m.addWorldEffectAt(ctx, effectAutoCounter, action.SourceID, now)
@@ -569,7 +570,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		}
 		if action.SkillID > 0 {
 			m.addSkillBeginEffect(ctx, action, now)
-			if doubleStrafeBowAttack || showerBowAttack {
+			if doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack {
 				// The bow releases one arrow at the ACT marker.
 				m.addSkillBeforeHitEffectOnce(ctx, action, projectileAt, projectileDuration)
 			} else {
@@ -633,6 +634,8 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
+	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower:
+		return true
 	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution:
 		return true
 	case db.SkillWZFirepillar, db.SkillWZSightrasher, db.SkillWZMeteor, db.SkillWZJupitel, db.SkillWZVermilion,
@@ -874,10 +877,10 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 			if i > 0 && secondary > 0 && action.SkillID >= db.SkillWZFirepillar && action.SkillID <= db.SkillWZQuagmire {
 				continue
 			}
-			if effectID == effectBowlingBash && i > 0 {
+			if (effectID == effectBowlingBash || effectID == effectBlitzBeat) && i > 0 {
 				continue
 			}
-			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
+			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
 				continue
 			}
 			if i > 0 && (action.SkillID == db.SkillMGNapalmbeat || action.SkillID == db.SkillMGSoulstrike || action.SkillID == db.SkillMGFireball || action.SkillID == db.SkillMGFrostdiver) && (effectID == effectBashHit || effectID == effectFrostDiverHit) {

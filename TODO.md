@@ -102,7 +102,45 @@ assumptions.
 
 ## Effects
 
-Source of truth: roBrowser's `src/DB/Effects/EffectConst.js`,
+### Original-client job audit
+
+Active follow-up to the first-job, Knight/Lord Knight, Crusader/Paladin,
+Priest/High Priest, Monk, Wizard, Sage, Assassin/Rogue, and Soul Linker passes.
+For each class: inspect every skill against dhxj and the 2008 HighPriest client,
+cross-check server packets, implement discrepancies, review and fix twice,
+validate, then commit and push. Existing support is not proof of visual parity.
+
+- [x] Hunter — traps, Detecting, Blitz Beat, Phantasmic Arrow, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
+- [ ] Sniper — analysis in progress
+- [ ] Bard
+- [ ] Clown
+- [ ] Dancer
+- [ ] Gypsy
+- [ ] Blacksmith
+- [ ] Whitesmith
+- [ ] Alchemist
+- [ ] Creator
+- [ ] High Wizard
+- [ ] Professor
+- [ ] Assassin Cross
+- [ ] Stalker
+- [ ] Champion
+- [ ] Taekwon
+- [ ] Star Gladiator
+- [ ] Ninja
+- [ ] Gunslinger
+
+Hunter reference checks: `dhxj` and 2008 `HighPriest` skill action/effect
+routing, trap state changes, particle primitives, and rAthena trap packets.
+Trap bursts are owned by look changes, Shock Wave loops on its unit, and
+Remove Trap/Spring Trap resolve the trap position before removal. Added missing
+procedural effects, original sound delays, Ankle Snare's one-shot model
+animation, trap picking/chasing, and Talkie Box's bubble-only packet. Passives
+(Beast Bane, Falconry Mastery, Steel Crow) have no invented activation effect;
+the existing falcon option owns the bird. Full tests with client assets and a
+normal build passed. Live visual comparison remains useful for fine tuning.
+
+Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
 

@@ -840,7 +840,7 @@ func (m *WorldMode) drawSceneActorOverlays(screen *render.Frame, ctx client.Cont
 	m.drawScriptHighlightMarker(screen, ctx, now, entries)
 	m.drawVendingBoardLabels(screen, ctx, entries)
 	m.drawChatRoomBoardLabels(screen, ctx, entries)
-	m.drawSpeechBubbles(screen, entries, now)
+	m.drawSpeechBubbles(screen, ctx, projection, entries, now)
 	m.drawHoveredLocalPlayerNameLabel(screen, ctx, entries)
 	m.drawHoveredActorNameLabel(screen, ctx, projection, now)
 }

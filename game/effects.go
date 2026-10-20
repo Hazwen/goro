@@ -1017,6 +1017,9 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	}
 	m.applySkillNameBubble(ctx, notify.SourceID, notify.SkillID, now)
 	m.startSkillNoDamageSourceAnimation(ctx, notify, now)
+	if m.applyHunterTrapSkill(ctx, notify, now) {
+		return
+	}
 	if notify.SkillID == db.SkillPaSacrifice {
 		// Activation is silent; each sacrificed attack launches BASH3D.
 		return
@@ -1091,7 +1094,6 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 func (m *WorldMode) applySkillCastNotify(ctx client.Context, notify network.SkillCastNotify) {
 	now := time.Now()
 	m.applySkillNameBubble(ctx, notify.SourceID, notify.SkillID, now)
-	m.applyFalconSkillCastNotify(ctx, notify, now)
 	if notify.DelayTime == 0 {
 		return
 	}
@@ -1207,6 +1209,9 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 		m.faceCombatSource(ctx, source, sourceLocal, target)
 		return
 	}
+	if x, y, ok := m.skillUnitCell(targetID); ok {
+		cellX, cellY = x, y
+	}
 	if cellX == 0 && cellY == 0 {
 		return
 	}
@@ -1221,6 +1226,9 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 }
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
+	if m.applyHunterGroundSkill(ctx, notify, time.Now()) {
+		return
+	}
 	if notify.SkillID == db.SkillACShower {
 		now := time.Now()
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
@@ -1312,6 +1320,9 @@ func (m *WorldMode) applySkillUnitEntry(ctx client.Context, entry network.SkillU
 	}
 	m.removeGraffiti(entry.ID)
 	if m.applySkillUnitModelEntry(entry) {
+		if entry.UnitID == 148 { // Shock Wave Trap owns its looping STR.
+			m.addWorldEffectAtCellLifetime(ctx, effectShockwave, entry.ID, int(entry.X), int(entry.Y), time.Now(), skillUnitEffectFallbackDuration, true)
+		}
 		return
 	}
 	if !entry.Visible {
@@ -1334,6 +1345,9 @@ func (m *WorldMode) applySkillUnitLookChange(ctx client.Context, look network.Ac
 		return false
 	}
 	if m.applyUsedTrapLookChange(ctx, look) {
+		return true
+	}
+	if m.applyTrapModelLookChange(look) {
 		return true
 	}
 	effectIDs := skillUnitEffectIDs(uint16(look.Value))
@@ -2827,6 +2841,8 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncRisingParticles
 	case "Steal":
 		return effectFuncSteal
+	case "Detecting", "RemoveTrap", "Flasher", "BlitzBeat":
+		return effectFuncHunter
 	case "ArrowShower":
 		return effectFuncArrowShower
 	case "MammoniteCoins":

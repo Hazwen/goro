@@ -124,6 +124,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		m.finishServerProgress(ctx, "server cancel")
 		return nil, false
 	}
+	if chat, ok, err := network.ParseTalkBoxChatContents(pkt); err != nil {
+		glog.Errorf("parse talk box chat 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		m.applySpeechBubble(ctx, chat, now)
+		return nil, false
+	}
 	if chat, ok, err := network.ParseChatMessage(pkt); err != nil {
 		glog.Errorf("parse chat message 0x%04X: %v", pkt.ID, err)
 	} else if ok {

@@ -707,7 +707,7 @@ func TestFalconActorActionSkillAttackForFalconAssault(t *testing.T) {
 	}
 }
 
-func TestFalconDetectingSkillCastAttacksGroundWithoutDelay(t *testing.T) {
+func TestFalconDetectingWaitsForGroundSkill(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 150006, X: 10, Y: 20, Dir: 4}
 	ctx := client.Context{
@@ -730,6 +730,10 @@ func TestFalconDetectingSkillCastAttacksGroundWithoutDelay(t *testing.T) {
 		X:        12,
 		Y:        22,
 	})
+	if mode.falcons[150006] != nil {
+		t.Fatal("Detecting must not launch its falcon before the cast completes")
+	}
+	mode.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: db.SkillHTDetecting, X: 12, Y: 22})
 	falcon := mode.falcons[150006]
 	if falcon == nil || !falcon.attacking {
 		t.Fatalf("falcon = %+v, want Detecting attack even with zero cast delay", falcon)

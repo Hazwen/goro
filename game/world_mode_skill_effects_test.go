@@ -147,10 +147,10 @@ func TestRobrowserRepairWeaponAndShockwaveSpecs(t *testing.T) {
 	if !ok || len(shockwave.components) != 1 {
 		t.Fatalf("EF_SHOCKWAVE spec = %+v ok=%t", shockwave, ok)
 	}
-	if len(shockwave.sfx) != 1 || shockwave.sfx[0] != "effect\\hunter_shockwavetrap.wav" {
+	if len(shockwave.sfx) != 0 {
 		t.Fatalf("EF_SHOCKWAVE sfx = %v", shockwave.sfx)
 	}
-	if component := shockwave.components[0]; component.kind != effectComponentSPR || component.spriteFile != "shockwave" || !component.attachedEntity {
+	if component := shockwave.components[0]; component.kind != effectComponentSTR || component.strFile != "shockwave" {
 		t.Fatalf("EF_SHOCKWAVE component = %+v", component)
 	}
 }
@@ -1421,19 +1421,19 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "KN_CHARGEATK imported begin", skillBeginEffectIDs(db.SkillKNChargeatk))
 	expectEffectIDs(t, "KN_CHARGEATK imported hit", skillHitEffectIDs(db.SkillKNChargeatk), effectBashHit)
 	expectEffectIDs(t, "KN_BOWLINGBASH imported caster", skillBeginEffectIDs(db.SkillKNBowlingbash), effectBowlingSelf)
-	expectEffectIDs(t, "HT_SKIDTRAP imported", skillEffectIDs(db.SkillHTSkidtrap), effectSkidTrap)
+	expectEffectIDs(t, "HT_SKIDTRAP imported", skillGroundEffectIDs(db.SkillHTSkidtrap), effectSkidTrap)
 	expectEffectIDs(t, "HT_LANDMINE imported empty", skillEffectIDs(db.SkillHTLandmine))
-	expectEffectIDs(t, "HT_ANKLESNARE imported ground", skillGroundEffectIDs(db.SkillHTAnklesnare), effectAnkleSnareGround)
-	expectEffectIDs(t, "HT_SHOCKWAVE imported", skillEffectIDs(db.SkillHTShockwave), effectShockwave)
-	expectEffectIDs(t, "HT_SHOCKWAVE imported hit", skillHitEffectIDs(db.SkillHTShockwave), effectShockwaveHit)
-	expectEffectIDs(t, "HT_SANDMAN imported hit", skillHitEffectIDs(db.SkillHTSandman), effectSandman)
-	expectEffectIDs(t, "HT_FLASHER imported hit", skillHitEffectIDs(db.SkillHTFlasher), effectFlasher)
-	expectEffectIDs(t, "HT_FREEZINGTRAP imported hit", skillHitEffectIDs(db.SkillHTFreezingtrap), effectFreezingTrap)
-	expectEffectIDs(t, "HT_BLASTMINE imported hit", skillHitEffectIDs(db.SkillHTBlastmine), effectBlastMineBomb)
-	expectEffectIDs(t, "HT_CLAYMORE imported hit", skillHitEffectIDs(db.SkillHTClaymoretrap), effectClaymore)
+	expectEffectIDs(t, "HT_ANKLESNARE imported ground", skillGroundEffectIDs(db.SkillHTAnklesnare))
+	expectEffectIDs(t, "HT_SHOCKWAVE imported", skillEffectIDs(db.SkillHTShockwave))
+	expectEffectIDs(t, "HT_SHOCKWAVE imported hit", skillHitEffectIDs(db.SkillHTShockwave))
+	expectEffectIDs(t, "HT_SANDMAN imported hit", skillHitEffectIDs(db.SkillHTSandman))
+	expectEffectIDs(t, "HT_FLASHER imported hit", skillHitEffectIDs(db.SkillHTFlasher))
+	expectEffectIDs(t, "HT_FREEZINGTRAP imported hit", skillHitEffectIDs(db.SkillHTFreezingtrap), effectHit1)
+	expectEffectIDs(t, "HT_BLASTMINE imported hit", skillHitEffectIDs(db.SkillHTBlastmine), effectHit1)
+	expectEffectIDs(t, "HT_CLAYMORE imported hit", skillHitEffectIDs(db.SkillHTClaymoretrap), effectHit1)
 	expectEffectIDs(t, "HT_REMOVETRAP imported", skillEffectIDs(db.SkillHTRemovetrap), effectRemoveTrap)
-	expectEffectIDs(t, "HT_BLITZBEAT imported", skillEffectIDs(db.SkillHTBlitzbeat), effectBlitzBeat)
-	expectEffectIDs(t, "HT_DETECTING imported", skillEffectIDs(db.SkillHTDetecting), effectDetecting)
+	expectEffectIDs(t, "HT_BLITZBEAT imported", skillHitEffectIDs(db.SkillHTBlitzbeat), effectBlitzBeat)
+	expectEffectIDs(t, "HT_DETECTING imported", skillGroundEffectIDs(db.SkillHTDetecting), effectDetecting)
 	expectEffectIDs(t, "HT_SPRINGTRAP imported", skillEffectIDs(db.SkillHTSpringtrap), effectSpringTrap)
 	expectEffectIDs(t, "HT_TALKIEBOX imported empty", skillEffectIDs(db.SkillHTTalkiebox))
 	expectEffectIDs(t, "HT_POWER imported empty", skillEffectIDs(db.SkillHTPower))
@@ -1659,7 +1659,7 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "SN_SIGHT imported", skillEffectIDs(db.SkillSNSight), effectTrueSight)
 	expectEffectIDs(t, "SN_FALCONASSAULT imported", skillEffectIDs(db.SkillSNFalconassault), effectFalconAssault)
 	expectEffectIDs(t, "HT_PHANTASMIC imported before hit", skillBeforeHitEffectIDs(db.SkillHTPhantasmic), effectArrowShot)
-	expectEffectIDs(t, "HT_PHANTASMIC imported hit", skillHitEffectIDs(db.SkillHTPhantasmic), effectBashHit)
+	expectEffectIDs(t, "HT_PHANTASMIC imported hit", skillHitEffectIDs(db.SkillHTPhantasmic), effectHit1, effectBashHit)
 	expectEffectIDs(t, "SN_SHARPSHOOTING imported begin", skillBeginEffectIDs(db.SkillSNSharpshooting), effectSharpShootingCast)
 	expectEffectIDs(t, "SN_SHARPSHOOTING imported before hit", skillBeforeHitEffectIDs(db.SkillSNSharpshooting), effectArrowShot)
 	expectEffectIDs(t, "SN_SHARPSHOOTING imported hit", skillHitEffectIDs(db.SkillSNSharpshooting), effectTripleAttack2)

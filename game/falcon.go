@@ -147,13 +147,6 @@ func (m *WorldMode) applyFalconActorActionNotify(ctx client.Context, action netw
 	m.startFalconAttackAt(ctx, action.SourceID, int(targetX), int(targetY), now)
 }
 
-func (m *WorldMode) applyFalconSkillCastNotify(ctx client.Context, notify network.SkillCastNotify, now time.Time) {
-	if !falconSkillAttacksGround(notify.SkillID) {
-		return
-	}
-	m.startFalconAttackAt(ctx, notify.SourceID, int(notify.X), int(notify.Y), now)
-}
-
 func (m *WorldMode) applyFalconGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify, now time.Time) {
 	if !falconSkillAttacksGround(notify.SkillID) {
 		return

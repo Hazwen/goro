@@ -10,19 +10,21 @@ import (
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
+	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
 )
 
 type skillUnitModel struct {
-	unitID          uint16
-	x               int
-	y               int
-	modelPath       string
-	modelFallbacks  []string
-	triggerEffectID int
-	scale           float64
-	fixedFrame      int
-	hasFixedFrame   bool
+	unitID           uint16
+	x                int
+	y                int
+	modelPath        string
+	modelFallbacks   []string
+	triggerEffectID  int
+	scale            float64
+	fixedFrame       int
+	hasFixedFrame    bool
+	animationStarted time.Time
 }
 
 func skillUnitModelSpec(unitID uint16) (db.SkillUnitModelSpec, bool) {
@@ -89,12 +91,25 @@ func (m *WorldMode) applySkillUnitUpdate(update network.SkillUnitUpdate) {
 }
 
 func (m *WorldMode) applyUsedTrapLookChange(ctx client.Context, look network.ActorLookChange) bool {
-	if look.Type != 0 || look.Value != uint32(db.SkillUnitUsedTraps) || look.ID == 0 {
+	if look.Type != 0 || look.ID == 0 || (look.Value != uint32(db.SkillUnitUsedTraps) && look.Value != 141) {
 		return false
+	}
+	if look.Value == 141 {
+		unit, ok := m.skillUnitModels[look.ID]
+		if !ok {
+			unit, ok = m.hiddenSkillUnits[look.ID]
+		}
+		if !ok || unit.unitID != 147 { // Land Mine becomes an active Fire Pillar.
+			return false
+		}
 	}
 	unit, ok := m.removeSkillUnitModel(look.ID)
 	if !ok {
 		return false
+	}
+	m.removeSkillUnitEffects(look.ID)
+	if look.Value == 141 {
+		unit.triggerEffectID = effectFirePillarBomb
 	}
 	if unit.triggerEffectID > 0 {
 		now := time.Now()
@@ -150,6 +165,44 @@ func (m *WorldMode) skillUnitModelCell(id uint32) (int, int, bool) {
 		}
 	}
 	return 0, 0, false
+}
+
+func (m *WorldMode) clickedSkillTarget(ctx client.Context, projection sceneProjection, skill session.Skill, mouseX, mouseY int, now time.Time) (worldstate.Actor, bool) {
+	if ctx.World == nil {
+		return worldstate.Actor{}, false
+	}
+	if skill.Type&skillTargetTrap == 0 {
+		return clickedSkillTarget(ctx, projection, skill, mouseX, mouseY, now, m.actorDeaths)
+	}
+	var best worldstate.Actor
+	bestDistance := math.Inf(1)
+	for id, unit := range m.skillUnitModels {
+		x, y := float64(unit.x), float64(unit.y)
+		point, ok := projection.projectPoint(cellCenter(x), cellCenter(y), terrainHeightAt(ctx.World, x, y))
+		if !ok {
+			continue
+		}
+		dx, dy := float64(point.x)-float64(mouseX), float64(point.y)-float64(mouseY)
+		distance := dx*dx + dy*dy
+		if distance <= 20*20 && (distance < bestDistance || distance == bestDistance && id < best.ID) {
+			best, bestDistance = worldstate.Actor{ID: id, X: unit.x, Y: unit.y}, distance
+		}
+	}
+	return best, best.ID != 0
+}
+
+func (m *WorldMode) applyTrapModelLookChange(look network.ActorLookChange) bool {
+	if look.Type != 0 || look.Value != 145 {
+		return false
+	}
+	unit, ok := m.skillUnitModels[look.ID]
+	if !ok || unit.unitID != 145 {
+		return false
+	}
+	// ZC_SKILL_UPDATE reveals Ankle Snare; the following look change closes it.
+	unit.animationStarted = time.Now()
+	m.skillUnitModels[look.ID] = unit
+	return true
 }
 
 func (m *WorldMode) drawSkillUnitRSMModels(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) {
@@ -229,6 +282,11 @@ func skillUnitRSMPlacement(world *worldstate.World, id uint32, unit skillUnitMod
 }
 
 func skillUnitRSMFrame(rsm *res.RSM, placement res.RSWModel, unit skillUnitModel, now time.Time) (int, bool) {
+	if !unit.animationStarted.IsZero() {
+		last := max(3, 3+(rsmAnimationLength(rsm)-4)/100*100)
+		frame := 3 + max(0, int(now.Sub(unit.animationStarted)/db.EffectFrameDuration))*100
+		return min(frame, last), frame < last
+	}
 	if unit.hasFixedFrame {
 		return unit.fixedFrame, false
 	}

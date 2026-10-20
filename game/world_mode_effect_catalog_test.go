@@ -186,8 +186,6 @@ func TestRobrowserSimpleEffectsFiftyToOneHundredMatchTableRows(t *testing.T) {
 		wav  string
 	}{
 		{"EF_HASTEUP", effectHasteUp, "effect\\black_adrenalinerush_b.wav"},
-		{"EF_FLASHER", effectFlasher, "effect\\hunter_flasher.wav"},
-		{"EF_REMOVETRAP", effectRemoveTrap, "effect\\hunter_removetrap.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
@@ -367,8 +365,6 @@ func TestRobrowserSimpleEffectsOneHundredToOneFiftyMatchTableRows(t *testing.T) 
 		wav  string
 	}{
 		{"EF_BLASTMINE", effectBlastMine, "effect\\hun_anklesnare.wav"},
-		{"EF_BLITZBEAT", effectBlitzBeat, "effect\\hunter_blitzbeat.wav"},
-		{"EF_DETECTING", effectDetecting, "effect\\hunter_detecting.wav"},
 		{"EF_CLOAKING", effectCloaking, "effect\\assasin_cloaking.wav"},
 		{"EF_OVERTHRUST", effectOverthrust, "effect\\black_overthrust.wav"},
 	} {

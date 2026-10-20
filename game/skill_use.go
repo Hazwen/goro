@@ -451,7 +451,7 @@ func (c skillController) HandleClick(ctx client.Context, projection sceneProject
 		}
 		return
 	}
-	actor, ok := clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now, c.mode.actorDeaths)
+	actor, ok := c.mode.clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now)
 	if !ok {
 		if x, y, groundOK := clickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); groundOK {
 			glog.Debugf("skill target canceled by ground click skill=%d mouse=%d,%d target=%d,%d", skill.ID, ctx.Input.MouseX, ctx.Input.MouseY, x, y)
@@ -533,12 +533,16 @@ func (pending pendingSkillTarget) hasTarget() bool {
 	return pending.ground || pending.targetID != 0
 }
 
-func (pending pendingSkillTarget) targetCell(ctx client.Context, now time.Time) (int, int, bool) {
+func (c skillController) targetCell(ctx client.Context, pending pendingSkillTarget, now time.Time) (int, int, bool) {
 	if !localStealthAllowsSkill(ctx, pending.skill.ID) {
 		return 0, 0, false
 	}
 	if pending.ground {
 		return pending.x, pending.y, walkTargetInBounds(ctx, pending.x, pending.y)
+	}
+	if pending.skill.Type&skillTargetTrap != 0 {
+		unit, ok := c.mode.skillUnitModels[pending.targetID]
+		return unit.x, unit.y, ok
 	}
 	actor, ok := ctx.World.Actors[pending.targetID]
 	if !ok || actorHasStealth(actor) {
@@ -649,7 +653,7 @@ func (c skillController) UpdatePendingTarget(ctx client.Context, source string, 
 		c.mode.pendingSkill = pendingSkillTarget{}
 		return
 	}
-	targetX, targetY, ok := pending.targetCell(ctx, now)
+	targetX, targetY, ok := c.targetCell(ctx, pending, now)
 	if !ok {
 		glog.Debugf("%s pending skill target vanished skill=%d target=%d", source, pending.skill.ID, pending.targetID)
 		c.mode.pendingSkill = pendingSkillTarget{}
@@ -700,7 +704,7 @@ func (c skillController) ProcessPendingTarget(ctx client.Context) {
 	if now.Before(pending.readyAt) {
 		return
 	}
-	targetX, targetY, ok := pending.targetCell(ctx, now)
+	targetX, targetY, ok := c.targetCell(ctx, pending, now)
 	if !ok {
 		glog.Debugf("pending skill target vanished skill=%d target=%d", pending.skill.ID, pending.targetID)
 		c.mode.pendingSkill = pendingSkillTarget{}

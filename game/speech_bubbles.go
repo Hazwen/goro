@@ -19,6 +19,7 @@ const (
 type speechBubble struct {
 	text    string
 	expires time.Time
+	ground  *[2]int
 }
 
 func (m *WorldMode) applySpeechBubble(ctx client.Context, chat network.ChatMessage, now time.Time) {
@@ -29,6 +30,10 @@ func (m *WorldMode) applySpeechBubble(ctx client.Context, chat network.ChatMessa
 		return
 	}
 	text := speechBubbleText(chat.Text)
+	x, y, onTrap := m.skillUnitModelCell(chat.GID)
+	if onTrap {
+		text = strings.TrimSpace(chat.Text)
+	}
 	if text == "" {
 		return
 	}
@@ -50,6 +55,9 @@ func (m *WorldMode) applySpeechBubble(ctx client.Context, chat network.ChatMessa
 		m.speechBubbles[actorID] = speechBubble{
 			text:    text,
 			expires: now.Add(duration),
+		}
+		if onTrap {
+			m.speechBubbles[actorID] = speechBubble{text: text, expires: now.Add(5 * time.Second), ground: &[2]int{x, y}}
 		}
 	}
 }
@@ -100,13 +108,18 @@ func actorSpeechBubbleBottomY(baseY, scale float64) float64 {
 	return actorSpriteTopY(baseY, scale) - actorSpeechBubbleGap
 }
 
-func (m *WorldMode) drawSpeechBubbles(screen *render.Frame, entries []sceneActorDrawEntry, now time.Time) {
+func (m *WorldMode) drawSpeechBubbles(screen *render.Frame, ctx client.Context, projection sceneProjection, entries []sceneActorDrawEntry, now time.Time) {
 	if len(m.speechBubbles) == 0 {
 		return
 	}
 	for id, bubble := range m.speechBubbles {
 		if now.After(bubble.expires) {
 			delete(m.speechBubbles, id)
+		} else if bubble.ground != nil {
+			x, y := float64(bubble.ground[0]), float64(bubble.ground[1])
+			if p, ok := projection.projectPoint(cellCenter(x), cellCenter(y), terrainHeightAt(ctx.World, x, y)); ok {
+				render.DrawUISpeechBubble(screen, bubble.text, float64(p.x), float64(p.y)-actorSpeechBubbleGap, speechBubbleMaxWidth)
+			}
 		}
 	}
 	if len(m.speechBubbles) == 0 {

@@ -168,7 +168,7 @@ func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection sceneProj
 		return cursorActionRotate
 	}
 	if m.pendingSkill.skill.ID != 0 {
-		actor, ok := clickedSkillTarget(ctx, projection, m.pendingSkill.skill, mouseX, mouseY, now, m.actorDeaths)
+		actor, ok := m.clickedSkillTarget(ctx, projection, m.pendingSkill.skill, mouseX, mouseY, now)
 		if ok && (!cursorSnapTargets(ctx) || m.cursorActorSnapEligible(ctx, projection, actor, now)) {
 			return cursorActionTarget2
 		}
@@ -248,7 +248,7 @@ func (m *WorldMode) cursorMagnetOffset(ctx client.Context, projection sceneProje
 		if !ok {
 			return 0, 0
 		}
-		actor, ok := clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths)
+		actor, ok := m.clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now)
 		if !ok {
 			return 0, 0
 		}
@@ -309,6 +309,9 @@ func (m *WorldMode) cursorActorMagnetTarget(ctx client.Context, projection scene
 	terrainZ := terrainHeightAt(ctx.World, actorX, actorY)
 	point := projection.Project(cellCenter(actorX), cellCenter(actorY), terrainZ)
 	scale := actorBillboardScreenScale(projection, cellCenter(actorX), cellCenter(actorY), terrainZ)
+	if _, ok := m.skillUnitModels[actor.ID]; ok {
+		return float64(point.x), float64(point.y), scale, true
+	}
 	if targetX, targetY, ok := m.cursorActorSpriteCenter(ctx, projection, actor, point, scale, now); ok {
 		return targetX, targetY, scale, true
 	}
