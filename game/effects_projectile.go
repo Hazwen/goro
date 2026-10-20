@@ -64,11 +64,17 @@ func throwItemAt(effect worldEffect, process int) (position modelPoint3, angle f
 }
 
 func (m *WorldMode) drawThrowItemEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
-	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	texture := m.effectFileTextureWithBlackKey(ctx.Resources, component.textureFile, !isAlchemistBottle(effect.effectID))
 	if texture == nil {
 		return
 	}
-	process := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
+	process := int((now.Sub(effect.starts)-component.delay)/db.EffectFrameDuration) + 1
+	if now.Before(effect.starts.Add(component.delay)) {
+		return
+	}
+	if effect.effectID == effectThrowItem4 {
+		effect.itemLevel = 4
+	}
 	for trail := 0; trail < 4; trail++ {
 		step := process
 		if trail > 0 {

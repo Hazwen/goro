@@ -12,7 +12,7 @@ import (
 )
 
 func isAlchemistBottle(effectID int) bool {
-	return effectID == effectThrowItem || effectID == effectThrowItem2 || effectID == effectThrowItem5
+	return effectID == effectThrowItem || effectID == effectThrowItem2 || effectID == effectThrowItem4 || effectID == effectThrowItem5
 }
 
 func (m *WorldMode) applyAlchemistSkill(ctx client.Context, notify network.SkillNoDamageNotify, now time.Time) {

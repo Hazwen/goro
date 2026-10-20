@@ -450,6 +450,9 @@ const (
 	effectRamadan          = 492
 	effectEDP              = 493
 	effectPreserve         = 496
+	effectSlim             = 497
+	effectSlim2            = 498
+	effectSlim3            = 499
 	effectChemicalBody     = 500
 	effectCastSpin         = 501
 	effectSoulLink         = 503
@@ -477,6 +480,7 @@ const (
 	effectTarotCard13      = 535
 	effectTarotCard14      = 536
 	effectAcidDemon        = 537
+	effectThrowItem4       = 539
 	effectBabyBodyBack     = 540
 	effectThrowItem5       = 541
 	effectBlueBody         = 542
@@ -1109,6 +1113,12 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 func (m *WorldMode) applySkillCastNotify(ctx client.Context, notify network.SkillCastNotify) {
 	now := time.Now()
 	m.applySkillNameBubble(ctx, notify.SourceID, notify.SkillID, now)
+	if notify.SkillID == db.SkillCRAciddemonstration && notify.SourceID != notify.TargetID {
+		_, sourceOK, _ := actorForCombatID(ctx, notify.SourceID)
+		if _, targetOK, _ := actorForCombatID(ctx, notify.TargetID); sourceOK && targetOK {
+			m.addWorldEffectBetweenAt(ctx, effectThrowItem4, notify.TargetID, notify.SourceID, now)
+		}
+	}
 	if notify.DelayTime == 0 {
 		return
 	}
@@ -1204,6 +1214,13 @@ func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID u
 		m.startSkillActionAnimation(ctx, sourceID, source, spec, now, duration)
 		return
 	}
+	if (skillID == db.SkillCRSlimpitcher || skillID == db.SkillCRAciddemonstration) && res.HasPlayerJobToken(int(source.Job)) {
+		m.startSkillActionAnimation(ctx, sourceID, source, skillActionSpec{
+			defined: true, action: skillActorActionAttack1, play: true, length: 5,
+			speed: 10 * db.EffectFrameDuration, duration: time.Second, next: &idleSkillActionSpec,
+		}, now, time.Second)
+		return
+	}
 	actionFamily := skillCastActionFamilyForActor(source, skillID)
 	if skillID == db.SkillBSHammerfall {
 		actionFamily = attackActionFamilyForActorWithResources(ctx.Resources, source)
@@ -1257,7 +1274,7 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 }
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
-	if m.applyHunterGroundSkill(ctx, notify, time.Now()) || m.applyPerformanceGroundSkill(ctx, notify, time.Now()) {
+	if m.applyHunterGroundSkill(ctx, notify, time.Now()) || m.applyPerformanceGroundSkill(ctx, notify, time.Now()) || m.applyCreatorGroundSkill(ctx, notify, time.Now()) {
 		return
 	}
 	if notify.SkillID == db.SkillACShower {
@@ -1693,7 +1710,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
-	if effectID == effectSteal || effectID == effectDetoxication || effectID == effectSprinkleSand || effectID == effectChemicalProt {
+	if effectID == effectSteal || effectID == effectDetoxication || effectID == effectSprinkleSand || effectID == effectChemicalProt || effectID == effectAcidDemon {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -1949,7 +1966,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		(skillID >= db.SkillBSIron && skillID <= db.SkillBSMaximize && skillID != db.SkillBSRepairweapon) || skillID == db.SkillBSAdrenaline2 ||
 		skillID == db.SkillWSMeltdown || skillID == db.SkillWSCartboost || skillID == db.SkillWSOverthrustmax ||
 		skillID == db.SkillWSCarttermination || skillID == db.SkillWSWeaponrefine ||
-		skillID == db.SkillAMDemonstration || skillID == db.SkillAMSpheremine || skillID == db.SkillAMPharmacy {
+		skillID == db.SkillAMDemonstration || skillID == db.SkillAMSpheremine || skillID == db.SkillAMPharmacy || skillID == db.SkillCRCultivation {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -2918,6 +2935,10 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncShieldBoomerang
 	case "SonicBlow":
 		return effectFuncSonicBlow
+	case "SlimPitcher":
+		return effectFuncSlimPitcher
+	case "AcidDemon":
+		return effectFuncAcidDemon
 	case "ThrowItem":
 		return effectFuncThrowItem
 	case "Grimtooth":

@@ -642,7 +642,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 	switch action.SkillID {
 	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower, db.SkillSNFalconassault, db.SkillSNSharpshooting, db.SkillBaMusicalstrike, db.SkillDCThrowarrow, db.SkillCGArrowvulcan:
 		return true
-	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution, db.SkillWSCarttermination, db.SkillAMAcidterror:
+	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution, db.SkillWSCarttermination, db.SkillAMAcidterror, db.SkillCRAciddemonstration:
 		return true
 	case db.SkillWZFirepillar, db.SkillWZSightrasher, db.SkillWZMeteor, db.SkillWZJupitel, db.SkillWZVermilion,
 		db.SkillWZWaterball, db.SkillWZFrostnova, db.SkillWZStormgust, db.SkillWZEarthspike, db.SkillWZHeavendrive:
@@ -1480,8 +1480,10 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	switch skillID {
 	case db.SkillAMPotionpitcher, db.SkillAMAcidterror, db.SkillAMCpWeapon, db.SkillAMCpShield, db.SkillAMCpArmor, db.SkillAMCpHelm, db.SkillAMCannibalize, db.SkillAMCallhomun, db.SkillAMRest, db.SkillAMResurrecthomun:
 		return spriteActionIdle
-	case db.SkillAMBerserkpitcher:
+	case db.SkillAMBerserkpitcher, db.SkillCRSlimpitcher, db.SkillCRAciddemonstration:
 		return spriteActionPCAttack1
+	case db.SkillCRFullprotection:
+		return spriteActionIdle
 	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3:
 		return spriteActionPCSkill
 	}

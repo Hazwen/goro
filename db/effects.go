@@ -448,6 +448,9 @@ const (
 	effectRamadan          = 492
 	effectEDP              = 493
 	effectPreserve         = 496
+	effectSlim             = 497
+	effectSlim2            = 498
+	effectSlim3            = 499
 	effectChemicalBody     = 500
 	effectCastSpin         = 501
 	effectSoulLink         = 503
@@ -475,6 +478,7 @@ const (
 	effectTarotCard13      = 535
 	effectTarotCard14      = 536
 	effectAcidDemon        = 537
+	effectThrowItem4       = 539
 	effectBabyBodyBack     = 540
 	effectThrowItem5       = 541
 	effectBlueBody         = 542
@@ -1570,20 +1574,6 @@ func chemical2EffectSpec() EffectSpec {
 		Components: []EffectComponent{{
 			Kind:           EffectComponentFUNC,
 			FuncName:       "CameraQuake",
-			AttachedEntity: true,
-		}},
-	}
-}
-
-func acidDemonEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration:         500 * time.Millisecond,
-		CameraShake:      200 * time.Millisecond,
-		CameraShakeDelay: 200 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "CameraQuake",
-			Delay:          200 * time.Millisecond,
 			AttachedEntity: true,
 		}},
 	}
@@ -4154,6 +4144,10 @@ var EffectSpecs = map[int]EffectSpec{
 	effectTarotCard12:       tarotCardEffectSpec(12),
 	effectTarotCard13:       tarotCardEffectSpec(13),
 	effectTarotCard14:       tarotCardEffectSpec(14),
+	effectSlim:              slimPitcherEffectSpec("레드슬림포션"),
+	effectSlim2:             slimPitcherEffectSpec("옐로우슬림포션"),
+	effectSlim3:             slimPitcherEffectSpec("화이트슬림포션"),
+	effectThrowItem4:        acidBottlesEffectSpec(),
 	effectAcidDemon:         acidDemonEffectSpec(),
 	effectHated:             soulLinkerBuffEffectSpec(false),
 	effectBlueBody:          soulLinkerBodyEffectSpec("BlueBody", "effect\\t_치잉.wav", 200),

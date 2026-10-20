@@ -1581,7 +1581,7 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "CR_ALCHEMY imported empty", skillEffectIDs(db.SkillCRAlchemy))
 	expectEffectIDs(t, "CR_SYNTHESISPOTION imported empty", skillEffectIDs(db.SkillCRSynthesispotion))
 	expectEffectIDs(t, "CR_SLIMPITCHER imported empty", skillEffectIDs(db.SkillCRSlimpitcher))
-	expectEffectIDs(t, "CR_FULLPROTECTION imported", skillEffectIDs(db.SkillCRFullprotection), effectChemicalProt, 500)
+	expectEffectIDs(t, "CR_FULLPROTECTION success", skillSuccessEffectIDs(db.SkillCRFullprotection), effectChemicalProt, effectChemicalBody)
 	expectEffectIDs(t, "CR_CULTIVATION imported empty", skillEffectIDs(db.SkillCRCultivation))
 	expectEffectIDs(t, "SA_CREATECON imported empty", skillEffectIDs(db.SkillSACreatecon))
 	expectEffectIDs(t, "SA_ELEMENTWATER success", skillSuccessEffectIDs(db.SkillSAElementwater), effectFrostWeapon)

@@ -119,7 +119,7 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Blacksmith — all 24 skills audited, including Full Adrenaline Rush; native buff visuals, packet ownership, Hammer Fall, and sound timing reviewed twice and validated with client assets.
 - [x] Whitesmith — all five active skills audited; Cart Termination, buff poses/audio, and shared Overthrust afterimages reviewed twice and validated with client assets.
 - [x] Alchemist — all 20 skills audited; bottle flights, Chemical Protection, homunculus casts, Demonstration, Berserk Pitcher, and Twilight Alchemy reviewed twice and validated with client assets.
-- [ ] Creator
+- [x] Creator — all four active skills audited; potion bursts, Acid Demonstration, protection, and Cultivation reviewed twice and validated with client assets.
 - [ ] High Wizard
 - [ ] Professor
 - [ ] Assassin Cross
@@ -238,6 +238,23 @@ server-owned. Passives and unused draft homunculus skills have no invented
 activation effects. Both review passes, full asset-backed tests, and a normal
 build passed. No live playtest was performed; visual comparison remains useful.
 
+Creator reference checks: dhxj and 2008 HighPriest agree on the five-frame
+ACT 40 casting sequence for Aid Condensed Potion and Acid Demonstration;
+release preserves that pose. Potion bursts select red/yellow/white by level,
+fall with three afterimages, and emit their expanding ground wave; the red
+variant draws it twice. The activation sound uses the native fixed attenuation,
+and separate server heal packets own healing. Acid Demonstration launches its
+two bottles at cast ticks 5/10, then places four dark rings at the victim's
+release position, with immediate sound, tick-5 quake, and per-hit flashes.
+Textures preserve their original alpha and black outlines. Full Chemical
+Protection reuses the recipient's chemical rays and blue-white body flash;
+Cultivation adds only its white caster flash and skill pose, leaving plants to
+the server. rAthena's tree and skill handlers confirm the four active skills;
+Alchemy/Synthesis Potion are unused drafts, and inherited skills reuse the
+Merchant/Alchemist audits. Both reviews, the full suite with client assets, and
+a normal build passed. No live playtest was performed; visual comparison remains
+useful, particularly for the new procedural bursts and rings.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -246,8 +263,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `703`.
-- Catalog size relative to all numeric constants: about `61.3%`.
+- Goro effect catalog entries: `707`.
+- Catalog size relative to all numeric constants: about `61.6%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.

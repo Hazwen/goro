@@ -41,6 +41,8 @@ const (
 	effectFuncBlueCasting
 	effectFuncSonicBlow
 	effectFuncThrowItem
+	effectFuncSlimPitcher
+	effectFuncAcidDemon
 	effectFuncGrimtooth
 	effectFuncRisingParticles
 	effectFuncSteal
@@ -205,6 +207,10 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawRogueBurst(screen, ctx, component, effect, now)
 	case effectFuncImpactParticles:
 		m.drawImpactParticles(screen, ctx, projection, component, effect, now)
+	case effectFuncSlimPitcher:
+		m.drawSlimPitcher(screen, ctx, projection, component, effect, now)
+	case effectFuncAcidDemon:
+		m.drawAcidDemon(screen, ctx, component, effect, now)
 	case effectFuncThrowItem:
 		m.drawThrowItemEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncSonicBlow:

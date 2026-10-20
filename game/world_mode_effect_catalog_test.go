@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 703 {
-		t.Fatalf("implemented effects = %d, want 703", coverage.Implemented)
+	if coverage.Implemented != 707 {
+		t.Fatalf("implemented effects = %d, want 707", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 115.81 || coverage.ActivePercent > 115.82 {
-		t.Fatalf("active coverage = %.3f, want about 115.82", coverage.ActivePercent)
+	if coverage.ActivePercent < 116.47 || coverage.ActivePercent > 116.48 {
+		t.Fatalf("active coverage = %.3f, want about 116.48", coverage.ActivePercent)
 	}
 }
 
@@ -2216,13 +2216,6 @@ func TestRobrowserFuncEffectsFiveHundredToFiveFiftyMatchTableRows(t *testing.T) 
 		t.Fatalf("EF_CHEMICAL2DASH component = %+v", component)
 	}
 
-	acid, ok := worldEffectSpecForID(effectAcidDemon)
-	if !ok || acid.duration != 500*time.Millisecond || acid.cameraShake != 200*time.Millisecond || acid.cameraShakeDelay != 200*time.Millisecond || len(acid.components) != 1 {
-		t.Fatalf("EF_ACIDDEMON spec = %+v ok=%t", acid, ok)
-	}
-	if component := acid.components[0]; component.kind != effectComponentFUNC || component.funcName != "CameraQuake" || component.delay != 200*time.Millisecond || !component.attachedEntity {
-		t.Fatalf("EF_ACIDDEMON component = %+v", component)
-	}
 }
 
 func TestRobrowserBeginAsuraElevenMatchesTableRow(t *testing.T) {
