@@ -520,7 +520,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	showerBowAttack := action.SkillID == db.SkillACShower && playerBowAttack
 	phantasmicBowAttack := (action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower) && playerBowAttack
 	sharpShootingBowAttack := action.SkillID == db.SkillSNSharpshooting && playerBowAttack
-	instrumentArrowAttack := sourceOK && res.HasPlayerJobToken(int(source.Job)) && (action.SkillID == db.SkillBaMusicalstrike || action.SkillID == db.SkillCGArrowvulcan)
+	instrumentArrowAttack := sourceOK && res.HasPlayerJobToken(int(source.Job)) && (action.SkillID == db.SkillBaMusicalstrike || action.SkillID == db.SkillDCThrowarrow || action.SkillID == db.SkillCGArrowvulcan)
 	referenceArrowFlightAttack := instrumentArrowAttack || normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack || sharpShootingBowAttack
 	if sourceOK && !splash {
 		if anim, ok := m.actorAnimation(action.SourceID, now); ok && anim.autoCounter && action.SkillID == 0 {
@@ -640,7 +640,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
-	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower, db.SkillSNFalconassault, db.SkillSNSharpshooting, db.SkillBaMusicalstrike, db.SkillCGArrowvulcan:
+	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower, db.SkillSNFalconassault, db.SkillSNSharpshooting, db.SkillBaMusicalstrike, db.SkillDCThrowarrow, db.SkillCGArrowvulcan:
 		return true
 	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution:
 		return true

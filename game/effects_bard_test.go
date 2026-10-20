@@ -131,7 +131,7 @@ func TestBardPangVoiceFacing(t *testing.T) {
 		{modelPoint3{x: -1}, 0, 0}, {modelPoint3{z: -1}, 0, 3},
 		{modelPoint3{x: 1}, 90, 3}, {modelPoint3{x: 1}, -90, 1},
 	} {
-		if got := pangVoiceAction(tc.dir, tc.yaw); got != tc.action {
+		if got := directedSpriteAction(tc.dir, tc.yaw); got != tc.action {
 			t.Fatalf("direction %+v yaw %v: action %d, want %d", tc.dir, tc.yaw, got, tc.action)
 		}
 	}

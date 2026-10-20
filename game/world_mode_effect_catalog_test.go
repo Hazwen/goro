@@ -1354,10 +1354,6 @@ func TestRobrowserSimpleEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.T
 		id   int
 		wav  string
 	}{
-		{"EF_BOTTOM_HUMMING", effectBottomHumming, "effect\\흥얼거림.wav"},
-		{"EF_BOTTOM_DONTFORGETME", effectBottomForget, "effect\\나를잊지말아요.wav"},
-		{"EF_BOTTOM_FORTUNEKISS", effectBottomFortune, "effect\\행운의.wav"},
-		{"EF_BOTTOM_SERVICEFORYOU", effectBottomService, "effect\\당신을 위한 서비스.wav"},
 		{"EF_CHEMICALPROTECTION", effectChemicalProt, "apocalips_attack.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
@@ -1366,44 +1362,6 @@ func TestRobrowserSimpleEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.T
 		}
 		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
 			t.Fatalf("%s sfx = %v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
-}
-
-func TestBottomSongGroundEffectsMatchReferenceRows(t *testing.T) {
-	for _, tc := range []struct {
-		name        string
-		id          int
-		texture     string
-		tint        color.RGBA
-		textureSize float64
-	}{
-		{"290_ground", effectBottomUglyDanceGround, "effect/lens_w.bmp", color.RGBA{R: 255, G: 255, B: 255, A: 13}, 0.5},
-		{"291_ground", effectBottomHummingGround, "effect/melody_a.bmp", color.RGBA{R: 230, G: 209, B: 209, A: 13}, 0.5},
-		{"292_ground", effectBottomForgetGround, "effect/lens_g.bmp", color.RGBA{R: 28, G: 255, B: 115, A: 13}, 0.5},
-		{"293_ground", effectBottomFortuneGround, "effect/kiss.bmp", color.RGBA{R: 252, G: 111, B: 101, A: 13}, 2.5},
-		{"294_ground", effectBottomServiceGround, "effect/safeline.bmp", color.RGBA{R: 255, G: 128, B: 183, A: 13}, 0.5},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		wantComponents := 2
-		if tc.tint.A == 0 {
-			wantComponents = 1
-		}
-		if !ok || spec.duration != 1500*time.Millisecond || len(spec.sfx) != 0 || len(spec.components) != wantComponents {
-			t.Fatalf("%s spec = %+v ok=%t, want visible song ground", tc.name, spec, ok)
-		}
-		textureIndex := 0
-		if tc.tint.A > 0 {
-			tile := spec.components[0]
-			if tile.kind != effectComponentFUNC || tile.funcName != "FlatColorTile" || tile.funcAdapter != effectFuncFlatColorTile || tile.color != tc.tint || tile.sizeStart != 1 || !tile.renderBefore || tile.attachedEntity {
-				t.Fatalf("%s flat tile = %+v", tc.name, tile)
-			}
-			textureIndex = 1
-		}
-		wantSize := tc.textureSize * 2
-		texture := spec.components[textureIndex]
-		if texture.kind != effectComponentFUNC || texture.funcName != "GroundTexture" || texture.funcAdapter != effectFuncGroundTexture || texture.textureFile != tc.texture || texture.duration != 1500*time.Millisecond || texture.sizeStart != wantSize || texture.sizeEnd != wantSize || texture.alphaMax != 0.7 || texture.angleStart != math.Pi || texture.posZ != 0.2 || texture.posZEnd != 0.6 || !texture.blendAdditive || !texture.renderBefore || texture.attachedEntity {
-			t.Fatalf("%s texture = %+v", tc.name, texture)
 		}
 	}
 }
@@ -2490,7 +2448,6 @@ func TestRobrowserSimpleEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) 
 		repeat    bool
 		direction bool
 	}{
-		{"EF_WINK", effectWink, "wink", "", false, false, false, false},
 		{"EF_KIRIKAGE", effectKirikage, "그림자베기", "effect\\그림자베기.wav", true, false, false, false},
 		{"EF_TATAMI", effectTatami, "다다미 뒤집기", "effect\\다다미뒤집기.wav", true, false, false, false},
 		{"EF_KASUMIKIRI", effectKasumikiri, "안개베기", "effect\\안개베기.wav", true, false, false, false},

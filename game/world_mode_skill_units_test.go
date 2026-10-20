@@ -83,21 +83,6 @@ func TestGroundSkillNotifyAddsCellEffect(t *testing.T) {
 	}
 }
 
-func TestGroundSkillNotifyPrefersDancerGroundEffect(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	mode := &WorldMode{}
-	ctx := client.Context{Session: &session.Session{AccountID: 2000000}, World: world}
-
-	mode.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillDCHumming, SourceID: 2000000, Level: 4, X: 123, Y: 456})
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
-	}
-	if effect := mode.worldEffects[0]; effect.actorID != 0 || effect.effectID != effectBottomHummingGround || effect.x != 123 || effect.y != 456 {
-		t.Fatalf("effect = %+v, want Dancer ground row", effect)
-	}
-}
-
 func TestPneumaGroundSkillAndUnitDoNotDuplicate(t *testing.T) {
 	for _, unitFirst := range []bool{false, true} {
 		ctx := knightEffectContext()

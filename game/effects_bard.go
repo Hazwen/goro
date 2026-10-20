@@ -32,7 +32,7 @@ func isBardPerformance(skillID uint16) bool {
 }
 
 func (m *WorldMode) applyPerformanceGroundSkill(ctx client.Context, notify network.GroundSkillNotify, now time.Time) bool {
-	if !isBardPerformance(notify.SkillID) && notify.SkillID != db.SkillCGHermode && notify.SkillID != db.SkillCGMoonlit {
+	if !isBardPerformance(notify.SkillID) && !isDancerPerformance(notify.SkillID) && notify.SkillID != db.SkillCGHermode && notify.SkillID != db.SkillCGMoonlit {
 		return false
 	}
 	if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
@@ -85,6 +85,8 @@ func (m *WorldMode) drawSongMusic(screen *render.Frame, ctx client.Context, proj
 		radius = 5
 	case 2:
 		count = 4
+	case 4:
+		radius = 15
 	case 3:
 		tint = color.RGBA{200, 200, 100, 200}
 	case 5, 6, 7:
@@ -104,6 +106,10 @@ func (m *WorldMode) drawSongMusic(screen *render.Frame, ctx client.Context, proj
 		p := origin
 		p.y += (6 - 3*math.Sin(degreesToRadians(float64(hitEffectRandom(effect, 1, 360)+age)))) / 5
 		size := math.Sqrt2 * (radius + .5*float64(i)) / 5 * (1 + .05*math.Sin(degreesToRadians(float64(5*age))))
+		if variant == 4 {
+			right, _, _, _ := projection.BillboardBasis(p.x, p.z, p.y)
+			p = add3(p, mul3(right, .8))
+		}
 		angle := 0.0
 		if variant == 7 {
 			angle = degreesToRadians(float64(10 * age))
@@ -136,12 +142,16 @@ func (m *WorldMode) drawSongGround(screen *render.Frame, ctx client.Context, pro
 	additive := true
 	switch component.funcAdapter {
 	case effectFuncSongVertical:
-		for i := 0; i < 4; i++ {
+		count := 4
+		if variant == 4 {
+			count = 2
+		}
+		for i := 0; i < count; i++ {
 			salt := i * 3
 			from, to := origin, origin
 			rate := 2
 			tint := color.RGBA{255, 255, 255, 15}
-			if variant == 1 {
+			if variant == 1 || variant == 2 {
 				x, z := float64(hitEffectRandom(effect, salt, 7)-3)/5, -.6
 				if i >= 2 {
 					x, z = z, x
@@ -152,6 +162,19 @@ func (m *WorldMode) drawSongGround(screen *render.Frame, ctx client.Context, pro
 				to.z += z
 				rate, additive = 4, false
 				tint = color.RGBA{255, 155, 155, 50}
+				if variant == 2 {
+					rate = 2
+					tint = color.RGBA{155, 255, 155, 50}
+				}
+			} else if variant == 4 {
+				if i == 0 {
+					from.x -= 1.2
+					to.x += 1.2
+				} else {
+					from.z += 1.2
+					to.z -= 1.2
+				}
+				tint = color.RGBA{255, 150, 150, 100}
 			} else {
 				to.x += float64(hitEffectRandom(effect, salt, 40)-20) / 5
 				to.z += float64(hitEffectRandom(effect, salt+1, 40)-20) / 5
@@ -188,30 +211,4 @@ func (m *WorldMode) drawSongGround(screen *render.Frame, ctx client.Context, pro
 	if len(indices) > 0 {
 		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(additive, false))
 	}
-}
-
-func (m *WorldMode) initPangVoice(ctx client.Context, effect *worldEffect) {
-	effect.actorOrigin = effectWorldAnchor(ctx, *effect, effect.starts)
-	caster := *effect
-	caster.actorID = effect.targetID
-	effect.projectileDirection = sub3(effectWorldAnchor(ctx, caster, effect.starts), effect.actorOrigin)
-	effect.hasActorTransform = true
-	yaw := cameraYawForMap(ctx)
-	if !cameraRotationLockedForMap(ctx) {
-		yaw += m.camera.yawOffset
-	}
-	effect.spriteFrameOverride = pangVoiceAction(effect.projectileDirection, yaw)
-	effect.hasSpriteFrame = true
-}
-
-func pangVoiceAction(direction modelPoint3, yaw float64) int {
-	angle := math.Atan2(direction.z, direction.x)*180/math.Pi - yaw
-	quadrant := int(math.Floor((math.Mod(angle, 360)+360)/90)) % 4
-	return (6 - quadrant) % 4
-}
-
-func (m *WorldMode) drawPangVoice(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
-	component.duration = 0 // The non-repeating ACT owns its visible lifetime.
-	p := effect.actorOrigin
-	m.drawSPREffect(screen, ctx, projection, effect, component, p.x, p.z, p.y, now)
 }

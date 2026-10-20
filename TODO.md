@@ -114,8 +114,8 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Sniper — all four skills audited; procedural visuals, casting poses, hit routing, and sound timing reviewed twice and validated with OldRO assets.
 - [x] Bard — songs/ensembles, Musical Strike, Frost Joke, Pang Voice, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
 - [x] Clown — all six 2008 skills audited; rays, sphere, link/body effects, Hermode cubes, and Tarot timing reviewed twice and validated with OldRO assets.
-- [ ] Dancer — analysis in progress
-- [ ] Gypsy
+- [x] Dancer — all nine skills and shared ensembles audited; native dances, Slinging Arrow, Scream, and Wink reviewed twice and validated with OldRO assets.
+- [ ] Gypsy — analysis in progress
 - [ ] Blacksmith
 - [ ] Whitesmith
 - [ ] Alchemist
@@ -169,6 +169,17 @@ native height and fade timing, without duplicate sound. The later renewal
 skill CG_SPECIALSINGER is outside this 2008 audit. Both review passes, full
 tests with client assets, and a normal build passed; live comparison remains
 useful for these procedural effects.
+
+Dancer reference checks: dhxj and 2008 HighPriest agree on the five ground
+visuals, including Slow Grace's green ribbons, Service's pink cross, and
+Fortune's enlarged offset kiss. Ground units own the visuals; the skill packet
+owns the sound. Slinging Arrow uses ACT 88 and native arrow timing, Scream
+holds frame zero for 1200ms and sends only its caster's chat line, and Wink
+uses a kiss emote plus the directional sprite shared with Pang Voice. Their
+shared sprite primitive now follows the caster's lifetime while retaining the
+captured target position. Dancing Lesson is passive; shared ensembles and
+Adaptation/Encore reuse the Bard audit. Both reviews, full asset-backed tests,
+and a normal build passed; live visual comparison remains useful.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,

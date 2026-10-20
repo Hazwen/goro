@@ -1029,6 +1029,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	}
 	m.applyFalconSkillNoDamageNotify(ctx, notify, now)
 	m.applyClownSkill(ctx, notify, now)
+	m.applyWinkCharm(ctx, notify)
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
 	}
@@ -1185,6 +1186,12 @@ func (m *WorldMode) startSkillCastSourceAnimation(ctx client.Context, notify net
 func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID uint32, skillID uint16, duration time.Duration, now time.Time) {
 	source, ok, _ := actorForCombatID(ctx, sourceID)
 	if !ok {
+		return
+	}
+	if skillID == db.SkillDCWinkcharm {
+		spec := danceSkillActionSpec()
+		spec.next = &idleSkillActionSpec
+		m.startSkillActionAnimation(ctx, sourceID, source, spec, now, duration)
 		return
 	}
 	actionFamily := skillCastActionFamilyForActor(source, skillID)
@@ -1654,8 +1661,8 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectBackStab || effectID == effectTeiHit2 {
 		initImpactParticles(ctx, &effect)
 	}
-	if effectID == effectFVoice {
-		m.initPangVoice(ctx, &effect)
+	if effectID == effectFVoice || effectID == effectWink {
+		m.initDirectedSpriteEffect(ctx, &effect)
 	}
 	if effectID == effectTripleAttack || effectID == effectTripleAttack2 || effectID == effectTripleAttack3 {
 		initTripleAttack(ctx, &effect)
@@ -1917,7 +1924,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 			glog.Debugf("skill cast target lockon source=%s skill=%d src=%d target=%d delay_ms=%d", source, skillID, sourceID, targetID, duration.Milliseconds())
 		}
 	}
-	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault || skillID == db.SkillBaMusicalstrike {
+	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault || skillID == db.SkillBaMusicalstrike || skillID == db.SkillDCThrowarrow {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -2315,6 +2322,9 @@ func importedSkillEffectSpec(skillID uint16) skillEffectSpec {
 func importedSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
 	if db.IsSoulLinkSkill(skillID) {
 		return skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true, frame: 3, duration: 2 * time.Second}, true
+	}
+	if spec, ok := dancerSkillActionSpec(skillID); ok {
+		return spec, true
 	}
 	if spec, ok := bardSkillActionSpec(skillID); ok {
 		return spec, true
@@ -2855,8 +2865,8 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncSongLight
 	case "SongOut":
 		return effectFuncSongOut
-	case "PangVoice":
-		return effectFuncPangVoice
+	case "DirectedSprite":
+		return effectFuncDirectedSprite
 	case "ArrowVulcan", "Moonlit", "Marionette", "Hermode", "TarotCard":
 		return effectFuncClown
 	case "TrueSight", "WindWalk", "SharpShooting":

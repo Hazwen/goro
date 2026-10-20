@@ -36,12 +36,7 @@ func songOutEffectSpec() EffectSpec {
 }
 
 func pangVoiceEffectSpec() EffectSpec {
-	spec := funcEffectSpec("PangVoice", 100*EffectFrameDuration, false)
+	spec := directedSpriteEffectSpec("fvoice")
 	spec.SFX = []string{"amon_ra_die01.wav"}
-	c := &spec.Components[0]
-	c.SpriteFile = "fvoice"
-	c.SpriteDelay = 6 * EffectFrameDuration
-	c.WorldSizedSprite = true
-	c.Overlay = true
 	return spec
 }

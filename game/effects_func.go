@@ -53,7 +53,7 @@ const (
 	effectFuncSongVertical
 	effectFuncSongLight
 	effectFuncSongOut
-	effectFuncPangVoice
+	effectFuncDirectedSprite
 	effectFuncCartRevolution
 	effectFuncSprinkleSand
 	effectFuncRogueBurst
@@ -131,8 +131,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawSongMusic(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncSongVertical, effectFuncSongLight, effectFuncSongOut:
 		m.drawSongGround(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
-	case effectFuncPangVoice:
-		m.drawPangVoice(screen, ctx, projection, component, effect, now)
+	case effectFuncDirectedSprite:
+		m.drawDirectedSpriteEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncClown:
 		m.drawClownEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncSniper:

@@ -2314,45 +2314,6 @@ func fogWallGroundEffectSpec() EffectSpec {
 	}
 }
 
-func songGroundEffectSpec(texture string, tint color.RGBA, textureSize float64) EffectSpec {
-	if textureSize <= 0 {
-		textureSize = 0.5
-	}
-	// roBrowser's HoveringTexture applies this value to a [-1,1] quad.
-	textureWorldSize := textureSize * 2
-	spec := EffectSpec{
-		Duration: 1500 * time.Millisecond,
-	}
-	if tint.A > 0 {
-		spec.Components = append(spec.Components, EffectComponent{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "FlatColorTile",
-			Color:          tint,
-			SizeStart:      1,
-			RenderBefore:   true,
-			AttachedEntity: false,
-		})
-	}
-	if texture != "" {
-		spec.Components = append(spec.Components, EffectComponent{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "GroundTexture",
-			TextureFile:    texture,
-			Duration:       1500 * time.Millisecond,
-			SizeStart:      textureWorldSize,
-			SizeEnd:        textureWorldSize,
-			AlphaMax:       0.7,
-			AngleStart:     math.Pi,
-			PosZ:           0.2,
-			PosZEnd:        0.6,
-			BlendAdditive:  true,
-			RenderBefore:   true,
-			AttachedEntity: false,
-		})
-	}
-	return spec
-}
-
 func sharpShootingCastEffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 10 * time.Second,
@@ -2398,6 +2359,16 @@ func spiritSphereEffectSpec() EffectSpec {
 			Duplicate:      5,
 		}},
 	}
+}
+
+func directedSpriteEffectSpec(sprite string) EffectSpec {
+	spec := funcEffectSpec("DirectedSprite", 100*EffectFrameDuration, false)
+	c := &spec.Components[0]
+	c.SpriteFile = sprite
+	c.SpriteDelay = 6 * EffectFrameDuration
+	c.WorldSizedSprite = true
+	c.Overlay = true
+	return spec
 }
 
 func twoDigitString(value int) string {
@@ -4018,10 +3989,10 @@ var EffectSpecs = map[int]EffectSpec{
 	effectBottomSinX:             songVerticalEffectSpec("effect/ring_red.tga", 1),
 	effectBottomBragi:            songMusicEffectSpec("", 8),
 	effectBottomApple:            songMusicEffectSpec("effect/idun_apple.bmp", 6),
-	effectBottomHumming:          soundOnlyEffectSpec("effect\\흥얼거림.wav"),
-	effectBottomForget:           soundOnlyEffectSpec("effect\\나를잊지말아요.wav"),
-	effectBottomFortune:          soundOnlyEffectSpec("effect\\행운의.wav"),
-	effectBottomService:          soundOnlyEffectSpec("effect\\당신을 위한 서비스.wav"),
+	effectBottomHumming:          songMusicEffectSpec("effect/melody_a.bmp", 0),
+	effectBottomForget:           songVerticalEffectSpec("effect/magic_green.tga", 2),
+	effectBottomFortune:          songMusicEffectSpec("effect/kiss.bmp", 4),
+	effectBottomService:          songVerticalEffectSpec("effect/safeline.bmp", 4),
 	effectBottomDissonanceGround: songVerticalEffectSpec("effect/ring_blue.tga", 0),
 	effectBottomLullabyGround:    songMusicEffectSpec("effect/zz.bmp", 1),
 	effectBottomRichKimGround:    songMusicEffectSpec("effect/pocket.bmp", 3),
@@ -4035,11 +4006,11 @@ var EffectSpecs = map[int]EffectSpec{
 	effectBottomSinXGround:       songVerticalEffectSpec("effect/ring_red.tga", 1),
 	effectBottomBragiGround:      songMusicEffectSpec("", 8),
 	effectBottomAppleGround:      songMusicEffectSpec("effect/idun_apple.bmp", 6),
-	effectBottomUglyDanceGround:  songGroundEffectSpec("effect/lens_w.bmp", color.RGBA{R: 255, G: 255, B: 255, A: 13}, 0.5),
-	effectBottomHummingGround:    songGroundEffectSpec("effect/melody_a.bmp", color.RGBA{R: 230, G: 209, B: 209, A: 13}, 0.5),
-	effectBottomForgetGround:     songGroundEffectSpec("effect/lens_g.bmp", color.RGBA{R: 28, G: 255, B: 115, A: 13}, 0.5),
-	effectBottomFortuneGround:    songGroundEffectSpec("effect/kiss.bmp", color.RGBA{R: 252, G: 111, B: 101, A: 13}, 2.5),
-	effectBottomServiceGround:    songGroundEffectSpec("effect/safeline.bmp", color.RGBA{R: 255, G: 128, B: 183, A: 13}, 0.5),
+	effectBottomUglyDanceGround:  songVerticalEffectSpec("effect/ring_red.tga", 0),
+	effectBottomHummingGround:    songMusicEffectSpec("effect/melody_a.bmp", 0),
+	effectBottomForgetGround:     songVerticalEffectSpec("effect/magic_green.tga", 2),
+	effectBottomFortuneGround:    songMusicEffectSpec("effect/kiss.bmp", 4),
+	effectBottomServiceGround:    songVerticalEffectSpec("effect/safeline.bmp", 4),
 	effectTalkFrostJoke:          funcEffectSpec("FrostJokeTalk", 500*time.Millisecond, true),
 	effectTalkScream:             funcEffectSpec("ScreamTalk", 500*time.Millisecond, true),
 	effectThrowItem:              throwItemEffectSpec("유저인터페이스/item/염산병.bmp", 30),
@@ -4235,7 +4206,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectNPCStop2:          closeConfineRingEffectSpec(),
 	effectNPCStop2Del:       funcEffectSpec("RemoveCloseConfine", 2*EffectFrameDuration, true),
 	effectFVoice:            pangVoiceEffectSpec(),
-	effectWink:              sprEffectSpec("wink", "", false, false),
+	effectWink:              directedSpriteEffectSpec("wink"),
 	effectCookingOK:         strEffectSpecAttached("cook_suc", "_heal_effect.wav", false),
 	effectCookingFail:       strEffectSpecAttached("cook_fail", "caramel_die.wav", false),
 	effectHapgyeok:          hapgyeokEffectSpec(),
@@ -4447,7 +4418,7 @@ var EffectSpecs = map[int]EffectSpec{
 		}},
 	},
 	effectBottomDissonance: songVerticalEffectSpec("effect/ring_blue.tga", 0),
-	effectBottomUglyDance:  {},
+	effectBottomUglyDance:  songVerticalEffectSpec("effect/ring_red.tga", 0),
 	effectChristmasCarol:   strEffectSpecAttachedMin("angelus", "jong_mini", "effect\\wewish.wav", false),
 }
 

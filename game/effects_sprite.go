@@ -279,3 +279,32 @@ func effectSpriteResourceCandidates(file, ext string) []string {
 	path := base + "." + ext
 	return []string{path, strings.ReplaceAll(path, "\\", "/")}
 }
+
+func (m *WorldMode) initDirectedSpriteEffect(ctx client.Context, effect *worldEffect) {
+	effect.actorOrigin = effectWorldAnchor(ctx, *effect, effect.starts)
+	caster := *effect
+	caster.actorID = effect.targetID
+	effect.projectileDirection = sub3(effectWorldAnchor(ctx, caster, effect.starts), effect.actorOrigin)
+	if _, ok, _ := actorForCombatID(ctx, effect.targetID); effect.targetID != 0 && ok {
+		effect.actorID, effect.targetID = effect.targetID, effect.actorID
+	}
+	effect.hasActorTransform = true
+	yaw := cameraYawForMap(ctx)
+	if !cameraRotationLockedForMap(ctx) {
+		yaw += m.camera.yawOffset
+	}
+	effect.spriteFrameOverride = directedSpriteAction(effect.projectileDirection, yaw)
+	effect.hasSpriteFrame = true
+}
+
+func directedSpriteAction(direction modelPoint3, yaw float64) int {
+	angle := math.Atan2(direction.z, direction.x)*180/math.Pi - yaw
+	quadrant := int(math.Floor((math.Mod(angle, 360)+360)/90)) % 4
+	return (6 - quadrant) % 4
+}
+
+func (m *WorldMode) drawDirectedSpriteEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	component.duration = 0 // The non-repeating ACT owns its visible lifetime.
+	p := effect.actorOrigin
+	m.drawSPREffect(screen, ctx, projection, effect, component, p.x, p.z, p.y, now)
+}
