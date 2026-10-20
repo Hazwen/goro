@@ -115,8 +115,8 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Bard — songs/ensembles, Musical Strike, Frost Joke, Pang Voice, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
 - [x] Clown — all six 2008 skills audited; rays, sphere, link/body effects, Hermode cubes, and Tarot timing reviewed twice and validated with OldRO assets.
 - [x] Dancer — all nine skills and shared ensembles audited; native dances, Slinging Arrow, Scream, and Wink reviewed twice and validated with OldRO assets.
-- [ ] Gypsy — analysis in progress
-- [ ] Blacksmith
+- [x] Gypsy — all six shared skills and inherited dances audited; both reviews and actual female ACT checks passed, using the Clown/Dancer implementation.
+- [ ] Blacksmith — analysis in progress
 - [ ] Whitesmith
 - [ ] Alchemist
 - [ ] Creator
@@ -180,6 +180,15 @@ shared sprite primitive now follows the caster's lifetime while retaining the
 captured target position. Dancing Lesson is passive; shared ensembles and
 Adaptation/Encore reuse the Bard audit. Both reviews, full asset-backed tests,
 and a normal build passed; live visual comparison remains useful.
+
+Gypsy reference checks: dhxj and 2008 HighPriest use the same six CG skill
+paths as Clown, without gender-specific effect variants; rAthena's pre-renewal
+tree confirms that set and the inherited Dancer skills. The shared effects
+and lifecycle checks pass. Actual Gypsy body assets were checked in all eight
+directions: Arrow Vulcan releases with ACT 88, replays the normal whip attack
+for subsequent hits, and the ensemble dance has its full 1,2,3,2 sequence.
+No additional runtime code was needed. Both reviews and focused tests with
+client assets passed; live comparison remains useful as for Clown/Dancer.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,

@@ -4,13 +4,62 @@ import (
 	"image/color"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
+	"github.com/kivutar/goro/res"
 )
+
+func TestGypsySkillAnimationsWithClientAssets(t *testing.T) {
+	ctx := archerEffectContext()
+	ctx.Resources = realDataManager(t)
+	ctx.World.Player.Job, ctx.World.Player.Weapon, ctx.World.Player.Sex = db.JobDancerH, 1950, 0 // Rope
+	ctx.Session.Selected.Job, ctx.Session.Selected.Weapon = db.JobDancerH, 1950
+	view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, 0, false)
+	if view == nil || !strings.Contains(view.body.actSource, res.PlayerJobToken(db.JobDancerH)) {
+		t.Fatalf("must load the Gypsy body, without a Novice fallback: %s", status)
+	}
+	m := &WorldMode{playerView: view}
+	for direction := 0; direction < 8; direction++ {
+		ctx.World.Player.Dir = direction
+		a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillCGArrowvulcan, SourceSpeed: 500, HitCount: 9, Damage: 100}
+		m.applyActorActionNotify(ctx, a)
+		anim := m.actorAnims[a.SourceID]
+		if anim.actionFamily != spriteActionPCAttack3 || anim.next == nil || anim.next.actionFamily != spriteActionPCAttack2 {
+			t.Fatal("Gypsy must shoot with ACT 88, then use her whip attack for additional hits")
+		}
+		for _, step := range []actorAnimation{anim, *anim.next, *anim.next.next} {
+			index, action, ok := resolveSpriteAction(view.body.act, step.actionFamily, direction)
+			if !ok || index/8 != step.actionFamily || step.hasFixedMotion && step.fixedMotion >= len(action.Animations) {
+				t.Fatal("Gypsy attack must use its requested action and frame without fallback")
+			}
+			state := spriteState{direction: direction}
+			applyActorAnimationToSpriteState(&state, step, true)
+			billboard, ok := humanoidBillboardForState(view, state, step.started)
+			if !ok || billboard == nil || billboard.image == nil {
+				t.Fatalf("Gypsy attack failed to render for direction %d", direction)
+			}
+		}
+		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillCGHermode, SourceID: a.SourceID})
+		dance := m.actorAnims[a.SourceID]
+		_, action, ok := resolveSpriteAction(view.body.act, spriteActionPCSkill, direction)
+		if !ok || len(action.Animations) < 4 || !dance.pingPong {
+			t.Fatal("Gypsy must have the complete three-frame dance, without falling back to another action")
+		}
+		state := spriteState{direction: direction}
+		applyActorAnimationToSpriteState(&state, dance, true)
+		for i, want := range []int{1, 2, 3, 2, 1} {
+			at := dance.started.Add(time.Duration(i) * dance.speed)
+			if got := bodyMotionForState(action, state, dance.started, at); got != want {
+				t.Fatalf("Gypsy dance frame %d: got %d, want %d", i, got, want)
+			}
+		}
+	}
+}
 
 func TestClownMoonlitStatusOwnership(t *testing.T) {
 	ctx := archerEffectContext()
