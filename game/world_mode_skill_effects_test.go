@@ -1881,8 +1881,8 @@ func TestImportedSkillActionFallback(t *testing.T) {
 		t.Fatalf("AC_SHOWER timing = %+v, want robr speed 50ms then READYFIGHT", shower)
 	}
 	merchant := worldstate.Actor{Job: 5}
-	if action := skillAction(db.SkillMCCartrevolution).actionFamilyForActorWithResources(nil, merchant); action != spriteActionPCAttack2 {
-		t.Fatalf("MC_CARTREVOLUTION action = %d, want ATTACK2", action)
+	if action := skillAction(db.SkillMCCartrevolution).actionFamilyForActorWithResources(nil, merchant); action != spriteActionPCSkill {
+		t.Fatalf("MC_CARTREVOLUTION action = %d, want SKILL", action)
 	}
 	counter := skillAction(db.SkillKNAutocounter)
 	if !counter.defined || counter.action != skillActorActionAttack || !counter.hasFrame || counter.frame != 0 || counter.play || counter.next != nil {
@@ -2051,10 +2051,10 @@ func TestArcherThiefMerchantSkillEffectMappings(t *testing.T) {
 		t.Fatal("TF_PICKSTONE should hide cast aura like roBrowser")
 	}
 	expectEffectIDs(t, "TF_THROWSTONE before-hit", skillBeforeHitEffectIDs(152), effectThrowItem3)
-	expectEffectIDs(t, "MC_MAMMONITE", skillEffectIDs(42), effectMammonite)
-	expectEffectIDs(t, "MC_CARTREVOLUTION begin", skillBeginEffectIDs(153), effectCartRevolution)
-	expectEffectIDs(t, "MC_CARTREVOLUTION hit", skillHitEffectIDs(153), effectCartRevolution)
-	expectEffectIDs(t, "MC_LOUD", skillEffectIDs(155), effectLoud)
+	expectEffectIDs(t, "MC_MAMMONITE hit", skillHitEffectIDs(42), effectHit1, effectMammonite)
+	expectEffectIDs(t, "MC_CARTREVOLUTION before hit", skillBeforeHitEffectSelfIDs(153), effectCartRevolution)
+	expectEffectIDs(t, "MC_CARTREVOLUTION hit", skillHitEffectIDs(153), effectHit1, effectCartRevolution)
+	expectEffectIDs(t, "MC_LOUD", skillSuccessEffectSelfIDs(155), effectLoud)
 	expectEffectIDs(t, "AL_HOLYLIGHT", skillHitEffectIDs(156), effectHit1, effectHolyLight)
 }
 

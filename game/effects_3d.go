@@ -400,3 +400,32 @@ func effectParticlePoint(x, y, pitch, yaw float64) modelPoint3 {
 	s, c = math.Sincos(yaw)
 	return modelPoint3{x: c * rx / 5, y: -ry / 5, z: s * rx / 5}
 }
+
+func effectSphereMesh(texture *render.Image, center modelPoint3, radius, rotation float64, alpha uint8) ([]render.Vertex3D, []uint16) {
+	vertices := make([]render.Vertex3D, 0, 200)
+	indices := make([]uint16, 0, 300)
+	w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
+	tint := color.RGBA{255, 255, 255, alpha}
+	point := func(latitude, longitude float64) modelPoint3 {
+		pitch := degreesToRadians(latitude)
+		yaw := degreesToRadians(longitude + rotation)
+		return add3(center, modelPoint3{x: radius * math.Cos(pitch) * math.Sin(yaw), y: radius * math.Sin(pitch), z: radius * math.Cos(pitch) * math.Cos(yaw)})
+	}
+	for row := 0; row < 5; row++ {
+		for col := 0; col < 10; col++ {
+			latitude, longitude := float64(-90+row*36), float64(col*36)
+			// GetRadian takes integer degrees; the source's extra .25 is truncated.
+			corners := [4]modelPoint3{
+				point(latitude, longitude), point(latitude+36, longitude),
+				point(latitude+36, longitude+36), point(latitude, longitude+36),
+			}
+			u, v := float32(col)/10, float32(row)/5
+			base := uint16(len(vertices))
+			for i, uv := range [4]texturePoint{{u: u, v: v}, {u: u, v: v + .2}, {u: u + .1, v: v + .2}, {u: u + .1, v: v}} {
+				vertices = append(vertices, texturedSurfaceVertex3D(corners[i], uv, tint, w, h))
+			}
+			indices = append(indices, base, base+1, base+3, base+2, base+3, base+1)
+		}
+	}
+	return vertices, indices
+}

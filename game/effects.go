@@ -759,6 +759,7 @@ type worldEffect struct {
 	buffParticles                        *soulLinkerParticles
 	soulLights                           *soulLights
 	blueCasting                          *blueCasting
+	coinTrails                           *[5][]modelPoint3
 	hasActorTransform                    bool
 	x                                    int
 	y                                    int
@@ -1622,6 +1623,13 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.hasActorTransform = true
 	}
 	if effectID == effectSteal || effectID == effectDetoxication || effectID == effectSprinkleSand {
+		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
+		effect.hasActorTransform = true
+	}
+	if effectID == effectMammonite {
+		m.initMammonite(ctx, &effect)
+	}
+	if effectID == effectCartRevolution {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -2802,6 +2810,10 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncRisingParticles
 	case "Steal":
 		return effectFuncSteal
+	case "MammoniteCoins":
+		return effectFuncMammoniteCoins
+	case "CartRevolution":
+		return effectFuncCartRevolution
 	case "SprinkleSand":
 		return effectFuncSprinkleSand
 	case "BlueCasting":

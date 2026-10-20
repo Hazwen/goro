@@ -3427,8 +3427,8 @@ var EffectSpecs = map[int]EffectSpec{
 			},
 		},
 	},
-	effectMammonite:      strEffectSpecAttachedMin("maemor", "memor_min", "effect\\ef_coin2.wav", false),
-	effectCartRevolution: strEffectSpecAttached("cartrevolution", "effect\\ef_magnumbreak.wav", false),
+	effectMammonite:      mammoniteEffectSpec(),
+	effectCartRevolution: cartRevolutionEffectSpec(),
 	effectLoud:           strEffectSpecAttached("loud", "effect\\고성방가.wav", false),
 	effectGlassWall:      strEffectSpec("effect/safetywall", "effect\\ef_glasswall.wav"),
 	effectHealSP: {

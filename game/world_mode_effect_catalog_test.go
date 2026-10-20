@@ -439,7 +439,6 @@ func TestRobrowserSimpleEffectsOneFiftyToTwoHundredMatchTableRows(t *testing.T) 
 		{"EF_REFINEOK", effectRefineOK, "bs_refinesuccess", "effect\\bs_refinesuccess.wav", true, false},
 		{"EF_REFINEFAIL", effectRefineFail, "bs_refinefailed", "effect\\bs_refinefailed.wav", true, false},
 		{"EF_ENERGYCOAT", effectEnergyCoat, "energycoat", "", true, false},
-		{"EF_CARTREVOLUTION", effectCartRevolution, "cartrevolution", "effect\\ef_magnumbreak.wav", true, false},
 		{"EF_MENTALBREAK", effectMentalBreak, "mentalbreak", "", true, false},
 		{"EF_MAGICALATTHIT", effectMagicalAtkHit, "magical", "", true, false},
 		{"EF_SUICIDE", effectSuicide, "suicide", "", true, false},

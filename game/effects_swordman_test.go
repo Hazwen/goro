@@ -234,7 +234,7 @@ func TestSwordmanRenderingAndMovement(t *testing.T) {
 func TestMagnumSphereGeometry(t *testing.T) {
 	texture := render.NewImage(16, 16)
 	origin := modelPoint3{x: 10, y: 2, z: 20}
-	vertices, indices := magnumSphereMesh(texture, origin, 14, 254)
+	vertices, indices := effectSphereMesh(texture, origin, magnumRadius(1.15, 14), 45, 254)
 	if len(vertices) != 200 || len(indices) != 300 {
 		t.Fatal("Magnum Break must use the native ten by five sphere mesh")
 	}

@@ -1,7 +1,6 @@
 package game
 
 import (
-	"image/color"
 	"math"
 	"time"
 
@@ -153,36 +152,6 @@ func magnumRadius(speed float64, frame int) float64 {
 	return (speed*n - speed/60*n*(n+1)/2) / 5
 }
 
-func magnumSphereMesh(texture *render.Image, center modelPoint3, frame int, alpha uint8) ([]render.Vertex3D, []uint16) {
-	vertices := make([]render.Vertex3D, 0, 200)
-	indices := make([]uint16, 0, 300)
-	w, h := float32(texture.Bounds().Dx()), float32(texture.Bounds().Dy())
-	radius := magnumRadius(1.15, frame)
-	tint := color.RGBA{255, 255, 255, alpha}
-	point := func(latitude, longitude float64) modelPoint3 {
-		pitch := degreesToRadians(latitude)
-		yaw := degreesToRadians(longitude + 3*float64(frame+1))
-		return add3(center, modelPoint3{x: radius * math.Cos(pitch) * math.Sin(yaw), y: radius * math.Sin(pitch), z: radius * math.Cos(pitch) * math.Cos(yaw)})
-	}
-	for row := 0; row < 5; row++ {
-		for col := 0; col < 10; col++ {
-			latitude, longitude := float64(-90+row*36), float64(col*36)
-			// GetRadian takes integer degrees; the source's extra .25 is truncated.
-			corners := [4]modelPoint3{
-				point(latitude, longitude), point(latitude+36, longitude),
-				point(latitude+36, longitude+36), point(latitude, longitude+36),
-			}
-			u, v := float32(col)/10, float32(row)/5
-			base := uint16(len(vertices))
-			for i, uv := range [4]texturePoint{{u: u, v: v}, {u: u, v: v + .2}, {u: u + .1, v: v + .2}, {u: u + .1, v: v}} {
-				vertices = append(vertices, texturedSurfaceVertex3D(corners[i], uv, tint, w, h))
-			}
-			indices = append(indices, base, base+1, base+3, base+2, base+3, base+1)
-		}
-	}
-	return vertices, indices
-}
-
 func (m *WorldMode) drawMagnumBreakEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, now time.Time) {
 	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 	alpha := effectParticleAlpha(frame, 30, 15, 15, 254)
@@ -190,7 +159,7 @@ func (m *WorldMode) drawMagnumBreakEffect(screen *render.Frame, ctx client.Conte
 		return
 	}
 	if texture := m.effectFileTexture(ctx.Resources, component.textureFiles[0]); texture != nil {
-		vertices, indices := magnumSphereMesh(texture, effect.actorOrigin, frame, alpha)
+		vertices, indices := effectSphereMesh(texture, effect.actorOrigin, magnumRadius(1.15, frame), 3*float64(frame+1), alpha)
 		screen.DrawTriangles3DOwned(vertices, indices, texture, triangleDrawOptions(render.FilterLinear, render.AddressRepeat))
 	}
 	if texture := m.effectFileTexture(ctx.Resources, component.textureFile); texture != nil {
