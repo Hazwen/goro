@@ -128,21 +128,7 @@ func TestActorBodySizeMultiplierFollowsRobrowserEswooSizes(t *testing.T) {
 	}
 }
 
-func TestRobrowserRepairWeaponAndShockwaveSpecs(t *testing.T) {
-	repair, ok := worldEffectSpecForID(effectRepairWeapon)
-	if !ok || len(repair.components) != 1 || repair.duration != 1820*time.Millisecond {
-		t.Fatalf("EF_REPAIRWEAPON spec = %+v ok=%t", repair, ok)
-	}
-	if len(repair.sfx) != 2 || repair.sfx[0] != "effect\\black_weapon_repair_a.wav" || repair.sfx[1] != "effect\\black_weapon_repair_a.wav" {
-		t.Fatalf("EF_REPAIRWEAPON sfx = %v", repair.sfx)
-	}
-	if len(repair.sfxDelays) != 2 || repair.sfxDelays[0] != 480*time.Millisecond || repair.sfxDelays[1] != 1320*time.Millisecond {
-		t.Fatalf("EF_REPAIRWEAPON sfx delays = %v", repair.sfxDelays)
-	}
-	if component := repair.components[0]; component.kind != effectComponentSTR || component.strFile != "repairweapon" || !component.attachedEntity {
-		t.Fatalf("EF_REPAIRWEAPON component = %+v", component)
-	}
-
+func TestRobrowserShockwaveSpec(t *testing.T) {
 	shockwave, ok := worldEffectSpecForID(effectShockwave)
 	if !ok || len(shockwave.components) != 1 {
 		t.Fatalf("EF_SHOCKWAVE spec = %+v ok=%t", shockwave, ok)
@@ -182,12 +168,12 @@ func TestWaterBallAndSonicBlowSpecs(t *testing.T) {
 	}
 }
 
-func TestRobrowserCrashEarthSpec(t *testing.T) {
+func TestCrashEarthSpec(t *testing.T) {
 	crash, ok := worldEffectSpecForID(effectCrashEarth)
 	if !ok || len(crash.components) != 1 {
 		t.Fatalf("EF_CRASHEARTH spec = %+v ok=%t", crash, ok)
 	}
-	if crash.cameraShakeDelay != 350*time.Millisecond || crash.cameraShake != 650*time.Millisecond {
+	if crash.cameraShakeDelay != 35*db.EffectFrameDuration || crash.cameraShake != 650*time.Millisecond {
 		t.Fatalf("EF_CRASHEARTH camera shake = delay %s duration %s", crash.cameraShakeDelay, crash.cameraShake)
 	}
 	if component := crash.components[0]; component.kind != effectComponentSTR || component.strFile != "crashearth" || component.attachedEntity {
@@ -1397,17 +1383,6 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "MC_VENDING imported empty", skillEffectIDs(db.SkillMCVending))
 	expectEffectIDs(t, "MC_CHANGECART imported empty", skillEffectIDs(db.SkillMCChangecart))
 	expectEffectIDs(t, "MC_CARTDECORATE imported empty", skillEffectIDs(db.SkillMCCartdecorate))
-	expectEffectIDs(t, "BS_REPAIRWEAPON imported", skillEffectIDs(db.SkillBSRepairweapon), effectRepairWeapon)
-	expectEffectIDs(t, "BS_HAMMERFALL imported", skillEffectIDs(db.SkillBSHammerfall), effectCrashEarth)
-	expectEffectIDs(t, "BS_ADRENALINE imported", skillEffectIDs(db.SkillBSAdrenaline), effectHasteUp)
-	expectEffectIDs(t, "BS_ADRENALINE imported begin", skillBeginEffectIDs(db.SkillBSAdrenaline), effectAdrenalineCast)
-	expectEffectIDs(t, "BS_WEAPONPERFECT imported", skillEffectIDs(db.SkillBSWeaponperfect), effectWeaponPerfect)
-	expectEffectIDs(t, "BS_OVERTHRUST imported", skillEffectIDs(db.SkillBSOverthrust), effectOverthrust)
-	expectEffectIDs(t, "BS_MAXIMIZE imported", skillEffectIDs(db.SkillBSMaximize), effectMaximizePower)
-	expectEffectIDs(t, "BS_MAXIMIZE imported begin", skillBeginEffectIDs(db.SkillBSMaximize), effectMaximizeSounds)
-	expectEffectIDs(t, "BS_ADRENALINE2 imported", skillEffectIDs(db.SkillBSAdrenaline2), effectHasteUp)
-	expectEffectIDs(t, "BS_ADRENALINE2 imported begin", skillBeginEffectIDs(db.SkillBSAdrenaline2), effectAdrenalineCast)
-	expectEffectIDs(t, "BS_GREED imported", skillEffectIDs(db.SkillBSGreed), effectGreedSound)
 	expectEffectIDs(t, "KN_PIERCE begin", skillBeginEffectIDs(db.SkillKNPierce), effectPierceSelf)
 	expectEffectIDs(t, "KN_PIERCE imported hit", skillHitEffectIDs(db.SkillKNPierce), effectPierce)
 	expectEffectIDs(t, "KN_BRANDISHSPEAR imported", skillEffectIDs(db.SkillKNBrandishspear), effectBrandishSpear)

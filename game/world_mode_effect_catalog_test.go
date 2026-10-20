@@ -180,21 +180,6 @@ func TestRobrowserSimpleEffectsFiftyToOneHundredMatchTableRows(t *testing.T) {
 		}
 	}
 
-	for _, tc := range []struct {
-		name string
-		id   int
-		wav  string
-	}{
-		{"EF_HASTEUP", effectHasteUp, "effect\\black_adrenalinerush_b.wav"},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
-			t.Fatalf("%s spec = %+v ok=%t, want sound-only 500ms", tc.name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
-			t.Fatalf("%s sfx = %v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
 }
 
 func TestRobrowserWarpZoneAndPoisonHitSpecs(t *testing.T) {
@@ -366,7 +351,6 @@ func TestRobrowserSimpleEffectsOneHundredToOneFiftyMatchTableRows(t *testing.T) 
 	}{
 		{"EF_BLASTMINE", effectBlastMine, "effect\\hun_anklesnare.wav"},
 		{"EF_CLOAKING", effectCloaking, "effect\\assasin_cloaking.wav"},
-		{"EF_OVERTHRUST", effectOverthrust, "effect\\black_overthrust.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {

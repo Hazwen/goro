@@ -116,8 +116,8 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Clown — all six 2008 skills audited; rays, sphere, link/body effects, Hermode cubes, and Tarot timing reviewed twice and validated with OldRO assets.
 - [x] Dancer — all nine skills and shared ensembles audited; native dances, Slinging Arrow, Scream, and Wink reviewed twice and validated with OldRO assets.
 - [x] Gypsy — all six shared skills and inherited dances audited; both reviews and actual female ACT checks passed, using the Clown/Dancer implementation.
-- [ ] Blacksmith — analysis in progress
-- [ ] Whitesmith
+- [x] Blacksmith — all 24 skills audited, including Full Adrenaline Rush; native buff visuals, packet ownership, Hammer Fall, and sound timing reviewed twice and validated with client assets.
+- [ ] Whitesmith — analysis in progress
 - [ ] Alchemist
 - [ ] Creator
 - [ ] High Wizard
@@ -189,6 +189,19 @@ directions: Arrow Vulcan releases with ACT 88, replays the normal whip attack
 for subsequent hits, and the ensemble dance has its full 1,2,3,2 sequence.
 No additional runtime code was needed. Both reviews and focused tests with
 client assets passed; live comparison remains useful as for Clown/Dancer.
+
+Blacksmith reference checks: dhxj and 2008 HighPriest agree on Adrenaline's
+20 screen-space rays, four rising orbiting particles, and sounds at ticks 0/30.
+Overthrust starts a fading ring and two sounds; its existing status tint remains
+separate. Weapon Repair and Maximize Power use their complete STR duration and
+native audio ticks; Weapon Perfection stays on the recipient. Hammer Fall uses
+the attack pose while casting, releases in the skill pose, and places a fresh
+STR on the ground with its sound at tick 30 and quake at tick 35. Greed uses
+the pickup pose and caster sound. Forging/passive skills introduce no activation
+visual; existing crafting-result packets own success/failure effects. rAthena's
+party-buff notifications and roBrowser's explicitly simplified Adrenaline entry
+were cross-checked. Both reviews, full asset-backed tests, and a normal build
+passed; live comparison remains useful for the new procedural visuals.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,

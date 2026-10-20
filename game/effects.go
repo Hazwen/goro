@@ -1086,7 +1086,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 			m.setActorStateEffect(ctx, actorID, effectID, true)
 			continue
 		}
-		if effectID == effectSpearQuicken || effectID == effectAuraBlade {
+		if effectID == effectSpearQuicken || effectID == effectAuraBlade || effectID == effectOverthrust {
 			m.removeWorldEffect(effectID, notify.SourceID)
 		}
 		if m.addWorldEffectAt(ctx, effectID, notify.SourceID, now) {
@@ -1195,6 +1195,9 @@ func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID u
 		return
 	}
 	actionFamily := skillCastActionFamilyForActor(source, skillID)
+	if skillID == db.SkillBSHammerfall {
+		actionFamily = attackActionFamilyForActorWithResources(ctx.Resources, source)
+	}
 	if (skillID == db.SkillSNSharpshooting || skillID == db.SkillCGArrowvulcan) && res.HasPlayerJobToken(int(source.Job)) {
 		m.setCombatActorAction(ctx, sourceID, actorAnimation{
 			actionFamily: actionFamily, started: now, duration: duration,
@@ -1299,6 +1302,7 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 	now := time.Now()
 	switch notify.SkillID {
 	case db.SkillPRMagnus, db.SkillPRBenedictio, db.SkillMGThunderstorm,
+		db.SkillBSHammerfall,
 		db.SkillWZStormgust, db.SkillWZVermilion, db.SkillWZMeteor, db.SkillWZHeavendrive,
 		db.SkillSAVolcano, db.SkillSADeluge, db.SkillSAViolentgale, db.SkillSALandprotector:
 		if notify.SkillID != db.SkillWZMeteor {
@@ -1924,7 +1928,8 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 			glog.Debugf("skill cast target lockon source=%s skill=%d src=%d target=%d delay_ms=%d", source, skillID, sourceID, targetID, duration.Milliseconds())
 		}
 	}
-	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault || skillID == db.SkillBaMusicalstrike || skillID == db.SkillDCThrowarrow {
+	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault || skillID == db.SkillBaMusicalstrike || skillID == db.SkillDCThrowarrow ||
+		(skillID >= db.SkillBSIron && skillID <= db.SkillBSMaximize && skillID != db.SkillBSRepairweapon) || skillID == db.SkillBSAdrenaline2 {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -1954,7 +1959,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		skillID == db.SkillALLResurrection || (skillID >= db.SkillMGSrecovery && skillID <= db.SkillMGThunderstorm) || skillID == db.SkillMGEnergycoat ||
 		(skillID >= db.SkillWZFirepillar && skillID <= db.SkillWZQuagmire) || skillID == db.SkillWZSightblaster ||
 		(skillID >= db.SkillPRImpositio && skillID <= db.SkillPRMagnus && skillID != db.SkillPRSlowpoison) ||
-		skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion {
+		skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion || skillID == db.SkillBSRepairweapon {
 		effectID = effectBeginSpell
 	}
 	switch skillID {
@@ -2753,6 +2758,8 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "HasteUp", "Overthrust":
+		return effectFuncBlacksmith
 	case "SageGroundCast":
 		return effectFuncSageGroundCast
 	case "WizardSpikes":

@@ -2510,29 +2510,6 @@ func warpZoneEffectSpec() EffectSpec {
 	}
 }
 
-func repairWeaponEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 1820 * time.Millisecond,
-		SFX:      []string{"effect\\black_weapon_repair_a.wav", "effect\\black_weapon_repair_a.wav"},
-		SFXDelays: []time.Duration{
-			480 * time.Millisecond,
-			1320 * time.Millisecond,
-		},
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSTR,
-			STRFile:        "repairweapon",
-			AttachedEntity: true,
-		}},
-	}
-}
-
-func crashEarthEffectSpec() EffectSpec {
-	spec := strEffectSpec("crashearth", "effect\\black_hammerfall.wav")
-	spec.CameraShake = 650 * time.Millisecond
-	spec.CameraShakeDelay = 350 * time.Millisecond
-	return spec
-}
-
 func waterBallEffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 500 * time.Millisecond,
@@ -3728,7 +3705,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectFirePillarBomb: strEffectSpec("firepillarbomb", "effect\\wizard_fire_pillar_b.wav"),
 	effectWhitePulse:     whitePulseEffectSpec(),
 	effectAdrenalineCast: soundOnlyEffectSpec("effect\\black_adrenalinerush_a.wav"),
-	effectHasteUp:        soundOnlyEffectSpec("effect\\black_adrenalinerush_b.wav"),
+	effectHasteUp:        hasteUpEffectSpec(),
 	effectFlasher:        flasherEffectSpec(),
 	effectRemoveTrap:     removeTrapEffectSpec(),
 	effectRepairWeapon:   repairWeaponEffectSpec(),
@@ -3740,7 +3717,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectGasPush:        strEffectSpec("gaspush", ""),
 	effectSpringTrap:     strEffectSpec("spring", "effect\\hunter_springtrap.wav"),
 	effectWeaponPerfect:  strEffectSpecAttachedMin("weaponperfection", "weaponperfection_min", "effect\\black_weapon_perfection.wav", false),
-	effectMaximizePower:  strEffectSpecAttachedMin("maximizepower", "maximize_min", "", false),
+	effectMaximizePower:  maximizePowerEffectSpec(),
 	effectMaximizeSounds: delayedSoundEffectSpecDuration(950*time.Millisecond,
 		[]string{
 			"effect\\black_maximize_power_circle.wav",
@@ -3768,7 +3745,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectVenomDust:       strEffectSpec("venomdust", "effect\\assasin_poisonreact.wav"),
 	effectPoisonReact:     strEffectSpecAttached("poisonreact_1st", "", false),
 	effectPoisonReact2:    strEffectSpecAttached("poisonreact", "effect\\assasin_poisonreact.wav", false),
-	effectOverthrust:      soundOnlyEffectSpec("effect\\black_overthrust.wav"),
+	effectOverthrust:      overthrustEffectSpec(),
 	effectVenomSplasher:   venomSplasherEffectSpec(),
 	effectTwoHandQuicken:  strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", false),
 	effectAutoCounter:     strEffectSpecAttached("autocounter", "effect\\knight_autocounter.wav", false),
