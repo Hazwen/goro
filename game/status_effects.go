@@ -18,6 +18,7 @@ func (m *WorldMode) applyStatusEffectChange(ctx client.Context, change network.S
 		return
 	}
 	m.applyFalconStatus(ctx, change)
+	m.stopPerformance(ctx, change)
 	if actorID := applyActorOpt3StateStatus(ctx, change); actorID != 0 {
 		m.syncActorSpiritEffects(ctx, actorID)
 		if change.StatusID == db.StatusLkconcentration {

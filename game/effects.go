@@ -1233,7 +1233,7 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 }
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
-	if m.applyHunterGroundSkill(ctx, notify, time.Now()) {
+	if m.applyHunterGroundSkill(ctx, notify, time.Now()) || m.applyBardGroundSkill(ctx, notify, time.Now()) {
 		return
 	}
 	if notify.SkillID == db.SkillACShower {
@@ -1650,6 +1650,9 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectBackStab || effectID == effectTeiHit2 {
 		initImpactParticles(ctx, &effect)
 	}
+	if effectID == effectFVoice {
+		m.initPangVoice(ctx, &effect)
+	}
 	if effectID == effectTripleAttack || effectID == effectTripleAttack2 {
 		initTripleAttack(ctx, &effect)
 	}
@@ -1910,7 +1913,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 			glog.Debugf("skill cast target lockon source=%s skill=%d src=%d target=%d delay_ms=%d", source, skillID, sourceID, targetID, duration.Milliseconds())
 		}
 	}
-	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault {
+	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault || skillID == db.SkillBaMusicalstrike {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -1932,7 +1935,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 	}
 	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain ||
 		skillID == db.SkillHPAssumptio || skillID == db.SkillHPBasilica || skillID == db.SkillPRRedemptio ||
-		skillID == db.SkillSNSharpshooting || skillID == db.SkillSNWindwalk {
+		skillID == db.SkillSNSharpshooting || skillID == db.SkillSNWindwalk || skillID == db.SkillBaPangvoice {
 		effectID = effectBeginSpell6
 	}
 	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
@@ -2145,6 +2148,7 @@ type skillActionSpec struct {
 	duration time.Duration
 	play     bool
 	repeat   bool
+	pingPong bool
 	delay    time.Duration
 	next     *skillActionSpec
 }
@@ -2173,7 +2177,8 @@ func danceSkillActionSpec() skillActionSpec {
 	spec.hasFrame = true
 	spec.frame = 1
 	spec.length = 3
-	spec.speed = 250 * time.Millisecond
+	spec.speed = 10 * db.EffectFrameDuration
+	spec.pingPong = true
 	return spec
 }
 
@@ -2244,6 +2249,7 @@ func (s skillActionSpec) actorAnimationForActorWithResources(manager *res.Manage
 		startDelay:   s.delay,
 		duration:     duration,
 		loop:         s.repeat,
+		pingPong:     s.pingPong,
 		play:         s.play,
 		hasPlay:      true,
 	}
@@ -2263,7 +2269,7 @@ func (s skillActionSpec) actorAnimationForActorWithResources(manager *res.Manage
 		anim.speed = s.speed
 		anim.hasSpeed = true
 	}
-	if s.next != nil && !s.next.isNaturalIdleFallback() {
+	if s.next != nil && (!s.next.isNaturalIdleFallback() || s.repeat) {
 		next := s.next.actorAnimationForActorWithResources(manager, actor, time.Time{}, duration)
 		anim.next = &next
 	}
@@ -2304,6 +2310,9 @@ func importedSkillEffectSpec(skillID uint16) skillEffectSpec {
 func importedSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
 	if db.IsSoulLinkSkill(skillID) {
 		return skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true, frame: 3, duration: 2 * time.Second}, true
+	}
+	if spec, ok := bardSkillActionSpec(skillID); ok {
+		return spec, true
 	}
 	if spec, ok := monkSkillActionSpec(skillID); ok {
 		return spec, true
@@ -2833,6 +2842,16 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncImpactParticles
 	case "MonkRays":
 		return effectFuncMonkRays
+	case "SongMusic":
+		return effectFuncSongMusic
+	case "SongVertical":
+		return effectFuncSongVertical
+	case "SongLight":
+		return effectFuncSongLight
+	case "SongOut":
+		return effectFuncSongOut
+	case "PangVoice":
+		return effectFuncPangVoice
 	case "TrueSight", "WindWalk", "SharpShooting":
 		return effectFuncSniper
 	case "TripleAttack":

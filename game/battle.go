@@ -185,6 +185,7 @@ type actorAnimation struct {
 	duration       time.Duration
 	startDelay     time.Duration
 	loop           bool
+	pingPong       bool
 	play           bool
 	hasPlay        bool
 	length         int
@@ -519,7 +520,8 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	showerBowAttack := action.SkillID == db.SkillACShower && playerBowAttack
 	phantasmicBowAttack := (action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower) && playerBowAttack
 	sharpShootingBowAttack := action.SkillID == db.SkillSNSharpshooting && playerBowAttack
-	referenceBowFlightAttack := normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack || sharpShootingBowAttack
+	musicalStrike := sourceOK && res.HasPlayerJobToken(int(source.Job)) && action.SkillID == db.SkillBaMusicalstrike
+	referenceArrowFlightAttack := musicalStrike || normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack || sharpShootingBowAttack
 	if sourceOK && !splash {
 		if anim, ok := m.actorAnimation(action.SourceID, now); ok && anim.autoCounter && action.SkillID == 0 {
 			m.addWorldEffectAt(ctx, effectAutoCounter, action.SourceID, now)
@@ -537,7 +539,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		if actionDef, ok := m.actorResolvedAction(ctx, source, attackFamily); ok {
 			actionACT := m.actorActionACT(ctx, source)
 			soundMotion := firstActionSoundMotion(actionDef)
-			if referenceBowFlightAttack {
+			if referenceArrowFlightAttack {
 				soundMotion = actionAttackMarkerMotion(actionACT, actionDef)
 			}
 			hitDelay = combatMotionDelayFromAction(actionDef, attackDuration, soundMotion)
@@ -557,7 +559,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	}
 	projectileAt := now
 	projectileDuration := time.Duration(0)
-	if referenceBowFlightAttack {
+	if referenceArrowFlightAttack {
 		// The reference client reveals the arrow at the ACT "atk" marker, then
 		// gives it eight 24 ms ticks to reach the target before applying the hit.
 		projectileAt = releaseAt
@@ -571,8 +573,8 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		}
 		if action.SkillID > 0 {
 			m.addSkillBeginEffect(ctx, action, now)
-			if doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack || sharpShootingBowAttack {
-				// The bow releases one arrow at the ACT marker.
+			if doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack || sharpShootingBowAttack || musicalStrike {
+				// These ranged skills release one arrow at the ACT marker.
 				m.addSkillBeforeHitEffectOnce(ctx, action, projectileAt, projectileDuration)
 			} else {
 				m.addSkillBeforeHitEffect(ctx, action, now)
@@ -635,7 +637,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
-	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower, db.SkillSNFalconassault, db.SkillSNSharpshooting:
+	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower, db.SkillSNFalconassault, db.SkillSNSharpshooting, db.SkillBaMusicalstrike:
 		return true
 	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution:
 		return true
@@ -1404,7 +1406,7 @@ func (m *WorldMode) actorAnimation(id uint32, now time.Time) (actorAnimation, bo
 	if now.Before(anim.started) {
 		return actorAnimation{}, false
 	}
-	if anim.loop {
+	if anim.loop && anim.next == nil {
 		return anim, true
 	}
 	if !now.Before(anim.started.Add(anim.duration)) {
@@ -1469,7 +1471,7 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	if skillID == db.SkillTFPickstone {
 		return spriteActionPickup
 	}
-	if skillID == db.SkillALBlessing || skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk || skillID == db.SkillPRRedemptio {
+	if skillID == db.SkillALBlessing || skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk || skillID == db.SkillPRRedemptio || skillID == db.SkillBaPangvoice {
 		return spriteActionIdle
 	}
 	if skillID == db.SkillALIncagi {

@@ -1354,18 +1354,6 @@ func TestRobrowserSimpleEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.T
 		id   int
 		wav  string
 	}{
-		{"EF_BOTTOM_LULLABY", effectBottomLullaby, "effect\\자장가.wav"},
-		{"EF_BOTTOM_RICHMANKIM", effectBottomRichKim, "effect\\김서방돈.wav"},
-		{"EF_BOTTOM_ETERNALCHAOS", effectBottomChaos, "effect\\영원의 혼돈.wav"},
-		{"EF_BOTTOM_DRUMBATTLEFIELD", effectBottomDrum, "effect\\전장의.wav"},
-		{"EF_BOTTOM_RINGNIBELUNGEN", effectBottomNibelung, "effect\\니벨룽겐의 반지.wav"},
-		{"EF_BOTTOM_ROKISWEIL", effectBottomRoki, "effect\\로키.wav"},
-		{"EF_BOTTOM_INTOABYSS", effectBottomAbyss, "effect\\심연속으로.wav"},
-		{"EF_BOTTOM_SIEGFRIED", effectBottomSieg, "effect\\불사신.wav"},
-		{"EF_BOTTOM_WHISTLE", effectBottomWhistle, "effect\\달빛세레나데.wav"},
-		{"EF_BOTTOM_ASSASSINCROSS", effectBottomSinX, "effect\\석양의 어쌔신.wav"},
-		{"EF_BOTTOM_POEMBRAGI", effectBottomBragi, "effect\\브라기의 시.wav"},
-		{"EF_BOTTOM_APPLEIDUN", effectBottomApple, "effect\\이둔의 사과.wav"},
 		{"EF_BOTTOM_HUMMING", effectBottomHumming, "effect\\흥얼거림.wav"},
 		{"EF_BOTTOM_DONTFORGETME", effectBottomForget, "effect\\나를잊지말아요.wav"},
 		{"EF_BOTTOM_FORTUNEKISS", effectBottomFortune, "effect\\행운의.wav"},
@@ -1390,19 +1378,6 @@ func TestBottomSongGroundEffectsMatchReferenceRows(t *testing.T) {
 		tint        color.RGBA
 		textureSize float64
 	}{
-		{"277_ground", effectBottomDissonanceGround, "effect/lens_w.bmp", color.RGBA{R: 255, G: 255, B: 255, A: 13}, 0.5},
-		{"278_ground", effectBottomLullabyGround, "effect/zz.bmp", color.RGBA{R: 237, G: 158, B: 255, A: 13}, 0.5},
-		{"279_ground", effectBottomRichKimGround, "effect/pocket.bmp", color.RGBA{R: 252, G: 199, B: 199, A: 13}, 0.5},
-		{"280_ground", effectBottomChaosGround, "effect/lens_g.bmp", color.RGBA{R: 128, G: 255, B: 194, A: 13}, 0.5},
-		{"281_ground", effectBottomDrumGround, "effect/melody_b.bmp", color.RGBA{R: 237, G: 101, B: 252, A: 13}, 0.5},
-		{"282_ground", effectBottomNibelungGround, "effect/twirl.bmp", color.RGBA{R: 28, G: 236, B: 255, A: 13}, 0.5},
-		{"283_ground", effectBottomRokiGround, "effect/safeline.bmp", color.RGBA{R: 220, G: 101, B: 252, A: 13}, 0.5},
-		{"284_ground", effectBottomAbyssGround, "effect/bluegemstone.bmp", color.RGBA{R: 255, G: 255, B: 255, A: 13}, 1},
-		{"285_ground", effectBottomSiegGround, "effect/lens_b.bmp", color.RGBA{R: 72, G: 59, B: 255, A: 13}, 0.5},
-		{"286_ground", effectBottomWhistleGround, "effect/melody_b.bmp", color.RGBA{R: 255, G: 192, B: 203, A: 13}, 0.5},
-		{"287_ground", effectBottomSinXGround, "effect/lens_r.bmp", color.RGBA{R: 255, G: 204, B: 217, A: 102}, 0.5},
-		{"288_ground", effectBottomBragiGround, "effect/spell_01.bmp", color.RGBA{}, 0.5},
-		{"289_ground", effectBottomAppleGround, "effect/idun_apple.bmp", color.RGBA{R: 255, G: 255, B: 0, A: 13}, 1},
 		{"290_ground", effectBottomUglyDanceGround, "effect/lens_w.bmp", color.RGBA{R: 255, G: 255, B: 255, A: 13}, 0.5},
 		{"291_ground", effectBottomHummingGround, "effect/melody_a.bmp", color.RGBA{R: 230, G: 209, B: 209, A: 13}, 0.5},
 		{"292_ground", effectBottomForgetGround, "effect/lens_g.bmp", color.RGBA{R: 28, G: 255, B: 115, A: 13}, 0.5},
@@ -2568,7 +2543,6 @@ func TestRobrowserSimpleEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) 
 		repeat    bool
 		direction bool
 	}{
-		{"EF_FVOICE", effectFVoice, "fvoice", "amon_ra_die01.wav", false, false, false, false},
 		{"EF_WINK", effectWink, "wink", "", false, false, false, false},
 		{"EF_KIRIKAGE", effectKirikage, "그림자베기", "effect\\그림자베기.wav", true, false, false, false},
 		{"EF_TATAMI", effectTatami, "다다미 뒤집기", "effect\\다다미뒤집기.wav", true, false, false, false},

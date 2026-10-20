@@ -1546,36 +1546,36 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	}
 	expectEffectIDs(t, "BD_ADAPTATION imported empty", skillEffectIDs(db.SkillBDAdaptation))
 	expectEffectIDs(t, "BD_ENCORE imported empty", skillEffectIDs(db.SkillBDEncore))
-	expectEffectIDs(t, "BD_LULLABY imported", skillEffectIDs(db.SkillBDLullaby), effectBottomLullaby)
+	expectEffectIDs(t, "BD_LULLABY imported", skillEffectIDs(db.SkillBDLullaby))
 	expectEffectIDs(t, "BD_LULLABY imported ground", skillGroundEffectIDs(db.SkillBDLullaby), effectBottomLullabyGround)
-	expectEffectIDs(t, "BD_RICHMANKIM imported", skillEffectIDs(db.SkillBDRichmankim), effectBottomRichKim)
+	expectEffectIDs(t, "BD_RICHMANKIM imported", skillEffectIDs(db.SkillBDRichmankim))
 	expectEffectIDs(t, "BD_RICHMANKIM imported ground", skillGroundEffectIDs(db.SkillBDRichmankim), effectBottomRichKimGround)
-	expectEffectIDs(t, "BD_ETERNALCHAOS imported", skillEffectIDs(db.SkillBDEternalchaos), effectBottomChaos)
+	expectEffectIDs(t, "BD_ETERNALCHAOS imported", skillEffectIDs(db.SkillBDEternalchaos))
 	expectEffectIDs(t, "BD_ETERNALCHAOS imported ground", skillGroundEffectIDs(db.SkillBDEternalchaos), effectBottomChaosGround)
-	expectEffectIDs(t, "BD_DRUMBATTLEFIELD imported", skillEffectIDs(db.SkillBDDrumbattlefield), effectBottomDrum)
+	expectEffectIDs(t, "BD_DRUMBATTLEFIELD imported", skillEffectIDs(db.SkillBDDrumbattlefield))
 	expectEffectIDs(t, "BD_DRUMBATTLEFIELD imported ground", skillGroundEffectIDs(db.SkillBDDrumbattlefield), effectBottomDrumGround)
-	expectEffectIDs(t, "BD_RINGNIBELUNGEN imported", skillEffectIDs(db.SkillBDRingnibelungen), effectBottomNibelung)
+	expectEffectIDs(t, "BD_RINGNIBELUNGEN imported", skillEffectIDs(db.SkillBDRingnibelungen))
 	expectEffectIDs(t, "BD_RINGNIBELUNGEN imported ground", skillGroundEffectIDs(db.SkillBDRingnibelungen), effectBottomNibelungGround)
-	expectEffectIDs(t, "BD_ROKISWEIL imported", skillEffectIDs(db.SkillBDRokisweil), effectBottomRoki)
+	expectEffectIDs(t, "BD_ROKISWEIL imported", skillEffectIDs(db.SkillBDRokisweil))
 	expectEffectIDs(t, "BD_ROKISWEIL imported ground", skillGroundEffectIDs(db.SkillBDRokisweil), effectBottomRokiGround)
-	expectEffectIDs(t, "BD_INTOABYSS imported", skillEffectIDs(db.SkillBDIntoabyss), effectBottomAbyss)
+	expectEffectIDs(t, "BD_INTOABYSS imported", skillEffectIDs(db.SkillBDIntoabyss))
 	expectEffectIDs(t, "BD_INTOABYSS imported ground", skillGroundEffectIDs(db.SkillBDIntoabyss), effectBottomAbyssGround)
-	expectEffectIDs(t, "BD_SIEGFRIED imported", skillEffectIDs(db.SkillBDSiegfried), effectBottomSieg)
+	expectEffectIDs(t, "BD_SIEGFRIED imported", skillEffectIDs(db.SkillBDSiegfried))
 	expectEffectIDs(t, "BD_SIEGFRIED imported ground", skillGroundEffectIDs(db.SkillBDSiegfried), effectBottomSiegGround)
 	expectEffectIDs(t, "BA_MUSICALLESSON imported empty", skillEffectIDs(db.SkillBaMusicallesson))
 	expectEffectIDs(t, "BA_MUSICALSTRIKE imported before hit", skillBeforeHitEffectIDs(db.SkillBaMusicalstrike), effectArrowShot)
-	if !skillHidesCastAura(db.SkillBaMusicalstrike) {
-		t.Fatal("BA_MUSICALSTRIKE should hide cast aura like robr")
+	if skillHidesCastAura(db.SkillBaMusicalstrike) {
+		t.Fatal("BA_MUSICALSTRIKE must show the native Bash casting effect")
 	}
 	expectEffectIDs(t, "BA_DISSONANCE imported ground", skillGroundEffectIDs(db.SkillBaDissonance), effectBottomDissonanceGround)
-	expectEffectIDs(t, "BA_FROSTJOKE imported begin", skillBeginEffectIDs(db.SkillBaFrostjoke), effectTalkFrostJoke)
-	expectEffectIDs(t, "BA_WHISTLE imported", skillEffectIDs(db.SkillBaWhistle), effectBottomWhistle)
+	expectEffectIDs(t, "BA_FROSTJOKE success", skillSuccessEffectSelfIDs(db.SkillBaFrostjoke), effectTalkFrostJoke)
+	expectEffectIDs(t, "BA_WHISTLE imported", skillEffectIDs(db.SkillBaWhistle))
 	expectEffectIDs(t, "BA_WHISTLE imported ground", skillGroundEffectIDs(db.SkillBaWhistle), effectBottomWhistleGround)
-	expectEffectIDs(t, "BA_ASSASSINCROSS imported", skillEffectIDs(db.SkillBaAssassincross), effectBottomSinX)
+	expectEffectIDs(t, "BA_ASSASSINCROSS imported", skillEffectIDs(db.SkillBaAssassincross))
 	expectEffectIDs(t, "BA_ASSASSINCROSS imported ground", skillGroundEffectIDs(db.SkillBaAssassincross), effectBottomSinXGround)
-	expectEffectIDs(t, "BA_POEMBRAGI imported", skillEffectIDs(db.SkillBaPoembragi), effectBottomBragi)
+	expectEffectIDs(t, "BA_POEMBRAGI imported", skillEffectIDs(db.SkillBaPoembragi))
 	expectEffectIDs(t, "BA_POEMBRAGI imported ground", skillGroundEffectIDs(db.SkillBaPoembragi), effectBottomBragiGround)
-	expectEffectIDs(t, "BA_APPLEIDUN imported", skillEffectIDs(db.SkillBaAppleidun), effectBottomApple)
+	expectEffectIDs(t, "BA_APPLEIDUN imported", skillEffectIDs(db.SkillBaAppleidun))
 	expectEffectIDs(t, "BA_APPLEIDUN imported ground", skillGroundEffectIDs(db.SkillBaAppleidun), effectBottomAppleGround)
 	expectEffectIDs(t, "BA_PANGVOICE imported success", skillSuccessEffectIDs(db.SkillBaPangvoice), effectFVoice)
 	expectEffectIDs(t, "DC_DANCINGLESSON imported empty", skillEffectIDs(db.SkillDCDancinglesson))
@@ -1902,8 +1902,8 @@ func TestImportedSkillActionFallback(t *testing.T) {
 	}
 	for _, skillID := range []uint16{db.SkillDCWinkcharm, db.SkillBDRokisweil} {
 		action := skillAction(skillID)
-		if !action.defined || action.action != skillActorActionSkill || !action.play || !action.repeat || action.next != nil || !action.hasFrame || action.frame != 1 || action.length != 3 || action.speed != 250*time.Millisecond {
-			t.Fatalf("dance/play action for skill %d = %+v, want robr repeating SKILL frame 1", skillID, action)
+		if !action.defined || action.action != skillActorActionSkill || !action.play || !action.repeat || action.next != nil || !action.hasFrame || action.frame != 1 || action.length != 3 || action.speed != 10*db.EffectFrameDuration {
+			t.Fatalf("dance/play action for skill %d = %+v, want native repeating SKILL frames 1–3", skillID, action)
 		}
 	}
 	sonic := skillAction(db.SkillASSonicblow)

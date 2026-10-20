@@ -157,6 +157,7 @@ type spriteState struct {
 	moving         bool
 	started        time.Time
 	loop           bool
+	pingPong       bool
 	loopIdle       bool
 	play           bool
 	hasPlay        bool
@@ -221,6 +222,7 @@ func applyActorAnimationToSpriteState(state *spriteState, anim actorAnimation, p
 	state.actionFamily = anim.actionFamily
 	state.started = anim.started
 	state.loop = anim.loop
+	state.pingPong = anim.pingPong
 	state.play = anim.play
 	state.hasPlay = anim.hasPlay
 	state.length = anim.length
@@ -1162,7 +1164,7 @@ func spriteMotionIndexWithOptions(action res.ACTAction, started time.Time, now t
 	}
 	index := int(float64(elapsed.Milliseconds()) / delay)
 	if loop || motionCount == 1 {
-		return (index + frameOffset) % motionCount
+		return minInt(frameOffset+index%motionCount, len(action.Animations)-1)
 	}
 	if index >= motionCount {
 		return minInt(frameOffset+motionCount-1, len(action.Animations)-1)
@@ -1182,7 +1184,7 @@ func bodyMotionForState(action res.ACTAction, state spriteState, started time.Ti
 	}
 	delayMS := float64(action.DelayMS)
 	if state.hasSpeed && state.speed > 0 {
-		delayMS = float64(state.speed / time.Millisecond)
+		delayMS = float64(state.speed) / float64(time.Millisecond)
 	}
 	if state.hasPlay && !state.play {
 		if state.hasFrameOffset {
@@ -1209,6 +1211,13 @@ func bodyMotionForState(action res.ACTAction, state spriteState, started time.Ti
 	frameOffset := 0
 	if state.hasFrameOffset {
 		frameOffset = state.frameOffset
+	}
+	if state.pingPong && frameLimit > 1 {
+		index := int(max(0, float64(now.Sub(started))/float64(time.Millisecond))/max(1, delayMS)) % (2*frameLimit - 2)
+		if index >= frameLimit {
+			index = 2*frameLimit - 2 - index
+		}
+		return minInt(frameOffset+index, len(action.Animations)-1)
 	}
 	if state.actionFamily == spriteActionWalk || state.loop {
 		return spriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)

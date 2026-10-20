@@ -48,6 +48,11 @@ const (
 	effectFuncArrowShower
 	effectFuncHunter
 	effectFuncSniper
+	effectFuncSongMusic
+	effectFuncSongVertical
+	effectFuncSongLight
+	effectFuncSongOut
+	effectFuncPangVoice
 	effectFuncCartRevolution
 	effectFuncSprinkleSand
 	effectFuncRogueBurst
@@ -121,6 +126,12 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawPriestGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncMonkRays:
 		m.drawMonkRays(screen, ctx, component, effect, now)
+	case effectFuncSongMusic:
+		m.drawSongMusic(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
+	case effectFuncSongVertical, effectFuncSongLight, effectFuncSongOut:
+		m.drawSongGround(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
+	case effectFuncPangVoice:
+		m.drawPangVoice(screen, ctx, projection, component, effect, now)
 	case effectFuncSniper:
 		m.drawSniperEffect(screen, ctx, component, effect, now)
 	case effectFuncTripleAttack:

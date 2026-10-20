@@ -112,8 +112,8 @@ validate, then commit and push. Existing support is not proof of visual parity.
 
 - [x] Hunter — traps, Detecting, Blitz Beat, Phantasmic Arrow, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
 - [x] Sniper — all four skills audited; procedural visuals, casting poses, hit routing, and sound timing reviewed twice and validated with OldRO assets.
-- [ ] Bard — analysis in progress
-- [ ] Clown
+- [x] Bard — songs/ensembles, Musical Strike, Frost Joke, Pang Voice, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
+- [ ] Clown — analysis in progress
 - [ ] Dancer
 - [ ] Gypsy
 - [ ] Blacksmith
@@ -148,6 +148,16 @@ to the packet source; secondary splash packets do not replay attacks. Falcon
 Assault rotates only the rendered sprite during its burst, preserving the
 server's facing afterwards. Full asset-backed tests and a normal build passed;
 live comparison of these procedural visuals remains useful.
+
+Bard reference checks: dhxj and 2008 HighPriest agree on the floating song
+symbols, vertical ribbons, rotating bands, and Roki particles. Ground units own
+these visuals; activation owns the single sound (Whistle and Dissonance are
+silent). Musical Strike uses ACT 88 and the native arrow flight timing. Frost
+Joke and Pang Voice use the finite shout pose; Pang Voice captures its target
+position and camera-relative direction. Song/dance loops now use their correct
+frame ranges and stop on Adaptation/status end. Musical Lesson has no activation
+visual, and Encore uses the server's subsequent song notification. Full tests
+with client assets and a normal build passed; live comparison remains useful.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
