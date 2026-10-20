@@ -111,8 +111,8 @@ cross-check server packets, implement discrepancies, review and fix twice,
 validate, then commit and push. Existing support is not proof of visual parity.
 
 - [x] Hunter — traps, Detecting, Blitz Beat, Phantasmic Arrow, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
-- [ ] Sniper — analysis in progress
-- [ ] Bard
+- [x] Sniper — all four skills audited; procedural visuals, casting poses, hit routing, and sound timing reviewed twice and validated with OldRO assets.
+- [ ] Bard — analysis in progress
 - [ ] Clown
 - [ ] Dancer
 - [ ] Gypsy
@@ -139,6 +139,15 @@ animation, trap picking/chasing, and Talkie Box's bubble-only packet. Passives
 (Beast Bane, Falconry Mastery, Steel Crow) have no invented activation effect;
 the existing falcon option owns the bird. Full tests with client assets and a
 normal build passed. Live visual comparison remains useful for fine tuning.
+
+Sniper reference checks: both original clients agree on True Sight's layered
+rays, Wind Walk's four strips and pale-green body flash, Sharp Shooting's
+delayed rays and ACT 88 casting pose, and Falcon Assault's impact/quake timing.
+The 2008 executable confirms the Korean sound filenames. Buff effects belong
+to the packet source; secondary splash packets do not replay attacks. Falcon
+Assault rotates only the rendered sprite during its burst, preserving the
+server's facing afterwards. Full asset-backed tests and a normal build passed;
+live comparison of these procedural visuals remains useful.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,

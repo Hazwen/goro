@@ -2155,21 +2155,6 @@ func magicCrasherEffectSpec() EffectSpec {
 	}
 }
 
-func falconAssaultEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration:         500 * time.Millisecond,
-		CameraShake:      200 * time.Millisecond,
-		CameraShakeDelay: 300 * time.Millisecond,
-		SFX:              []string{"effect\\hunter_blitzbeat.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "CameraQuake",
-			Delay:          300 * time.Millisecond,
-			AttachedEntity: true,
-		}},
-	}
-}
-
 func moonlitEffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 20 * time.Second,
@@ -4156,11 +4141,11 @@ var EffectSpecs = map[int]EffectSpec{
 	effectLightBlade:        sprEffectSpec("한복천사", "", true, true),
 	effectEnergyDrain3:      energyDrainProjectileEffectSpec(color.RGBA{R: 178, G: 255, B: 178, A: 255}, 140, 170),
 	effectLineLink2:         soundOnlyEffectSpec("effect\\소울 체인지.wav"),
-	effectTrueSight:         soundOnlyEffectSpec("effect\\hunter_detecting.wav"),
+	effectTrueSight:         trueSightEffectSpec(),
 	effectFalconAssault:     falconAssaultEffectSpec(),
 	effectSharpShootingCast: sharpShootingCastEffectSpec(),
-	effectTripleAttack2:     soundOnlyEffectSpec("effect\\샤프슈팅.wav"),
-	effectPortal4:           soundOnlyEffectSpec("effect\\윈드워크.wav"),
+	effectTripleAttack2:     sharpShootingEffectSpec(),
+	effectPortal4:           windWalkEffectSpec(),
 	effectMeltdown:          strEffectSpecAttached("melt", "", false),
 	effectCartBoost:         strEffectSpecAttached("cart", "effect\\ef_incagility.wav", false),
 	effectRejectSword:       strEffectSpecAttached("sword", "effect\\kyrie_guard.wav", false),

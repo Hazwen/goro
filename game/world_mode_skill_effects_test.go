@@ -1656,14 +1656,14 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 		t.Fatal("ASC_METEORASSAULT should hide cast aura like robr")
 	}
 	expectEffectIDs(t, "ASC_CDP imported empty", skillEffectIDs(db.SkillASCCdp))
-	expectEffectIDs(t, "SN_SIGHT imported", skillEffectIDs(db.SkillSNSight), effectTrueSight)
+	expectEffectIDs(t, "SN_SIGHT imported", skillSuccessEffectSelfIDs(db.SkillSNSight), effectTrueSight)
 	expectEffectIDs(t, "SN_FALCONASSAULT imported", skillEffectIDs(db.SkillSNFalconassault), effectFalconAssault)
 	expectEffectIDs(t, "HT_PHANTASMIC imported before hit", skillBeforeHitEffectIDs(db.SkillHTPhantasmic), effectArrowShot)
 	expectEffectIDs(t, "HT_PHANTASMIC imported hit", skillHitEffectIDs(db.SkillHTPhantasmic), effectHit1, effectBashHit)
-	expectEffectIDs(t, "SN_SHARPSHOOTING imported begin", skillBeginEffectIDs(db.SkillSNSharpshooting), effectSharpShootingCast)
+	expectEffectIDs(t, "SN_SHARPSHOOTING imported begin", skillBeginEffectIDs(db.SkillSNSharpshooting))
 	expectEffectIDs(t, "SN_SHARPSHOOTING imported before hit", skillBeforeHitEffectIDs(db.SkillSNSharpshooting), effectArrowShot)
-	expectEffectIDs(t, "SN_SHARPSHOOTING imported hit", skillHitEffectIDs(db.SkillSNSharpshooting), effectTripleAttack2)
-	expectEffectIDs(t, "SN_WINDWALK imported", skillEffectIDs(db.SkillSNWindwalk), effectPortal4)
+	expectEffectIDs(t, "SN_SHARPSHOOTING imported hit", skillHitEffectIDs(db.SkillSNSharpshooting), effectHit1, effectBashHit)
+	expectEffectIDs(t, "SN_WINDWALK imported", skillSuccessEffectSelfIDs(db.SkillSNWindwalk), effectPortal4)
 	expectEffectIDs(t, "WS_MELTDOWN imported", skillEffectIDs(db.SkillWSMeltdown), effectMeltdown)
 	expectEffectIDs(t, "WS_CREATECOIN imported empty", skillEffectIDs(db.SkillWSCreatecoin))
 	expectEffectIDs(t, "WS_CREATENUGGET imported empty", skillEffectIDs(db.SkillWSCreatenugget))
@@ -1897,8 +1897,8 @@ func TestImportedSkillActionFallback(t *testing.T) {
 		t.Fatalf("HT_LANDMINE action = %+v, want robr PICKUP then IDLE", trap)
 	}
 	sight := skillAction(db.SkillSNSight)
-	if !sight.defined || sight.action != skillActorActionSkill || !sight.play || sight.repeat || sight.next == nil || sight.next.action != skillActorActionIdle {
-		t.Fatalf("SN_SIGHT action = %+v, want local skill action for robr ACTION then IDLE", sight)
+	if !sight.defined || sight.action != skillActorActionIdle || !sight.play || !sight.repeat || sight.next != nil {
+		t.Fatalf("SN_SIGHT action = %+v, want native standing pose", sight)
 	}
 	for _, skillID := range []uint16{db.SkillDCWinkcharm, db.SkillBDRokisweil} {
 		action := skillAction(skillID)

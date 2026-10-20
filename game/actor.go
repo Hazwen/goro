@@ -906,6 +906,7 @@ func (m *WorldMode) collectSceneActorEntries(screen *render.Frame, ctx client.Co
 	}
 	visible := entries[:0]
 	for _, entry := range entries {
+		entry.actor.Dir = m.falconAssaultDirection(ctx, entry.actor.ID, entry.actor.Dir, now)
 		entry.stealth = actorStealthView(ctx, entry.actor, entry.isPlayer)
 		// The local gauges remain visible even when the body is absent.
 		if entry.isPlayer || entry.stealth != stealthHidden {

@@ -1832,9 +1832,6 @@ func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		{"EF_BOTTOM_GOSPEL", effectBottomGospel, "effect\\가스펠.wav"},
 		{"EF_HITLINE2", effectHitLine2, "effect\\맹호경파산.wav"},
 		{"EF_LINELINK2", effectLineLink2, "effect\\소울 체인지.wav"},
-		{"EF_TRUESIGHT", effectTrueSight, "effect\\hunter_detecting.wav"},
-		{"EF_TRIPLEATTACK2", effectTripleAttack2, "effect\\샤프슈팅.wav"},
-		{"EF_PORTAL4", effectPortal4, "effect\\윈드워크.wav"},
 		{"EF_TRIPLEATTACK3", effectTripleAttack3, "effect\\애로우 발칸.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
@@ -1961,13 +1958,13 @@ func TestRobrowserDrainAndMagicEffectsThreeFiftyToFourHundredMatchTableRows(t *t
 	}
 
 	falcon, ok := worldEffectSpecForID(effectFalconAssault)
-	if !ok || len(falcon.components) != 1 || falcon.duration != 500*time.Millisecond {
+	if !ok || len(falcon.components) != 1 || falcon.duration != 200*db.EffectFrameDuration {
 		t.Fatalf("EF_FALCONASSAULT spec = %+v ok=%t", falcon, ok)
 	}
-	if len(falcon.sfx) != 1 || falcon.sfx[0] != "effect\\hunter_blitzbeat.wav" || falcon.cameraShakeDelay != 300*time.Millisecond || falcon.cameraShake != 200*time.Millisecond {
+	if len(falcon.sfx) != 0 || falcon.cameraShakeDelay != 30*db.EffectFrameDuration || falcon.cameraShake != 200*time.Millisecond {
 		t.Fatalf("EF_FALCONASSAULT timing/sfx = sfx %#v delay %s shake %s", falcon.sfx, falcon.cameraShakeDelay, falcon.cameraShake)
 	}
-	if component := falcon.components[0]; component.kind != effectComponentFUNC || component.funcName != "CameraQuake" || component.delay != 300*time.Millisecond || !component.attachedEntity {
+	if component := falcon.components[0]; component.kind != effectComponentFUNC || component.funcName != "CameraQuake" || component.delay != 30*db.EffectFrameDuration || !component.attachedEntity {
 		t.Fatalf("EF_FALCONASSAULT component = %+v", component)
 	}
 

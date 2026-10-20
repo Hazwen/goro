@@ -518,7 +518,8 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	doubleStrafeBowAttack := action.SkillID == db.SkillACDouble && playerBowAttack
 	showerBowAttack := action.SkillID == db.SkillACShower && playerBowAttack
 	phantasmicBowAttack := (action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower) && playerBowAttack
-	referenceBowFlightAttack := normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack
+	sharpShootingBowAttack := action.SkillID == db.SkillSNSharpshooting && playerBowAttack
+	referenceBowFlightAttack := normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack || sharpShootingBowAttack
 	if sourceOK && !splash {
 		if anim, ok := m.actorAnimation(action.SourceID, now); ok && anim.autoCounter && action.SkillID == 0 {
 			m.addWorldEffectAt(ctx, effectAutoCounter, action.SourceID, now)
@@ -570,7 +571,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		}
 		if action.SkillID > 0 {
 			m.addSkillBeginEffect(ctx, action, now)
-			if doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack {
+			if doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack || sharpShootingBowAttack {
 				// The bow releases one arrow at the ACT marker.
 				m.addSkillBeforeHitEffectOnce(ctx, action, projectileAt, projectileDuration)
 			} else {
@@ -634,7 +635,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return false
 	}
 	switch action.SkillID {
-	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower:
+	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower, db.SkillSNFalconassault, db.SkillSNSharpshooting:
 		return true
 	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution:
 		return true
@@ -880,7 +881,7 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 			if (effectID == effectBowlingBash || effectID == effectBlitzBeat) && i > 0 {
 				continue
 			}
-			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
+			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillSNSharpshooting || action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
 				continue
 			}
 			if i > 0 && (action.SkillID == db.SkillMGNapalmbeat || action.SkillID == db.SkillMGSoulstrike || action.SkillID == db.SkillMGFireball || action.SkillID == db.SkillMGFrostdiver) && (effectID == effectBashHit || effectID == effectFrostDiverHit) {
@@ -1461,6 +1462,9 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	}
 	if !res.HasPlayerJobToken(int(actor.Job)) {
 		return spriteActionNonPCAttack
+	}
+	if skillID == db.SkillSNSharpshooting {
+		return spriteActionPCAttack3
 	}
 	if skillID == db.SkillTFPickstone {
 		return spriteActionPickup

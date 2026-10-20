@@ -263,7 +263,11 @@ func (m *WorldMode) playerRenderTint(ctx client.Context, actor worldstate.Actor,
 func (m *WorldMode) actorRenderBlend(actorID uint32, now time.Time) render.Blend {
 	if actorID != 0 {
 		for _, effect := range m.worldEffects {
-			if effect.actorID == actorID && effect.effectID == effectMagicCrasher && !effect.expired(now) && magicCrasherFlashActive(now.Sub(effect.starts)) {
+			if effect.actorID != actorID || now.Before(effect.starts) || effect.expired(now) {
+				continue
+			}
+			elapsed := now.Sub(effect.starts)
+			if effect.effectID == effectMagicCrasher && magicCrasherFlashActive(elapsed) || sniperBodyFlashActive(effect.effectID, int(elapsed/db.EffectFrameDuration)) {
 				return render.BlendLighter // BL_LIGHT_BODY selects RF_EFFECT in the original client.
 			}
 		}
@@ -297,6 +301,10 @@ func (m *WorldMode) actorBodyColorTint(actorID uint32, tint color.RGBA, now time
 			continue
 		}
 		switch effect.effectID {
+		case effectPortal4:
+			if sniperBodyFlashActive(effect.effectID, int(now.Sub(effect.starts)/db.EffectFrameDuration)) {
+				tint = multiplyTint(base, 220.0/255, 250.0/255, 220.0/255, 1)
+			}
 		case effectShrink:
 			frame := now.Sub(effect.starts) / db.EffectFrameDuration
 			if frame >= 5 && frame < 26 && frame%2 == 0 {

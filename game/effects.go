@@ -1184,6 +1184,13 @@ func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID u
 		return
 	}
 	actionFamily := skillCastActionFamilyForActor(source, skillID)
+	if skillID == db.SkillSNSharpshooting && res.HasPlayerJobToken(int(source.Job)) {
+		m.setCombatActorAction(ctx, sourceID, actorAnimation{
+			actionFamily: actionFamily, started: now, duration: duration,
+			hasPlay: true, hasFixedMotion: true, fixedMotion: 0,
+		})
+		return
+	}
 	if actionFamily == spriteActionPickup {
 		duration = m.actorActionDuration(ctx, source, actionFamily, 300*time.Millisecond)
 	}
@@ -1643,10 +1650,10 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectBackStab || effectID == effectTeiHit2 {
 		initImpactParticles(ctx, &effect)
 	}
-	if effectID == effectTripleAttack {
+	if effectID == effectTripleAttack || effectID == effectTripleAttack2 {
 		initTripleAttack(ctx, &effect)
 	}
-	if effectID == effectTeiHit1 || effectID == effectTeiHit1X || effectID == effectHitLine {
+	if effectID == effectTeiHit1 || effectID == effectTeiHit1X || effectID == effectHitLine || effectID == effectPortal4 {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -1903,7 +1910,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 			glog.Debugf("skill cast target lockon source=%s skill=%d src=%d target=%d delay_ms=%d", source, skillID, sourceID, targetID, duration.Milliseconds())
 		}
 	}
-	if skillID == db.SkillACChargearrow {
+	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -1924,7 +1931,8 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectPierceBody
 	}
 	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain ||
-		skillID == db.SkillHPAssumptio || skillID == db.SkillHPBasilica || skillID == db.SkillPRRedemptio {
+		skillID == db.SkillHPAssumptio || skillID == db.SkillHPBasilica || skillID == db.SkillPRRedemptio ||
+		skillID == db.SkillSNSharpshooting || skillID == db.SkillSNWindwalk {
 		effectID = effectBeginSpell6
 	}
 	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
@@ -2825,6 +2833,8 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncImpactParticles
 	case "MonkRays":
 		return effectFuncMonkRays
+	case "TrueSight", "WindWalk", "SharpShooting":
+		return effectFuncSniper
 	case "TripleAttack":
 		return effectFuncTripleAttack
 	case "HitLine":

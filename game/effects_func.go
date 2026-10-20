@@ -47,6 +47,7 @@ const (
 	effectFuncMammoniteCoins
 	effectFuncArrowShower
 	effectFuncHunter
+	effectFuncSniper
 	effectFuncCartRevolution
 	effectFuncSprinkleSand
 	effectFuncRogueBurst
@@ -120,6 +121,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawPriestGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncMonkRays:
 		m.drawMonkRays(screen, ctx, component, effect, now)
+	case effectFuncSniper:
+		m.drawSniperEffect(screen, ctx, component, effect, now)
 	case effectFuncTripleAttack:
 		m.drawTripleAttack(screen, ctx, component, effect, now)
 	case effectFuncHitLine:
