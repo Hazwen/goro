@@ -117,6 +117,7 @@ type WorldMode struct {
 	lastAttackAt      time.Time
 	lastChaseAt       time.Time
 	actorAnims        map[uint32]actorAnimation
+	actorBlurs        map[uint32][]actorBlur
 	damageFloaters    []damageFloater
 	worldEffects      []worldEffect
 	effectSpecs       map[int]worldEffectSpec
@@ -489,6 +490,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.lastAttackAt = time.Time{}
 	m.lastChaseAt = time.Time{}
 	m.actorAnims = make(map[uint32]actorAnimation)
+	m.actorBlurs = nil
 	m.damageFloaters = nil
 	m.serverProgress = serverProgressState{}
 	m.showDigit = showDigitState{}

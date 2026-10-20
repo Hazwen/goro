@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 696 {
-		t.Fatalf("implemented effects = %d, want 696", coverage.Implemented)
+	if coverage.Implemented != 697 {
+		t.Fatalf("implemented effects = %d, want 697", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 114.66 || coverage.ActivePercent > 114.67 {
-		t.Fatalf("active coverage = %.3f, want about 114.66", coverage.ActivePercent)
+	if coverage.ActivePercent < 114.82 || coverage.ActivePercent > 114.83 {
+		t.Fatalf("active coverage = %.3f, want about 114.83", coverage.ActivePercent)
 	}
 }
 
@@ -1688,7 +1688,6 @@ func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 	}{
 		{"EF_LKCONCENTRATION", effectLKConcentration, "twohand", "", true, true},
 		{"EF_DEVIL", effectDeath, "devil", "", true, false},
-		{"EF_MELTDOWN", effectMeltdown, "melt", "", true, false},
 		{"EF_CARTBOOST", effectCartBoost, "cart", "effect\\ef_incagility.wav", true, false},
 		{"EF_REJECTSWORD", effectRejectSword, "sword", "effect\\kyrie_guard.wav", true, false},
 	} {

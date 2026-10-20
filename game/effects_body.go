@@ -26,9 +26,14 @@ func blueBodyAlpha(bodyTime int) float64 {
 // Body effects reuse the composed sprite, including its appearance and scale.
 // They never mutate the cached image or the actor's authoritative position.
 func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *render.Frame, projection sceneProjection, entry sceneActorDrawEntry, billboard *spriteBillboard, scale, visibility, shadow float64, tint color.RGBA, blend render.Blend, now time.Time) {
+	m.drawActorBlurs(screen, projection, entry, billboard, scale, visibility, shadow, tint, now)
+	m.drawActorSpriteBodyEffects3D(ctx, screen, projection, entry, billboard, scale, visibility, shadow, tint, blend, now)
+}
+
+func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *render.Frame, projection sceneProjection, entry sceneActorDrawEntry, billboard *spriteBillboard, scale, visibility, shadow float64, tint color.RGBA, blend render.Blend, now time.Time) {
 	if len(billboard.parts) > 0 {
 		for _, part := range billboard.parts {
-			m.drawActorSpriteWithEffects3D(ctx, screen, projection, entry, part, scale, visibility, shadow, tint, blend, now)
+			m.drawActorSpriteBodyEffects3D(ctx, screen, projection, entry, part, scale, visibility, shadow, tint, blend, now)
 		}
 		return
 	}

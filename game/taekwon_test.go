@@ -109,9 +109,9 @@ func TestTaekwonStatusEffectsAndStancePosesMatchRobrowser(t *testing.T) {
 }
 
 func TestStarWarmAndSoulLinkStatusTints(t *testing.T) {
-	swoo := actorStateTint(worldstate.Actor{Opt3State: db.Opt3Overthrust})
-	if swoo.R != 255 || swoo.G != 191 || swoo.B != 191 || swoo.A != 255 {
-		t.Fatalf("Eswoo tint = %+v", swoo)
+	swoo := actorStateTint(worldstate.Actor{Job: 1002, Opt3State: db.Opt3Overthrust})
+	if swoo.R != 255 || swoo.G != 255 || swoo.B != 255 || swoo.A != 255 {
+		t.Fatalf("Eswoo must not apply the player Overthrust tint: %+v", swoo)
 	}
 	warm := actorStateTint(worldstate.Actor{Opt3State: db.Opt3Warm})
 	if warm.R != 255 || warm.G != 102 || warm.B != 102 || warm.A != 255 {

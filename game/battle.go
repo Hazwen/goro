@@ -642,7 +642,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 	switch action.SkillID {
 	case db.SkillHTBlitzbeat, db.SkillHTPhantasmic, db.SkillHTPower, db.SkillSNFalconassault, db.SkillSNSharpshooting, db.SkillBaMusicalstrike, db.SkillDCThrowarrow, db.SkillCGArrowvulcan:
 		return true
-	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution:
+	case db.SkillACDouble, db.SkillACChargearrow, db.SkillMCMammonite, db.SkillMCCartrevolution, db.SkillWSCarttermination:
 		return true
 	case db.SkillWZFirepillar, db.SkillWZSightrasher, db.SkillWZMeteor, db.SkillWZJupitel, db.SkillWZVermilion,
 		db.SkillWZWaterball, db.SkillWZFrostnova, db.SkillWZStormgust, db.SkillWZEarthspike, db.SkillWZHeavendrive:

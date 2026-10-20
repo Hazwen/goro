@@ -429,6 +429,7 @@ func (m *WorldMode) removeActorNow(ctx client.Context, id uint32) {
 }
 
 func (m *WorldMode) clearRemovedActorState(id uint32) {
+	delete(m.actorBlurs, id)
 	m.removeWorldEffectsForActor(id)
 	if m.scriptHighlight.id == id {
 		m.clearScriptHighlight()

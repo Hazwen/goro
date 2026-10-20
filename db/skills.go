@@ -4100,10 +4100,10 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillSNFalconassault:            {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectFalconAssault}, HitEffectIDs: []int{effectHit1, effectBlitzBeat}},
 	SkillSNSharpshooting:            {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectTripleAttack2}, HitEffectIDs: []int{effectHit1, effectBashHit}, BeforeHitEffectIDs: []int{SkillEffectArrowShot}},
 	SkillSNWindwalk:                 {SuccessEffectIDsSelf: []int{effectPortal4}},
-	SkillWSMeltdown:                 {EffectIDs: []int{effectMeltdown}},
+	SkillWSMeltdown:                 {SuccessEffectIDsSelf: []int{effectMeltdown}},
 	SkillWSCreatecoin:               {},
 	SkillWSCreatenugget:             {},
-	SkillWSCartboost:                {EffectIDs: []int{effectCartBoost}},
+	SkillWSCartboost:                {SuccessEffectIDsSelf: []int{effectCartBoost}},
 	SkillWSSystemcreate:             {},
 	SkillSTChasewalk:                {BeginCastEffectIDs: []int{effectCastSpin}},
 	SkillSTRejectsword:              {EffectIDs: []int{effectRejectSword}},
@@ -4174,9 +4174,9 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillPFDoublecasting:            {EffectIDs: []int{521}},
 	SkillHWGanbantein:               {EffectIDs: []int{223}, GroundEffectIDs: []int{224}},
 	SkillHWGravitation:              {GroundEffectIDs: []int{SkillEffectGravitationGround}},
-	SkillWSCarttermination:          {EffectIDs: []int{518}},
+	SkillWSCarttermination:          {EffectIDs: []int{effectCartTermination}, EffectTiming: SkillEffectAtActionStart},
 	SkillWSWeaponrefine:             {},
-	SkillWSOverthrustmax:            {EffectIDs: []int{128}},
+	SkillWSOverthrustmax:            {SuccessEffectIDsSelf: []int{effectOverthrust}},
 	SkillCGLongingfreedom:           {SuccessEffectIDsSelf: []int{effectChemicalBody}, SFX: []string{"effect\\ac_concentration.wav"}},
 	SkillCGHermode:                  {SFX: []string{"effect\\헤르모드의 지팡이.wav"}},
 	SkillCGTarotcard:                {SuccessEffectIDs: []int{effectChemicalBody}, SFX: []string{"effect\\priest_slowpoison.wav"}},
@@ -4403,6 +4403,8 @@ const (
 )
 
 var SkillActions = map[uint16]SkillActionKind{
+	SkillWSMeltdown:           SkillActionIdle,
+	SkillWSCartboost:          SkillActionIdle,
 	SkillBDAdaptation:         SkillActionIdle,
 	SkillALIncagi:             SkillActionIdle,
 	SkillLKParrying:           SkillActionIdle,

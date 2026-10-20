@@ -50,6 +50,7 @@ const (
 	effectFuncSniper
 	effectFuncClown
 	effectFuncBlacksmith
+	effectFuncCartTermination
 	effectFuncSongMusic
 	effectFuncSongVertical
 	effectFuncSongLight
@@ -138,6 +139,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawClownEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncBlacksmith:
 		m.drawBlacksmithEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncCartTermination:
+		m.drawCartTermination(screen, ctx, projection, component, effect, now)
 	case effectFuncSniper:
 		m.drawSniperEffect(screen, ctx, component, effect, now)
 	case effectFuncTripleAttack:

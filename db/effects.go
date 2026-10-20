@@ -456,6 +456,7 @@ const (
 	effectBeginAsura11     = 510
 	effectChemical2Dash    = 512
 	effectBottomHermode    = 517
+	effectCartTermination  = 518
 	effectItemFastDown     = effectItemSlow
 	effectTarotCard1       = 523
 	effectTarotCard2       = 524
@@ -4061,8 +4062,9 @@ var EffectSpecs = map[int]EffectSpec{
 	effectSharpShootingCast: sharpShootingCastEffectSpec(),
 	effectTripleAttack2:     sharpShootingEffectSpec(),
 	effectPortal4:           windWalkEffectSpec(),
-	effectMeltdown:          strEffectSpecAttached("melt", "", false),
+	effectMeltdown:          strEffectSpecAttached("melt", "effect\\black_overthrust.wav", false),
 	effectCartBoost:         strEffectSpecAttached("cart", "effect\\ef_incagility.wav", false),
+	effectCartTermination:   cartTerminationEffectSpec(),
 	effectRejectSword:       strEffectSpecAttached("sword", "effect\\kyrie_guard.wav", false),
 	effectTripleAttack3:     arrowVulcanEffectSpec(),
 	effectMoonlit:           moonlitEffectSpec(),

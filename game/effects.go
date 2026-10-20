@@ -458,6 +458,7 @@ const (
 	effectBeginAsura11     = 510
 	effectChemical2Dash    = 512
 	effectBottomHermode    = 517
+	effectCartTermination  = 518
 	effectItemFastDown     = effectItemSlow
 	effectTarotCard1       = 523
 	effectTarotCard2       = 524
@@ -1929,7 +1930,9 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		}
 	}
 	if skillID == db.SkillACChargearrow || skillID == db.SkillSNFalconassault || skillID == db.SkillBaMusicalstrike || skillID == db.SkillDCThrowarrow ||
-		(skillID >= db.SkillBSIron && skillID <= db.SkillBSMaximize && skillID != db.SkillBSRepairweapon) || skillID == db.SkillBSAdrenaline2 {
+		(skillID >= db.SkillBSIron && skillID <= db.SkillBSMaximize && skillID != db.SkillBSRepairweapon) || skillID == db.SkillBSAdrenaline2 ||
+		skillID == db.SkillWSMeltdown || skillID == db.SkillWSCartboost || skillID == db.SkillWSOverthrustmax ||
+		skillID == db.SkillWSCarttermination || skillID == db.SkillWSWeaponrefine {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -2758,6 +2761,8 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "CartTermination":
+		return effectFuncCartTermination
 	case "HasteUp", "Overthrust":
 		return effectFuncBlacksmith
 	case "SageGroundCast":
