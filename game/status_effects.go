@@ -49,6 +49,9 @@ func (m *WorldMode) applyStatusEffectChange(ctx client.Context, change network.S
 	if !applyLocalStatusEffectChange(ctx.Session, change, time.Now()) {
 		return
 	}
+	if change.StatusID == db.StatusDevil1 {
+		m.syncStarDevil(ctx)
+	}
 	if !change.Active {
 		if change.StatusID == db.StatusCashBossAlarm {
 			m.ui.minimap.ClearBossMarker()

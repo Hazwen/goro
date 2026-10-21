@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 729 {
-		t.Fatalf("implemented effects = %d, want 729", coverage.Implemented)
+	if coverage.Implemented != 744 {
+		t.Fatalf("implemented effects = %d, want 744", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 120.09 || coverage.ActivePercent > 120.10 {
-		t.Fatalf("active coverage = %.3f, want about 120.10", coverage.ActivePercent)
+	if coverage.ActivePercent < 122.57 || coverage.ActivePercent > 122.58 {
+		t.Fatalf("active coverage = %.3f, want about 122.58", coverage.ActivePercent)
 	}
 }
 

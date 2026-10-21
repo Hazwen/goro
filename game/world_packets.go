@@ -1276,6 +1276,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse skill list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		applySkillInfoList(ctx, list)
+		m.syncStarDevil(ctx)
 		m.ui.skillWindow.ClampScroll(ctx.Session)
 		return nil, false
 	}
@@ -1283,6 +1284,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse skill update 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		applySkillInfoUpdate(ctx, update)
+		m.syncStarDevil(ctx)
 		m.ui.skillWindow.ClampScroll(ctx.Session)
 		return nil, false
 	}

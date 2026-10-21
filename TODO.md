@@ -131,7 +131,7 @@ Where they disagree, verify the actual Sakexe binary before choosing behaviour.
 - [x] Stalker — all four skills audited; casting spin/smoke, body flashes, Preserve, and Full Strip reviewed twice and validated with client assets.
 - [x] Champion — all four added skills and shared sphere/Asura effects audited; native packet timing, poses, sounds, geometry, and body flashes reviewed twice and validated with client assets.
 - [x] Taekwon — all 17 skills audited; kick poses/body effects, Run footprints, High Jump, Mild Wind, and sounds reviewed twice and validated with client assets.
-- [ ] Star Gladiator
+- [x] Star Gladiator — all 18 skills audited; Warmth, Comfort, Hatred, Demon, and Fusion reviewed twice and validated with client assets.
 - [ ] Ninja
 - [ ] Gunslinger
 
@@ -386,6 +386,25 @@ No live visual comparison was performed. Body rotations use Goro's composed
 sprite layers rather than reproducing the original per-accessory pivot code;
 these transforms and the new procedural visuals need playtesting.
 
+Star Gladiator reference checks: dhxj, HighPriest, and the actual 2008
+Sakexe agree on Warmth's persistent red lightning/body glow plus release
+particles, Comfort's eight blue rings and body overlays, and Hatred's targeted
+particles and registration sound. These replace roBrowser's mismatched skill
+mappings. Warmth and Comfort hold skill frames three and two respectively;
+Feeling, Hatred, and Fusion use BlueCasting. Warmth follows server option/status
+updates and restores on actor entry; no-damage notifications own the release
+particles and delayed sounds. The shared Hated effect is silent; Kaahi retains
+its own skill sound. Demon uses its learned level to choose the native vision
+mask and black rings, tolerates either status/skill-list packet order, and
+cleans up when the status ends. The opaque surround extends to modern viewport
+sizes. Fusion uses the server's flying option to select the alternate ACT,
+hover while standing/moving, rise while sitting, and settle during actions or
+when the option ends. Its release plays only the original sound and quake.
+Feeling/Hatred registration retain their existing UI; Anger, Blessings, Friend,
+and Knowledge remain server-owned. Both reviews, the full suite with OldRO
+assets, and a normal build passed. No live visual comparison was performed;
+the procedural rings, vision mask, and composed-sprite flight need playtesting.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -394,8 +413,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `729`.
-- Catalog size relative to all numeric constants: about `63.6%`.
+- Goro effect catalog entries: `744`.
+- Catalog size relative to all numeric constants: about `64.9%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.

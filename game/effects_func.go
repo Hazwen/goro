@@ -89,6 +89,8 @@ const (
 	effectFuncChainCrush
 	effectFuncAsuraGlyphs
 	effectFuncTaekwonStorm
+	effectFuncStarRings
+	effectFuncStarBlind
 	effectFuncTaekwonStop
 	effectFuncTaekwonDash
 	effectFuncTaekwonJump
@@ -179,6 +181,10 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawSniperEffect(screen, ctx, component, effect, now)
 	case effectFuncAsuraGlyphs:
 		m.drawAsuraGlyphs(screen, ctx, projection, component, effect, now)
+	case effectFuncStarRings:
+		m.drawStarRings(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncStarBlind:
+		m.drawStarBlind(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncTaekwonStorm:
 		m.drawTaekwonStorm(screen, ctx, component, effect, now)
 	case effectFuncTaekwonStop:

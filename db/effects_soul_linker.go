@@ -59,7 +59,6 @@ func esmaEffectSpec() EffectSpec {
 func soulLinkerBuffEffectSpec(kaizel bool) EffectSpec {
 	spec := EffectSpec{
 		Duration: 200 * EffectFrameDuration,
-		SFX:      []string{"effect\\t_보조마법.wav"},
 		Components: []EffectComponent{{
 			Kind: EffectComponentFUNC, FuncName: "SoulLinkerParticles",
 			TextureFiles: []string{"effect/pok1.tga", "effect/pok3.tga"},

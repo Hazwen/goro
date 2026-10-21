@@ -56,6 +56,7 @@ func (m *WorldMode) syncCurrentActorEffectStateEffects(ctx client.Context) {
 			}
 		}
 	}
+	m.syncStarDevil(ctx)
 	m.syncActorSpiritEffects(ctx, ctx.World.Player.ID)
 	for _, actor := range ctx.World.Actors {
 		if actor.HasState {
@@ -71,6 +72,8 @@ func (m *WorldMode) removeActorEffectStateEffects(actorID uint32) {
 	}
 	m.removeWorldEffect(effectNPCStop2, actorID)
 	m.removeWorldEffect(effectGumgang, actorID)
+	m.removeWorldEffect(effectDoubleGumgang, actorID)
+	m.removeWorldEffect(effectRedLightBody, actorID)
 	m.removeWorldEffect(effectSteelBody, actorID)
 	m.removeWorldEffect(effectAssumptio, actorID)
 	m.removeWorldEffect(effectRedBody, actorID)
@@ -156,6 +159,8 @@ func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
 		return
 	}
 	visible := !actorHasStealth(actor)
+	m.setActorStateEffect(ctx, actorID, effectDoubleGumgang, visible && actor.Opt3State&db.Opt3Warm != 0)
+	m.setActorStateEffect(ctx, actorID, effectRedLightBody, visible && actor.Opt3State&db.Opt3Warm != 0)
 	m.setActorStateEffect(ctx, actorID, effectAsuraBody, visible && actor.Opt3State&db.Opt3Soullink != 0)
 	if actor.HasState && isMonsterLikeHoverActor(actor) {
 		shrinking := actor.Opt3State&db.Opt3Overthrust != 0

@@ -417,6 +417,7 @@ const (
 	effectPressedBody       = 413
 	effectSpinedBody        = 414
 	effectKickedBody        = 415
+	effectDoubleGumgang     = 418
 	effectReflectBody       = 419
 	effectBabyBody          = 420
 	effectBabyBody2         = 421
@@ -462,6 +463,18 @@ const (
 	effectBeginAsura5      = 471
 	effectBeginAsura6      = 472
 	effectBeginAsura7      = 473
+	effectDevil1           = 475
+	effectDevil2           = 476
+	effectDevil3           = 477
+	effectDevil4           = 478
+	effectDevil5           = 479
+	effectDevil6           = 480
+	effectDevil7           = 481
+	effectDevil8           = 482
+	effectDevil9           = 483
+	effectDevil10          = 484
+	effectBlackDevil       = 487
+	effectFlowerCast       = 488
 	effectMochi            = effectResistPotion
 	effectRamadan          = 492
 	effectEDP              = 493
@@ -504,6 +517,7 @@ const (
 	effectThrowItem5       = 541
 	effectBlueBody         = 542
 	effectHated            = 543
+	effectRedLightBody     = 544
 	effectSmaReady         = 546
 	effectStin             = 547
 	effectBlueHit          = 549
@@ -519,6 +533,7 @@ const (
 	effectHamiDefence      = 569
 	effectHamiCastle       = 570
 	effectHamiBlood        = 571
+	effectHated2           = 572
 	effectTwilight1        = 573
 	effectTwilight2        = 574
 	effectTwilight3        = 575
@@ -2789,6 +2804,22 @@ func einbrochWeatherCloudEffectSpec() EffectSpec {
 // original-client behavior. Leave effects unsupported until their reference
 // behavior is understood rather than guessing local visuals.
 var EffectSpecs = map[int]EffectSpec{
+	effectDoubleGumgang: starWarmthEffectSpec(),
+	effectRedLightBody:  {Duration: 99999999 * EffectFrameDuration},
+	effectHated2:        starWarmthParticlesEffectSpec(),
+	effectFlowerCast:    starComfortEffectSpec(),
+	effectBlackDevil:    starBlackDevilEffectSpec(),
+	effectDevil1:        starBlindEffectSpec(),
+	effectDevil2:        starBlindEffectSpec(),
+	effectDevil3:        starBlindEffectSpec(),
+	effectDevil4:        starBlindEffectSpec(),
+	effectDevil5:        starBlindEffectSpec(),
+	effectDevil6:        starBlindEffectSpec(),
+	effectDevil7:        starBlindEffectSpec(),
+	effectDevil8:        starBlindEffectSpec(),
+	effectDevil9:        starBlindEffectSpec(),
+	effectDevil10:       starBlindEffectSpec(),
+
 	SkillEffectChaseWalkSmoke: {Components: []EffectComponent{{Kind: EffectComponentSPR, SpriteFile: "smoke", SpriteDelay: 5 * EffectFrameDuration / 6, WorldSizedSprite: true}}},
 
 	effectShieldBoomerang3: shieldChainEffectSpec(),

@@ -43,7 +43,7 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 	}
 	doubleBody := false
 	weaponSpark := false
-	blue, eskeAge, fourWayAge := 0.0, -1, -1
+	blue, red, eskeAge, fourWayAge := 0.0, 0.0, -1, -1
 	soulAlpha := 0.0
 	// Monsters use the Energy Coat option bit for Eske. The initial burst
 	// settles into a faint outline until the server clears this bit.
@@ -51,7 +51,8 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		eskeAge = 149
 	}
 	var shake [4]float64
-	squash, lift, turn, jump := 1.0, 0.0, 0.0, 0.0
+	squash, lift, turn := 1.0, 0.0, 0.0
+	jump := m.starFusionHeight(entry.actor, now)
 	zoomScale := 160 / normalizeSceneCameraZoom(projection.cameraZoom)
 	local := isLocalActor(ctx, entry.actor.ID) || ctx.World != nil && entry.actor.ID != 0 && entry.actor.ID == ctx.World.Player.ID
 	for _, effect := range m.worldEffects {
@@ -207,7 +208,11 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 				}
 			}
 		case effectAsuraBody:
-			soulAlpha = float64(min(frame, 200)) / 255
+			soulAlpha = max(soulAlpha, float64(min(frame, 200))/255)
+		case effectFlowerCast:
+			soulAlpha = max(soulAlpha, float64(max(0, min(frame, 400-frame)))/255)
+		case effectRedLightBody:
+			red = max(red, blueBodyAlpha(min(frame/8, 25)))
 		case effectTaeReady:
 			blue = max(blue, blueBodyAlpha(frame))
 		case effectBlueHit:
@@ -291,7 +296,7 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		}
 	}
 	reflectBody := entry.actor.Opt3State&db.Opt3Kaite != 0
-	if blue == 0 && soulAlpha == 0 && eskeAge < 0 && fourWayAge < 0 && shake == [4]float64{} && !reflectBody && !doubleBody && !weaponSpark && squash == 1 && lift == 0 && turn == 0 && jump == 0 {
+	if blue == 0 && red == 0 && soulAlpha == 0 && eskeAge < 0 && fourWayAge < 0 && shake == [4]float64{} && !reflectBody && !doubleBody && !weaponSpark && squash == 1 && lift == 0 && turn == 0 && jump == 0 {
 		m.drawActorSpriteBillboardTintAlpha3D(screen, projection, billboard, entry.worldX, entry.worldY, entry.worldZ, scale, visibility, shadow, tint, blend)
 		return
 	}
@@ -349,6 +354,13 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		flash := cmd
 		flash.Options.Blend = render.BlendLighter
 		flash.ColorR, flash.ColorG, flash.ColorB, flash.ColorA = 5.0/255, 5.0/255, 1, float32(blue*alpha)
+		screen.DrawWorldBillboard(flash)
+		screen.DrawWorldBillboard(flash)
+	}
+	if red > 0 {
+		flash := cmd
+		flash.Options.Blend = render.BlendLighter
+		flash.ColorR, flash.ColorG, flash.ColorB, flash.ColorA = 1, 5.0/255, 5.0/255, float32(red*alpha)
 		screen.DrawWorldBillboard(flash)
 		screen.DrawWorldBillboard(flash)
 	}

@@ -25,7 +25,8 @@ func TestTaekwonFamilySkillEffectsMatchRobrowser(t *testing.T) {
 	for _, skillID := range spiritLinks {
 		expectEffectIDs(t, "spirit link", skillEffectIDs(skillID), 424, 503)
 	}
-	expectEffectIDs(t, "SG_FUSION", skillEffectIDs(db.SkillSGFusion), 433, effectQuake)
+	expectEffectIDs(t, "SG_FUSION", skillEffectIDs(db.SkillSGFusion))
+	expectEffectIDs(t, "SG_FUSION success", skillSuccessEffectSelfIDs(db.SkillSGFusion), effectQuake)
 	expectEffectIDs(t, "SL_SKA", skillEffectIDs(db.SkillSLSka), effectSteelBody, effectGumgang2, effectQuake)
 }
 
@@ -35,8 +36,8 @@ func TestStarWarmAndSoulLinkStatusTints(t *testing.T) {
 		t.Fatalf("Eswoo must not apply the player Overthrust tint: %+v", swoo)
 	}
 	warm := actorStateTint(worldstate.Actor{Opt3State: db.Opt3Warm})
-	if warm.R != 255 || warm.G != 102 || warm.B != 102 || warm.A != 255 {
-		t.Fatalf("warm tint = %+v", warm)
+	if warm.R != 255 || warm.G != 255 || warm.B != 255 || warm.A != 255 {
+		t.Fatalf("Warmth uses an additive red overlay, not a flat tint = %+v", warm)
 	}
 	soulLink := actorStateTint(worldstate.Actor{Opt3State: db.Opt3Soullink})
 	if soulLink.R != 255 || soulLink.G != 255 || soulLink.B != 255 || soulLink.A != 255 {

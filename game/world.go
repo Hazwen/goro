@@ -144,6 +144,7 @@ type WorldMode struct {
 	gndNormalSource   *res.GND
 	gndTopNormals     [][4]modelPoint3
 	taekwonNight      bool
+	starFlights       map[uint32]*starFlight
 	ui                worldUI
 	pendingChatRoom   network.ChatRoomCreate
 	pendingTradeName  string
@@ -502,6 +503,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.mapWeatherSounds = make(map[int]time.Time)
 	m.mapWeatherCloud = mapWeatherCloudState{}
 	m.mapWeatherPokJuk = mapWeatherFireworkState{}
+	m.starFlights = nil
 	m.actorDeaths = make(map[uint32]time.Time)
 	m.actorVanishes = make(map[uint32]actorVanishFade)
 	m.actorSoundFrames = make(map[uint32]actorSoundFrame)

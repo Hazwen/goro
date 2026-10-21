@@ -419,6 +419,7 @@ const (
 	effectPressedBody       = 413
 	effectSpinedBody        = 414
 	effectKickedBody        = 415
+	effectDoubleGumgang     = 418
 	effectReflectBody       = 419
 	effectBabyBody          = 420
 	effectBabyBody2         = 421
@@ -464,6 +465,18 @@ const (
 	effectBeginAsura5      = 471
 	effectBeginAsura6      = 472
 	effectBeginAsura7      = 473
+	effectDevil1           = 475
+	effectDevil2           = 476
+	effectDevil3           = 477
+	effectDevil4           = 478
+	effectDevil5           = 479
+	effectDevil6           = 480
+	effectDevil7           = 481
+	effectDevil8           = 482
+	effectDevil9           = 483
+	effectDevil10          = 484
+	effectBlackDevil       = 487
+	effectFlowerCast       = 488
 	effectMochi            = effectResistPotion
 	effectRamadan          = 492
 	effectEDP              = 493
@@ -506,6 +519,7 @@ const (
 	effectThrowItem5       = 541
 	effectBlueBody         = 542
 	effectHated            = 543
+	effectRedLightBody     = 544
 	effectSmaReady         = 546
 	effectStin             = 547
 	effectBlueHit          = 549
@@ -521,6 +535,7 @@ const (
 	effectHamiDefence      = 569
 	effectHamiCastle       = 570
 	effectHamiBlood        = 571
+	effectHated2           = 572
 	effectTwilight1        = 573
 	effectTwilight2        = 574
 	effectTwilight3        = 575
@@ -1044,7 +1059,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	if notify.Result == 0 {
 		return
 	}
-	if notify.SkillID == db.SkillHWSouldrain || notify.SkillID == db.SkillPFSoulchange {
+	if notify.SkillID == db.SkillHWSouldrain || notify.SkillID == db.SkillPFSoulchange || (notify.SkillID >= db.SkillSGSunWarm && notify.SkillID <= db.SkillSGStarWarm) {
 		if _, ok, _ := actorForCombatID(ctx, notify.SourceID); !ok {
 			return
 		}
@@ -1078,6 +1093,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	m.applyHighWizardSkill(ctx, notify, now)
 	m.applyProfessorSkill(ctx, notify, now)
 	m.applyTaekwonSkill(ctx, notify, now)
+	m.applyStarGladiatorSkill(ctx, notify, now)
 	m.applyWinkCharm(ctx, notify)
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
@@ -1510,6 +1526,7 @@ func (m *WorldMode) removeSkillUnitEffects(id uint32) bool {
 }
 
 func (m *WorldMode) removeWorldEffectsForActor(id uint32) bool {
+	delete(m.starFlights, id)
 	active := m.worldEffects[:0]
 	removed := false
 	for _, effect := range m.worldEffects {
@@ -1834,7 +1851,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectStin || effectID == effectStin3 || effectID == effectStin2 {
 		initSoulLinkerProjectile(ctx, &effect)
 	}
-	if effectID == effectHated || effectID == effectKaizel || effectID == effectSmaReady {
+	if effectID == effectHated || effectID == effectHated2 || effectID == effectKaizel || effectID == effectSmaReady {
 		effect.buffParticles = &soulLinkerParticles{}
 	}
 	if effectID == effectSoulLink || effectID == effectStormKick4 {
@@ -2090,7 +2107,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell6
 	}
 	switch skillID {
-	case db.SkillTKRun, db.SkillTKSevenwind, db.SkillTKMission:
+	case db.SkillTKRun, db.SkillTKSevenwind, db.SkillTKMission, db.SkillSGFeel, db.SkillSGHate, db.SkillSGFusion:
 		effectID = effectBlueCasting
 	case db.SkillACConcentration:
 		effectID = effectIncAgiDex
@@ -2474,6 +2491,16 @@ func importedSkillEffectSpec(skillID uint16) skillEffectSpec {
 }
 
 func importedSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
+	switch skillID {
+	case db.SkillSGFeel, db.SkillSGHate:
+		return newSkillActionSpec(skillActorActionSkill, false, &idleSkillActionSpec), true
+	case db.SkillSGFusion:
+		return idleSkillActionSpec, true
+	case db.SkillSGSunWarm, db.SkillSGMoonWarm, db.SkillSGStarWarm:
+		return skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true, frame: 3, duration: time.Second}, true
+	case db.SkillSGSunComfort, db.SkillSGMoonComfort, db.SkillSGStarComfort:
+		return skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true, frame: 2, duration: time.Second}, true
+	}
 	if spec, ok := taekwonSkillActionSpec(skillID); ok {
 		return spec, true
 	}
@@ -3052,6 +3079,10 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncSniper
 	case "AsuraGlyphs":
 		return effectFuncAsuraGlyphs
+	case "StarRings":
+		return effectFuncStarRings
+	case "StarBlind":
+		return effectFuncStarBlind
 	case "TaekwonStorm":
 		return effectFuncTaekwonStorm
 	case "TaekwonStop":
