@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/social"
@@ -164,7 +165,7 @@ type statusVisualEffect struct {
 	recover       func(*session.Session, int) bool
 	recovery      bool
 	recoveryColor color.RGBA
-	recoveryKind  damageFloaterKind
+	recoveryKind  battle.FloaterKind
 	recoverySFX   []string
 	clearsDeath   bool
 	levelEffectID int
@@ -176,7 +177,7 @@ var statusVisualEffects = map[uint16]statusVisualEffect{
 		recover:       recoverSessionHP,
 		recovery:      true,
 		recoveryColor: recoveryHPColor,
-		recoveryKind:  damageFloaterRecoveryHP,
+		recoveryKind:  battle.FloaterRecoveryHP,
 		recoverySFX:   []string{recoveryHPSFX},
 		clearsDeath:   true,
 	},
@@ -185,7 +186,7 @@ var statusVisualEffects = map[uint16]statusVisualEffect{
 		recover:       recoverSessionSP,
 		recovery:      true,
 		recoveryColor: recoverySPColor,
-		recoveryKind:  damageFloaterRecoverySP,
+		recoveryKind:  battle.FloaterRecoverySP,
 		recoverySFX:   []string{recoverySPSFX},
 	},
 	network.StatusBaseLevel: {
@@ -206,7 +207,7 @@ func (v statusVisualEffect) applyParameterChange(ctx client.Context, mode *World
 	if v.recovery {
 		delta := current - previous
 		if delta > 0 {
-			mode.addLocalRecoveryFloater(ctx, delta, v.recoveryColor, v.recoveryKind)
+			mode.battle().AddLocalRecoveryFloater(ctx, delta, v.recoveryColor, v.recoveryKind)
 			mode.scheduleSound(time.Now(), v.sfxCandidates()...)
 		}
 		return

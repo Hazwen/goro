@@ -1,4 +1,4 @@
-package game
+package battle
 
 import (
 	"fmt"
@@ -26,43 +26,43 @@ func isSenseSkill(skillID uint16) bool {
 	return skillID == db.SkillWZEstimation || skillID == db.SkillMerEstimation
 }
 
-func (m *WorldMode) rememberSenseTarget(skillID uint16, targetID uint32, now time.Time) {
+func (m *System) RememberSenseTarget(skillID uint16, targetID uint32, now time.Time) {
 	if m == nil || !isSenseSkill(skillID) || targetID == 0 {
 		return
 	}
 	m.senseRequest = senseRequest{targetID: targetID, requestedAt: now}
 }
 
-func (m *WorldMode) clearSenseRequest(skillID uint16) {
+func (m *System) ClearSenseRequest(skillID uint16) {
 	if m != nil && isSenseSkill(skillID) {
 		m.senseRequest = senseRequest{}
 	}
 }
 
-func (m *WorldMode) applyMonsterInfo(ctx client.Context, info network.MonsterInfo, now time.Time) {
+func (m *System) ApplyMonsterInfo(ctx client.Context, info network.MonsterInfo, now time.Time) {
 	actor, matched := m.senseActor(ctx, info.Class, now)
 	maximumHP := uint32(0)
 	if matched {
-		if life, ok := m.monsterLifeForSense(actor.ID); ok && life.maxHP >= int(info.HP) {
-			maximumHP = uint32(life.maxHP)
-			life.hp = int(info.HP)
-			m.actorLife[actor.ID] = life
+		if life, ok := m.monsterLifeForSense(actor.ID); ok && life.MaxHP >= int(info.HP) {
+			maximumHP = uint32(life.MaxHP)
+			life.HP = int(info.HP)
+			m.ActorLife[actor.ID] = life
 		}
 	}
 	view := gameui.MonsterInfoView{
 		Info:    info,
 		Name:    monsterInfoDisplayName(ctx, actor, matched, info.Class),
 		MaxHP:   maximumHP,
-		Preview: m.monsterInfoPreviewImage(ctx, info.Class, monsterInfoPreviewWidth, monsterInfoPreviewHeight),
+		Preview: m.bindings.MonsterPreview(ctx, info.Class, monsterInfoPreviewWidth, monsterInfoPreviewHeight),
 	}
-	m.ui.monsterInfoWindow.OpenInfo(ctx, view)
+	m.bindings.Windows.MonsterInfo.OpenInfo(ctx, view)
 	glog.Debugf("monster info class=%d level=%d hp=%d max_hp=%d actor=%d", info.Class, info.Level, info.HP, maximumHP, actor.ID)
 }
 
 // senseActor associates the response with the request that caused it. The
 // original packet has no actor ID, so party-shared Sense results must not be
 // guessed from nearby same-class monsters.
-func (m *WorldMode) senseActor(ctx client.Context, class uint16, now time.Time) (worldstate.Actor, bool) {
+func (m *System) senseActor(ctx client.Context, class uint16, now time.Time) (worldstate.Actor, bool) {
 	if m == nil || ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -99,3 +99,8 @@ func monsterInfoDisplayName(ctx client.Context, actor worldstate.Actor, matched 
 	}
 	return fmt.Sprintf("Monster %d", class)
 }
+
+const (
+	monsterInfoPreviewWidth  = 110
+	monsterInfoPreviewHeight = 160
+)

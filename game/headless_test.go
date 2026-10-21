@@ -67,7 +67,7 @@ func TestHeadlessCombatKeepsStateWithoutVisuals(t *testing.T) {
 	if _, dead := mode.actorSystem.ActorDeaths[300]; !dead {
 		t.Fatal("dead monster was not excluded from bot targets")
 	}
-	if len(mode.effects().Active) != 0 || len(mode.damageFloaters) != 0 || len(mode.actorSystem.SpeechBubbles) != 0 || len(mode.actorCastBars) != 0 {
+	if len(mode.effects().Active) != 0 || len(mode.battleSystem.DamageFloaters) != 0 || len(mode.actorSystem.SpeechBubbles) != 0 || len(mode.battleSystem.ActorCastBars) != 0 {
 		t.Fatal("headless combat retained visuals that require drawing to expire")
 	}
 	if mode.actorSystem.PlayerView != nil || len(mode.actorSystem.NonPCViews) != 0 || len(mode.actorSystem.NonPCViewMiss) != 0 || len(mode.actorSystem.MercenaryViews) != 0 || len(mode.actorSystem.MercenaryViewMiss) != 0 {

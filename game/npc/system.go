@@ -4,6 +4,7 @@ package npc
 import (
 	"github.com/kivutar/goro/client"
 	maps "github.com/kivutar/goro/game/map"
+	"github.com/kivutar/goro/game/scene"
 	gameui "github.com/kivutar/goro/ui"
 )
 
@@ -26,8 +27,11 @@ type Bindings struct {
 }
 
 type System struct {
-	Progress ProgressState
-	bindings Bindings
+	Progress     ProgressState
+	ShowDigit    ShowDigitState
+	TimeFontView *scene.SpriteView
+	TimeFontMiss bool
+	bindings     Bindings
 }
 
 func (s *System) Bind(bindings Bindings) { s.bindings = bindings }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/bot"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
@@ -31,6 +32,7 @@ import (
 )
 
 type WorldMode struct {
+	battleSystem      battle.System
 	actorSystem       actors.System
 	socialSystem      social.System
 	npcSystem         npc.System
@@ -47,29 +49,22 @@ type WorldMode struct {
 	imageCache        map[string]image.Image
 	imageMiss         map[string]struct{}
 
-	cursorView       *scene.SpriteView
-	cursorViewMiss   bool
-	slotMachineView  *scene.SpriteView
-	slotMachineMiss  bool
-	cursorFallback   *render.Image
-	cursorAction     int
-	cursorStarted    time.Time
-	damageNumberView *scene.SpriteView
-	damageNumberMiss bool
-	damageNumbers    map[string]*scene.Billboard
-	damageMsgView    *scene.SpriteView
-	damageMsgMiss    bool
-	timeFontView     *scene.SpriteView
-	timeFontMiss     bool
-	itemMarker       *render.Image
-	itemViews        map[itemSpriteKey]*scene.SpriteView
-	itemViewMiss     map[itemSpriteKey]struct{}
+	cursorView      *scene.SpriteView
+	cursorViewMiss  bool
+	slotMachineView *scene.SpriteView
+	slotMachineMiss bool
+	cursorFallback  *render.Image
+	cursorAction    int
+	cursorStarted   time.Time
+
+	itemMarker   *render.Image
+	itemViews    map[itemSpriteKey]*scene.SpriteView
+	itemViewMiss map[itemSpriteKey]struct{}
 
 	pendingWarp       bool
 	deferredPackets   []network.Packet
 	pendingAttack     attackIntent
 	pendingPickup     pickupIntent
-	senseRequest      senseRequest
 	pendingPetCapture petCaptureState
 	petProperty       network.PetProperty
 	hasPetProperty    bool
@@ -85,18 +80,12 @@ type WorldMode struct {
 	lastAttackAt      time.Time
 	lastChaseAt       time.Time
 
-	damageFloaters []damageFloater
-
-	actorCastBars map[uint32]actorCastBar
-
-	showDigit        showDigitState
 	scheduledSounds  []scheduledSound
 	scheduledStops   []scheduledActorStop
 	scheduledResumes []scheduledWalkResume
 	weather          weather.System
 
 	actorSoundFrames map[uint32]actorSoundFrame
-	actorLife        map[uint32]actorLife
 	graffiti         map[uint32]*groundGraffiti
 
 	ui              worldUI
@@ -107,11 +96,11 @@ type WorldMode struct {
 }
 
 type worldUI struct {
+	battle               battle.Windows
 	npc                  npc.Windows
 	social               social.Windows
 	companions           companion.Windows
 	minimap              gameui.Minimap
-	statusIcons          gameui.StatusIcons
 	pvpCounter           gameui.PvPCounter
 	levelUpNotifications gameui.LevelUpNotifications
 	announcement         gameui.Announcement
@@ -120,7 +109,6 @@ type worldUI struct {
 
 	escapeMenu       gameui.EscapeMenu
 	teleportModal    gameui.TeleportModal
-	autoSpellWindow  gameui.AutoSpellWindow
 	disconnectDialog gameui.ConfirmModal
 	starPlaceConfirm gameui.ConfirmModal
 	characterWindow  gameui.CharacterWindow
@@ -134,27 +122,26 @@ type worldUI struct {
 	changeCartWindow gameui.ChangeCartWindow
 	itemPickup       gameui.ItemPickupNotification
 
-	itemWindows       gameui.ItemWindows
-	monsterInfoWindow gameui.MonsterInfoWindow
-	identifyWindow    gameui.IdentifyWindow
-	cardWindow        gameui.CardCompositionWindow
-	makingArrow       gameui.MakingArrowWindow
-	makingItem        gameui.MakingItemWindow
-	repairItem        gameui.RepairItemWindow
-	weaponRefine      gameui.WeaponRefineWindow
-	petEggWindow      gameui.PetEggWindow
-	petInfoWindow     gameui.PetInfoWindow
-	petContext        gameui.PetContextMenu
-	petConfirm        gameui.ConfirmModal
-	statsWindow       gameui.StatsWindow
-	skillWindow       gameui.SkillWindow
-	questWindow       gameui.QuestWindow
-	worldMap          gameui.WorldMapWindow
-	emoteWindow       gameui.EmoteWindow
-	chatShortcuts     gameui.ChatShortcutsWindow
-	skillTextPrompt   gameui.TextPromptWindow
-	settingsWindow    gameui.SettingsWindow
-	shortcutBar       gameui.ShortcutBar
+	itemWindows     gameui.ItemWindows
+	identifyWindow  gameui.IdentifyWindow
+	cardWindow      gameui.CardCompositionWindow
+	makingArrow     gameui.MakingArrowWindow
+	makingItem      gameui.MakingItemWindow
+	repairItem      gameui.RepairItemWindow
+	weaponRefine    gameui.WeaponRefineWindow
+	petEggWindow    gameui.PetEggWindow
+	petInfoWindow   gameui.PetInfoWindow
+	petContext      gameui.PetContextMenu
+	petConfirm      gameui.ConfirmModal
+	statsWindow     gameui.StatsWindow
+	skillWindow     gameui.SkillWindow
+	questWindow     gameui.QuestWindow
+	worldMap        gameui.WorldMapWindow
+	emoteWindow     gameui.EmoteWindow
+	chatShortcuts   gameui.ChatShortcutsWindow
+	skillTextPrompt gameui.TextPromptWindow
+	settingsWindow  gameui.SettingsWindow
+	shortcutBar     gameui.ShortcutBar
 }
 
 func (u *worldUI) KeyboardShortcutsBlocked(ctx client.Context) bool {
@@ -183,7 +170,7 @@ func (u *worldUI) nonConsoleKeyboardInputBlockedExcept(ctx client.Context, excep
 		open(&u.settingsWindow.Window) ||
 		u.chatShortcuts.IsOpen() ||
 		u.worldMap.IsOpen() ||
-		u.monsterInfoWindow.IsOpen() ||
+		u.battle.MonsterInfo.IsOpen() ||
 		u.identifyWindow.IsOpen() ||
 		u.cardWindow.IsOpen() ||
 		u.makingArrow.IsOpen() ||
@@ -216,7 +203,7 @@ func (u *worldUI) interactionModalOpen() bool {
 	}
 	return u.teleportModal.IsOpen() ||
 		u.social.MailWindow.ModalOpen() ||
-		u.autoSpellWindow.IsOpen() ||
+		u.battle.AutoSpell.IsOpen() ||
 		u.npc.StoragePassword.IsOpen() ||
 		u.social.FriendRequest.IsOpen() ||
 		u.social.FriendConfirm.IsOpen() ||
@@ -286,14 +273,14 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.cursorFallback = nil
 	m.cursorAction = cursorActionDefault
 	m.cursorStarted = now
-	m.damageNumberView = nil
-	m.damageNumberMiss = false
-	m.damageNumbers = make(map[string]*scene.Billboard)
+	m.battleSystem.DamageNumberView = nil
+	m.battleSystem.DamageNumberMiss = false
+	m.battleSystem.DamageNumbers = make(map[string]*scene.Billboard)
 	m.skillSystem.CursorLevelNums = make(map[string]*scene.Billboard)
-	m.damageMsgView = nil
-	m.damageMsgMiss = false
-	m.timeFontView = nil
-	m.timeFontMiss = false
+	m.battleSystem.DamageMsgView = nil
+	m.battleSystem.DamageMsgMiss = false
+	m.npcSystem.TimeFontView = nil
+	m.npcSystem.TimeFontMiss = false
 	m.itemMarker = nil
 	m.itemViews = make(map[itemSpriteKey]*scene.SpriteView)
 	m.itemViewMiss = make(map[itemSpriteKey]struct{})
@@ -326,9 +313,9 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.lastChaseAt = time.Time{}
 	m.actorSystem.ActorAnims = make(map[uint32]scene.ActorAnimation)
 	m.effects().ActorBlurs = nil
-	m.damageFloaters = nil
+	m.battleSystem.DamageFloaters = nil
 	m.npcSystem.Progress = npc.ProgressState{}
-	m.showDigit = showDigitState{}
+	m.npcSystem.ShowDigit = npc.ShowDigitState{}
 	m.ui.minimap.ClearBossMarker()
 	m.ui.poptips.Clear()
 	m.scheduledSounds = nil
@@ -339,7 +326,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.actorSystem.ActorDeaths = make(map[uint32]time.Time)
 	m.actorSystem.ActorVanishes = make(map[uint32]actors.VanishFade)
 	m.actorSoundFrames = make(map[uint32]actorSoundFrame)
-	m.actorLife = make(map[uint32]actorLife)
+	m.battleSystem.ActorLife = make(map[uint32]battle.Life)
 	m.actorSystem.SpeechBubbles = make(map[uint32]actors.SpeechBubble)
 	m.syncCurrentActorEffectStateEffects(ctx)
 	m.ui.npc.Dialog.ResetPublished(ctx)
@@ -503,14 +490,14 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	}
 	// Status presentation must follow server updates even when a window or
 	// modal consumes input for the rest of the frame.
-	m.removeExpiredStatusEffects(ctx.Session, now)
+	m.battle().RemoveExpiredStatusEffects(ctx.Session, now)
 	m.effects().AdvanceTaekwonFootprints(ctx, now)
 	m.social().UpdateMail(ctx, now)
 	progressBlocksActions := m.npc().UpdateProgress(ctx, now)
 	if !ctx.Config.Headless {
 		m.ui.inventoryBag.UpdatePresentation(ctx, &m.ui.itemWindows)
 		m.ui.statsWindow.UpdatePresentation(ctx)
-		m.ui.statusIcons.Update(ctx, now)
+		m.ui.battle.StatusIcons.Update(ctx, now)
 		m.ui.pvpCounter.Update(ctx)
 		if !progressBlocksActions && m.handleLevelUpNotificationAction(ctx, m.ui.levelUpNotifications.Update(ctx)) {
 			// The notification click belongs exclusively to the UI. Returning here
@@ -753,7 +740,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if m.ui.teleportModal.Update(ctx) {
 		return nil, nil
 	}
-	if m.updateAutoSpellWindow(ctx) {
+	if m.battle().UpdateAutoSpellWindow(ctx) {
 		return nil, nil
 	}
 	if m.ui.npcInputAvailable() && m.ui.npc.Dialog.Update(ctx) {
@@ -818,7 +805,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 		}
 		return nil, nil
 	}
-	if m.ui.monsterInfoWindow.Update(ctx) {
+	if m.ui.battle.MonsterInfo.Update(ctx) {
 		return nil, nil
 	}
 	if m.ui.identifyWindow.Update(ctx) {
@@ -1105,7 +1092,7 @@ func (m *WorldMode) handleMapChange(ctx client.Context, change network.MapChange
 		m.social().CloseMail(ctx)
 	}
 	m.npc().ClearProgress()
-	m.showDigit = showDigitState{}
+	m.npcSystem.ShowDigit = npc.ShowDigitState{}
 	m.ui.minimap.ClearBossMarker()
 	m.ui.poptips.Clear()
 	m.pendingAttack = attackIntent{}
@@ -1116,7 +1103,7 @@ func (m *WorldMode) handleMapChange(ctx client.Context, change network.MapChange
 	m.ui.npc.Dialog.ResetPublished(ctx)
 	m.ui.npc.Cutin.Clear()
 	m.ui.teleportModal = gameui.TeleportModal{}
-	m.ui.autoSpellWindow.Reset(ctx)
+	m.ui.battle.AutoSpell.Reset(ctx)
 	if m.ui.starPlaceConfirm.IsOpen() {
 		m.ui.starPlaceConfirm.Close(ctx)
 	}
@@ -1219,7 +1206,7 @@ func (m *WorldMode) nextWorldMode() *WorldMode {
 	next.ui.social.PartyInvite = m.ui.social.PartyInvite
 	next.ui.shortcutBar = m.ui.shortcutBar
 	next.ui.minimap = m.ui.minimap
-	next.ui.statusIcons = m.ui.statusIcons
+	next.ui.battle.StatusIcons = m.ui.battle.StatusIcons
 	next.ui.pvpCounter = m.ui.pvpCounter
 	next.ui.levelUpNotifications = m.ui.levelUpNotifications
 	m.companionSystem.Close()
@@ -1299,7 +1286,7 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 	m.mapScene.DrawRSWEffects(screen, ctx, projection, now, m.effects)
 	m.weather.Draw(screen, ctx, projection, now, m.effects(), m.scheduleSound)
 	m.effects().Draw(screen, ctx, projection, now, false)
-	m.drawDamageFloaters(screen, ctx, projection, now)
+	m.battle().DrawDamageFloaters(screen, ctx, projection, now)
 
 	if !ctx.Config.Render.NoUI {
 		m.ui.npc.Cutin.Draw(screen)
@@ -1339,7 +1326,7 @@ func (m *WorldMode) DrawUIOverlay(ctx client.Context, screen *render.Frame) {
 		return
 	}
 	now := time.Now()
-	m.drawShowDigit(screen, ctx, now)
+	m.npc().DrawShowDigit(screen, ctx, now)
 	m.ui.announcement.Draw(screen, now)
 	m.drawPendingTargetBanner(screen, ctx)
 	m.ui.poptips.Draw(screen, now)

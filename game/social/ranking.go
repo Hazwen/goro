@@ -1,4 +1,4 @@
-package game
+package social
 
 import (
 	"image/color"
@@ -19,28 +19,28 @@ type fameRankingPresentation struct {
 	pointFallback       string
 }
 
-func (m *WorldMode) applyFameRanking(ctx client.Context, ranking network.FameRanking) {
+func (m *System) ApplyFameRanking(ctx client.Context, ranking network.FameRanking) {
 	presentation := fameRankingPresentationFor(ranking.Kind)
 	profession := rankingMessageString(ctx, presentation.professionMessageID, presentation.profession)
 	rank := rankingMessageString(ctx, 2383, "Rank")
 	points := rankingMessageString(ctx, 2385, "Points")
 
-	m.ui.console.AddColoredMessage(fameRankingColor, "=========== %s %s ===========", profession, rank)
+	m.bindings.Console.AddColoredMessage(fameRankingColor, "=========== %s %s ===========", profession, rank)
 	for index, entry := range ranking.Entries {
 		name := strings.TrimSpace(entry.Name)
 		if name == "" {
 			name = "None"
 		}
-		m.ui.console.AddColoredMessage(fameRankingColor, "[%d] %s : %d %s", index+1, name, entry.Points, points)
+		m.bindings.Console.AddColoredMessage(fameRankingColor, "[%d] %s : %d %s", index+1, name, entry.Points, points)
 	}
 }
 
-func (m *WorldMode) applyFamePointUpdate(ctx client.Context, update network.FamePointUpdate) {
+func (m *System) ApplyFamePointUpdate(ctx client.Context, update network.FamePointUpdate) {
 	presentation := fameRankingPresentationFor(update.Kind)
 	message := rankingMessageString(ctx, presentation.pointMessageID, presentation.pointFallback)
 	message = strings.Replace(message, "%d", strconv.FormatUint(uint64(update.GainedPoints), 10), 1)
 	message = strings.Replace(message, "%d", strconv.FormatUint(uint64(update.TotalPoints), 10), 1)
-	m.ui.console.AddSystemMessage("%s", message)
+	m.bindings.Console.AddSystemMessage("%s", message)
 	glog.Debugf("fame points kind=%d gained=%d total=%d", update.Kind, update.GainedPoints, update.TotalPoints)
 }
 

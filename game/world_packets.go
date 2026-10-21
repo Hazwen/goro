@@ -9,6 +9,7 @@ import (
 	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/login"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/social"
@@ -104,7 +105,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if show, ok, err := network.ParseShowDigit(pkt); err != nil {
 		glog.Errorf("parse show digit 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.showDigit = newShowDigitState(show, now)
+		m.npcSystem.ShowDigit = npc.NewShowDigitState(show, now)
 		return nil, false
 	}
 	if message, ok, err := network.ParseSkillMessage(pkt); err != nil {
@@ -158,13 +159,13 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if point, ok, err := network.ParseFamePointUpdate(pkt); err != nil {
 		glog.Errorf("parse fame point update 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyFamePointUpdate(ctx, point)
+		m.social().ApplyFamePointUpdate(ctx, point)
 		return nil, false
 	}
 	if ranking, ok, err := network.ParseFameRanking(pkt); err != nil {
 		glog.Errorf("parse fame ranking 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyFameRanking(ctx, ranking)
+		m.social().ApplyFameRanking(ctx, ranking)
 		return nil, false
 	}
 	if place, ok, err := network.ParseStarPlace(pkt); err != nil {
@@ -311,7 +312,9 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if update, ok, err := network.ParseMapCellUpdate(pkt); err != nil {
 		glog.Errorf("parse map cell update 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyMapCellUpdate(ctx, update)
+		if maps.ApplyCellUpdate(ctx, update) {
+			m.hoveredWalk.valid = false
+		}
 		return nil, false
 	}
 	if ack, ok, err := network.ParseSelfMoveAck(pkt); err != nil {
@@ -1188,7 +1191,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if life, ok, err := network.ParseActorHPUpdate(pkt); err != nil {
 		glog.Errorf("parse actor hp 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyActorHPUpdate(life)
+		m.battle().ApplyActorHPUpdate(life)
 		return nil, false
 	}
 	if change, ok, err := network.ParseCoupleStatus(pkt); err != nil {
@@ -1301,13 +1304,13 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if info, ok, err := network.ParseMonsterInfo(pkt); err != nil {
 		glog.Errorf("parse monster info 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyMonsterInfo(ctx, info, now)
+		m.battle().ApplyMonsterInfo(ctx, info, now)
 		return nil, false
 	}
 	if list, ok, err := network.ParseAutoSpellList(pkt); err != nil {
 		glog.Errorf("parse auto spell list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyAutoSpellList(ctx, list)
+		m.battle().ApplyAutoSpellList(ctx, list, m)
 		return nil, false
 	}
 	if warpList, ok, err := network.ParseWarpPointList(pkt); err != nil {

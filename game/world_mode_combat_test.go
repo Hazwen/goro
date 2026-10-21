@@ -13,6 +13,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
@@ -1872,11 +1873,11 @@ func TestTurnUndeadDelaysImpactAndDamageTogether(t *testing.T) {
 			SourceSpeed: 200, Damage: damage, HitCount: 1, Action: network.ActorActionSkill,
 		})
 		start := m.effects().Active[0].Starts
-		if len(m.damageFloaters) != 1 || m.damageFloaters[0].starts.Sub(start) != 700*time.Millisecond {
+		if len(m.battleSystem.DamageFloaters) != 1 || m.battleSystem.DamageFloaters[0].Starts.Sub(start) != 700*time.Millisecond {
 			t.Fatal("Turn Undead damage/miss must wait for the attack delay plus 500 ms")
 		}
 		for _, effect := range m.effects().Active[1:] {
-			if !effect.Starts.Equal(m.damageFloaters[0].starts) {
+			if !effect.Starts.Equal(m.battleSystem.DamageFloaters[0].Starts) {
 				t.Fatal("Turn Undead damage and impact disagree")
 			}
 		}
@@ -2712,8 +2713,8 @@ func TestThiefFindStoneAnimation(t *testing.T) {
 				if _, active := m.actors().ActorAnimation(id, end); active {
 					t.Fatal("pickup must end before the cast finishes")
 				}
-				bar := m.actorCastBars[id]
-				if _, active := actorCastBarProgress(bar, end); !active || bar.duration != 500*time.Millisecond {
+				bar := m.battleSystem.ActorCastBars[id]
+				if _, active := battle.ActorCastBarProgress(bar, end); !active || bar.Duration != 500*time.Millisecond {
 					t.Fatalf("cast bar must retain the server duration: %+v", bar)
 				}
 			}
@@ -3252,24 +3253,11 @@ func TestApplyActorPickupActionNotifyStartsPickupInsteadOfAttack(t *testing.T) {
 	if expired, ok := mode.actors().ActorAnimation(150000, anim.Started.Add(anim.Duration)); ok {
 		t.Fatalf("pickup expired animation = %+v, want idle fallback", expired)
 	}
-	if len(mode.damageFloaters) != 0 {
-		t.Fatalf("pickup notify should not create damage floaters: %+v", mode.damageFloaters)
+	if len(mode.battleSystem.DamageFloaters) != 0 {
+		t.Fatalf("pickup notify should not create damage floaters: %+v", mode.battleSystem.DamageFloaters)
 	}
 	if world.Dir != actors.DirectionFromDelta(10, 20, 11, 20, 4) {
 		t.Fatalf("player dir = %d", world.Dir)
-	}
-}
-
-func TestApplyActorHPUpdateStoresExactLife(t *testing.T) {
-	mode := &WorldMode{}
-	mode.applyActorHPUpdate(network.ActorHPUpdate{ID: 300, HP: 12, MaxHP: 48})
-
-	life, ok := mode.actorLife[300]
-	if !ok {
-		t.Fatal("life missing")
-	}
-	if life.hp != 12 || life.maxHP != 48 {
-		t.Fatalf("life = %+v, want exact 12/48", life)
 	}
 }
 
@@ -3299,7 +3287,7 @@ func TestCombatDamageDoesNotInventMonsterLife(t *testing.T) {
 		Action:      0,
 	})
 
-	if _, ok := mode.actorLife[300]; ok {
+	if _, ok := mode.battleSystem.ActorLife[300]; ok {
 		t.Fatal("life should not be created from combat damage")
 	}
 }
@@ -3321,7 +3309,7 @@ func TestCombatDamageDoesNotMutateExactMonsterLife(t *testing.T) {
 		World:   world,
 	}
 
-	mode.applyActorHPUpdate(network.ActorHPUpdate{ID: 300, HP: 50, MaxHP: 100})
+	mode.battle().ApplyActorHPUpdate(network.ActorHPUpdate{ID: 300, HP: 50, MaxHP: 100})
 	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
 		SourceID:    2000000,
 		TargetID:    300,
@@ -3331,55 +3319,12 @@ func TestCombatDamageDoesNotMutateExactMonsterLife(t *testing.T) {
 		Action:      0,
 	})
 
-	life, ok := mode.actorLife[300]
+	life, ok := mode.battleSystem.ActorLife[300]
 	if !ok {
 		t.Fatal("life missing")
 	}
-	if life.hp != 50 || life.maxHP != 100 {
+	if life.HP != 50 || life.MaxHP != 100 {
 		t.Fatalf("exact life = %+v, want unchanged 50/100", life)
-	}
-}
-
-func TestActorLifeForDisplayUsesLocalPlayerHPAndSP(t *testing.T) {
-	mode := &WorldMode{}
-	ctx := client.Context{
-		Session: &session.Session{
-			AccountID: 2000000,
-			CharID:    150000,
-			Vitals: session.Vitals{
-				HP:    75,
-				MaxHP: 100,
-				SP:    8,
-				MaxSP: 20,
-			},
-		},
-	}
-
-	life, ok := mode.actorLifeForDisplay(ctx, worldstate.Actor{ID: 150000})
-	if !ok {
-		t.Fatal("local player life missing")
-	}
-	if life.hp != 75 || life.maxHP != 100 || life.sp != 8 || life.maxSP != 20 || !life.hasSP || !life.player {
-		t.Fatalf("local player life = %+v", life)
-	}
-}
-
-func TestActorLifeForDisplayHidesMonsterHPBarsFor2008Client(t *testing.T) {
-	mode := &WorldMode{
-		actorLife: map[uint32]actorLife{
-			300: {hp: 12, maxHP: 48},
-		},
-	}
-	ctx := client.Context{
-		Session: &session.Session{CharID: 150000},
-	}
-
-	actor := worldstate.Actor{ID: 300, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
-	if _, ok := mode.actorLifeForDisplay(ctx, actor); ok {
-		t.Fatal("monster HP bar should be hidden for the 2008 client profile")
-	}
-	if life, ok := mode.monsterLifeForSense(300); !ok || life.hp != 12 || life.maxHP != 48 {
-		t.Fatalf("sense life cache = %+v ok=%v, want 12/48", life, ok)
 	}
 }
 
@@ -3396,42 +3341,6 @@ func TestActorOverlayCastBarIsBelowSpeechBubble(t *testing.T) {
 	barY := actors.ActorCastBarY(100, 1.2)
 	if barY <= bubbleBottomY {
 		t.Fatalf("cast bar y = %.1f, bubble bottom y = %.1f; want cast bar below bubble", barY, bubbleBottomY)
-	}
-}
-
-func TestActorOverlayBarFillWidthRoundsAndClamps(t *testing.T) {
-	if got, want := actorOverlayBarFillWidth(0.333), math.Round((actorOverlayBarWidth-2)*0.333); got != want {
-		t.Fatalf("fill width = %.1f, want %.1f", got, want)
-	}
-	if got := actorOverlayBarFillWidth(1.5); got != actorOverlayBarWidth-2 {
-		t.Fatalf("clamped fill width = %.1f, want %.1f", got, actorOverlayBarWidth-2)
-	}
-	if got := actorOverlayBarFillWidth(math.NaN()); got != 0 {
-		t.Fatalf("nan fill width = %.1f, want 0", got)
-	}
-}
-
-func TestLocalPlayerNameIsBelowHPAndSPBars(t *testing.T) {
-	life := actorLife{hasSP: true}
-	barY := actors.ActorLifeBarY(100, 1.2)
-	nameY := actorNameBelowLifeBarY(100, 1.2, life)
-	if nameY <= barY+actorLifeBarHeight(life) {
-		t.Fatalf("name y = %.1f, bar y = %.1f; want name below hp/sp bars", nameY, barY)
-	}
-}
-
-func TestActorLifeBarHeightAddsHomunculusHungerRow(t *testing.T) {
-	if got := actorLifeBarHeight(actorLife{hasSP: true, hasHunger: true}); got != 13 {
-		t.Fatalf("life bar height = %.1f, want hp/sp/hunger height", got)
-	}
-}
-
-func TestHomunculusNameYUsesThreeBarHeight(t *testing.T) {
-	life := actorLife{hasSP: true, hasHunger: true}
-	barY := actors.ActorLifeBarY(100, 1.2)
-	nameY := actorNameBelowLifeBarY(100, 1.2, life)
-	if got := nameY - (barY + actorLifeBarHeight(life)); got != 3 {
-		t.Fatalf("name gap = %.1f, want 3px below hp/sp/hunger bars", got)
 	}
 }
 
@@ -3810,8 +3719,8 @@ func TestPlayerBowNormalAttackUsesReferenceReleaseAndImpactTimeline(t *testing.T
 				if !impactSound.at.Equal(impact.Starts) || impactSound.actorID != targetID || len(impactSound.paths) != 1 || impactSound.paths[0] != "_hit_arrow.wav" {
 					t.Fatalf("arrow impact sound = %+v impact=%+v", impactSound, impact)
 				}
-				if len(mode.damageFloaters) != 1 || !mode.damageFloaters[0].starts.Equal(impact.Starts) {
-					t.Fatalf("damage floater = %+v impact=%+v", mode.damageFloaters, impact)
+				if len(mode.battleSystem.DamageFloaters) != 1 || !mode.battleSystem.DamageFloaters[0].Starts.Equal(impact.Starts) {
+					t.Fatalf("damage floater = %+v impact=%+v", mode.battleSystem.DamageFloaters, impact)
 				}
 				return
 			}
@@ -3825,8 +3734,8 @@ func TestPlayerBowNormalAttackUsesReferenceReleaseAndImpactTimeline(t *testing.T
 			if _, ok := mode.actorSystem.ActorAnims[targetID]; ok {
 				t.Fatalf("miss started target hurt animation: %+v", mode.actorSystem.ActorAnims[targetID])
 			}
-			if len(mode.damageFloaters) != 1 || mode.damageFloaters[0].kind != damageFloaterMiss || !mode.damageFloaters[0].starts.Equal(projectile.Expires) {
-				t.Fatalf("miss floater = %+v projectile=%+v", mode.damageFloaters, projectile)
+			if len(mode.battleSystem.DamageFloaters) != 1 || mode.battleSystem.DamageFloaters[0].Kind != battle.FloaterMiss || !mode.battleSystem.DamageFloaters[0].Starts.Equal(projectile.Expires) {
+				t.Fatalf("miss floater = %+v projectile=%+v", mode.battleSystem.DamageFloaters, projectile)
 			}
 		})
 	}
@@ -3938,18 +3847,18 @@ func TestDoubleStrafeUsesReferenceBowReleaseAndMultiHitTimeline(t *testing.T) {
 						t.Fatalf("Double Strafe impact sound %d = %+v, want target=%d at=%s", i, sound, targetID, wantStarts)
 					}
 				}
-				normalFloaters := make([]damageFloater, 0, 2)
-				for _, floater := range mode.damageFloaters {
-					if floater.kind == damageFloaterNormal {
+				normalFloaters := make([]battle.Floater, 0, 2)
+				for _, floater := range mode.battleSystem.DamageFloaters {
+					if floater.Kind == battle.FloaterNormal {
 						normalFloaters = append(normalFloaters, floater)
 					}
 				}
 				if len(normalFloaters) != 2 {
-					t.Fatalf("Double Strafe damage floaters = %+v, want two normal hits", mode.damageFloaters)
+					t.Fatalf("Double Strafe damage floaters = %+v, want two normal hits", mode.battleSystem.DamageFloaters)
 				}
 				for i, floater := range normalFloaters {
 					wantStarts := projectile.Expires.Add(scene.MultiHitDelay * time.Duration(i))
-					if !floater.starts.Equal(wantStarts) {
+					if !floater.Starts.Equal(wantStarts) {
 						t.Fatalf("Double Strafe damage floater %d = %+v, want start %s", i, floater, wantStarts)
 					}
 				}
@@ -3965,8 +3874,8 @@ func TestDoubleStrafeUsesReferenceBowReleaseAndMultiHitTimeline(t *testing.T) {
 			if _, ok := mode.actorSystem.ActorAnims[targetID]; ok {
 				t.Fatalf("Double Strafe miss started target hurt animation: %+v", mode.actorSystem.ActorAnims[targetID])
 			}
-			if len(mode.damageFloaters) != 1 || mode.damageFloaters[0].kind != damageFloaterMiss || !mode.damageFloaters[0].starts.Equal(projectile.Expires) {
-				t.Fatalf("Double Strafe miss floater = %+v projectile=%+v", mode.damageFloaters, projectile)
+			if len(mode.battleSystem.DamageFloaters) != 1 || mode.battleSystem.DamageFloaters[0].Kind != battle.FloaterMiss || !mode.battleSystem.DamageFloaters[0].Starts.Equal(projectile.Expires) {
+				t.Fatalf("Double Strafe miss floater = %+v projectile=%+v", mode.battleSystem.DamageFloaters, projectile)
 			}
 		})
 	}

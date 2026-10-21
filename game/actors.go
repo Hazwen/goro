@@ -7,6 +7,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/npc"
@@ -94,8 +95,8 @@ func (m *WorldMode) startActorOutOfSightVanish(ctx client.Context, id uint32) bo
 	}
 	m.actors().RemoveActorEffectStateEffects(id)
 	m.effects().RemoveLevel99AuraEffects(id)
-	delete(m.actorLife, id)
-	delete(m.actorCastBars, id)
+	delete(m.battleSystem.ActorLife, id)
+	delete(m.battleSystem.ActorCastBars, id)
 	delete(m.actorSystem.SpeechBubbles, id)
 	glog.Debugf("actor out-of-sight fade id=%d duration_ms=%d", id, actors.ActorVanishOutOfSightFadeDuration.Milliseconds())
 	return true
@@ -118,8 +119,8 @@ func (m *WorldMode) clearRemovedActorState(id uint32) {
 	delete(m.actorSystem.ActorDeaths, id)
 	delete(m.actorSystem.ActorVanishes, id)
 	delete(m.actorSoundFrames, id)
-	delete(m.actorLife, id)
-	delete(m.actorCastBars, id)
+	delete(m.battleSystem.ActorLife, id)
+	delete(m.battleSystem.ActorCastBars, id)
 	delete(m.actorSystem.SpeechBubbles, id)
 	delete(m.actorSystem.PetAccessoryIDs, id)
 }
@@ -144,7 +145,7 @@ func (m *WorldMode) cleanupDeadActors(ctx client.Context, now time.Time) {
 		delete(m.actorSystem.ActorDeaths, id)
 		delete(m.actorSystem.ActorAnims, id)
 		delete(m.actorSoundFrames, id)
-		delete(m.actorLife, id)
+		delete(m.battleSystem.ActorLife, id)
 		delete(m.actorSystem.SpeechBubbles, id)
 		delete(m.actorSystem.PetAccessoryIDs, id)
 		if m.pendingAttack.targetID == id {
@@ -177,12 +178,13 @@ func (m *WorldMode) cleanupVanishedActors(ctx client.Context, now time.Time) {
 }
 
 func (m *WorldMode) drawSceneActorOverlays(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time, entries []scene.ActorDrawEntry) {
+	combat := m.battle()
 	visible := make([]scene.ActorDrawEntry, 0, len(entries))
 	for _, entry := range entries {
 		if scene.ActorHasStealth(entry.Actor) {
 			if entry.IsPlayer {
-				m.drawActorCastBar(screen, entry, now)
-				m.drawActorLifeBar(screen, ctx, entry)
+				combat.DrawActorCastBar(screen, entry, now)
+				combat.DrawActorLifeBar(screen, ctx, entry)
 			}
 			continue
 		}
@@ -191,8 +193,8 @@ func (m *WorldMode) drawSceneActorOverlays(screen *render.Frame, ctx client.Cont
 	entries = visible
 	m.drawSiegeGuildEmblems(screen, ctx, projection, now, entries)
 	for _, entry := range entries {
-		m.drawActorCastBar(screen, entry, now)
-		m.drawActorLifeBar(screen, ctx, entry)
+		combat.DrawActorCastBar(screen, entry, now)
+		combat.DrawActorLifeBar(screen, ctx, entry)
 	}
 	m.drawAttackFocusMarker(screen, ctx, now, entries)
 	m.drawScriptHighlightMarker(screen, ctx, now, entries)
@@ -215,8 +217,8 @@ func (m *WorldMode) drawHoveredLocalPlayerNameLabel(screen *render.Frame, ctx cl
 			return
 		}
 		labelY := actors.ActorNameLabelY(entry.ScreenY, entry.Scale)
-		if life, ok := m.actorLifeForDisplay(ctx, entry.Actor); ok {
-			labelY = actorNameBelowLifeBarY(entry.ScreenY, entry.Scale, life)
+		if life, ok := m.battle().ActorLifeForDisplay(ctx, entry.Actor); ok {
+			labelY = battle.ActorNameBelowLifeBarY(entry.ScreenY, entry.Scale, life)
 		}
 		actors.DrawActorNameLabelsAtY(screen, actors.ActorDisplayLabels(ctx, entry.Actor, true), m.social().ActorGuildEmblem(ctx, entry.Actor, true), entry.ScreenX, labelY, actors.ActorNameLabelColor(entry.Actor, true))
 		return
@@ -244,8 +246,8 @@ func (m *WorldMode) drawHoveredActorNameLabel(screen *render.Frame, ctx client.C
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 	isPlayer := scene.IsLocalActor(ctx, actor.ID)
 	labelY := actors.ActorNameLabelY(float64(point.Y), scale)
-	if life, ok := m.actorLifeForDisplay(ctx, actor); ok {
-		labelY = actorNameBelowLifeBarY(float64(point.Y), scale, life)
+	if life, ok := m.battle().ActorLifeForDisplay(ctx, actor); ok {
+		labelY = battle.ActorNameBelowLifeBarY(float64(point.Y), scale, life)
 	}
 	actors.DrawActorNameLabelsAtY(screen, labels, m.social().ActorGuildEmblem(ctx, actor, isPlayer), float64(point.X), labelY, actors.ActorNameLabelColor(actor, isPlayer))
 }

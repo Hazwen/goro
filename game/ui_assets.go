@@ -23,11 +23,6 @@ type previewRenderTarget interface {
 	DrawTrianglesOwned([]render.Vertex, []uint16, *render.Image, *render.DrawTrianglesOptions)
 }
 
-const (
-	monsterInfoPreviewWidth  = 110
-	monsterInfoPreviewHeight = 160
-)
-
 func (m *WorldMode) DrawInventoryItemIcon(screen *render.Frame, manager *res.Manager, item session.InventoryItem, x, y int) {
 	m.drawInventoryItemIcon(screen, manager, item, x, y)
 }

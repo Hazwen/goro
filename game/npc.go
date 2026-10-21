@@ -32,19 +32,6 @@ func (m *WorldMode) startServerProgress(ctx client.Context, progress network.Pro
 	m.clearLocalActorAction(ctx)
 }
 
-func (m *WorldMode) serverProgressBar(localPlayer bool, now time.Time) (actorCastBar, bool) {
-	if m.npcSystem.Progress.Started.IsZero() || !localPlayer {
-		return actorCastBar{}, false
-	}
-	bar := actorCastBar{
-		started:  m.npcSystem.Progress.Started,
-		duration: m.npcSystem.Progress.Duration,
-		color:    m.npcSystem.Progress.Color,
-	}
-	_, active := actorCastBarProgress(bar, now)
-	return bar, active
-}
-
 func (m *WorldMode) requestNPCTalk(ctx client.Context, actor worldstate.Actor, source string) {
 	if scene.PlayerIsDead(ctx) {
 		return

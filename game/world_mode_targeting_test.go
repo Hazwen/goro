@@ -9,6 +9,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
@@ -937,8 +938,8 @@ func TestWorldModeParameterChangeRecoveryDoesNotDisplayFeedback(t *testing.T) {
 	if sessionState.Vitals.HP != 85 || sessionState.Vitals.SP != 25 {
 		t.Fatalf("vitals = hp %d sp %d, want 85/25", sessionState.Vitals.HP, sessionState.Vitals.SP)
 	}
-	if len(mode.damageFloaters) != 0 {
-		t.Fatalf("parameter changes should not add recovery floaters: %+v", mode.damageFloaters)
+	if len(mode.battleSystem.DamageFloaters) != 0 {
+		t.Fatalf("parameter changes should not add recovery floaters: %+v", mode.battleSystem.DamageFloaters)
 	}
 	if len(mode.scheduledSounds) != 0 {
 		t.Fatalf("scheduled sounds = %+v", mode.scheduledSounds)
@@ -961,11 +962,11 @@ func TestApplyRecoveryUpdatesHPAndAddsFloater(t *testing.T) {
 	if sessionState.Vitals.HP != 82 || sessionState.Selected.HP != 82 {
 		t.Fatalf("hp = vitals %d selected %d, want 82", sessionState.Vitals.HP, sessionState.Selected.HP)
 	}
-	if len(mode.damageFloaters) != 1 {
-		t.Fatalf("floaters = %d, want 1", len(mode.damageFloaters))
+	if len(mode.battleSystem.DamageFloaters) != 1 {
+		t.Fatalf("floaters = %d, want 1", len(mode.battleSystem.DamageFloaters))
 	}
-	floater := mode.damageFloaters[0]
-	if floater.actorID != 2000000 || floater.text != "12" || floater.color != recoveryHPColor {
+	floater := mode.battleSystem.DamageFloaters[0]
+	if floater.ActorID != 2000000 || floater.Text != "12" || floater.Color != recoveryHPColor {
 		t.Fatalf("floater = %+v", floater)
 	}
 	if len(mode.scheduledSounds) != 1 {
@@ -992,11 +993,11 @@ func TestApplyRecoveryUpdatesSPAndAddsFloater(t *testing.T) {
 	if sessionState.Vitals.SP != 27 || sessionState.Selected.SP != 27 {
 		t.Fatalf("sp = vitals %d selected %d, want 27", sessionState.Vitals.SP, sessionState.Selected.SP)
 	}
-	if len(mode.damageFloaters) != 1 {
-		t.Fatalf("floaters = %d, want 1", len(mode.damageFloaters))
+	if len(mode.battleSystem.DamageFloaters) != 1 {
+		t.Fatalf("floaters = %d, want 1", len(mode.battleSystem.DamageFloaters))
 	}
-	floater := mode.damageFloaters[0]
-	if floater.actorID != 2000000 || floater.text != "7" || floater.color != recoverySPColor || floater.kind != damageFloaterRecoverySP {
+	floater := mode.battleSystem.DamageFloaters[0]
+	if floater.ActorID != 2000000 || floater.Text != "7" || floater.Color != recoverySPColor || floater.Kind != battle.FloaterRecoverySP {
 		t.Fatalf("floater = %+v", floater)
 	}
 	if len(mode.scheduledSounds) != 1 {
@@ -1124,8 +1125,8 @@ func TestApplyActorActionNotifySchedulesAttackAndHitAnimations(t *testing.T) {
 	if world.Dir != actors.DirectionFromDelta(10, 20, 11, 20, 4) {
 		t.Fatalf("player dir = %d", world.Dir)
 	}
-	if len(mode.damageFloaters) != 1 || !mode.damageFloaters[0].starts.Equal(targetAnim.Started) {
-		t.Fatalf("damage floater = %+v targetStarted=%s", mode.damageFloaters, targetAnim.Started)
+	if len(mode.battleSystem.DamageFloaters) != 1 || !mode.battleSystem.DamageFloaters[0].Starts.Equal(targetAnim.Started) {
+		t.Fatalf("damage floater = %+v targetStarted=%s", mode.battleSystem.DamageFloaters, targetAnim.Started)
 	}
 	if len(mode.effects().Active) != 1 {
 		t.Fatalf("world effects = %d, want regular hit effect", len(mode.effects().Active))
@@ -1134,7 +1135,7 @@ func TestApplyActorActionNotifySchedulesAttackAndHitAnimations(t *testing.T) {
 	if hitEffect.EffectID != effects.Hit1 || hitEffect.ActorID != 300 || !hitEffect.Starts.Equal(targetAnim.Started) {
 		t.Fatalf("regular hit effect = %+v targetStarted=%s", hitEffect, targetAnim.Started)
 	}
-	if _, ok := mode.actorLife[300]; ok {
+	if _, ok := mode.battleSystem.ActorLife[300]; ok {
 		t.Fatal("target life should not be estimated from damage")
 	}
 
@@ -1190,8 +1191,8 @@ func TestApplyActorActionNotifyAddsCriticalNormalHitEffect(t *testing.T) {
 	if effect := mode.effects().Active[1]; effect.EffectID != effects.BashHit || effect.ActorID != 300 || !effect.Starts.Equal(targetAnim.Started) {
 		t.Fatalf("critical hit effect = %+v targetStarted=%s", effect, targetAnim.Started)
 	}
-	if len(mode.damageFloaters) != 1 || mode.damageFloaters[0].kind != damageFloaterCritical {
-		t.Fatalf("damage floaters = %+v, want critical", mode.damageFloaters)
+	if len(mode.battleSystem.DamageFloaters) != 1 || mode.battleSystem.DamageFloaters[0].Kind != battle.FloaterCritical {
+		t.Fatalf("damage floaters = %+v, want critical", mode.battleSystem.DamageFloaters)
 	}
 }
 
@@ -1372,9 +1373,9 @@ func TestApplyActorActionNotifyClearsLocalCastBarOnHit(t *testing.T) {
 		Session: &session.Session{AccountID: 2000000, CharID: 150000},
 		World:   world,
 	}
-	mode.startActorCastBar(ctx, 2000000, 2*time.Second, time.Now())
-	if len(mode.actorCastBars) != 2 {
-		t.Fatalf("cast bars = %d, want account and char aliases", len(mode.actorCastBars))
+	mode.battle().StartActorCastBar(ctx, 2000000, 2*time.Second, time.Now())
+	if len(mode.battleSystem.ActorCastBars) != 2 {
+		t.Fatalf("cast bars = %d, want account and char aliases", len(mode.battleSystem.ActorCastBars))
 	}
 
 	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
@@ -1386,8 +1387,8 @@ func TestApplyActorActionNotifyClearsLocalCastBarOnHit(t *testing.T) {
 		Action:      0,
 	})
 
-	if len(mode.actorCastBars) != 0 {
-		t.Fatalf("cast bars after hit = %+v, want cleared", mode.actorCastBars)
+	if len(mode.battleSystem.ActorCastBars) != 0 {
+		t.Fatalf("cast bars after hit = %+v, want cleared", mode.battleSystem.ActorCastBars)
 	}
 }
 

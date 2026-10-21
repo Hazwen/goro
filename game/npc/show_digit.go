@@ -1,4 +1,4 @@
-package game
+package npc
 
 import (
 	"image/color"
@@ -22,13 +22,13 @@ const (
 	showDigitSeparator = 10
 )
 
-type showDigitState struct {
+type ShowDigitState struct {
 	mode    network.ShowDigitMode
 	start   uint32
 	shownAt time.Time
 }
 
-func newShowDigitState(show network.ShowDigit, now time.Time) showDigitState {
+func NewShowDigitState(show network.ShowDigit, now time.Time) ShowDigitState {
 	if now.IsZero() {
 		now = time.Now()
 	}
@@ -39,10 +39,10 @@ func newShowDigitState(show network.ShowDigit, now time.Time) showDigitState {
 	if show.Mode == network.ShowDigitFastCountDown && value > 99 {
 		value = 99
 	}
-	return showDigitState{mode: show.Mode, start: uint32(value), shownAt: now}
+	return ShowDigitState{mode: show.Mode, start: uint32(value), shownAt: now}
 }
 
-func (s showDigitState) value(now time.Time) (uint32, bool) {
+func (s ShowDigitState) value(now time.Time) (uint32, bool) {
 	if s.shownAt.IsZero() {
 		return 0, false
 	}
@@ -68,7 +68,7 @@ func (s showDigitState) value(now time.Time) (uint32, bool) {
 	}
 }
 
-func (s showDigitState) actions(now time.Time) ([]int, bool) {
+func (s ShowDigitState) actions(now time.Time) ([]int, bool) {
 	value, visible := s.value(now)
 	if !visible {
 		return nil, false
@@ -106,10 +106,10 @@ func showDigitTimeGroups(seconds uint32) []uint32 {
 	return groups
 }
 
-func (m *WorldMode) drawShowDigit(screen *render.Frame, ctx client.Context, now time.Time) {
-	actions, visible := m.showDigit.actions(now)
+func (m *System) DrawShowDigit(screen *render.Frame, ctx client.Context, now time.Time) {
+	actions, visible := m.ShowDigit.actions(now)
 	if !visible {
-		m.showDigit = showDigitState{}
+		m.ShowDigit = ShowDigitState{}
 		return
 	}
 	view := m.timeFontSprite(ctx)
@@ -130,9 +130,9 @@ func (m *WorldMode) drawShowDigit(screen *render.Frame, ctx client.Context, now 
 	}
 }
 
-func (m *WorldMode) timeFontSprite(ctx client.Context) *scene.SpriteView {
-	if m.timeFontView != nil || m.timeFontMiss || ctx.Resources == nil {
-		return m.timeFontView
+func (m *System) timeFontSprite(ctx client.Context) *scene.SpriteView {
+	if m.TimeFontView != nil || m.TimeFontMiss || ctx.Resources == nil {
+		return m.TimeFontView
 	}
 	view, status := scene.LoadSpriteView(ctx.Resources,
 		[]string{timeFontACT, strings.ReplaceAll(timeFontACT, "\\", "/")},
@@ -141,11 +141,11 @@ func (m *WorldMode) timeFontSprite(ctx client.Context) *scene.SpriteView {
 		"time font",
 	)
 	if view == nil {
-		m.timeFontMiss = true
+		m.TimeFontMiss = true
 		glog.Warnf("time font sprite unavailable: %s", status)
 		return nil
 	}
-	m.timeFontView = view
+	m.TimeFontView = view
 	glog.Debugf("time font sprite resources %s", status)
 	return view
 }

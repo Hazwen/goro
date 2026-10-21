@@ -1,4 +1,4 @@
-package game
+package battle
 
 import (
 	"testing"
@@ -19,5 +19,5 @@ func TestEscapeMenuAutoReviveSendsRequest(t *testing.T) {
 
 	menu.RequestAutoRevive(ctx)
 
-	readBotTestPackets(t, serverConn, network.BuildAutoRevivePacket())
+	testutil.ReadPackets(t, serverConn, network.BuildAutoRevivePacket())
 }

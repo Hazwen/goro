@@ -2197,7 +2197,7 @@ func TestHidingUsesActorOptionsInsteadOfStatusIcons(t *testing.T) {
 	change := network.ActorStateChange{ID: 2000000, EffectState: db.EffectStateHide}
 	mode.applyActorStateChange(ctx, change)
 	mode.applyActorStateChange(ctx, change)
-	mode.removeExpiredStatusEffects(ctx.Session, time.Now().Add(time.Hour))
+	mode.battle().RemoveExpiredStatusEffects(ctx.Session, time.Now().Add(time.Hour))
 	if !ctx.PlayerHasEffectState(db.EffectStateHide) {
 		t.Fatal("status icon expiry revealed the player")
 	}

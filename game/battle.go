@@ -1,19 +1,16 @@
 package game
 
 import (
-	"fmt"
-	"image/color"
 	"math"
-	"strconv"
 	"time"
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	maps "github.com/kivutar/goro/game/map"
-	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
@@ -33,30 +30,6 @@ type attackIntent struct {
 	lastChaseAt time.Time
 }
 
-type damageFloater struct {
-	actorID  uint32
-	x        int
-	y        int
-	text     string
-	color    color.RGBA
-	kind     damageFloaterKind
-	starts   time.Time
-	expires  time.Time
-	duration time.Duration
-}
-
-type damageFloaterKind int
-
-const (
-	damageFloaterNormal damageFloaterKind = iota
-	damageFloaterCritical
-	damageFloaterIncoming
-	damageFloaterRecoveryHP
-	damageFloaterRecoverySP
-	damageFloaterMiss
-	damageFloaterCombo
-)
-
 func combatMotionDelayFromAction(action res.ACTAction, duration time.Duration, motion int) time.Duration {
 	if duration <= 0 {
 		return 0
@@ -74,25 +47,6 @@ func firstActionSoundMotion(action res.ACTAction) int {
 		}
 	}
 	return -1
-}
-
-type actorLife struct {
-	hp        int
-	maxHP     int
-	sp        int
-	maxSP     int
-	hasSP     bool
-	player    bool
-	friendly  bool
-	hunger    int
-	maxHunger int
-	hasHunger bool
-}
-
-type actorCastBar struct {
-	started  time.Time
-	duration time.Duration
-	color    color.RGBA
 }
 
 func combatDuration(speed int32, fallback time.Duration) time.Duration {
@@ -441,7 +395,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 			m.addNormalAttackBeforeHitEffect(ctx, action, source, sourceOK, projectileAt, projectileDuration)
 		}
 		if dealsDamage {
-			m.clearActorCastBar(ctx, action.TargetID)
+			m.battle().ClearActorCastBar(ctx, action.TargetID)
 			m.addNormalAttackHitEffect(ctx, action, target, targetOK, hitAt)
 			if actionHasHitReaction(action) && skillTargetUsesHitReaction(action, sourceLocal, targetLocal) {
 				hurtDuration := combatDuration(action.TargetSpeed, scene.DefaultHitAnimationDuration)
@@ -469,7 +423,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	} else if scene.IsLocalActor(ctx, action.TargetID) {
 		x, y = ctx.World.Player.X, ctx.World.Player.Y
 	}
-	m.addActionDamageFloaters(ctx, action, target, targetOK, targetLocal, sourceLocal, x, y, hitAt)
+	m.battle().AddActionDamageFloaters(ctx, action, target, targetOK, targetLocal, sourceLocal, x, y, hitAt)
 	if sourceLocal {
 		m.maybeSendPetHuntingTalk(ctx, now)
 	}
@@ -766,130 +720,6 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 	}
 }
 
-func (m *WorldMode) addActionDamageFloaters(ctx client.Context, action network.ActorActionNotify, target world.Actor, targetOK, targetLocal, sourceLocal bool, x, y int, hitAt time.Time) {
-	if ctx.Config.Headless {
-		return
-	}
-	text, kind, floaterColor := actionDamageFloater(action, targetLocal, sourceLocal)
-	if text == "" {
-		return
-	}
-	if ctx.World != nil && ctx.World.MapProperty.IsSiege() && damageFloaterHiddenInSiege(kind) {
-		return
-	}
-	count := scene.ActionVisualHitCount(action)
-	total := action.Damage + action.LeftDamage
-	if count <= 1 || total <= 0 {
-		m.addDamageFloater(action.TargetID, x, y, text, floaterColor, kind, hitAt)
-		return
-	}
-	values := actionDamageFloaterValues(action, count)
-	combo := actionShowsComboDamageFloaters(action, target, targetOK, targetLocal)
-	for i := 0; i < count; i++ {
-		starts := hitAt.Add(scene.MultiHitDelay * time.Duration(i))
-		m.addDamageFloater(action.TargetID, x, y, strconv.Itoa(values[i]), floaterColor, kind, starts)
-		if combo {
-			m.addComboDamageFloater(action.TargetID, x, y, actionComboDamageFloaterValue(action, count, i), starts, i+1 == count)
-		}
-	}
-}
-
-func damageFloaterHiddenInSiege(kind damageFloaterKind) bool {
-	switch kind {
-	case damageFloaterNormal, damageFloaterCritical, damageFloaterIncoming, damageFloaterCombo:
-		return true
-	default:
-		return false
-	}
-}
-
-func (m *WorldMode) addDamageFloater(actorID uint32, x, y int, text string, floaterColor color.RGBA, kind damageFloaterKind, starts time.Time) {
-	duration := damageFloaterDuration(kind)
-	m.addDamageFloaterWithTiming(actorID, x, y, text, floaterColor, kind, starts, duration, duration)
-}
-
-func (m *WorldMode) addComboDamageFloater(actorID uint32, x, y int, value int, starts time.Time, final bool) {
-	if value <= 0 {
-		return
-	}
-	visible := damageFloaterComboTransientDuration()
-	if final {
-		visible = damageFloaterDuration(damageFloaterCombo)
-	}
-	m.addDamageFloaterWithTiming(actorID, x, y, strconv.Itoa(value), damageFloaterYellow, damageFloaterCombo, starts, visible, damageFloaterDuration(damageFloaterCombo))
-}
-
-func (m *WorldMode) addDamageFloaterWithTiming(actorID uint32, x, y int, text string, floaterColor color.RGBA, kind damageFloaterKind, starts time.Time, visible, duration time.Duration) {
-	if visible <= 0 {
-		visible = damageFloaterDuration(kind)
-	}
-	if duration <= 0 {
-		duration = visible
-	}
-	m.damageFloaters = append(m.damageFloaters, damageFloater{
-		actorID:  actorID,
-		x:        x,
-		y:        y,
-		text:     text,
-		color:    floaterColor,
-		kind:     kind,
-		starts:   starts,
-		expires:  starts.Add(visible),
-		duration: duration,
-	})
-}
-
-func actionDamageFloaterValues(action network.ActorActionNotify, count int) []int {
-	values := make([]int, count)
-	if count <= 0 {
-		return values
-	}
-	total := int(action.Damage + action.LeftDamage)
-	if action.SkillID != 0 && action.Damage > 0 {
-		value := int(math.Floor(float64(action.Damage) / float64(count)))
-		for i := range values {
-			values[i] = value
-		}
-		return values
-	}
-	base := total / count
-	rem := total % count
-	for i := range values {
-		values[i] = base
-		if i < rem {
-			values[i]++
-		}
-	}
-	return values
-}
-
-func actionComboDamageFloaterValue(action network.ActorActionNotify, count, index int) int {
-	if action.SkillID != 0 && action.Damage > 0 && count > 0 {
-		return int(math.Floor((float64(action.Damage) / float64(count)) * float64(index+1)))
-	}
-	values := actionDamageFloaterValues(action, count)
-	total := 0
-	for i := 0; i <= index && i < len(values); i++ {
-		total += values[i]
-	}
-	return total
-}
-
-func actionShowsComboDamageFloaters(action network.ActorActionNotify, target world.Actor, targetOK, targetLocal bool) bool {
-	if !targetOK || targetLocal || action.Damage <= 0 || scene.ActionVisualHitCount(action) <= 1 {
-		return false
-	}
-	if action.SkillID != 0 {
-		return !scene.ActorIsPlayerObject(target)
-	}
-	switch action.Action {
-	case 8, 9, 13:
-		return actors.ActorHasMobObjectType(target)
-	default:
-		return false
-	}
-}
-
 func (m *WorldMode) applyActorPickupActionNotify(ctx client.Context, action network.ActorActionNotify, now time.Time) {
 	source, sourceOK, sourceLocal := scene.ActorForCombatID(ctx, action.SourceID)
 	if !sourceOK {
@@ -946,27 +776,6 @@ func (m *WorldMode) applyActorSitStandActionNotify(ctx client.Context, action ne
 		ctx.World.Actors[id] = actor
 	}
 	m.clearActorAction(ctx, id)
-}
-
-func (m *WorldMode) applyActorHPUpdate(update network.ActorHPUpdate) {
-	if update.ID == 0 || update.MaxHP <= 0 {
-		return
-	}
-	hp := update.HP
-	if hp < 0 {
-		hp = 0
-	}
-	if hp > update.MaxHP {
-		hp = update.MaxHP
-	}
-	if m.actorLife == nil {
-		m.actorLife = make(map[uint32]actorLife)
-	}
-	m.actorLife[update.ID] = actorLife{
-		hp:    hp,
-		maxHP: update.MaxHP,
-	}
-	glog.Debugf("actor hp id=%d hp=%d max_hp=%d tiny=%t", update.ID, hp, update.MaxHP, update.Tiny)
 }
 
 func (m *WorldMode) faceCombatSource(ctx client.Context, source world.Actor, sourceLocal bool, target world.Actor) {
@@ -1322,77 +1131,13 @@ func (m *WorldMode) applyRecovery(ctx client.Context, recovery network.Recovery)
 		return
 	}
 	if visual.recover(ctx.Session, recovery.Amount) {
-		m.addLocalRecoveryFloater(ctx, recovery.Amount, visual.recoveryColor, visual.recoveryKind)
+		m.battle().AddLocalRecoveryFloater(ctx, recovery.Amount, visual.recoveryColor, visual.recoveryKind)
 		if visual.clearsDeath {
 			m.clearLocalDeathStateIfAlive(ctx)
 		}
 		m.scheduleSound(time.Now(), visual.sfxCandidates()...)
 	}
 	glog.Debugf("recovery status=%d amount=%d hp=%d/%d sp=%d/%d", recovery.StatusID, recovery.Amount, ctx.Session.Vitals.HP, ctx.Session.Vitals.MaxHP, ctx.Session.Vitals.SP, ctx.Session.Vitals.MaxSP)
-}
-
-func (m *WorldMode) addLocalRecoveryFloater(ctx client.Context, amount int, floaterColor color.RGBA, kind damageFloaterKind) {
-	if ctx.Config.Headless || ctx.World == nil || amount <= 0 {
-		return
-	}
-	now := time.Now()
-	actorID := uint32(0)
-	if ctx.Session != nil {
-		actorID = ctx.Session.AccountID
-		if actorID == 0 {
-			actorID = ctx.Session.CharID
-		}
-	}
-	m.damageFloaters = append(m.damageFloaters, damageFloater{
-		actorID:  actorID,
-		x:        ctx.World.Player.X,
-		y:        ctx.World.Player.Y,
-		text:     fmt.Sprintf("%d", amount),
-		color:    floaterColor,
-		kind:     kind,
-		starts:   now,
-		expires:  now.Add(damageFloaterDuration(kind)),
-		duration: damageFloaterDuration(kind),
-	})
-}
-
-func actionDamageFloater(action network.ActorActionNotify, targetLocal, sourceLocal bool) (string, damageFloaterKind, color.RGBA) {
-	total := action.Damage + action.LeftDamage
-	if total > 0 {
-		if action.Action == 10 || action.Action == 13 {
-			return strconv.Itoa(int(total)), damageFloaterCritical, damageFloaterYellow
-		}
-		if targetLocal && !sourceLocal {
-			return strconv.Itoa(int(total)), damageFloaterIncoming, damageFloaterRed
-		}
-		return strconv.Itoa(int(total)), damageFloaterNormal, damageFloaterWhite
-	}
-	if action.Action == 11 {
-		return "miss", damageFloaterMiss, damageFloaterWhite
-	}
-	if action.Action == 0 || action.Action == 7 || (action.SkillID > 0 && total == 0) {
-		return "miss", damageFloaterMiss, damageFloaterWhite
-	}
-	return "", damageFloaterNormal, color.RGBA{}
-}
-
-func damageFloaterDuration(kind damageFloaterKind) time.Duration {
-	switch kind {
-	case damageFloaterMiss:
-		return 800 * time.Millisecond
-	case damageFloaterCombo:
-		return 3000 * time.Millisecond
-	default:
-		return 1500 * time.Millisecond
-	}
-}
-
-func damageFloaterComboTransientDuration() time.Duration {
-	const robrowserComboTransient = 450 * time.Millisecond
-	if scene.MultiHitDelay < robrowserComboTransient {
-		return scene.MultiHitDelay
-	}
-	return robrowserComboTransient
 }
 
 func currentNormalAttackRange(ctx client.Context) int {
@@ -1402,56 +1147,6 @@ func currentNormalAttackRange(ctx client.Context) int {
 		attackRange = scene.MaxInt(attackRange, normalAttackRangeFromEquippedItems(ctx.Session, ctx.Resources))
 	}
 	return scene.MaxInt(1, attackRange)
-}
-
-func (m *WorldMode) drawDamageFloaters(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
-	if len(m.damageFloaters) == 0 {
-		return
-	}
-	active := m.damageFloaters[:0]
-	for _, floater := range m.damageFloaters {
-		if now.After(floater.expires) {
-			continue
-		}
-		active = append(active, floater)
-		if now.Before(floater.starts) {
-			continue
-		}
-		if ctx.World != nil && ctx.World.MapProperty.IsSiege() && damageFloaterHiddenInSiege(floater.kind) {
-			continue
-		}
-		x, y := float64(floater.x), float64(floater.y)
-		if actor, ok := ctx.World.Actors[floater.actorID]; ok {
-			x, y = scene.ActorRenderPosition(actor, now)
-		} else if scene.IsLocalActor(ctx, floater.actorID) {
-			x, y = scene.ActorRenderPosition(ctx.World.Player, now)
-		}
-		progress := damageFloaterProgress(floater, now)
-		dx, dy, zLift, scale, alpha := damageFloaterPlacement(floater.kind, progress)
-		floaterColor := damageFloaterColor(floater.kind, floater.color)
-		terrainZ := scene.TerrainHeightAt(ctx.World, x, y)
-		worldX := scene.CellCenter(x) + dx
-		worldY := scene.CellCenter(y) + dy
-		screenScale := scene.ActorBillboardScreenScale(projection, worldX, worldY, terrainZ)
-		if floater.kind == damageFloaterMiss {
-			if billboard, ok := m.damageMessageBillboard(ctx, 0, 0); ok {
-				sprites.DrawOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift, screenScale*scale, alpha, 1, floaterColor)
-				continue
-			}
-		}
-		if floater.kind == damageFloaterCritical {
-			if billboard, ok := m.damageMessageBillboard(ctx, 2, 0); ok {
-				sprites.DrawOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift+0.05, screenScale*scale*0.6, alpha, 1, color.RGBA{R: 168, G: 168, B: 168, A: 255})
-			}
-		}
-		if billboard, ok := m.damageNumberBillboard(ctx, floater.text); ok {
-			sprites.DrawOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift, screenScale*scale, alpha, 1, floaterColor)
-			continue
-		}
-		point := projection.Project(worldX, worldY, terrainZ+zLift)
-		render.DrawBitmapTextAtColor(screen, floater.text, int(point.X)-8, int(point.Y)-40, scene.WithAlpha(floaterColor, alpha))
-	}
-	m.damageFloaters = active
 }
 
 func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
@@ -1529,10 +1224,10 @@ func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
 		if m.scriptHighlight.id == id {
 			m.clearScriptHighlight()
 		}
-		if m.actorLife != nil {
-			if life, ok := m.actorLife[id]; ok {
-				life.hp = 0
-				m.actorLife[id] = life
+		if m.battleSystem.ActorLife != nil {
+			if life, ok := m.battleSystem.ActorLife[id]; ok {
+				life.HP = 0
+				m.battleSystem.ActorLife[id] = life
 			}
 		}
 	}
@@ -1611,318 +1306,70 @@ func (m *WorldMode) clearScriptHighlight() {
 	}
 }
 
-func actorCastBarProgress(bar actorCastBar, now time.Time) (float64, bool) {
-	if bar.duration <= 0 || bar.started.IsZero() {
-		return 0, false
-	}
-	progress := float64(now.Sub(bar.started)) / float64(bar.duration)
-	if progress < 0 {
-		progress = 0
-	}
-	if progress >= 1 {
-		return 1, false
-	}
-	return progress, true
+func (m *WorldMode) battle() *battle.System {
+	m.battleSystem.Bind(battle.Bindings{
+		Windows:              &m.ui.battle,
+		Console:              &m.ui.console,
+		Minimap:              &m.ui.minimap,
+		Map:                  &m.mapScene,
+		Actors:               m.actors(),
+		Effects:              m.effects(),
+		Progress:             &m.npcSystem.Progress,
+		SetActorAction:       m.setCombatActorAction,
+		ScheduleSoundAtActor: m.scheduleSoundAtActor,
+		MonsterPreview:       m.monsterInfoPreviewImage,
+	})
+	return &m.battleSystem
 }
 
-func actorLifeBarHeight(life actorLife) float64 {
-	height := actorOverlayBarHeight
-	if life.hasSP {
-		height += actorOverlayBarRowSpacing
-	}
-	if life.hasHunger {
-		height += actorOverlayBarRowSpacing
-	}
-	return height
-}
-
-func actorNameBelowLifeBarY(baseY, scale float64, life actorLife) float64 {
-	return actors.ActorLifeBarY(baseY, scale) + actorLifeBarHeight(life) + 3
-}
-
-const (
-	actorOverlayBarWidth      = 60.0
-	actorOverlayBarRowHeight  = 3.0
-	actorOverlayBarRowSpacing = 4.0
-	actorOverlayBarHeight     = actorOverlayBarRowHeight + 2
-)
-
-func actorOverlayBarX(centerX float64) float64 {
-	return math.Round(centerX - actorOverlayBarWidth/2)
-}
-
-func actorOverlayBarY(y float64) float64 {
-	return math.Round(y)
-}
-
-func actorOverlayBarFillWidth(ratio float64) float64 {
-	if ratio <= 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) {
-		return 0
-	}
-	if ratio > 1 {
-		ratio = 1
-	}
-	return math.Round((actorOverlayBarWidth - 2) * ratio)
-}
-
-func (m *WorldMode) drawActorLifeBar(screen *render.Frame, ctx client.Context, entry scene.ActorDrawEntry) {
-	life, ok := m.actorLifeForDisplay(ctx, entry.Actor)
-	if !ok {
+func (m *WorldMode) applyStatusEffectChange(ctx client.Context, change network.StatusEffectChange) {
+	if ctx.Session == nil || change.StatusID == 0xFFFF {
 		return
 	}
-	ratio := actorLifeRatio(life.hp, life.maxHP)
-	height := actorLifeBarHeight(life)
-	x := actorOverlayBarX(entry.ScreenX)
-	y := actorOverlayBarY(actors.ActorLifeBarY(entry.ScreenY, entry.Scale))
-	fillWidth := actorOverlayBarFillWidth(ratio)
-	fill := color.RGBA{R: 255, G: 0, B: 231, A: 255}
-	if life.player || life.friendly {
-		fill = ui.PlayerHPBarColor
-		if ratio < 0.25 {
-			fill = color.RGBA{R: 255, G: 0, B: 0, A: 255}
-		}
-	} else if ratio < 0.25 {
-		fill = color.RGBA{R: 255, G: 255, B: 0, A: 255}
-	}
-	render.DrawRect(screen, x, y, actorOverlayBarWidth, height, color.RGBA{R: 16, G: 24, B: 156, A: 255})
-	render.DrawRect(screen, x+1, y+1, actorOverlayBarWidth-2, height-2, color.RGBA{R: 66, G: 66, B: 66, A: 255})
-	if fillWidth > 0 {
-		render.DrawRect(screen, x+1, y+1, fillWidth, actorOverlayBarRowHeight, fill)
-	}
-	rowY := y + 1
-	if life.hasSP {
-		rowY += actorOverlayBarRowSpacing
-		spRatio := actorLifeRatio(life.sp, life.maxSP)
-		render.DrawRect(screen, x, rowY-1, actorOverlayBarWidth, 1, color.RGBA{R: 16, G: 24, B: 156, A: 255})
-		if spWidth := actorOverlayBarFillWidth(spRatio); spWidth > 0 {
-			render.DrawRect(screen, x+1, rowY, spWidth, actorOverlayBarRowHeight, ui.PlayerSPBarColor)
-		}
-	}
-	if life.hasHunger {
-		rowY += actorOverlayBarRowSpacing
-		hungerRatio := actorLifeRatio(life.hunger, life.maxHunger)
-		hungerFill := ui.HungerBarFillColor(life.hunger, life.maxHunger)
-		render.DrawRect(screen, x+1, rowY-1, actorOverlayBarWidth-2, 1, color.RGBA{R: 66, G: 66, B: 66, A: 255})
-		if hungerWidth := actorOverlayBarFillWidth(hungerRatio); hungerWidth > 0 {
-			render.DrawRect(screen, x+1, rowY, hungerWidth, actorOverlayBarRowHeight, hungerFill)
-		}
-	}
-}
-
-func actorLifeRatio(value, maxValue int) float64 {
-	if maxValue <= 0 {
-		return 0
-	}
-	ratio := float64(value) / float64(maxValue)
-	if ratio < 0 {
-		return 0
-	}
-	if ratio > 1 {
-		return 1
-	}
-	return ratio
-}
-
-func (m *WorldMode) drawActorCastBar(screen *render.Frame, entry scene.ActorDrawEntry, now time.Time) {
-	if entry.Actor.ID == 0 {
+	if m.applyPushCartStatus(ctx, change) {
 		return
 	}
-	bar, ok := m.serverProgressBar(entry.IsPlayer, now)
-	if !ok && m.actorCastBars != nil {
-		bar, ok = m.actorCastBars[entry.Actor.ID]
+	m.actors().ApplyFalconStatus(ctx, change)
+	m.stopPerformance(ctx, change)
+	if actorID := battle.ApplyActorOpt3StateStatus(ctx, change); actorID != 0 {
+		m.actors().SyncActorSpiritEffects(ctx, actorID)
+		if change.StatusID == db.StatusLkconcentration {
+			if scene.IsLocalActor(ctx, actorID) {
+				actorID = scene.LocalSkillTarget(ctx)
+			}
+			m.actors().SetActorStateEffect(ctx, actorID, effects.LKConcentration, change.Active)
+		}
 	}
-	if !ok {
+	m.battle().ApplyTrickDeadStatus(ctx, change)
+	m.battle().ApplyTaekwonStatus(ctx, change)
+	m.applyCloseConfineStatus(ctx, change)
+	if change.StatusID == db.StatusWzSightblaster {
+		id := change.ActorID
+		if id == 0 || scene.IsLocalActor(ctx, id) {
+			id = scene.LocalSkillTarget(ctx)
+		}
+		m.actors().SetActorStateEffect(ctx, id, effects.SightBlaster, change.Active)
+	}
+	if change.StatusID == db.StatusSmaReady && change.Active {
+		id := change.ActorID
+		if id == 0 {
+			id = scene.LocalSkillTarget(ctx)
+		}
+		m.effects().Add(ctx, effects.SmaReady, id)
+	}
+	m.battle().ApplyTaekwonNightStatus(ctx, change)
+	if !battle.ApplyLocalStatusEffectChange(ctx.Session, change, time.Now()) {
 		return
 	}
-	ratio, active := actorCastBarProgress(bar, now)
-	if !active {
-		delete(m.actorCastBars, entry.Actor.ID)
+	if change.StatusID == db.StatusDevil1 {
+		m.syncStarDevil(ctx)
+	}
+	if !change.Active {
+		if change.StatusID == db.StatusCashBossAlarm {
+			m.ui.minimap.ClearBossMarker()
+		}
+		glog.Debugf("status effect inactive id=%d actor=%d", change.StatusID, change.ActorID)
 		return
 	}
-	x := actorOverlayBarX(entry.ScreenX)
-	y := actorOverlayBarY(actors.ActorCastBarY(entry.ScreenY, entry.Scale))
-	fillWidth := actorOverlayBarFillWidth(ratio)
-	render.DrawRect(screen, x, y, actorOverlayBarWidth, actorOverlayBarHeight, color.RGBA{R: 16, G: 24, B: 156, A: 255})
-	render.DrawRect(screen, x+1, y+1, actorOverlayBarWidth-2, actorOverlayBarHeight-2, color.RGBA{R: 66, G: 66, B: 66, A: 255})
-	if fillWidth > 0 {
-		fill := bar.color
-		if fill.A == 0 {
-			fill = color.RGBA{R: 0, G: 255, B: 0, A: 255}
-		}
-		render.DrawRect(screen, x+1, y+1, fillWidth, actorOverlayBarRowHeight, fill)
-	}
-}
-
-func (m *WorldMode) actorLifeForDisplay(ctx client.Context, actor world.Actor) (actorLife, bool) {
-	if actor.ID == 0 {
-		return actorLife{}, false
-	}
-	if npc.SpecialVisualForActor(actor) != npc.SpecialVisualNone {
-		return actorLife{}, false
-	}
-	if scene.IsLocalActor(ctx, actor.ID) {
-		return localPlayerLifeForDisplay(ctx)
-	}
-	if life, ok := partyMemberLifeForDisplay(ctx, actor); ok {
-		return life, true
-	}
-	if life, ok := m.homunculusLifeForDisplay(ctx, actor); ok {
-		return life, true
-	}
-	if life, ok := m.mercenaryLifeForDisplay(ctx, actor); ok {
-		return life, true
-	}
-	// Monster HP bars are a 2012+ client feature. The 2008 client exposes
-	// monster HP through WZ_ESTIMATION/Sense instead, so keep the combat HP
-	// cache hidden from the normal actor overlay.
-	return actorLife{}, false
-}
-
-func (m *WorldMode) homunculusLifeForDisplay(ctx client.Context, actor world.Actor) (actorLife, bool) {
-	if ctx.Session == nil || actor.ID == 0 {
-		return actorLife{}, false
-	}
-	hom := ctx.Session.Homunculus
-	if !hom.Active {
-		return actorLife{}, false
-	}
-	if hom.ID != 0 {
-		if actor.ID != hom.ID {
-			return actorLife{}, false
-		}
-	} else if !actor.HasObjectType || actor.ObjectType != scene.ActorObjectTypeHomunculus {
-		return actorLife{}, false
-	}
-
-	life := actorLife{
-		hp:       hom.HP,
-		maxHP:    hom.MaxHP,
-		sp:       hom.SP,
-		maxSP:    hom.MaxSP,
-		hasSP:    hom.MaxSP > 0,
-		friendly: true,
-	}
-	if m.actorLife != nil {
-		if cached, ok := m.actorLife[actor.ID]; ok {
-			if cached.maxHP > 0 {
-				life.hp = cached.hp
-				life.maxHP = cached.maxHP
-			}
-			if cached.hasSP && cached.maxSP > 0 {
-				life.sp = cached.sp
-				life.maxSP = cached.maxSP
-				life.hasSP = true
-			}
-			if cached.hasHunger && cached.maxHunger > 0 {
-				life.hunger = cached.hunger
-				life.maxHunger = cached.maxHunger
-				life.hasHunger = true
-			}
-		}
-	}
-	if !life.hasHunger && hom.Hunger > 0 {
-		life.hunger = hom.Hunger
-		life.maxHunger = companion.HungerMax
-		life.hasHunger = true
-	}
-	if life.maxHP <= 0 || life.hp < 0 {
-		return actorLife{}, false
-	}
-	life.hp = clampGameInt(life.hp, 0, life.maxHP)
-	if life.hasSP {
-		life.sp = clampGameInt(life.sp, 0, life.maxSP)
-	}
-	if life.hasHunger {
-		life.hunger = clampGameInt(life.hunger, 0, life.maxHunger)
-	}
-	return life, true
-}
-
-func (m *WorldMode) mercenaryLifeForDisplay(ctx client.Context, actor world.Actor) (actorLife, bool) {
-	if ctx.Session == nil || actor.ID == 0 {
-		return actorLife{}, false
-	}
-	merc := ctx.Session.Mercenary
-	if !merc.Active {
-		return actorLife{}, false
-	}
-	if merc.ID != 0 {
-		if actor.ID != merc.ID {
-			return actorLife{}, false
-		}
-	} else if !actor.HasObjectType || actor.ObjectType != scene.ActorObjectTypeMercenary {
-		return actorLife{}, false
-	}
-
-	life := actorLife{
-		hp:       merc.HP,
-		maxHP:    merc.MaxHP,
-		sp:       merc.SP,
-		maxSP:    merc.MaxSP,
-		hasSP:    merc.MaxSP > 0,
-		friendly: true,
-	}
-	if m.actorLife != nil {
-		if cached, ok := m.actorLife[actor.ID]; ok {
-			if cached.maxHP > 0 {
-				life.hp = cached.hp
-				life.maxHP = cached.maxHP
-			}
-			if cached.hasSP && cached.maxSP > 0 {
-				life.sp = cached.sp
-				life.maxSP = cached.maxSP
-				life.hasSP = true
-			}
-		}
-	}
-	if life.maxHP <= 0 || life.hp < 0 {
-		return actorLife{}, false
-	}
-	life.hp = clampGameInt(life.hp, 0, life.maxHP)
-	if life.hasSP {
-		life.sp = clampGameInt(life.sp, 0, life.maxSP)
-	}
-	return life, true
-}
-
-func (m *WorldMode) monsterLifeForSense(actorID uint32) (actorLife, bool) {
-	if m.actorLife == nil {
-		return actorLife{}, false
-	}
-	life, ok := m.actorLife[actorID]
-	if !ok || life.maxHP <= 0 || life.hp < 0 {
-		return actorLife{}, false
-	}
-	return life, true
-}
-
-func localPlayerLifeForDisplay(ctx client.Context) (actorLife, bool) {
-	if ctx.Session == nil {
-		return actorLife{}, false
-	}
-	hp := ctx.Session.Vitals.HP
-	maxHP := ctx.Session.Vitals.MaxHP
-	sp := ctx.Session.Vitals.SP
-	maxSP := ctx.Session.Vitals.MaxSP
-	if maxHP <= 0 {
-		character := ctx.Session.SelectedCharacter()
-		hp = int(character.HP)
-		maxHP = int(character.MaxHP)
-	}
-	if maxSP <= 0 {
-		character := ctx.Session.SelectedCharacter()
-		sp = int(character.SP)
-		maxSP = int(character.MaxSP)
-	}
-	if maxHP <= 0 {
-		return actorLife{}, false
-	}
-	return actorLife{
-		hp:     clampGameInt(hp, 0, maxHP),
-		maxHP:  maxHP,
-		sp:     clampGameInt(sp, 0, maxSP),
-		maxSP:  maxSP,
-		hasSP:  maxSP > 0,
-		player: true,
-	}, true
+	glog.Debugf("status effect active id=%d actor=%d duration_ms=%d", change.StatusID, change.ActorID, change.Duration.Milliseconds())
 }

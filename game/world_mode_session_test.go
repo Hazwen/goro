@@ -426,7 +426,13 @@ func TestMapCellUpdateChangesGATWalkability(t *testing.T) {
 	world.GAT = testutil.PathGAT(3, 3, nil)
 	mode := &WorldMode{hoveredWalk: hoveredWalkCellCache{valid: true}}
 
-	mode.applyMapCellUpdate(client.Context{World: world}, network.MapCellUpdate{MapName: "geffen", X: 1, Y: 2, RawType: 5})
+	data := make([]byte, 24)
+	binary.LittleEndian.PutUint16(data[0:2], 0x0192)
+	binary.LittleEndian.PutUint16(data[2:4], 1)
+	binary.LittleEndian.PutUint16(data[4:6], 2)
+	binary.LittleEndian.PutUint16(data[6:8], 5)
+	copy(data[8:24], "geffen.gat")
+	mode.handleNetworkPacket(client.Context{World: world}, network.Packet{ID: 0x0192, Data: data}, time.Now())
 
 	if world.GAT.Walkable(1, 2) {
 		t.Fatalf("updated cell should not be walkable: %+v", world.GAT.Cells[2*world.GAT.Width+1])
@@ -1012,7 +1018,7 @@ func TestAutoSpellListPacketOpensModalChooser(t *testing.T) {
 	if next, stop := mode.handleNetworkPacket(ctx, network.Packet{ID: network.PacketZCAutoSpellList, Data: data}, time.Now()); next != nil || stop {
 		t.Fatalf("auto spell list changed mode: next=%T stop=%t", next, stop)
 	}
-	if !mode.ui.autoSpellWindow.IsOpen() {
+	if !mode.ui.battle.AutoSpell.IsOpen() {
 		t.Fatal("auto spell list did not open the chooser")
 	}
 	if !mode.ui.interactionModalOpen() {

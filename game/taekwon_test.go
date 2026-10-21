@@ -110,11 +110,7 @@ func TestTaekwonMissionAndRankingMessages(t *testing.T) {
 
 	entries := make([]network.FameRankingEntry, 10)
 	entries[0] = network.FameRankingEntry{Name: "Kicker", Points: 123}
-	presentation := fameRankingPresentationFor(network.FameRankingTaekwon)
-	if presentation.professionMessageID != 2388 || presentation.pointMessageID != 926 {
-		t.Fatalf("taekwon message IDs=(%d, %d) want=(2388, 926)", presentation.professionMessageID, presentation.pointMessageID)
-	}
-	mode.applyFameRanking(client.Context{}, network.FameRanking{Kind: network.FameRankingTaekwon, Entries: entries})
+	mode.social().ApplyFameRanking(client.Context{}, network.FameRanking{Kind: network.FameRankingTaekwon, Entries: entries})
 	messages = mode.ui.console.Messages()
 	if len(messages) != 12 {
 		t.Fatalf("message count = %d, want mission + header + ten ranks", len(messages))
@@ -123,7 +119,7 @@ func TestTaekwonMissionAndRankingMessages(t *testing.T) {
 		t.Fatalf("ranking messages = %+v", messages[1:])
 	}
 
-	mode.applyFamePointUpdate(client.Context{}, network.FamePointUpdate{Kind: network.FameRankingTaekwon, GainedPoints: 1, TotalPoints: 42})
+	mode.social().ApplyFamePointUpdate(client.Context{}, network.FamePointUpdate{Kind: network.FameRankingTaekwon, GainedPoints: 1, TotalPoints: 42})
 	messages = mode.ui.console.Messages()
 	if len(messages) != 13 || messages[12].Text != "[POINT] You have been rewarded with 1 Tae-Kwon Mission rank points. Your point total is 42." {
 		t.Fatalf("taekwon point message = %+v", messages)

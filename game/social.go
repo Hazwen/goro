@@ -10,7 +10,6 @@ import (
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	gameui "github.com/kivutar/goro/ui"
-	worldstate "github.com/kivutar/goro/world"
 )
 
 func (m *WorldMode) handleChatMessage(ctx client.Context, chat network.ChatMessage, now time.Time) {
@@ -97,23 +96,6 @@ func siegeGuildEmblemPosition(centerX, topY float64, size int) (float64, float64
 	x := centerX - float64(size)/2
 	y := topY - float64(size) - 4
 	return x, y
-}
-
-func partyMemberLifeForDisplay(ctx client.Context, actor worldstate.Actor) (actorLife, bool) {
-	if ctx.Session == nil || actor.ID == 0 || !actor.HasObjectType || actor.ObjectType != scene.ActorObjectTypePC {
-		return actorLife{}, false
-	}
-	for _, member := range ctx.Session.Party.Members {
-		if member.AccountID != actor.ID || member.MaxHP <= 0 {
-			continue
-		}
-		return actorLife{
-			hp:     clampGameInt(member.HP, 0, member.MaxHP),
-			maxHP:  member.MaxHP,
-			player: true,
-		}, true
-	}
-	return actorLife{}, false
 }
 
 func (m *WorldMode) social() *social.System {

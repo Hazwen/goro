@@ -1,4 +1,4 @@
-package game
+package battle
 
 import (
 	"math"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestDamageFloaterPlacementUsesRobrowserRightMotion(t *testing.T) {
-	dx, dy, zLift, scale, alpha := damageFloaterPlacement(damageFloaterNormal, 0.5)
+	dx, dy, zLift, scale, alpha := damageFloaterPlacement(FloaterNormal, 0.5)
 	if math.Abs(dx-2) > 0.001 {
 		t.Fatalf("dx = %.3f, want robr right drift 2.000", dx)
 	}
@@ -24,7 +24,7 @@ func TestDamageFloaterPlacementUsesRobrowserRightMotion(t *testing.T) {
 }
 
 func TestDamageFloaterPlacementUsesRobrowserComboMotion(t *testing.T) {
-	dx, dy, zLift, scale, alpha := damageFloaterPlacement(damageFloaterCombo, 0.1)
+	dx, dy, zLift, scale, alpha := damageFloaterPlacement(FloaterCombo, 0.1)
 	if dx != 0 || dy != 0 {
 		t.Fatalf("combo drift = %.3f,%.3f, want stationary over target", dx, dy)
 	}
@@ -37,12 +37,12 @@ func TestDamageFloaterPlacementUsesRobrowserComboMotion(t *testing.T) {
 }
 
 func TestDamageFloaterPlacementUsesRobrowserRecoveryAndMissMotion(t *testing.T) {
-	_, _, healZ, healScale, _ := damageFloaterPlacement(damageFloaterRecoveryHP, 0.6)
+	_, _, healZ, healScale, _ := damageFloaterPlacement(FloaterRecoveryHP, 0.6)
 	if math.Abs(healZ-3) > 0.001 || math.Abs(healScale-0.8) > 0.001 {
 		t.Fatalf("heal z/scale = %.3f/%.3f, want 3.000/0.800", healZ, healScale)
 	}
 
-	_, _, missZ, missScale, _ := damageFloaterPlacement(damageFloaterMiss, 0.5)
+	_, _, missZ, missScale, _ := damageFloaterPlacement(FloaterMiss, 0.5)
 	if math.Abs(missZ-7) > 0.001 || math.Abs(missScale-0.5) > 0.001 {
 		t.Fatalf("miss z/scale = %.3f/%.3f, want 7.000/0.500", missZ, missScale)
 	}
@@ -50,10 +50,10 @@ func TestDamageFloaterPlacementUsesRobrowserRecoveryAndMissMotion(t *testing.T) 
 
 func TestDamageFloaterProgressUsesAnimationDuration(t *testing.T) {
 	start := time.Unix(10, 0)
-	floater := damageFloater{
-		starts:   start,
-		expires:  start.Add(200 * time.Millisecond),
-		duration: 3000 * time.Millisecond,
+	floater := Floater{
+		Starts:   start,
+		Expires:  start.Add(200 * time.Millisecond),
+		Duration: 3000 * time.Millisecond,
 	}
 	if got := damageFloaterProgress(floater, start.Add(1500*time.Millisecond)); math.Abs(got-0.5) > 0.001 {
 		t.Fatalf("progress = %.3f, want 0.500", got)
@@ -61,12 +61,12 @@ func TestDamageFloaterProgressUsesAnimationDuration(t *testing.T) {
 }
 
 func TestSiegeHidesCombatDamageButKeepsMissAndRecovery(t *testing.T) {
-	for _, kind := range []damageFloaterKind{damageFloaterNormal, damageFloaterCritical, damageFloaterIncoming, damageFloaterCombo} {
+	for _, kind := range []FloaterKind{FloaterNormal, FloaterCritical, FloaterIncoming, FloaterCombo} {
 		if !damageFloaterHiddenInSiege(kind) {
 			t.Fatalf("combat floater %d remained visible in siege", kind)
 		}
 	}
-	for _, kind := range []damageFloaterKind{damageFloaterMiss, damageFloaterRecoveryHP, damageFloaterRecoverySP} {
+	for _, kind := range []FloaterKind{FloaterMiss, FloaterRecoveryHP, FloaterRecoverySP} {
 		if damageFloaterHiddenInSiege(kind) {
 			t.Fatalf("non-combat floater %d was hidden in siege", kind)
 		}

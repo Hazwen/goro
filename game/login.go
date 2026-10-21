@@ -6,6 +6,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
@@ -271,8 +272,8 @@ func applyLoginStatusEffectPacket(ctx client.Context, pkt network.Packet) (bool,
 	if !ok {
 		return false, nil
 	}
-	applyActorOpt3StateStatus(ctx, change)
-	if applyLocalStatusEffectChange(ctx.Session, change, time.Now()) {
+	battle.ApplyActorOpt3StateStatus(ctx, change)
+	if battle.ApplyLocalStatusEffectChange(ctx.Session, change, time.Now()) {
 		glog.Debugf("login status effect id=%d actor=%d active=%t duration_ms=%d", change.StatusID, change.ActorID, change.Active, change.Duration.Milliseconds())
 	}
 	return true, nil

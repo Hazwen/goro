@@ -55,7 +55,7 @@ func TestHomunculusParamChangeUpdatesSessionAndLife(t *testing.T) {
 	if sess.Homunculus.HP != 18 || sess.Homunculus.MaxSP != 44 || sess.Homunculus.Level != 13 || sess.Homunculus.Exp != 5_000_000_000 || sess.Homunculus.MaxExp != 6_000_000_000 || sess.Homunculus.Skills.Points != 7 {
 		t.Fatalf("homunculus session = %+v", sess.Homunculus)
 	}
-	if life := mode.actorLife[300]; life.hp != 18 || life.maxHP != 20 || life.sp != 5 || life.maxSP != 44 || !life.hasSP {
+	if life := mode.battleSystem.ActorLife[300]; life.HP != 18 || life.MaxHP != 20 || life.SP != 5 || life.MaxSP != 44 || !life.HasSP {
 		t.Fatalf("actor life = %+v", life)
 	}
 	if actor := ctx.World.Actors[300]; actor.Speed != 150 || actor.AttackRange != 2 {
@@ -86,11 +86,11 @@ func TestHomunculusPropertyStoresDisplayLifeAndHunger(t *testing.T) {
 		AttackRange: 4,
 	})
 
-	life, ok := mode.actorLifeForDisplay(ctx, ctx.World.Actors[300])
+	life, ok := mode.battle().ActorLifeForDisplay(ctx, ctx.World.Actors[300])
 	if !ok {
 		t.Fatal("homunculus display life missing")
 	}
-	if life.hp != 123 || life.maxHP != 456 || life.sp != 78 || life.maxSP != 90 || !life.hasSP || life.hunger != 62 || life.maxHunger != 100 || !life.hasHunger || !life.friendly {
+	if life.HP != 123 || life.MaxHP != 456 || life.SP != 78 || life.MaxSP != 90 || !life.HasSP || life.Hunger != 62 || life.MaxHunger != 100 || !life.HasHunger || !life.Friendly {
 		t.Fatalf("homunculus display life = %+v", life)
 	}
 	if actor := ctx.World.Actors[300]; actor.Name != "Pipou" || actor.AttackRange != 4 {
@@ -195,11 +195,11 @@ func TestHomunculusStateChangeUpdatesDisplayHunger(t *testing.T) {
 
 	mode.companions().ApplyHomunculusStateChange(ctx, network.HomunculusStateChange{GID: 300, State: 2, Data: 24})
 
-	life, ok := mode.actorLifeForDisplay(ctx, ctx.World.Actors[300])
+	life, ok := mode.battle().ActorLifeForDisplay(ctx, ctx.World.Actors[300])
 	if !ok {
 		t.Fatal("homunculus display life missing")
 	}
-	if sess.Homunculus.Hunger != 24 || life.hunger != 24 || life.maxHunger != 100 || !life.hasHunger {
+	if sess.Homunculus.Hunger != 24 || life.Hunger != 24 || life.MaxHunger != 100 || !life.HasHunger {
 		t.Fatalf("homunculus hunger session=%+v life=%+v", sess.Homunculus, life)
 	}
 }
@@ -390,7 +390,7 @@ func TestApplyMercenaryParamChangeUpdatesRobrowserStatusFields(t *testing.T) {
 	if got := sess.Mercenary.Faith; got != 321 {
 		t.Fatalf("mercenary faith = %d, want 321", got)
 	}
-	if life, ok := mode.actorLife[400]; !ok || life.hp != 77 || life.sp != 12 || !life.hasSP {
+	if life, ok := mode.battleSystem.ActorLife[400]; !ok || life.HP != 77 || life.SP != 12 || !life.HasSP {
 		t.Fatalf("actor life = %+v ok=%t, want updated mercenary life", life, ok)
 	}
 	if actor := ctx.World.Actors[400]; actor.AttackRange != 2 {
@@ -421,11 +421,11 @@ func TestMercenaryPropertyStoresDisplayLife(t *testing.T) {
 		AttackRange: 2,
 	})
 
-	life, ok := mode.actorLifeForDisplay(ctx, ctx.World.Actors[400])
+	life, ok := mode.battle().ActorLifeForDisplay(ctx, ctx.World.Actors[400])
 	if !ok {
 		t.Fatal("mercenary display life missing")
 	}
-	if life.hp != 123 || life.maxHP != 456 || life.sp != 78 || life.maxSP != 90 || !life.hasSP || !life.friendly {
+	if life.HP != 123 || life.MaxHP != 456 || life.SP != 78 || life.MaxSP != 90 || !life.HasSP || !life.Friendly {
 		t.Fatalf("mercenary display life = %+v", life)
 	}
 	if actor := ctx.World.Actors[400]; actor.Name != "David" || actor.AttackRange != 2 {
@@ -457,11 +457,11 @@ func TestMercenaryLifeForDisplayUsesCachedParamChanges(t *testing.T) {
 	mode.companions().ApplyMercenaryParamChange(ctx, network.MercenaryParamChange{Param: network.StatusHP, Value: 77})
 	mode.companions().ApplyMercenaryParamChange(ctx, network.MercenaryParamChange{Param: network.StatusSP, Value: 12})
 
-	life, ok := mode.actorLifeForDisplay(ctx, ctx.World.Actors[400])
+	life, ok := mode.battle().ActorLifeForDisplay(ctx, ctx.World.Actors[400])
 	if !ok {
 		t.Fatal("mercenary display life missing")
 	}
-	if life.hp != 77 || life.maxHP != 200 || life.sp != 12 || life.maxSP != 60 || !life.hasSP || !life.friendly {
+	if life.HP != 77 || life.MaxHP != 200 || life.SP != 12 || life.MaxSP != 60 || !life.HasSP || !life.Friendly {
 		t.Fatalf("mercenary display life = %+v", life)
 	}
 }

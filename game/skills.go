@@ -1,7 +1,6 @@
 package game
 
 import (
-	"image/color"
 	"slices"
 	"strconv"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
@@ -56,11 +56,11 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	now := time.Now()
 	if notify.SkillID == db.SkillPRSanctuary || notify.SkillID == db.SkillMGSrecovery {
 		if actor, ok, _ := scene.ActorForCombatID(ctx, notify.TargetID); ok && notify.Amount > 0 {
-			kind := damageFloaterRecoveryHP
+			kind := battle.FloaterRecoveryHP
 			if notify.SkillID == db.SkillMGSrecovery {
-				kind = damageFloaterRecoverySP
+				kind = battle.FloaterRecoverySP
 			}
-			m.addDamageFloater(notify.TargetID, actor.X, actor.Y, strconv.FormatUint(uint64(notify.Amount), 10), damageFloaterWhite, kind, now)
+			m.battle().AddDamageFloater(notify.TargetID, actor.X, actor.Y, strconv.FormatUint(uint64(notify.Amount), 10), battle.DamageFloaterWhite, kind, now)
 		}
 		return
 	}
@@ -169,51 +169,9 @@ func (m *WorldMode) applySkillCastNotify(ctx client.Context, notify network.Skil
 	duration := time.Duration(notify.DelayTime) * time.Millisecond
 	m.startSkillCastSourceAnimation(ctx, notify, duration, now)
 	if !effects.SkillHidesCastBar(notify.SkillID) {
-		m.startActorCastBar(ctx, notify.SourceID, duration, now)
+		m.battle().StartActorCastBar(ctx, notify.SourceID, duration, now)
 	}
 	m.effects().AddSkillCastEffects(ctx, notify.SkillID, notify.Property, notify.SourceID, notify.TargetID, int(notify.X), int(notify.Y), duration, now, "server")
-}
-
-func (m *WorldMode) startActorCastBar(ctx client.Context, sourceID uint32, duration time.Duration, started time.Time) {
-	if ctx.Config.Headless || sourceID == 0 || duration <= 0 {
-		return
-	}
-	if started.IsZero() {
-		started = time.Now()
-	}
-	bar := actorCastBar{
-		started:  started,
-		duration: duration,
-		color:    color.RGBA{R: 0, G: 255, B: 0, A: 255},
-	}
-	m.setActorCastBar(sourceID, bar)
-	if ctx.Session == nil || !scene.IsLocalActor(ctx, sourceID) {
-		return
-	}
-	m.setActorCastBar(ctx.Session.AccountID, bar)
-	m.setActorCastBar(ctx.Session.CharID, bar)
-}
-
-func (m *WorldMode) setActorCastBar(actorID uint32, bar actorCastBar) {
-	if actorID == 0 {
-		return
-	}
-	if m.actorCastBars == nil {
-		m.actorCastBars = make(map[uint32]actorCastBar)
-	}
-	m.actorCastBars[actorID] = bar
-}
-
-func (m *WorldMode) clearActorCastBar(ctx client.Context, actorID uint32) {
-	if actorID == 0 || m.actorCastBars == nil {
-		return
-	}
-	delete(m.actorCastBars, actorID)
-	if ctx.Session == nil || !scene.IsLocalActor(ctx, actorID) {
-		return
-	}
-	delete(m.actorCastBars, ctx.Session.AccountID)
-	delete(m.actorCastBars, ctx.Session.CharID)
 }
 
 func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify network.SkillNoDamageNotify, now time.Time) {
@@ -506,7 +464,7 @@ func (m *WorldMode) applySkillFailAck(ctx client.Context, ack network.SkillFailA
 	if ack.Result != 0 {
 		return
 	}
-	m.clearSenseRequest(ack.SkillID)
+	m.battle().ClearSenseRequest(ack.SkillID)
 	message := skills.SkillFailMessage(ack)
 	glog.Debugf("skill fail ack skill=%d num=%d item=%d result=%d cause=%d msg=%q", ack.SkillID, ack.Number, ack.ItemID, ack.Result, ack.Cause, message)
 	m.ui.console.AddErrorMessage("%s", message)
@@ -830,11 +788,11 @@ func (m *WorldMode) skills() *skills.System {
 		Error:               m.ui.console.AddErrorMessage,
 		RequestWalk:         m.requestWalk,
 		WalkBlocked:         func() { m.setWalkCooldown(walkRequestCooldown) },
-		RememberSenseTarget: m.rememberSenseTarget,
+		RememberSenseTarget: m.battleSystem.RememberSenseTarget,
 		ClickActor: func(ctx client.Context, projection scene.Projection, skill session.Skill, x, y int, now time.Time) (worldstate.Actor, bool) {
 			return clickedSkillTarget(ctx, projection, skill, x, y, now, m.actorSystem.ActorDeaths)
 		},
-		NumberBillboard: m.damageNumberBillboard,
+		NumberBillboard: m.battleSystem.DamageNumberBillboard,
 		Effects:         m.effects(),
 		Map:             &m.mapScene,
 	})

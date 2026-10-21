@@ -19,6 +19,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
@@ -3331,41 +3332,41 @@ func TestApplyActorActionNotifyRepeatsFireBoltHits(t *testing.T) {
 			}
 		}
 	}
-	if len(mode.damageFloaters) != 8 {
-		t.Fatalf("damage floaters = %d, want 8", len(mode.damageFloaters))
+	if len(mode.battleSystem.DamageFloaters) != 8 {
+		t.Fatalf("damage floaters = %d, want 8", len(mode.battleSystem.DamageFloaters))
 	}
 	wantFloaters := []struct {
 		text string
-		kind damageFloaterKind
+		kind battle.FloaterKind
 	}{
-		{text: "252", kind: damageFloaterNormal},
-		{text: "252", kind: damageFloaterCombo},
-		{text: "252", kind: damageFloaterNormal},
-		{text: "504", kind: damageFloaterCombo},
-		{text: "252", kind: damageFloaterNormal},
-		{text: "756", kind: damageFloaterCombo},
-		{text: "252", kind: damageFloaterNormal},
-		{text: "1008", kind: damageFloaterCombo},
+		{text: "252", kind: battle.FloaterNormal},
+		{text: "252", kind: battle.FloaterCombo},
+		{text: "252", kind: battle.FloaterNormal},
+		{text: "504", kind: battle.FloaterCombo},
+		{text: "252", kind: battle.FloaterNormal},
+		{text: "756", kind: battle.FloaterCombo},
+		{text: "252", kind: battle.FloaterNormal},
+		{text: "1008", kind: battle.FloaterCombo},
 	}
 	for i, want := range wantFloaters {
-		floater := mode.damageFloaters[i]
-		if floater.text != want.text || floater.kind != want.kind {
+		floater := mode.battleSystem.DamageFloaters[i]
+		if floater.Text != want.text || floater.Kind != want.kind {
 			t.Fatalf("floater %d = %+v, want text=%q kind=%d", i, floater, want.text, want.kind)
 		}
 		if i > 1 {
-			if delay := floater.starts.Sub(mode.damageFloaters[i-2].starts); delay != scene.MultiHitDelay {
+			if delay := floater.Starts.Sub(mode.battleSystem.DamageFloaters[i-2].Starts); delay != scene.MultiHitDelay {
 				t.Fatalf("floater %d delay = %s, want %s", i, delay, scene.MultiHitDelay)
 			}
 		}
-		if floater.kind == damageFloaterCombo {
-			if floater.duration != damageFloaterDuration(damageFloaterCombo) {
-				t.Fatalf("combo floater %d duration = %s, want %s", i, floater.duration, damageFloaterDuration(damageFloaterCombo))
+		if floater.Kind == battle.FloaterCombo {
+			if floater.Duration != battle.DamageFloaterDuration(battle.FloaterCombo) {
+				t.Fatalf("combo floater %d duration = %s, want %s", i, floater.Duration, battle.DamageFloaterDuration(battle.FloaterCombo))
 			}
-			wantVisible := damageFloaterComboTransientDuration()
+			wantVisible := battle.DamageFloaterComboTransientDuration()
 			if i == len(wantFloaters)-1 {
-				wantVisible = damageFloaterDuration(damageFloaterCombo)
+				wantVisible = battle.DamageFloaterDuration(battle.FloaterCombo)
 			}
-			if visible := floater.expires.Sub(floater.starts); visible != wantVisible {
+			if visible := floater.Expires.Sub(floater.Starts); visible != wantVisible {
 				t.Fatalf("combo floater %d visible = %s, want %s", i, visible, wantVisible)
 			}
 		}
@@ -3414,9 +3415,9 @@ func TestLightningBoltStartsWithSkillAction(t *testing.T) {
 				}
 			}
 			var damageTimes []time.Time
-			for _, floater := range mode.damageFloaters {
-				if floater.kind == damageFloaterNormal {
-					damageTimes = append(damageTimes, floater.starts)
+			for _, floater := range mode.battleSystem.DamageFloaters {
+				if floater.Kind == battle.FloaterNormal {
+					damageTimes = append(damageTimes, floater.Starts)
 				}
 			}
 			if len(damageTimes) != hitCount {
@@ -3473,8 +3474,8 @@ func TestZeroDamageSkillKeepsExecutionEffectsWithoutHitReaction(t *testing.T) {
 			t.Fatalf("scheduled sound %d = %+v, want only the Soul Strike effect sound", i, sound)
 		}
 	}
-	if len(mode.damageFloaters) != 1 || mode.damageFloaters[0].text != "miss" || mode.damageFloaters[0].kind != damageFloaterMiss {
-		t.Fatalf("damage floaters = %+v, want one miss", mode.damageFloaters)
+	if len(mode.battleSystem.DamageFloaters) != 1 || mode.battleSystem.DamageFloaters[0].Text != "miss" || mode.battleSystem.DamageFloaters[0].Kind != battle.FloaterMiss {
+		t.Fatalf("damage floaters = %+v, want one miss", mode.battleSystem.DamageFloaters)
 	}
 }
 
@@ -3571,11 +3572,11 @@ func TestSkillCastNotifyAddsDurationAura(t *testing.T) {
 	if aura.EffectID != effects.BeginSpell5 || aura.ActorID != 2000000 || aura.TargetID != 1100 || aura.Duration != 2500*time.Millisecond {
 		t.Fatalf("aura = %+v", aura)
 	}
-	bar, ok := mode.actorCastBars[150000]
+	bar, ok := mode.battleSystem.ActorCastBars[150000]
 	if !ok {
 		t.Fatal("local cast bar missing")
 	}
-	if bar.duration != 2500*time.Millisecond || bar.color != (color.RGBA{R: 0, G: 255, B: 0, A: 255}) {
+	if bar.Duration != 2500*time.Millisecond || bar.Color != (color.RGBA{R: 0, G: 255, B: 0, A: 255}) {
 		t.Fatalf("cast bar = %+v", bar)
 	}
 	anim, ok := mode.actorSystem.ActorAnims[150000]
@@ -3611,7 +3612,7 @@ func TestArrowRepelCastUsesNativeFlash(t *testing.T) {
 	if e := mode.effects().Active[2]; e.EffectID != effects.BashBegin || e.Duration != 0 {
 		t.Fatalf("Arrow Repel needs a single flash with its own duration: %+v", e)
 	}
-	if _, ok := mode.actorCastBars[150000]; !ok {
+	if _, ok := mode.battleSystem.ActorCastBars[150000]; !ok {
 		t.Fatal("Arrow Repel cast bar should remain visible")
 	}
 }
@@ -4886,10 +4887,10 @@ func TestPriestGroundSpellsUseUnitLifetime(t *testing.T) {
 			t.Fatal("a second cast at the same cell must play its own activation")
 		}
 	}
-	for skill, kind := range map[uint16]damageFloaterKind{db.SkillPRSanctuary: damageFloaterRecoveryHP, db.SkillMGSrecovery: damageFloaterRecoverySP} {
+	for skill, kind := range map[uint16]battle.FloaterKind{db.SkillPRSanctuary: battle.FloaterRecoveryHP, db.SkillMGSrecovery: battle.FloaterRecoverySP} {
 		m := &WorldMode{}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, Result: 1, Amount: 777})
-		if len(m.effects().Active)+len(m.scheduledSounds)+len(m.actorSystem.ActorAnims) != 0 || len(m.damageFloaters) != 1 || m.damageFloaters[0].text != "777" || m.damageFloaters[0].kind != kind {
+		if len(m.effects().Active)+len(m.scheduledSounds)+len(m.actorSystem.ActorAnims) != 0 || len(m.battleSystem.DamageFloaters) != 1 || m.battleSystem.DamageFloaters[0].Text != "777" || m.battleSystem.DamageFloaters[0].Kind != kind {
 			t.Fatalf("skill %d: recovery should show the amount without a spell animation or sound", skill)
 		}
 	}
