@@ -37,7 +37,7 @@ const (
 	effectArrowShot      = 10060
 	effectArrowShower    = 10061
 	effectMagicPower     = SkillEffectMagicPower
-	effectGravitation    = SkillEffectGravitationGround
+	effectGravitation    = 522
 	effectMammonite      = 10
 	effectCartRevolution = 170
 	effectSight          = 22
@@ -226,6 +226,7 @@ const (
 	effectItemFast2      = 219
 	effectItemFast3      = 220
 	effectCrusaderDef    = 222
+	effectGanbantein     = 223
 	effectVolcano        = 225
 	effectGrandCross     = 226
 	effectIntimidate     = 227
@@ -404,6 +405,7 @@ const (
 	effectLevel99AuraBottom = 398
 	effectBash3D3           = 399
 	effectBash3D4           = 400
+	effectNapalmVulcan      = 401
 	effectPortal5           = 402
 	effectMagicCrasher2     = 403
 	effectBottomSpider      = 404
@@ -1369,34 +1371,6 @@ func evilLandEffectSpec() EffectSpec {
 	}
 }
 
-func gravitationEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration:    1500 * time.Millisecond,
-		CameraShake: 200 * time.Millisecond,
-		Components: []EffectComponent{
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "FlatColorTile",
-				Color:          color.RGBA{R: 255, G: 255, B: 255, A: 51},
-				SizeStart:      1,
-				AttachedEntity: true,
-			},
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "GroundTexture",
-				TextureFile:    "effect/lens_w.bmp",
-				Duration:       1500 * time.Millisecond,
-				SizeStart:      0.5,
-				SizeEnd:        0.5,
-				AlphaMax:       0.7,
-				PosZ:           0.4,
-				BlendAdditive:  true,
-				AttachedEntity: true,
-			},
-		},
-	}
-}
-
 func bottomBlueEffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 20 * time.Second,
@@ -2130,29 +2104,6 @@ func energyDrainProjectileEffectSpec(tint color.RGBA, sizeStart, sizeEnd float64
 
 func transBlueBodyEffectSpec() EffectSpec {
 	return funcEffectSpec("TransBlueBody", 200*EffectFrameDuration, true)
-}
-
-func magicCrasherEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration:         100 * EffectFrameDuration,
-		CameraShake:      200 * time.Millisecond,
-		CameraShakeDelay: 30 * EffectFrameDuration,
-		SFX:              []string{"effect\\매직 크래쉬.wav"},
-		SFXDelays:        []time.Duration{25 * EffectFrameDuration},
-		Components: []EffectComponent{
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "MagicCrasherBodyColor",
-				AttachedEntity: true,
-			},
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "CameraQuake",
-				Delay:          30 * EffectFrameDuration,
-				AttachedEntity: true,
-			},
-		},
-	}
 }
 
 func darkSoulStrikeEffectSpec() EffectSpec {
@@ -3917,6 +3868,7 @@ var EffectSpecs = map[int]EffectSpec{
 
 	effectSpellBreaker:           strEffectSpecAttached("spell", "effect\\sage_spell breake.wav", false),
 	effectDispell:                strEffectSpecAttached("디스펠", "", false),
+	effectGanbantein:             sageGroundCastEffectSpec("ring_white", 300),
 	effectVolcano:                sageGroundCastEffectSpec("ring_red", 300),
 	effectDeluge:                 sageGroundCastEffectSpec("ring_blue", 999),
 	effectViolentGale:            sageGroundCastEffectSpec("magic_green", 999),
@@ -4051,11 +4003,11 @@ var EffectSpecs = map[int]EffectSpec{
 	effectAssumptio:         funcEffectSpec("EffectBodyColor", 2*time.Second, true),
 	effectHitLine2:          soundOnlyEffectSpec("effect\\맹호경파산.wav"),
 	effectBash3D2:           bash3DEffectSpec("Bash3D2", "effect\\mon_폭기.wav", 400*time.Millisecond, 50*time.Millisecond, 8),
-	effectEnergyDrain2:      energyDrainProjectileEffectSpec(color.RGBA{R: 204, G: 204, B: 255, A: 255}, 160, 190),
+	effectEnergyDrain2:      soulDrainEffectSpec(),
 	effectTransBlueBody:     transBlueBodyEffectSpec(),
 	effectMagicCrasher:      magicCrasherEffectSpec(),
 	effectMagicPower:        soundOnlyEffectSpec("effect\\마법력 증폭.wav"),
-	effectLightBlade:        sprEffectSpec("한복천사", "", true, true),
+	effectLightBlade:        funcEffectSpec("LightBlade", 99999999*EffectFrameDuration, true),
 	effectEnergyDrain3:      energyDrainProjectileEffectSpec(color.RGBA{R: 178, G: 255, B: 178, A: 255}, 140, 170),
 	effectLineLink2:         soundOnlyEffectSpec("effect\\소울 체인지.wav"),
 	effectTrueSight:         trueSightEffectSpec(),
@@ -4076,6 +4028,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectLevel99AuraBottom: level99GroundEffectSpec(),
 	effectBash3D3:           lordKnightBurstEffectSpec("effect\\헤드 크러쉬.wav", 0),
 	effectBash3D4:           lordKnightBurstEffectSpec("effect\\비트 조인트.wav", 22*EffectFrameDuration),
+	effectNapalmVulcan:      napalmVulcanEffectSpec(),
 	effectPortal5:           portal5EffectSpec(),
 	effectMagicCrasher2:     magicCrasher2EffectSpec(),
 	effectBottomSpider:      spiderWebEffectSpec(),

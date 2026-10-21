@@ -120,7 +120,7 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Whitesmith — all five active skills audited; Cart Termination, buff poses/audio, and shared Overthrust afterimages reviewed twice and validated with client assets.
 - [x] Alchemist — all 20 skills audited; bottle flights, Chemical Protection, homunculus casts, Demonstration, Berserk Pitcher, and Twilight Alchemy reviewed twice and validated with client assets.
 - [x] Creator — all four active skills audited; potion bursts, Acid Demonstration, protection, and Cultivation reviewed twice and validated with client assets.
-- [ ] High Wizard
+- [x] High Wizard — all six skills audited; Soul Drain, Amplification, Magic Crasher, Napalm Vulcan, Ganbantein, and Gravitation reviewed twice and validated with client assets.
 - [ ] Professor
 - [ ] Assassin Cross
 - [ ] Stalker
@@ -255,6 +255,24 @@ Merchant/Alchemist audits. Both reviews, the full suite with client assets, and
 a normal build passed. No live playtest was performed; visual comparison remains
 useful, particularly for the new procedural bursts and rings.
 
+High Wizard reference checks: dhxj and 2008 HighPriest agree on Soul Drain's
+three curved particle trails, blue body flashes, and forced ACT 88 pose, which
+preserves an existing walk. Mystical Amplification uses the server's buff state
+to retain its alternating additive weapon pass; activation refreshes the effect
+and plays the original Korean sound. The weapon alternation uses 60 Hz effect
+ticks rather than render frames. Magic Crasher starts at release, shakes at tick
+30 for 650 ms, flashes only the body additively, and retains per-hit flashes.
+Napalm Vulcan plays its five delayed sounds; both originals call Hit2 after its
+particle creation condition has passed, so no extra bursts were invented.
+Ganbantein uses the native white ground rings and release sound. Gravitation's
+ground unit owns its four stone/ice spikes and lifetime; ground notification
+only animates/sounds the caster. Casting poses, aura colors, splash suppression,
+and miss handling were checked against the original packet handlers and
+rAthena. Professor HP Conversion's shared routing was corrected to effect 383
+alone; its renderer remains for the Professor audit. Both reviews, the full
+suite with client assets, and a normal build passed. No live playtest was
+performed; visual comparison remains useful for the procedural effects.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -263,8 +281,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `707`.
-- Catalog size relative to all numeric constants: about `61.6%`.
+- Goro effect catalog entries: `709`.
+- Catalog size relative to all numeric constants: about `61.8%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.

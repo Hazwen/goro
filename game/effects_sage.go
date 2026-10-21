@@ -13,7 +13,11 @@ import (
 // VOLCANO / PrimGI2: four expanding rings at the selected ground cell.
 func (m *WorldMode) drawSageGroundCastEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
 	n := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
-	alpha := 20*min(n, 10) - 2*max(0, n-10)
+	heightScale, initialRise, fade := 5.0, 80, 2
+	if effect.effectID == effectGanbantein {
+		heightScale, initialRise, fade = 3, 70, 8
+	}
+	alpha := 20*min(n, 10) - fade*max(0, n-10)
 	if n <= 0 || alpha <= 0 {
 		return
 	}
@@ -21,11 +25,11 @@ func (m *WorldMode) drawSageGroundCastEffect(screen *render.Frame, ctx client.Co
 	if texture == nil {
 		return
 	}
-	rise := degreesToRadians(float64(max(40, 80-n)))
+	rise := degreesToRadians(float64(max(40, initialRise-n)))
 	origin := modelPoint3{x: x, y: z, z: y}
 	vertices, indices := []render.Vertex3D{}, []uint16{}
 	for i := 0; i < 4; i++ {
-		height := 5 * math.Sin(rise) * (1 + .15*math.Sin(degreesToRadians(float64(n+i*90))))
+		height := heightScale * math.Sin(rise) * (1 + .15*math.Sin(degreesToRadians(float64(n+i*90))))
 		appendEffectBand(&vertices, &indices, texture, origin, (float64(i+1)+.3*float64(n))/5,
 			degreesToRadians(float64(i*90+n*5)), 2*math.Pi, 1/math.Tan(rise), 20,
 			color.RGBA{255, 255, 255, uint8(alpha)},

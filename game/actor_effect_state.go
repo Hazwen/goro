@@ -78,6 +78,7 @@ func (m *WorldMode) removeActorEffectStateEffects(actorID uint32) {
 	m.removeWorldEffect(effectPinkBody, actorID)
 	m.removeMarionetteLinks(actorID)
 	m.removeWorldEffect(effectLKConcentration, actorID)
+	m.removeWorldEffect(effectLightBlade, actorID)
 	m.removeWorldEffect(effectAsuraBody, actorID)
 	m.removeWorldEffect(effectAsuraBodyMonster, actorID)
 	m.removeWorldEffect(effectBabyBody, actorID)
@@ -180,6 +181,7 @@ func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
 	m.setActorStateEffect(ctx, actorID, effectSteelBody, visible && actor.Opt3State&db.Opt3Steelbody != 0)
 	m.setActorStateEffect(ctx, actorID, effectAssumptio, visible && actor.Opt3State&db.Opt3Assumptio != 0)
 	m.setActorStateEffect(ctx, actorID, effectRedBody, visible && actor.Opt3State&db.Opt3Berserk != 0)
+	m.setActorStateEffect(ctx, actorID, effectLightBlade, visible && actor.Opt3State&db.Opt3Lightblade != 0)
 	m.setActorStateEffect(ctx, actorID, effectMoonlit, visible && actor.Opt3State&db.Opt3Moonlit != 0)
 	m.setActorStateEffect(ctx, actorID, effectPinkBody, visible && actor.Opt3State&db.Opt3Marionette != 0)
 	if !visible || actor.HasState && actor.Opt3State&db.Opt3Marionette == 0 {

@@ -117,9 +117,6 @@ func TestOriginalBodyColourWindowsAndRestoration(t *testing.T) {
 				t.Fatal("body effect changed transparency")
 			}
 			wantBlend := render.BlendSourceOver
-			if id == effectMagicCrasher && frame >= 30 && frame <= 60 {
-				wantBlend = render.BlendLighter
-			}
 			if got := mode.actorRenderBlend(42, now); got != wantBlend {
 				t.Fatalf("effect %d frame %d: blend %v, want %v", id, frame, got, wantBlend)
 			}

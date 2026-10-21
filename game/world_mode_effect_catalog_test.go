@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 707 {
-		t.Fatalf("implemented effects = %d, want 707", coverage.Implemented)
+	if coverage.Implemented != 709 {
+		t.Fatalf("implemented effects = %d, want 709", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 116.47 || coverage.ActivePercent > 116.48 {
-		t.Fatalf("active coverage = %.3f, want about 116.48", coverage.ActivePercent)
+	if coverage.ActivePercent < 116.80 || coverage.ActivePercent > 116.81 {
+		t.Fatalf("active coverage = %.3f, want about 116.81", coverage.ActivePercent)
 	}
 }
 
@@ -1696,7 +1696,6 @@ func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 	}{
 		{"EF_VALLENTINE", effectFoodChocolate, "vallentine", "effect\\vallentine.wav", false},
 		{"EF_DRAGONSMOKE", effectDragonSmoke, "poisonhit", "", false},
-		{"EF_LIGHTBLADE", effectLightBlade, "한복천사", "", true},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 1 {
@@ -1817,7 +1816,6 @@ func TestRobrowserDrainAndMagicEffectsThreeFiftyToFourHundredMatchTableRows(t *t
 		sizeStart float64
 		sizeEnd   float64
 	}{
-		{"EF_ENERGYDRAIN2", effectEnergyDrain2, color.RGBA{R: 204, G: 204, B: 255, A: 255}, 160, 190},
 		{"EF_ENERGYDRAIN3", effectEnergyDrain3, color.RGBA{R: 178, G: 255, B: 178, A: 255}, 140, 170},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
@@ -1839,13 +1837,13 @@ func TestRobrowserDrainAndMagicEffectsThreeFiftyToFourHundredMatchTableRows(t *t
 	}
 
 	magic, ok := worldEffectSpecForID(effectMagicCrasher)
-	if !ok || len(magic.components) != 2 || magic.duration != 100*db.EffectFrameDuration {
+	if !ok || len(magic.components) != 1 || magic.duration != 100*db.EffectFrameDuration {
 		t.Fatalf("EF_MAGICCRASHER spec = %+v ok=%t", magic, ok)
 	}
-	if len(magic.sfx) != 1 || magic.sfx[0] != "effect\\매직 크래쉬.wav" || magic.cameraShakeDelay != 30*db.EffectFrameDuration || magic.cameraShake != 200*time.Millisecond {
+	if len(magic.sfx) != 1 || magic.sfx[0] != "effect\\매직 크래쉬.wav" || magic.cameraShakeDelay != 30*db.EffectFrameDuration || magic.cameraShake != 650*time.Millisecond {
 		t.Fatalf("EF_MAGICCRASHER timing/sfx = sfx %#v delay %s shake %s", magic.sfx, magic.cameraShakeDelay, magic.cameraShake)
 	}
-	if body, quake := magic.components[0], magic.components[1]; body.kind != effectComponentFUNC || body.funcName != "MagicCrasherBodyColor" || !body.attachedEntity || quake.kind != effectComponentFUNC || quake.funcName != "CameraQuake" || quake.delay != 30*db.EffectFrameDuration || !quake.attachedEntity {
+	if body := magic.components[0]; body.kind != effectComponentFUNC || body.funcName != "MagicCrasherBodyColor" || !body.attachedEntity {
 		t.Fatalf("EF_MAGICCRASHER components = %+v", magic.components)
 	}
 
@@ -2614,25 +2612,13 @@ func TestRobrowserEffectsSixFiftyToSevenHundredMatchTableRows(t *testing.T) {
 	}
 }
 
-func TestHighWizardStringKeyEffectsMatchRobrowser(t *testing.T) {
+func TestMagicPowerLegacySoundAlias(t *testing.T) {
 	magicPower, ok := worldEffectSpecForID(effectMagicPower)
 	if !ok || magicPower.duration != 500*time.Millisecond || len(magicPower.components) != 0 {
 		t.Fatalf("ef_magicpower spec = %+v ok=%t, want sound-only", magicPower, ok)
 	}
 	if len(magicPower.sfx) != 1 || magicPower.sfx[0] != "effect\\마법력 증폭.wav" {
 		t.Fatalf("ef_magicpower sfx = %#v", magicPower.sfx)
-	}
-
-	gravitation, ok := worldEffectSpecForID(effectGravitation)
-	if !ok || gravitation.duration != 1500*time.Millisecond || gravitation.cameraShake != 200*time.Millisecond || len(gravitation.components) != 2 {
-		t.Fatalf("522_ground spec = %+v ok=%t", gravitation, ok)
-	}
-	tile, lens := gravitation.components[0], gravitation.components[1]
-	if tile.kind != effectComponentFUNC || tile.funcName != "FlatColorTile" || tile.funcAdapter != effectFuncFlatColorTile || tile.color != (color.RGBA{R: 255, G: 255, B: 255, A: 51}) || tile.sizeStart != 1 || !tile.attachedEntity {
-		t.Fatalf("522_ground tile = %+v", tile)
-	}
-	if lens.kind != effectComponentFUNC || lens.funcName != "GroundTexture" || lens.funcAdapter != effectFuncGroundTexture || lens.textureFile != "effect/lens_w.bmp" || lens.sizeStart != 0.5 || lens.sizeEnd != 0.5 || lens.alphaMax != 0.7 || lens.posZ != 0.4 || !lens.blendAdditive || !lens.attachedEntity {
-		t.Fatalf("522_ground lens = %+v", lens)
 	}
 }
 

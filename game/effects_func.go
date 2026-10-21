@@ -99,6 +99,8 @@ const (
 	effectFuncSightTrasher
 	effectFuncFirePillar
 	effectFuncSageGroundCast
+	effectFuncSoulDrain
+	effectFuncGravitation
 )
 
 const (
@@ -108,6 +110,10 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncSoulDrain:
+		m.drawSoulDrain(screen, ctx, projection, component, effect, now)
+	case effectFuncGravitation:
+		m.drawGravitation(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncWizardSpikes:
 		m.drawWizardSpikes(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncWaterBall:

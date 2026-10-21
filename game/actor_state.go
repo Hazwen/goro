@@ -267,7 +267,7 @@ func (m *WorldMode) actorRenderBlend(actorID uint32, now time.Time) render.Blend
 				continue
 			}
 			elapsed := now.Sub(effect.starts)
-			if effect.effectID == effectMagicCrasher && magicCrasherFlashActive(elapsed) || sniperBodyFlashActive(effect.effectID, int(elapsed/db.EffectFrameDuration)) {
+			if sniperBodyFlashActive(effect.effectID, int(elapsed/db.EffectFrameDuration)) {
 				return render.BlendLighter // BL_LIGHT_BODY selects RF_EFFECT in the original client.
 			}
 		}

@@ -41,6 +41,7 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		blend = render.BlendLighter
 	}
 	doubleBody := false
+	weaponSpark := false
 	blue, eskeAge, fourWayAge := 0.0, -1, -1
 	soulAlpha := 0.0
 	// Monsters use the Energy Coat option bit for Eske. The initial burst
@@ -50,13 +51,27 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 	}
 	var shake [4]float64
 	zoomScale := 160 / normalizeSceneCameraZoom(projection.cameraZoom)
+	local := isLocalActor(ctx, entry.actor.ID) || ctx.World != nil && entry.actor.ID != 0 && entry.actor.ID == ctx.World.Player.ID
 	for _, effect := range m.worldEffects {
-		owner := effect.actorID == entry.actor.ID || (isLocalActor(ctx, entry.actor.ID) && isLocalActor(ctx, effect.actorID))
+		owner := effect.actorID == entry.actor.ID || local && isLocalActor(ctx, effect.actorID)
 		if !owner || now.Before(effect.starts) || effect.expired(now) {
 			continue
 		}
 		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 		switch effect.effectID {
+		case effectMagicCrasher:
+			if billboard.layerGroup == 0 && entry.stealth == stealthVisible && magicCrasherFlashActive(now.Sub(effect.starts)) {
+				blend = render.BlendLighter
+			}
+		case effectLightBlade:
+			weaponSpark = billboard.layerGroup == 1 && frame%2 == 0
+		case effectEnergyDrain2:
+			if frame >= 55 && frame <= 65 {
+				tint.R, tint.G, tint.B = 100, 100, 255
+				if billboard.layerGroup == 0 {
+					blend = render.BlendLighter
+				}
+			}
 		case effectItemFast3:
 			if frame <= 150 {
 				tint.R, tint.G, tint.B = 250, 120, 120
@@ -145,7 +160,7 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		}
 	}
 	reflectBody := entry.actor.Opt3State&db.Opt3Kaite != 0
-	if blue == 0 && soulAlpha == 0 && eskeAge < 0 && fourWayAge < 0 && shake == [4]float64{} && !reflectBody && !doubleBody {
+	if blue == 0 && soulAlpha == 0 && eskeAge < 0 && fourWayAge < 0 && shake == [4]float64{} && !reflectBody && !doubleBody && !weaponSpark {
 		m.drawActorSpriteBillboardTintAlpha3D(screen, projection, billboard, entry.worldX, entry.worldY, entry.worldZ, scale, visibility, shadow, tint, blend)
 		return
 	}
@@ -167,6 +182,12 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		modelPoint3{x: x, y: z, z: y}, mul3(right, units*width/w), mul3(up, -units*height/h),
 		float32(w), float32(h), float32(-left*w/width), float32(-top*h/height), multiplyTint(tint, shadow, shadow, shadow, visibility))
 	cmd.DepthUpAxis = [3]float32{0, float32(-units * height / h), 0}
+	if weaponSpark {
+		spark := cmd
+		spark.Options.Blend = render.BlendLighter
+		spark.Options.DepthWrite = false
+		screen.DrawWorldBillboard(spark)
+	}
 	if doubleBody {
 		phase := float64(now.UnixNano() / int64(db.EffectFrameDuration) % 181)
 		drawBodyExpansion(screen, cmd, billboard, right, up, units, scale,

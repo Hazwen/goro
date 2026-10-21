@@ -1496,6 +1496,7 @@ var StatusOpt3State = map[uint16]uint32{
 	StatusExplosionspirits:  Opt3Explosionspirits,
 	StatusSteelbody:         Opt3Steelbody,
 	StatusAurablade:         Opt3Aurablade,
+	StatusMagicpower:        Opt3Lightblade,
 	StatusBladestop:         Opt3Bladestop,
 	StatusOverthrust:        Opt3Overthrust,
 	StatusOverthrustmax:     Opt3Overthrust,

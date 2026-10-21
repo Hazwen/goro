@@ -198,6 +198,7 @@ type actorAnimation struct {
 	speed          time.Duration
 	hasSpeed       bool
 	autoCounter    bool
+	keepMovement   bool
 	next           *actorAnimation
 }
 
@@ -655,6 +656,8 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 	case db.SkillMOTripleattack, db.SkillMOInvestigate, db.SkillMOFingeroffensive, db.SkillMOExtremityfist, db.SkillMOChaincombo, db.SkillMOBalkyoung:
 		return true
 	case db.SkillLKSpiralpierce, db.SkillLKHeadcrush, db.SkillLKJointbeat:
+		return true
+	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation:
 		return true
 	case db.SkillCRShieldcharge, db.SkillCRShieldboomerang, db.SkillCRHolycross, db.SkillCRGrandcross, db.SkillPaPressure, db.SkillPaSacrifice, db.SkillPaShieldchain,
 		db.SkillKNPierce, db.SkillKNBrandishspear, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNBowlingbash, db.SkillKNChargeatk:
@@ -1214,12 +1217,7 @@ func (m *WorldMode) setActorAction(ctx client.Context, id uint32, anim actorAnim
 }
 
 func actorActionResetsWalk(anim actorAnimation) bool {
-	switch anim.actionFamily {
-	case spriteActionWalk:
-		return false
-	default:
-		return true
-	}
+	return !anim.keepMovement && anim.actionFamily != spriteActionWalk
 }
 
 func (m *WorldMode) actorActionShouldResumeWalk(ctx client.Context, id uint32, anim actorAnimation) bool {

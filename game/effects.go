@@ -43,7 +43,7 @@ const (
 	effectArrowShot      = 10060
 	effectArrowShower    = 10061
 	effectMagicPower     = db.SkillEffectMagicPower
-	effectGravitation    = db.SkillEffectGravitationGround
+	effectGravitation    = 522
 	effectMammonite      = 10
 	effectCartRevolution = 170
 	effectSight          = 22
@@ -232,6 +232,7 @@ const (
 	effectItemFast2      = 219
 	effectItemFast3      = 220
 	effectCrusaderDef    = 222
+	effectGanbantein     = 223
 	effectVolcano        = 225
 	effectGrandCross     = 226
 	effectIntimidate     = 227
@@ -406,6 +407,7 @@ const (
 	effectLevel99AuraBottom = 398
 	effectBash3D3           = 399
 	effectBash3D4           = 400
+	effectNapalmVulcan      = 401
 	effectPortal5           = 402
 	effectMagicCrasher2     = 403
 	effectBottomSpider      = 404
@@ -1020,6 +1022,14 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	if notify.Result == 0 {
 		return
 	}
+	if notify.SkillID == db.SkillHWSouldrain {
+		if _, ok, _ := actorForCombatID(ctx, notify.SourceID); !ok {
+			return
+		}
+		if _, ok, _ := actorForCombatID(ctx, notify.TargetID); !ok {
+			return
+		}
+	}
 	now := time.Now()
 	if notify.SkillID == db.SkillPRSanctuary || notify.SkillID == db.SkillMGSrecovery {
 		if actor, ok, _ := actorForCombatID(ctx, notify.TargetID); ok && notify.Amount > 0 {
@@ -1043,6 +1053,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	m.applyFalconSkillNoDamageNotify(ctx, notify, now)
 	m.applyClownSkill(ctx, notify, now)
 	m.applyAlchemistSkill(ctx, notify, now)
+	m.applyHighWizardSkill(ctx, notify, now)
 	m.applyWinkCharm(ctx, notify)
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
@@ -1187,6 +1198,15 @@ func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify
 		})
 		return
 	}
+	if notify.SkillID == db.SkillHWSouldrain {
+		m.setCombatActorAction(ctx, notify.SourceID, actorAnimation{
+			actionFamily: spriteActionPCAttack3, started: now, duration: time.Second,
+			play: true, hasPlay: true, length: 4, hasLength: true,
+			speed: 10 * db.EffectFrameDuration, hasSpeed: true,
+			keepMovement: true,
+		})
+		return
+	}
 	if notify.SkillID == db.SkillLKAurablade {
 		m.setCombatActorAction(ctx, notify.SourceID, actorAnimation{
 			actionFamily: spriteActionPCReadyFight, started: now, duration: time.Second,
@@ -1297,7 +1317,7 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 	switch notify.SkillID {
 	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillMGFirewall, db.SkillPRSanctuary, db.SkillHPBasilica,
 		db.SkillWZFirepillar, db.SkillWZIcewall, db.SkillWZQuagmire,
-		db.SkillAMDemonstration, db.SkillAMCannibalize, db.SkillAMSpheremine:
+		db.SkillAMDemonstration, db.SkillAMCannibalize, db.SkillAMSpheremine, db.SkillHWGravitation:
 		now := time.Now()
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
@@ -1305,6 +1325,9 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 		}
 		if notify.SkillID == db.SkillAMSpheremine {
 			m.addSkillBeginEffectsAt(ctx, notify.SkillID, notify.SourceID, 0, now)
+		}
+		if notify.SkillID == db.SkillHWGravitation {
+			m.scheduleSound(now, "effect\\wizard_earthspike.wav")
 		}
 		if notify.SkillID == db.SkillHPBasilica {
 			m.scheduleSoundAtActor(now, notify.SourceID, "effect\\바실리카.wav")
@@ -1333,7 +1356,7 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 	now := time.Now()
 	switch notify.SkillID {
 	case db.SkillPRMagnus, db.SkillPRBenedictio, db.SkillMGThunderstorm,
-		db.SkillBSHammerfall,
+		db.SkillBSHammerfall, db.SkillHWGanbantein,
 		db.SkillWZStormgust, db.SkillWZVermilion, db.SkillWZMeteor, db.SkillWZHeavendrive,
 		db.SkillSAVolcano, db.SkillSADeluge, db.SkillSAViolentgale, db.SkillSALandprotector:
 		if notify.SkillID != db.SkillWZMeteor {
@@ -1352,6 +1375,9 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 				}
 			}
 			m.startSkillActionAnimation(ctx, notify.SourceID, actor, spec, now, defaultAttackAnimationDuration)
+		}
+		if notify.SkillID == db.SkillHWGanbantein {
+			m.scheduleSound(now, "effect\\EF_FireWall.wav")
 		}
 		for _, effectID := range effectIDs {
 			m.addWorldEffectAtCellLifetime(ctx, effectID, 0, int(notify.X), int(notify.Y), now, 0, false)
@@ -1693,6 +1719,9 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		expires:  starts.Add(duration),
 		duration: durationOverride,
 	}
+	if effectID == effectEnergyDrain2 {
+		initSoulDrain(ctx, &effect)
+	}
 	if effectID == effectBackStab || effectID == effectTeiHit2 {
 		initImpactParticles(ctx, &effect)
 	}
@@ -1966,7 +1995,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		(skillID >= db.SkillBSIron && skillID <= db.SkillBSMaximize && skillID != db.SkillBSRepairweapon) || skillID == db.SkillBSAdrenaline2 ||
 		skillID == db.SkillWSMeltdown || skillID == db.SkillWSCartboost || skillID == db.SkillWSOverthrustmax ||
 		skillID == db.SkillWSCarttermination || skillID == db.SkillWSWeaponrefine ||
-		skillID == db.SkillAMDemonstration || skillID == db.SkillAMSpheremine || skillID == db.SkillAMPharmacy || skillID == db.SkillCRCultivation {
+		skillID == db.SkillAMDemonstration || skillID == db.SkillAMSpheremine || skillID == db.SkillAMPharmacy || skillID == db.SkillCRCultivation || skillID == db.SkillHWMagicpower {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -1989,7 +2018,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 	if skillID == db.SkillKNChargeatk || skillID == db.SkillPaPressure || skillID == db.SkillPaShieldchain ||
 		skillID == db.SkillHPAssumptio || skillID == db.SkillHPBasilica || skillID == db.SkillPRRedemptio ||
 		skillID == db.SkillSNSharpshooting || skillID == db.SkillSNWindwalk || skillID == db.SkillBaPangvoice ||
-		skillID == db.SkillCGArrowvulcan || skillID == db.SkillCGTarotcard {
+		skillID == db.SkillCGArrowvulcan || skillID == db.SkillCGTarotcard || skillID == db.SkillHWGanbantein {
 		effectID = effectBeginSpell6
 	}
 	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
@@ -2000,6 +2029,8 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell
 	}
 	switch skillID {
+	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation:
+		effectID = effectBeginSpell
 	case db.SkillAMCallhomun, db.SkillAMRest, db.SkillAMResurrecthomun:
 		effectID = effectCoupleCasting
 	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3:
@@ -2525,7 +2556,7 @@ var skillUnitEffectSpecs = map[uint16]skillUnitEffectSpec{
 	181: {},                                               // UNT_MOONLIT: the caster owns the sphere.
 	182: {effectIDs: []int{effectFogWallGround}},          // UNT_FOGWALL -> 405_ground
 	183: {effectIDs: []int{effectBottomSpider}},           // UNT_SPIDERWEB -> EF_BOTTOM_SPIDER
-	184: {effectIDs: []int{effectGravitation}},            // UNT_GRAVITATION -> 522_ground
+	184: {effectIDs: []int{effectGravitation}},            // UNT_GRAVITATION -> EF_GRAVITATION
 	185: {effectIDs: []int{effectBottomHermode}},          // UNT_HERMODE -> EF_BOTTOM_HERMODE
 	188: {effectIDs: []int{effectTatami}},                 // UNT_TATAMIGAESHI -> EF_TATAMI
 	189: {effectIDs: []int{effectKaen}},                   // UNT_KAEN -> EF_KAEN
@@ -2799,6 +2830,10 @@ func convertDBEffectComponentKind(kind db.EffectComponentKind) effectComponentKi
 
 func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
+	case "SoulDrain":
+		return effectFuncSoulDrain
+	case "Gravitation":
+		return effectFuncGravitation
 	case "ChemicalProtection":
 		return effectFuncChemicalProtection
 	case "BerserkPotion":
@@ -2893,7 +2928,7 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncFlatColorTile
 	case "GroundTexture", "SpiderWeb":
 		return effectFuncGroundTexture
-	case "EffectBodyColor", "MagicCrasherBodyColor", "TransBlueBody":
+	case "EffectBodyColor", "MagicCrasherBodyColor", "TransBlueBody", "LightBlade":
 		return effectFuncBodyColor
 	case "MapPillar":
 		return effectFuncMapPillar
