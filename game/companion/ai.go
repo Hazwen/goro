@@ -129,7 +129,10 @@ func (m *System) updateCompanionAIKind(ctx client.Context, kind companionAIKind,
 		loaded, err := newCompanionAI(m.snapshot(ctx, actorDeaths), m.aiSystem(), kind, now)
 		if err != nil {
 			m.setCompanionAIForKind(kind, &companionAI{kind: kind, custom: useCustom, disabled: true})
-			glog.Debugf("%s AI unavailable: %v", companionAIKindName(kind), err)
+			glog.Warnf("%s AI unavailable: %v", companionAIKindName(kind), err)
+			if m.bindings.Error != nil {
+				m.bindings.Error("Failed to load %s AI. Check the AI files in your RO folder; see the log for details.", companionAIKindName(kind))
+			}
 			return
 		}
 		ai = loaded

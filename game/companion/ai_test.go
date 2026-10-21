@@ -1,6 +1,7 @@
 package companion
 
 import (
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -83,6 +84,40 @@ func TestCompanionAICustomModeDoesNotFallbackToDefault(t *testing.T) {
 	if ai, err := newCompanionAI(newCompanionAISnapshot(ctx, nil), &companionAISystem{}, companionAIHomunculus, time.Now()); err == nil {
 		ai.close()
 		t.Fatalf("custom AI loaded source=%q, want missing custom AI error", ai.source)
+	}
+}
+
+func TestCompanionAIMissingCustomReportsFailureOnce(t *testing.T) {
+	for _, kind := range []companionAIKind{companionAIHomunculus, companionAIMercenary} {
+		t.Run(companionAIKindName(kind), func(t *testing.T) {
+			sess := session.New()
+			sess.HomunculusCustomAI = true
+			sess.MercenaryCustomAI = true
+			sess.Homunculus.ID = 300
+			sess.Mercenary.ID = 300
+			objectType := uint8(scene.ActorObjectTypeHomunculus)
+			if kind == companionAIMercenary {
+				objectType = scene.ActorObjectTypeMercenary
+			}
+			world := worldstate.New()
+			world.Actors[300] = worldstate.Actor{ID: 300, HasObjectType: true, ObjectType: objectType}
+			ctx := client.Context{Session: sess, World: world, Resources: &res.Manager{Root: t.TempDir()}}
+			var messages []string
+			mode := &System{bindings: Bindings{Error: func(format string, args ...any) {
+				messages = append(messages, fmt.Sprintf(format, args...))
+			}}}
+			defer mode.Close()
+			now := time.Now()
+			mode.Update(ctx, nil, now)
+			mode.Update(ctx, nil, now.Add(time.Second))
+			if len(messages) != 1 || !strings.Contains(messages[0], "Failed to load "+companionAIKindName(kind)+" AI") {
+				t.Fatalf("messages = %v, want one AI load failure", messages)
+			}
+			ai := mode.companionAIForKind(kind)
+			if ai == nil || !ai.disabled || !ai.custom {
+				t.Fatal("missing custom AI should remain disabled without falling back")
+			}
+		})
 	}
 }
 
