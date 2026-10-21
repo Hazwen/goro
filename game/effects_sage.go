@@ -70,9 +70,13 @@ func (m *WorldMode) drawPropertyGroundEffect(screen *render.Frame, ctx client.Co
 	rise = degreesToRadians(rise)
 	origin := modelPoint3{x: x, y: z, z: y}
 	vertices, indices := []render.Vertex3D{}, []uint16{}
+	tint := color.RGBA{255, 255, 255, uint8(alpha)}
+	if effect.effectID == effectBottomSuiton {
+		tint.R, tint.G = 120, 120
+	}
 	appendEffectBand(&vertices, &indices, texture, origin, radius/5,
 		degreesToRadians(float64(hitEffectRandom(effect, 0, 360))), 2*math.Pi, 1/math.Tan(rise), 10,
-		color.RGBA{255, 255, 255, uint8(alpha)}, func(j int) float64 {
+		tint, func(j int) float64 {
 			return 3 * math.Sin(rise) * (1 + .3*math.Sin(degreesToRadians(float64(j*9)))*math.Sin(degreesToRadians(float64(n%360))))
 		})
 	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(false, false))

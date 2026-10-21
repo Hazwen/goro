@@ -566,8 +566,10 @@ const (
 	effectThrowItem10      = 616
 	effectKouenka          = 618
 	effectHyousensou       = 619
+	effectBottomSuiton     = 620
 	effectStin4            = 621
 	effectThunderStorm2    = 622
+	effectStin5            = 624
 	effectRGCoin3          = 627
 	effectBash3D5          = 628
 	effectChookgi3         = 629
@@ -4079,22 +4081,24 @@ var EffectSpecs = map[int]EffectSpec{
 	effectCookingOK:         strEffectSpecAttached("cook_suc", "_heal_effect.wav", false),
 	effectCookingFail:       strEffectSpecAttached("cook_fail", "caramel_die.wav", false),
 	effectHapgyeok:          hapgyeokEffectSpec(),
-	effectThrowItem7:        throwItemSoundEffectSpec("유저인터페이스/item/수리검.bmp", 30, "effect\\닌자_던지기.wav"),
-	effectThrowItem8:        throwItemSoundEffectSpec("유저인터페이스/item/쿠나이_독.bmp", 30, "effect\\닌자_던지기.wav"),
-	effectThrowItem9:        throwItemSoundEffectSpec("유저인터페이스/item/풍마_뇌우.bmp", 30, "effect\\닌자_던지기.wav"),
-	effectThrowItem10:       throwItemSoundEffectSpec("effect/coin_a.bmp", 20, "effect\\닌자_던지기.wav"),
-	effectKouenka:           strEffectSpecRandomAttached("firehit", "effect\\ef_firearrow%d.wav", 1, 3, true, false),
-	effectHyousensou:        strEffectSpecRandomAttached("freeze", "effect\\ef_icearrow%d.wav", 1, 3, true, false),
-	effectStin4:             soundOnlyEffectSpec("effect\\풍인.wav"),
-	effectThunderStorm2:     strEffectSpecAttached("setsudan", "effect\\ef_thunderstorm.wav", false),
+	effectThrowItem7:        throwItemFlightEffectSpec("유저인터페이스/item/수리검.bmp"),
+	effectThrowItem8:        throwItemFlightEffectSpec("유저인터페이스/item/쿠나이_독.bmp"),
+	effectThrowItem9:        throwItemFlightEffectSpec("유저인터페이스/item/풍마_열화.bmp"),
+	effectThrowItem10:       throwItemFlightEffectSpec("effect/coin_a.bmp"),
+	effectKouenka:           ninjaFirePetalEffectSpec(),
+	effectHyousensou:        ninjaIceSpearEffectSpec(),
+	effectBottomSuiton:      propertyGroundEffectSpec("ring_blue"),
+	effectStin4:             ninjaWindEffectSpec(false),
+	effectStin5:             ninjaWindEffectSpec(true),
+	effectThunderStorm2:     ninjaSpriteEffectSpec(effectThunderStorm2),
 	effectRGCoin3:           soundOnlyEffectSpec("effect\\디스암.wav"),
 	effectBash3D5:           bash3DEffectSpec("Bash3D5", "effect\\bash3d5.wav", 175*time.Millisecond, 0, 6),
 	effectChookgi3:          spiritSphereEffectSpec(),
-	effectKirikage:          sprEffectSpec("그림자베기", "effect\\그림자베기.wav", true, false),
-	effectTatami:            sprEffectSpec("다다미 뒤집기", "effect\\다다미뒤집기.wav", true, false),
-	effectKasumikiri:        sprEffectSpec("안개베기", "effect\\안개베기.wav", true, false),
-	effectIssen:             sprEffectSpec("일섬", "effect\\일섬.wav", true, false),
-	effectKaen:              sprRepeatEffectSpec("화염진", "effect\\화염진.wav", true),
+	effectKirikage:          ninjaSpriteEffectSpec(effectKirikage),
+	effectTatami:            ninjaSpriteEffectSpec(effectTatami),
+	effectKasumikiri:        ninjaSpriteEffectSpec(effectKasumikiri),
+	effectIssen:             ninjaSpriteEffectSpec(effectIssen),
+	effectKaen:              ninjaSpriteEffectSpec(effectKaen),
 	effectBaku:              strEffectSpec("fire dragon", "effect\\폭염룡.wav"),
 	effectHyousyouraku:      strEffectSpec("icy", "effect\\빙정락.wav"),
 	effectDesperado:         sprEffectSpec("데스페라도", "effect\\데스페라도.wav", true, false),

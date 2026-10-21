@@ -21,6 +21,9 @@ func (m *WorldMode) drawWizardSpikes(screen *render.Frame, ctx client.Context, c
 	if texture == nil {
 		return
 	}
+	if effect.effectID == effectHyousensou {
+		origin = effect.actorOrigin
+	}
 	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 	count := 7
 	switch effect.effectID {

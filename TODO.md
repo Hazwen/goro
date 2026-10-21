@@ -132,7 +132,7 @@ Where they disagree, verify the actual Sakexe binary before choosing behaviour.
 - [x] Champion — all four added skills and shared sphere/Asura effects audited; native packet timing, poses, sounds, geometry, and body flashes reviewed twice and validated with client assets.
 - [x] Taekwon — all 17 skills audited; kick poses/body effects, Run footprints, High Jump, Mild Wind, and sounds reviewed twice and validated with client assets.
 - [x] Star Gladiator — all 18 skills audited; Warmth, Comfort, Hatred, Demon, and Fusion reviewed twice and validated with client assets.
-- [ ] Ninja
+- [x] Ninja — all 23 skills audited; native projectiles, particles, sprites, ground units, Mirror Image, and poses reviewed twice and validated with client assets.
 - [ ] Gunslinger
 
 Hunter reference checks: `dhxj` and 2008 `HighPriest` skill action/effect
@@ -405,6 +405,31 @@ and Knowledge remain server-owned. Both reviews, the full suite with OldRO
 assets, and a normal build passed. No live visual comparison was performed;
 the procedural rings, vision mask, and composed-sprite flight need playtesting.
 
+Ninja reference checks: dhxj Session2/GameActorMsgHandler/GameActor,
+RagEffect/RagEffect2/RagEffectPrim and Skill.cpp, HighPriest, the actual
+2008 Sakexe, roBrowser's mappings, and rAthena's Ninja skill implementations.
+All 23 skills were checked. Throwing Mastery and Ninpou remain server-owned;
+Shadow Leap, Cicada, and Soul keep their server movement/status behavior.
+The 2008 executable confirms the two ACT-96 release sequences and casting
+poses. Throw Shuriken, Kunai, Huuma, and Zeny now launch one native arcing
+projectile per notification, with their centered throw sound. The Huuma
+texture matches 2008. Fire Petal emits twenty independently drifting sakura
+sprites, two BASH3D ray groups, and four delayed sounds; its impact uses FireHit.
+Ice Spear reuses the native Earth Spike geometry with ice texture, captured
+position, sound, quake, and ColdHit. Wind Blade follows the target with the
+packet hit count; Kamaitachi emits five vertical wind blades. Both retain
+native trail histories. Shadow Slash, Vanishing Slash, and Final Strike use
+the native sprite actions, timing, offsets, and blending. Fire Dragon, Ice
+Meteor, and Lightning Strike belong to no-damage release packets, with the
+original target/caster ownership; Lightning Strike uses its looping SPR.
+Tatami, Fire Formation, and Hidden Water belong to server skill units rather
+than ground-cast notifications. Fire Formation overlaps its short animations
+and has the original one-in-eight cell-entry sound. Mirror Image supplies
+blue tint and frozen afterimages, including on dyed bodies, and cleans up on
+status end. Existing shared rendering handles rings, spikes, throws, and rays.
+Both reviews, full tests with OldRO assets, and a normal build passed. No live
+visual comparison was performed; the new procedural effects need playtesting.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -413,8 +438,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `744`.
-- Catalog size relative to all numeric constants: about `64.9%`.
+- Goro effect catalog entries: `746`.
+- Catalog size relative to all numeric constants: about `65.0%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.

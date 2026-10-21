@@ -33,7 +33,11 @@ func (m *WorldMode) drawActorBlurs(screen *render.Frame, projection sceneProject
 	blurs = live
 	// MakeBlur emits a frozen CBlurPC every five ticks, except on dyed bodies.
 	active := (entry.isPlayer || actorRepresentsPlayer(entry.actor)) && entry.actor.BodyPal == 0 && entry.actor.Opt3State&db.Opt3Overthrust != 0
-	if active && (len(blurs) == 0 || now.Sub(blurs[len(blurs)-1].born) >= 5*db.EffectFrameDuration) {
+	interval := 5 * db.EffectFrameDuration
+	if !active && (entry.isPlayer || actorRepresentsPlayer(entry.actor)) && entry.actor.Opt3State&db.Opt3Bunsin != 0 {
+		active, interval = true, 20*db.EffectFrameDuration
+	}
+	if active && (len(blurs) == 0 || now.Sub(blurs[len(blurs)-1].born) >= interval) {
 		blurs = append(blurs, actorBlur{billboard: billboard, born: now, x: entry.worldX, y: entry.worldY, z: entry.worldZ,
 			scale: scale / actorBillboardScreenScale(projection, entry.worldX, entry.worldY, entry.worldZ), tint: tint})
 	}

@@ -11,18 +11,22 @@ import (
 )
 
 func (m *WorldMode) drawEffectParticleSprite(screen *render.Frame, ctx client.Context, projection sceneProjection, file string, position modelPoint3, motion int, scale, angle float64, tint color.RGBA) {
+	m.drawEffectParticleSpriteAction(screen, ctx, projection, file, position, 0, motion, scale, angle, tint)
+}
+
+func (m *WorldMode) drawEffectParticleSpriteAction(screen *render.Frame, ctx client.Context, projection sceneProjection, file string, position modelPoint3, action, motion int, scale, angle float64, tint color.RGBA) {
 	if tint.A == 0 || scale <= 0 {
 		return
 	}
 	view := m.effectSpriteView(ctx.Resources, file)
-	if view == nil || len(view.act.Actions) == 0 || len(view.act.Actions[0].Animations) == 0 {
+	if view == nil || action < 0 || action >= len(view.act.Actions) || len(view.act.Actions[action].Animations) == 0 {
 		return
 	}
-	motion %= len(view.act.Actions[0].Animations)
-	key := singleSpriteBillboardKey{motion: motion}
+	motion %= len(view.act.Actions[action].Animations)
+	key := singleSpriteBillboardKey{actionIndex: action, motion: motion}
 	billboard, ok := view.billboards[key]
 	if !ok {
-		billboard, ok = composeSingleSpriteBillboard(view, view.act.Actions[0].Animations[motion])
+		billboard, ok = composeSingleSpriteBillboard(view, view.act.Actions[action].Animations[motion])
 		if !ok {
 			return
 		}

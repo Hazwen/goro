@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 744 {
-		t.Fatalf("implemented effects = %d, want 744", coverage.Implemented)
+	if coverage.Implemented != 746 {
+		t.Fatalf("implemented effects = %d, want 746", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 122.57 || coverage.ActivePercent > 122.58 {
-		t.Fatalf("active coverage = %.3f, want about 122.58", coverage.ActivePercent)
+	if coverage.ActivePercent < 122.89 || coverage.ActivePercent > 122.90 {
+		t.Fatalf("active coverage = %.3f, want about 122.90", coverage.ActivePercent)
 	}
 }
 
@@ -2128,9 +2128,6 @@ func TestRobrowserSimpleEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) 
 		{"EF_FIREHIT2", effectFireHit2, "firehit%d", "", true, true},
 		{"EF_COOKING_OK", effectCookingOK, "cook_suc", "_heal_effect.wav", true, false},
 		{"EF_COOKING_FAIL", effectCookingFail, "cook_fail", "caramel_die.wav", true, false},
-		{"EF_KOUENKA", effectKouenka, "firehit", "effect\\ef_firearrow%d.wav", true, true},
-		{"EF_HYOUSENSOU", effectHyousensou, "freeze", "effect\\ef_icearrow%d.wav", true, true},
-		{"EF_THUNDERSTORM2", effectThunderStorm2, "setsudan", "effect\\ef_thunderstorm.wav", true, false},
 		{"EF_BAKU", effectBaku, "fire dragon", "effect\\폭염룡.wav", false, false},
 		{"EF_HYOUSYOURAKU", effectHyousyouraku, "icy", "effect\\빙정락.wav", false, false},
 		{"EF_TRACKCASTING", effectTrackCasting, "트랙킹", "", true, false},
@@ -2173,11 +2170,6 @@ func TestRobrowserSimpleEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) 
 		repeat    bool
 		direction bool
 	}{
-		{"EF_KIRIKAGE", effectKirikage, "그림자베기", "effect\\그림자베기.wav", true, false, false, false},
-		{"EF_TATAMI", effectTatami, "다다미 뒤집기", "effect\\다다미뒤집기.wav", true, false, false, false},
-		{"EF_KASUMIKIRI", effectKasumikiri, "안개베기", "effect\\안개베기.wav", true, false, false, false},
-		{"EF_ISSEN", effectIssen, "일섬", "effect\\일섬.wav", true, false, false, false},
-		{"EF_KAEN", effectKaen, "화염진", "effect\\화염진.wav", true, false, true, false},
 		{"EF_DESPERADO", effectDesperado, "데스페라도", "effect\\데스페라도.wav", true, false, false, false},
 		{"EF_LIGHTNING_S", effectLightningS, "라이트닝스피어", "", false, false, false, false},
 		{"EF_BLIND_S", effectBlindS, "블라인드스피어", "", false, false, false, false},
@@ -2225,7 +2217,6 @@ func TestRobrowserSimpleEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) 
 		id   int
 		wav  string
 	}{
-		{"EF_STIN4", effectStin4, "effect\\풍인.wav"},
 		{"EF_RG_COIN3", effectRGCoin3, "effect\\디스암.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
@@ -2234,32 +2225,6 @@ func TestRobrowserSimpleEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) 
 		}
 		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
 			t.Fatalf("%s sfx = %#v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
-}
-
-func TestRobrowserProjectileEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		id      int
-		texture string
-		size    float64
-	}{
-		{"EF_THROWITEM7", effectThrowItem7, "유저인터페이스/item/수리검.bmp", 30},
-		{"EF_THROWITEM8", effectThrowItem8, "유저인터페이스/item/쿠나이_독.bmp", 30},
-		{"EF_THROWITEM9", effectThrowItem9, "유저인터페이스/item/풍마_뇌우.bmp", 30},
-		{"EF_THROWITEM10", effectThrowItem10, "effect/coin_a.bmp", 20},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || spec.duration != 200*time.Millisecond || len(spec.components) != 1 {
-			t.Fatalf("%s spec = %+v ok=%t", tc.name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\닌자_던지기.wav" {
-			t.Fatalf("%s sfx = %#v", tc.name, spec.sfx)
-		}
-		component := spec.components[0]
-		if component.kind != effectComponent3D || component.textureFile != tc.texture || component.duration != 200*time.Millisecond || component.alphaMax != 1 || !component.fadeIn || !component.fadeOut || !component.toSrc || !component.rotateToTarget || !component.rotateWithCamera || !component.rotate || component.angleStart != 180 || component.angleEnd != 540 || component.posZ != 1 || component.sizeStart != effectTableSize(tc.size) || component.sizeEnd != effectTableSize(tc.size) || !component.attachedEntity {
-			t.Fatalf("%s component = %+v", tc.name, component)
 		}
 	}
 }

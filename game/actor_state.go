@@ -227,8 +227,11 @@ func actorOpt3StateTint(opt3State uint32) (float64, float64, float64, float64) {
 	if opt3State&db.Opt3Quicken != 0 {
 		b = 0
 	}
-	if opt3State&db.Opt3Energycoat != 0 || opt3State&db.Opt3Bunsin != 0 {
+	if opt3State&db.Opt3Energycoat != 0 {
 		r, g, b = 0.5, 0.5, 0.85
+	}
+	if opt3State&db.Opt3Bunsin != 0 {
+		r, g, b = 155.0/255, 155.0/255, 1
 	}
 	if opt3State&db.Opt3Overthrust != 0 {
 		r, g, b = 250.0/255, 150.0/255, 150.0/255

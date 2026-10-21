@@ -114,6 +114,9 @@ const (
 	effectFuncHPConversion
 	effectFuncSoulChangeLink
 	effectFuncSoulBreaker
+	effectFuncNinjaWind
+	effectFuncNinjaPetals
+	effectFuncNinjaSprite
 )
 
 const (
@@ -312,6 +315,12 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawEstinEffect(screen, ctx, component, effect, now)
 	case effectFuncSoulLinkerParticles:
 		m.drawSoulLinkerParticles(screen, ctx, projection, component, effect, now)
+	case effectFuncNinjaWind:
+		m.drawNinjaWind(screen, ctx, component, effect, now)
+	case effectFuncNinjaPetals:
+		m.drawNinjaPetals(screen, ctx, projection, component, effect, now)
+	case effectFuncNinjaSprite:
+		m.drawNinjaSprite(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncEsma:
 		m.drawEsmaEffect(screen, ctx, component, effect, now)
 	case effectFuncKaizel:

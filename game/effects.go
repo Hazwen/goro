@@ -568,8 +568,10 @@ const (
 	effectThrowItem10      = 616
 	effectKouenka          = 618
 	effectHyousensou       = 619
+	effectBottomSuiton     = 620
 	effectStin4            = 621
 	effectThunderStorm2    = 622
+	effectStin5            = 624
 	effectRGCoin3          = 627
 	effectBash3D5          = 628
 	effectChookgi3         = 629
@@ -805,6 +807,8 @@ type worldEffect struct {
 	shield                               *shieldFlight
 	shieldChain                          *shieldChainFlight
 	pressureLanded                       bool
+	ninjaWind                            *ninjaWind
+	ninjaPetals                          *ninjaPetals
 	esma                                 *esmaProjectile
 	buffParticles                        *soulLinkerParticles
 	soulLights                           *soulLights
@@ -1092,6 +1096,9 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	m.applyAlchemistSkill(ctx, notify, now)
 	m.applyHighWizardSkill(ctx, notify, now)
 	m.applyProfessorSkill(ctx, notify, now)
+	if notify.SkillID == db.SkillNJTatamigaeshi {
+		m.scheduleSound(now, "effect\\다다미뒤집기.wav")
+	}
 	m.applyTaekwonSkill(ctx, notify, now)
 	m.applyStarGladiatorSkill(ctx, notify, now)
 	m.applyWinkCharm(ctx, notify)
@@ -1280,6 +1287,11 @@ func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID u
 		m.addWorldEffectAt(ctx, effectPeong, sourceID, now)
 		return
 	}
+	if ninjaCastingSkill(skillID) && res.HasPlayerJobToken(int(source.Job)) {
+		spec := skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true, frame: 2 + int(now.UnixNano()&1), duration: 500 * time.Millisecond}
+		m.startSkillActionAnimation(ctx, sourceID, source, spec, now, duration)
+		return
+	}
 	if skillID == db.SkillDCWinkcharm {
 		spec := danceSkillActionSpec()
 		spec.next = &idleSkillActionSpec
@@ -1464,6 +1476,12 @@ func (m *WorldMode) applySkillUnitEntry(ctx client.Context, entry network.SkillU
 	now := time.Now()
 	for _, effectID := range effectIDs {
 		if m.addWorldEffectAtCellLifetime(ctx, effectID, entry.ID, int(entry.X), int(entry.Y), now, skillUnitEffectFallbackDuration, true) {
+			if entry.UnitID == 189 {
+				effect := m.worldEffects[len(m.worldEffects)-1]
+				if hitEffectRandom(effect, 0, 8) == 0 {
+					m.scheduleSoundAtWorldEffect(now, effect, "effect\\화염진.wav")
+				}
+			}
 			glog.Debugf("skill unit effect unit=%d id=%d creator=%d cell=%d,%d effect=%d", entry.UnitID, entry.ID, entry.CreatorID, entry.X, entry.Y, effectID)
 		}
 	}
@@ -1798,7 +1816,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
-	if effectID == effectRogueCoin || effectID == effectIntimidate || effectID == effectTeiHit3 || effectID == effectMagnumBreak || effectID == effectGrandCross || effectID == effectPressure || effectID == effectShieldBoomerang3 {
+	if effectID == effectHyousensou || effectID == effectRogueCoin || effectID == effectIntimidate || effectID == effectTeiHit3 || effectID == effectMagnumBreak || effectID == effectGrandCross || effectID == effectPressure || effectID == effectShieldBoomerang3 {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -1813,7 +1831,7 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
-	if effectID == effectGrimtooth || effectID == effectThrowItem6 || effectID == effectThrowItem3 || isAlchemistBottle(effectID) {
+	if effectID == effectGrimtooth || effectID == effectThrowItem6 || effectID == effectThrowItem3 || isAlchemistBottle(effectID) || effectID >= effectThrowItem7 && effectID <= effectThrowItem10 {
 		initDirectedEffect(ctx, &effect)
 	}
 	if effectID == effectHitLine5 {
@@ -1846,6 +1864,28 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		m.removeWorldEffect(effectSight, actorID)
 		if isLocalActor(ctx, actorID) {
 			m.removeWorldEffect(effectSight, localSkillTarget(ctx))
+		}
+	}
+	if effectID == effectStin4 || effectID == effectStin5 {
+		destination := effectWorldAnchor(ctx, effect, starts)
+		effect.actorOrigin = destination
+		if _, ok, _ := actorForCombatID(ctx, targetID); targetID != 0 && ok {
+			effect.actorOrigin = effectWorldAnchor(ctx, worldEffect{actorID: targetID}, starts)
+		}
+		effect.projectileDirection = sub3(destination, effect.actorOrigin)
+		effect.actorID, effect.targetID = targetID, actorID
+		effect.x, effect.y, _ = effectAnchor(ctx, effect.actorID)
+		effect.hasActorTransform = true
+		effect.ninjaWind = &ninjaWind{}
+	}
+	if effectID == effectKouenka {
+		effect.ninjaPetals = &ninjaPetals{}
+	}
+	if effectID == effectKirikage || effectID == effectKasumikiri {
+		effect.hasSpriteFrame = true
+		effect.spriteFrameOverride = 2 * hitEffectRandom(effect, 0, 2)
+		if effectID == effectKirikage {
+			effect.spriteFrameOverride *= 2
 		}
 	}
 	if effectID == effectStin || effectID == effectStin3 || effectID == effectStin2 {
@@ -2107,7 +2147,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell6
 	}
 	switch skillID {
-	case db.SkillTKRun, db.SkillTKSevenwind, db.SkillTKMission, db.SkillSGFeel, db.SkillSGHate, db.SkillSGFusion:
+	case db.SkillTKRun, db.SkillTKSevenwind, db.SkillTKMission, db.SkillSGFeel, db.SkillSGHate, db.SkillSGFusion, db.SkillNJHuuma, db.SkillNJBunsinjyutsu, db.SkillNJNen:
 		effectID = effectBlueCasting
 	case db.SkillACConcentration:
 		effectID = effectIncAgiDex
@@ -2516,11 +2556,7 @@ func importedSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
 	if spec, ok := monkSkillActionSpec(skillID); ok {
 		return spec, true
 	}
-	if skillID == db.SkillNJTatamigaeshi {
-		spec := newSkillActionSpec(skillActorActionPickup, false, nil)
-		spec.hasFrame = true
-		spec.frame = 1
-		spec.play = false
+	if spec, ok := ninjaSkillActionSpec(skillID); ok {
 		return spec, true
 	}
 	if skillID == db.SkillASSonicblow {
@@ -2665,6 +2701,7 @@ var skillUnitEffectSpecs = map[uint16]skillUnitEffectSpec{
 	183: {effectIDs: []int{effectBottomSpider}},           // UNT_SPIDERWEB -> EF_BOTTOM_SPIDER
 	184: {effectIDs: []int{effectGravitation}},            // UNT_GRAVITATION -> EF_GRAVITATION
 	185: {effectIDs: []int{effectBottomHermode}},          // UNT_HERMODE -> EF_BOTTOM_HERMODE
+	187: {effectIDs: []int{effectBottomSuiton}},           // UNT_SUITON
 	188: {effectIDs: []int{effectTatami}},                 // UNT_TATAMIGAESHI -> EF_TATAMI
 	189: {effectIDs: []int{effectKaen}},                   // UNT_KAEN -> EF_KAEN
 	199: {effectIDs: []int{effectBottomEvilLand}},         // UNT_EVILLAND -> EF_BOTTOM_EVILLAND
@@ -3031,6 +3068,12 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncGroundAura
 	case "Level99Bubble":
 		return effectFuncLevel99Bubble
+	case "NinjaWind":
+		return effectFuncNinjaWind
+	case "NinjaPetals":
+		return effectFuncNinjaPetals
+	case "NinjaSprite":
+		return effectFuncNinjaSprite
 	case "PropertyGround":
 		return effectFuncPropertyGround
 	case "LandProtectorGround":
