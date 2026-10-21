@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"errors"
@@ -27,7 +27,7 @@ func TestDisconnectMessageForUnknownBanCodeUsesGeneric(t *testing.T) {
 }
 
 func TestConnectionFailedMessageFallback(t *testing.T) {
-	got := disconnectMessageText(nil, disconnectMessage{1, "Failed to Connect to Server."})
+	got := MessageText(nil, 1, "Failed to Connect to Server.")
 	if got != "Failed to Connect to Server." {
 		t.Fatalf("message = %q, want %q", got, "Failed to Connect to Server.")
 	}
@@ -46,7 +46,7 @@ func TestHandleDisconnectPacketOpensAlertAndOKQuits(t *testing.T) {
 		Data: []byte{0x81, 0x00, 15},
 	}
 
-	if !handleDisconnectPacket(ctx, &modal, packet) {
+	if !HandleDisconnectPacket(ctx, &modal, packet) {
 		t.Fatal("disconnect packet was not handled")
 	}
 	if !modal.IsOpen() {
@@ -61,7 +61,7 @@ func TestHandleDisconnectPacketOpensAlertAndOKQuits(t *testing.T) {
 
 func TestHandleNetworkDisconnectErrorsIgnoresFrameErrors(t *testing.T) {
 	var modal gameui.ConfirmModal
-	handled := handleNetworkDisconnectErrors(client.Context{}, &modal, []error{
+	handled := HandleNetworkDisconnectErrors(client.Context{}, &modal, []error{
 		network.FrameError{Err: errors.New("bad frame")},
 	})
 	if handled {
@@ -79,7 +79,7 @@ func TestHandleNetworkDisconnectErrorsOpensAlert(t *testing.T) {
 	} {
 		t.Run(err.Error(), func(t *testing.T) {
 			var modal gameui.ConfirmModal
-			handled := handleNetworkDisconnectErrors(client.Context{ScreenW: 800, ScreenH: 600}, &modal, []error{err})
+			handled := HandleNetworkDisconnectErrors(client.Context{ScreenW: 800, ScreenH: 600}, &modal, []error{err})
 			if !handled {
 				t.Fatal("disconnect error was not handled")
 			}

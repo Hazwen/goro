@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"strings"
@@ -39,11 +39,11 @@ func loginRefuseMessage(resources *res.Manager, refusal network.AccountRefuseLog
 	if !ok {
 		message = disconnectMessage{9, "Login failed."}
 	}
-	text := disconnectMessageText(resources, message)
+	text := MessageText(resources, message.msgID, message.fallback)
 	return strings.Replace(text, "%s", refusal.UnblockTime, 1)
 }
 
-func (m *LoginMode) applyAccountRefuseLogin(ctx client.Context, refusal network.AccountRefuseLogin) {
+func (m *Screen) applyAccountRefuseLogin(ctx client.Context, refusal network.AccountRefuseLogin) {
 	m.loginPending = false
 	if ctx.Network != nil {
 		ctx.Network.Close()

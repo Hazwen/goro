@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"testing"
@@ -18,7 +18,7 @@ func TestLoginSubmissionRemembersAndForgetsID(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := client.Context{Config: cfg, Session: session.New(), Resources: &res.Manager{}, ScreenW: 800, ScreenH: 600}
-	mode := NewLoginMode()
+	mode := New(Bindings{})
 	mode.username, mode.password, mode.keepID = "remembered-id", "not-persisted", true
 	mode.updateLoginWindow(ctx)
 	submit := func() {
@@ -36,7 +36,7 @@ func TestLoginSubmissionRemembersAndForgetsID(t *testing.T) {
 		t.Fatalf("persisted login = %+v", cfg.Login)
 	}
 	// Returning to login uses the latest preference, even though Config is the startup snapshot.
-	returned := NewLoginMode()
+	returned := New(Bindings{})
 	returned.Enter(ctx)
 	if returned.username != "remembered-id" || !returned.keepID || returned.password != "" {
 		t.Fatal("returning to login lost the saved ID or retained the password")
@@ -44,7 +44,7 @@ func TestLoginSubmissionRemembersAndForgetsID(t *testing.T) {
 	// A fresh process restores from disk; an explicit username still takes precedence.
 	for _, explicit := range []string{"", "configured-id"} {
 		cfg.Login.Username = explicit
-		restarted := NewLoginMode()
+		restarted := New(Bindings{})
 		restarted.Enter(client.Context{Config: cfg, Resources: ctx.Resources})
 		want := "remembered-id"
 		if explicit != "" {
@@ -63,7 +63,7 @@ func TestLoginSubmissionRemembersAndForgetsID(t *testing.T) {
 	if cfg.Login.KeepID || cfg.Login.SavedUsername != "" {
 		t.Fatal("submitting with Keep off retained the saved ID on disk")
 	}
-	returned = NewLoginMode()
+	returned = New(Bindings{})
 	returned.Enter(ctx)
 	if returned.username != "" || returned.keepID || ctx.Session.SavedUsername != "" {
 		t.Fatal("submitting with Keep off retained the saved ID in the session")

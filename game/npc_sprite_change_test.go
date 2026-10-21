@@ -42,7 +42,7 @@ func TestNPCSpriteChangePreservesActorAndMovement(t *testing.T) {
 			want.Job = 1018
 			packet := npcSpriteChangeTestPacket(before.ID, 1018, packetType)
 			if login {
-				if !(&LoginMode{}).applyLoginActorBootstrapPacket(ctx, packet) {
+				if handled, err := applyLoginActorBootstrapPacket(ctx, packet); !handled || err != nil {
 					t.Fatal("login dropped transformation")
 				}
 			} else {

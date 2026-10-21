@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"github.com/kivutar/goro/client"
@@ -7,7 +7,7 @@ import (
 	gameui "github.com/kivutar/goro/ui"
 )
 
-func (m *LoginMode) updateAccountInput(ctx client.Context) {
+func (m *Screen) updateAccountInput(ctx client.Context) {
 	m.updateAccountWindow(ctx)
 	if m.serviceWindow != nil {
 		window := m.serviceWindow
@@ -23,7 +23,7 @@ func (m *LoginMode) updateAccountInput(ctx client.Context) {
 	}
 }
 
-func (m *LoginMode) updateAccountWindow(ctx client.Context) {
+func (m *Screen) updateAccountWindow(ctx client.Context) {
 	switch m.accountStep {
 	case loginAccountConnection:
 		if len(loginConnections(ctx)) > 1 && !ctx.Config.Login.AutoLogin {
@@ -47,7 +47,7 @@ func (m *LoginMode) updateAccountWindow(ctx client.Context) {
 	m.updateLoginWindow(ctx)
 }
 
-func (m *LoginMode) updateLoginWindow(ctx client.Context) {
+func (m *Screen) updateLoginWindow(ctx client.Context) {
 	if ctx.Config.Headless {
 		return
 	}
@@ -72,7 +72,7 @@ func (m *LoginMode) updateLoginWindow(ctx client.Context) {
 	m.loginWindow.Publish(ctx)
 }
 
-func (m *LoginMode) saveLoginID(ctx client.Context) {
+func (m *Screen) saveLoginID(ctx client.Context) {
 	if ctx.Session != nil {
 		ctx.Session.KeepLoginID = m.keepID
 		ctx.Session.SavedUsername = ""
@@ -85,7 +85,7 @@ func (m *LoginMode) saveLoginID(ctx client.Context) {
 	}
 }
 
-func (m *LoginMode) selectedLoginConnection(ctx client.Context) (res.Connection, bool) {
+func (m *Screen) selectedLoginConnection(ctx client.Context) (res.Connection, bool) {
 	connections := loginConnections(ctx)
 	if len(connections) == 0 {
 		return res.Connection{}, false

@@ -15,6 +15,7 @@ import (
 	"github.com/kivutar/goro/game/bot"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -1279,10 +1280,7 @@ func (m *WorldMode) applyQuitGameAck(ctx client.Context, ack network.QuitGameAck
 }
 
 func (m *WorldMode) addLeaveWorldRefusalMessage(ctx client.Context) {
-	message := disconnectMessageText(ctx.Resources, disconnectMessage{
-		msgID:    502,
-		fallback: "You cannot exit the game right now.",
-	})
+	message := login.MessageText(ctx.Resources, 502, "You cannot exit the game right now.")
 	m.ui.console.AddErrorMessage("%s", message)
 }
 
@@ -1442,13 +1440,13 @@ func (m *WorldMode) handleMapChange(ctx client.Context, change network.MapChange
 		cancel()
 		if err != nil {
 			glog.Warnf("map reconnect failed map=%s addr=%s port=%d: %v", change.MapName, change.Address, change.Port, err)
-			openConnectionFailedDialog(ctx, &m.ui.disconnectDialog)
+			login.OpenConnectionFailedDialog(ctx, &m.ui.disconnectDialog)
 			return nil
 		}
 		if err := ctx.Network.SendMapServerEnter(ctx.Session.AccountID, ctx.Session.CharID, ctx.Session.AuthCode, uint32(time.Now().UnixMilli()), ctx.Session.Sex); err != nil {
 			glog.Warnf("map re-enter failed map=%s addr=%s port=%d: %v", change.MapName, change.Address, change.Port, err)
-			message := disconnectMessageText(ctx.Resources, disconnectMessage{2, "Disconnected from Server."})
-			openDisconnectDialog(ctx, &m.ui.disconnectDialog, message)
+			message := login.MessageText(ctx.Resources, 2, "Disconnected from Server.")
+			login.OpenDisconnectDialog(ctx, &m.ui.disconnectDialog, message)
 			return nil
 		}
 		m.pendingWarp = true

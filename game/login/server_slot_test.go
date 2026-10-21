@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ func TestAutologinRejectsUnavailableServerSlots(t *testing.T) {
 					}
 					// A nil network also ensures an invalid slot never falls back
 					// to sending credentials to another server.
-					mode := NewLoginMode()
+					mode := New(Bindings{})
 					_, err := mode.Update(ctx)
 					if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("--server-slot %d is unavailable", slot)) {
 						t.Fatalf("slot %d error = %v", slot, err)

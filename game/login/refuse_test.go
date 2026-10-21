@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"testing"
@@ -21,7 +21,7 @@ func TestLoginRefuseMessage(t *testing.T) {
 
 func TestAccountRefusalReturnsToLoginWithoutQuitting(t *testing.T) {
 	quit := false
-	mode := NewLoginMode()
+	mode := New(Bindings{})
 	mode.loginPending = true
 	ctx := client.Context{
 		ScreenW: 1280,

@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
-	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/session"
@@ -23,15 +22,13 @@ const (
 )
 
 type charCreateState struct {
-	slot            int
-	name            string
-	stats           [6]uint8
-	hairStyle       int
-	hairColor       int
-	direction       int
-	preview         *humanoidSpriteView
-	previewKey      charCreatePreviewKey
-	previewFailed   bool
+	slot      int
+	name      string
+	stats     [6]uint8
+	hairStyle int
+	hairColor int
+	direction int
+
 	previewImage    image.Image
 	previewImageKey charCreatePreviewKey
 }
@@ -52,7 +49,7 @@ const (
 	createStatCount
 )
 
-func (m *LoginMode) updateCharacterCreateInput(ctx client.Context) {
+func (m *Screen) updateCharacterCreateInput(ctx client.Context) {
 	m.showCharacterCreateWindow(ctx)
 	if m.charCreateWindow != nil {
 		m.charCreateWindow.Update(ctx)
@@ -60,7 +57,7 @@ func (m *LoginMode) updateCharacterCreateInput(ctx client.Context) {
 	}
 }
 
-func (m *LoginMode) openCharacterCreate(ctx client.Context, slot int, now time.Time) {
+func (m *Screen) openCharacterCreate(ctx client.Context, slot int, now time.Time) {
 	slot = clampCharacterSlot(slot, m.maxSlots)
 	if _, occupied := characterBySlot(ctx.Session.Characters, slot); occupied {
 		empty, ok := firstEmptyCharacterSlot(ctx.Session.Characters, m.maxSlots)
@@ -87,14 +84,14 @@ func defaultCharCreateState(slot int) charCreateState {
 	}
 }
 
-func (m *LoginMode) cancelCharacterCreate(now time.Time) {
+func (m *Screen) cancelCharacterCreate(now time.Time) {
 	m.create = charCreateState{}
 	m.charCreateWindow = nil
 	m.status = "select a character"
 	m.startPhaseFade(loginPhaseCharacter, now)
 }
 
-func (m *LoginMode) submitCharacterCreate(ctx client.Context) {
+func (m *Screen) submitCharacterCreate(ctx client.Context) {
 	name := strings.TrimSpace(m.create.name)
 	if name == "" {
 		m.status = "enter a character name"
@@ -124,7 +121,7 @@ func (m *LoginMode) submitCharacterCreate(ctx client.Context) {
 	m.status = "creating character..."
 }
 
-func (m *LoginMode) changeCreateHairStyle(delta int) {
+func (m *Screen) changeCreateHairStyle(delta int) {
 	m.create.hairStyle += delta
 	if m.create.hairStyle < charCreateMinHairStyle {
 		m.create.hairStyle = charCreateMaxHairStyle
@@ -132,26 +129,24 @@ func (m *LoginMode) changeCreateHairStyle(delta int) {
 	if m.create.hairStyle > charCreateMaxHairStyle {
 		m.create.hairStyle = charCreateMinHairStyle
 	}
-	m.create.preview = nil
-	m.create.previewFailed = false
+
 	m.create.previewImage = nil
 }
 
-func (m *LoginMode) changeCreateHairColor() {
+func (m *Screen) changeCreateHairColor() {
 	m.create.hairColor = (m.create.hairColor + 1) % 10
-	m.create.preview = nil
-	m.create.previewFailed = false
+
 	m.create.previewImage = nil
 }
 
-func (m *LoginMode) showCharacterCreateWindow(ctx client.Context) {
+func (m *Screen) showCharacterCreateWindow(ctx client.Context) {
 	m.updateCharacterCreateWindow(ctx)
 	if m.charCreateWindow != nil {
 		m.charCreateWindow.Publish(ctx)
 	}
 }
 
-func (m *LoginMode) updateCharacterCreateWindow(ctx client.Context) {
+func (m *Screen) updateCharacterCreateWindow(ctx client.Context) {
 	if ctx.Config.Headless {
 		return
 	}
@@ -192,26 +187,19 @@ func (m *LoginMode) updateCharacterCreateWindow(ctx client.Context) {
 	m.charCreateWindow.SetOptions(ctx, opts)
 }
 
-func (m *LoginMode) characterCreatePreviewImage(ctx client.Context) image.Image {
+func (m *Screen) characterCreatePreviewImage(ctx client.Context) image.Image {
 	const previewW, previewH = 142, 166
 	key := charCreatePreviewKey{sex: ctx.Session.Sex, hairStyle: m.create.hairStyle, hairColor: m.create.hairColor}
 	if m.create.previewImage != nil && m.create.previewImageKey == key {
 		return m.create.previewImage
 	}
 	img := render.NewImage(previewW, previewH)
-	view := m.characterCreatePreviewView(ctx)
-	if view == nil {
-		m.create.previewImage = img.RGBA()
-		m.create.previewImageKey = key
-		return m.create.previewImage
+	var billboard *scene.Billboard
+	if m.bindings.Preview != nil {
+		character := session.Character{ID: 1, Name: m.create.name, Job: 0, Hair: int16(m.create.hairStyle), HairColor: uint8(m.create.hairColor)}
+		billboard = m.bindings.Preview(ctx, character, m.create.direction)
 	}
-	billboard, ok := humanoidBillboardForState(view, spriteState{
-		actionFamily: scene.SpriteActionIdle,
-		direction:    m.create.direction,
-		started:      time.Now(),
-		loopIdle:     true,
-	}, time.Now())
-	if !ok || billboard == nil || billboard.Image == nil {
+	if billboard == nil || billboard.Image == nil {
 		m.create.previewImage = img.RGBA()
 		m.create.previewImageKey = key
 		return m.create.previewImage
@@ -229,33 +217,6 @@ func (m *LoginMode) characterCreatePreviewImage(ctx client.Context) image.Image 
 	m.create.previewImage = img.RGBA()
 	m.create.previewImageKey = key
 	return m.create.previewImage
-}
-
-func (m *LoginMode) characterCreatePreviewView(ctx client.Context) *humanoidSpriteView {
-	key := charCreatePreviewKey{sex: ctx.Session.Sex, hairStyle: m.create.hairStyle, hairColor: m.create.hairColor}
-	if m.create.preview != nil && m.create.previewKey == key {
-		return m.create.preview
-	}
-	if m.create.previewFailed && m.create.previewKey == key {
-		return nil
-	}
-	character := session.Character{
-		ID:        1,
-		Name:      m.create.name,
-		Job:       0,
-		Hair:      int16(m.create.hairStyle),
-		HairColor: uint8(m.create.hairColor),
-	}
-	view, status := loadPlayerHumanoidSpriteView(ctx.Resources, character, ctx.Session.Sex, false)
-	m.create.previewKey = key
-	if view == nil {
-		m.create.previewFailed = true
-		glog.Debugf("char create sprite resources hair=%d color=%d sex=%d %s", m.create.hairStyle, m.create.hairColor, ctx.Session.Sex, status)
-		return nil
-	}
-	m.create.preview = view
-	m.create.previewFailed = false
-	return view
 }
 
 func pairedCreateStat(stat int) int {

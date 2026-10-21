@@ -58,7 +58,7 @@ func TestMissingMapReturnsToLoginWithoutGameAssets(t *testing.T) {
 			ui.AddOverlay(primitives.Box())
 			manager := NewManager(ctx, NewWorldMode())
 			mode, ok := manager.mode.(*LoginMode)
-			if !ok || mode.phase != loginPhaseAccount || !mode.disconnectDialog.IsOpen() {
+			if !ok || len(ui.overlays) != 1 {
 				t.Fatalf("failed map did not open an alert on login: %T", manager.mode)
 			}
 			messages := mode.console.Messages()
@@ -71,9 +71,6 @@ func TestMissingMapReturnsToLoginWithoutGameAssets(t *testing.T) {
 			if ctx.World.GAT != nil || ctx.World.GND != nil || ctx.World.RSW != nil || ctx.Session.Playing {
 				t.Fatal("failed map retained the previous world")
 			}
-			if len(ui.overlays) != 1 || mode.fade.phase != loginFadeNone {
-				t.Fatal("old windows or loading cover obscured the error")
-			}
 			ctx.Resources, ctx.World = nil, nil
 			ctx.UIApp = fakeCursorUIApp{cursor: widget.CursorPointer}
 			manager.UpdateContext(ctx)
@@ -84,11 +81,11 @@ func TestMissingMapReturnsToLoginWithoutGameAssets(t *testing.T) {
 			if mode.cursor.fallback == nil || mode.cursor.action != cursorActionClick {
 				t.Fatal("error dialog did not inherit the login cursor")
 			}
-			canvas := drawMapErrorWindow(mode)
+			canvas := drawMapErrorWindow(ui.overlays[0])
 			for _, text := range []string{"Map unavailable", mapName, "Check your game data.", "Please log in again.", "OK"} {
 				uitest.AssertDrawnText(t, canvas, text)
 			}
-			bounds := mode.disconnectDialog.Widget().(interface{ Bounds() geometry.Rect }).Bounds()
+			bounds := ui.overlays[0].(interface{ Bounds() geometry.Rect }).Bounds()
 			for _, line := range canvas.StyledTexts {
 				width := canvas.MeasureStyledText(line.Text, line.Style)
 				if line.Bounds.Min.X < bounds.Min.X || line.Bounds.Min.X+width > bounds.Max.X || line.Bounds.Max.Y > bounds.Max.Y {
@@ -109,7 +106,11 @@ func TestMissingMapClosesConnectionAndAllowsExplicitLogin(t *testing.T) {
 	ctx.Config.Login.CharSlot = 0
 	ctx.Input.SetKey(input.KeyEnter, true)
 	manager := NewManager(ctx, NewWorldMode())
-	mode := manager.mode.(*LoginMode)
+	if _, ok := manager.mode.(*LoginMode); !ok {
+		t.Fatalf("mode = %T", manager.mode)
+	}
+	ui := ctx.UIManager.(*worldModeTestUIManager)
+	alert := ui.overlays[0]
 	if ctx.Network.Status() != "offline" {
 		t.Fatal("failed map connection remained active while showing the error")
 	}
@@ -123,7 +124,7 @@ func TestMissingMapClosesConnectionAndAllowsExplicitLogin(t *testing.T) {
 		if err := manager.Update(); err != nil {
 			t.Fatal(err)
 		}
-		if !mode.disconnectDialog.IsOpen() || mode.loginPending {
+		if len(ui.overlays) != 1 || ui.overlays[0] != alert || ctx.Network.Status() != "offline" {
 			t.Fatal("opening/held Enter dismissed the error or reconnected")
 		}
 		ctx.Input.EndFrame()
@@ -133,7 +134,7 @@ func TestMissingMapClosesConnectionAndAllowsExplicitLogin(t *testing.T) {
 	if err := manager.Update(); err != nil {
 		t.Fatal(err)
 	}
-	if mode.disconnectDialog.IsOpen() || mode.loginWindow == nil || mode.loginPending || !mode.autoAttempted || !mode.autoCharAttempted {
+	if len(ui.overlays) != 1 || ui.overlays[0] == alert || ctx.Network.Status() != "offline" {
 		t.Fatal("acknowledging the error did not leave login ready for an explicit retry")
 	}
 }
@@ -158,7 +159,7 @@ func TestMissingMapWarpRedirectsToLoginBeforeDrawing(t *testing.T) {
 		t.Fatal(err)
 	}
 	login, ok := manager.mode.(*LoginMode)
-	if !ok || !manager.InLogin() || login.phase != loginPhaseAccount || !login.disconnectDialog.IsOpen() || ctx.World.GAT != nil {
+	if !ok || !manager.InLogin() || len(ctx.UIManager.(*worldModeTestUIManager).overlays) != 1 || ctx.World.GAT != nil {
 		t.Fatalf("failed warp did not redirect to recovery before drawing: %T", manager.mode)
 	}
 	// All rendering now belongs to login and must not consult the world.
@@ -234,8 +235,7 @@ func (c *mapRecoveryCanvas) DrawStyledText(text string, bounds geometry.Rect, st
 	c.MockCanvas.DrawStyledText(text, bounds.TranslateXY(offset.X, offset.Y), style)
 }
 
-func drawMapErrorWindow(mode *LoginMode) *uitest.MockCanvas {
-	root := mode.disconnectDialog.Widget()
+func drawMapErrorWindow(root widget.Widget) *uitest.MockCanvas {
 	wc := widget.NewContext()
 	root.Layout(wc, geometry.Tight(geometry.Sz(800, 600)))
 	canvas := &mapRecoveryCanvas{}

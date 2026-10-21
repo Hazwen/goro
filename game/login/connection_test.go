@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"net"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
@@ -34,7 +35,7 @@ func TestLoginConnectionFailureStaysVisibleAndAllowsRetry(t *testing.T) {
 				UIManager: &loginTestUIManager{}, ScreenW: 1280, ScreenH: 720,
 				RequestQuit: func() { quit = true },
 			}
-			mode := NewLoginMode()
+			mode := New(Bindings{})
 			mode.username, mode.password = "tester", "test-password"
 			ctx.Config.Login.AutoLogin = true
 			switch stage {
@@ -110,7 +111,7 @@ func TestLoginConnectionFailureStaysVisibleAndAllowsRetry(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer serverConn.Close()
-			readBotTestPackets(t, serverConn, network.BuildAccountLoginPacket(network.AccountLogin{
+			testutil.ReadPackets(t, serverConn, network.BuildAccountLoginPacket(network.AccountLogin{
 				Username: "tester", Password: "test-password",
 			}))
 			if !mode.loginPending || mode.disconnectDialog.IsOpen() || quit {

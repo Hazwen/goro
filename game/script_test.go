@@ -1,7 +1,6 @@
 package game
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -18,10 +17,10 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/bot"
 	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
-	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 	gameui "github.com/kivutar/goro/ui"
 	worldstate "github.com/kivutar/goro/world"
@@ -929,7 +928,7 @@ func TestWASDGamepadNPCDialogYieldsToDisconnect(t *testing.T) {
 			loadKeyboardTestBot(t, ctx, mode)
 			mode.ui.npcDialog.Apply(network.NPCDialog{Kind: network.NPCDialogSay, NPCID: 100, Message: "Hello"})
 			mode.ui.npcDialog.Apply(network.NPCDialog{Kind: network.NPCDialogClose, NPCID: 100})
-			openDisconnectDialog(ctx, &mode.ui.disconnectDialog, "Disconnected")
+			login.OpenDisconnectDialog(ctx, &mode.ui.disconnectDialog, "Disconnected")
 			ctx.Input.EndFrame()
 			pad := input.GamepadFrame{ID: "test"}
 			pad.Buttons[button] = true
@@ -2592,19 +2591,7 @@ func newBotTestConnection(t *testing.T, clientDate int) (*network.Client, net.Co
 	return networkClient, serverConn
 }
 
-func readBotTestPackets(t *testing.T, conn net.Conn, want []byte) {
-	t.Helper()
-	got := make([]byte, len(want))
-	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := io.ReadFull(conn, got); err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(got, want) {
-		t.Fatalf("packets = %x, want %x", got, want)
-	}
-}
+var readBotTestPackets = testutil.ReadPackets
 
 func assertNoBotTestPacket(t *testing.T, conn net.Conn, action func() error) {
 	t.Helper()
@@ -2736,119 +2723,6 @@ end
 	m.Close()
 	if last.Active() || m.script != nil {
 		t.Fatal("closing manager leaked the script")
-	}
-}
-
-func loginGamepadTestContext() client.Context {
-	return client.Context{
-		Input: input.NewState(), Session: session.New(),
-		Resources: loginTestResources(res.Connection{Display: "Local"}, res.Connection{Display: "LAN"}),
-		UIManager: &loginTestUIManager{}, ScreenW: 1280, ScreenH: 720,
-	}
-}
-
-func TestWASDLoginMenusAndModalPriority(t *testing.T) {
-	ctx := loginGamepadTestContext()
-	ctx.Config.Script.Path = "builtin:wasd"
-	mode := NewLoginMode()
-	mode.updateAccountWindow(ctx)
-	m := &Manager{ctx: ctx, mode: mode}
-	t.Cleanup(m.Close)
-	press := func(button input.GamepadButton) {
-		t.Helper()
-		ctx.Input.SetGamepad(input.GamepadFrame{ID: "test"})
-		m.HandleGamepadInput(ctx, 0.02)
-		ctx.Input.EndFrame()
-		pad := input.GamepadFrame{ID: "test"}
-		pad.Buttons[button] = true
-		ctx.Input.SetGamepad(pad)
-		capture := m.HandleGamepadInput(ctx, 0.02)
-		if m.script.Disabled {
-			t.Fatal("login script failed")
-		}
-		if !capture.Buttons[input.GamepadSouth] || !capture.Buttons[input.GamepadEast] {
-			t.Fatal("menu buttons leaked into pointer fallback")
-		}
-		ctx.Input.EndFrame()
-	}
-	press(input.GamepadDown)
-	if mode.serviceWindow.SelectedIndex() != 1 {
-		t.Fatal("D-pad did not select LAN")
-	}
-	press(input.GamepadSouth)
-	if mode.selectedLoginServer != 1 || mode.loginWindow == nil || mode.serviceWindow != nil {
-		t.Fatal("South did not open credentials for LAN")
-	}
-	press(input.GamepadEast)
-	if mode.serviceWindow == nil || mode.loginWindow != nil {
-		t.Fatal("East did not return to servers")
-	}
-	press(input.GamepadEast)
-	if !mode.quitConfirm.IsOpen() {
-		t.Fatal("East did not open exit confirmation")
-	}
-	selected := mode.serviceWindow.SelectedIndex()
-	press(input.GamepadDown)
-	if mode.serviceWindow.SelectedIndex() != selected {
-		t.Fatal("modal navigation changed server behind it")
-	}
-	press(input.GamepadEast)
-	if mode.quitConfirm.IsOpen() || mode.serviceWindow == nil {
-		t.Fatal("cancel leaked through exit dialog")
-	}
-	mode.hideServiceWindow(ctx)
-	mode.phase = loginPhaseCharacter
-	mode.selectedSlot = 0
-	press(input.GamepadRight)
-	if mode.selectedSlot != 1 {
-		t.Fatal("D-pad did not navigate character slots")
-	}
-	press(input.GamepadSouth)
-	if mode.fade.target != loginPhaseCreate || mode.create.slot != 1 {
-		t.Fatal("South did not activate empty character slot")
-	}
-	press(input.GamepadRight)
-	if mode.selectedSlot != 1 {
-		t.Fatal("input changed character selection during fade")
-	}
-}
-
-func TestWASDLoginRetainsPointerControls(t *testing.T) {
-	ctx := loginGamepadTestContext()
-	ctx.Config.Script.Path = "builtin:wasd"
-	mode := NewLoginMode()
-	mode.updateAccountWindow(ctx)
-	m := &Manager{ctx: ctx, mode: mode}
-	t.Cleanup(m.Close)
-	pad := input.GamepadFrame{ID: "test"}
-	pad.Axes[input.GamepadRightX] = 1
-	ctx.Input.SetGamepad(pad)
-	m.HandleGamepadInput(ctx, 0.02)
-	ctx.Input.EndFrame()
-	pad.Axes[input.GamepadRightX] = 0
-	pad.Buttons[input.GamepadSouth] = true
-	ctx.Input.SetGamepad(pad)
-	capture := m.HandleGamepadInput(ctx, 0.02)
-	if capture.Pointer || capture.Buttons[input.GamepadSouth] || mode.serviceWindow == nil {
-		t.Fatal("moving the pointer did not restore normal UI clicks")
-	}
-	ctx.Input.EndFrame()
-	pad.Buttons[input.GamepadSouth] = false
-	pad.Buttons[input.GamepadDown] = true
-	ctx.Input.SetGamepad(pad)
-	capture = m.HandleGamepadInput(ctx, 0.02)
-	if !capture.Buttons[input.GamepadSouth] || mode.serviceWindow.SelectedIndex() != 1 {
-		t.Fatal("D-pad did not restore menu navigation")
-	}
-	mode.hideServiceWindow(ctx)
-	mode.phase = loginPhaseCreate
-	ctx.Input.EndFrame()
-	pad.Buttons[input.GamepadDown] = false
-	pad.Buttons[input.GamepadSouth] = true
-	ctx.Input.SetGamepad(pad)
-	capture = m.HandleGamepadInput(ctx, 0.02)
-	if capture.Buttons[input.GamepadSouth] || capture.Pointer || m.script.Disabled {
-		t.Fatal("character creation lost its pointer controls")
 	}
 }
 

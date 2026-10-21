@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -22,7 +23,7 @@ const (
 	charDeleteKeyMaxBytes      = 40
 )
 
-func (m *LoginMode) updateCharacterSelectInput(ctx client.Context) {
+func (m *Screen) updateCharacterSelectInput(ctx client.Context) {
 	if ctx.Input != nil && ctx.Input.JustPressed(input.KeyEscape) {
 		m.cancelCharacterSelect(ctx)
 		return
@@ -45,7 +46,7 @@ func (m *LoginMode) updateCharacterSelectInput(ctx client.Context) {
 	}
 }
 
-func (m *LoginMode) updateCharacterSelectWindow(ctx client.Context) {
+func (m *Screen) updateCharacterSelectWindow(ctx client.Context) {
 	if ctx.Config.Headless {
 		return
 	}
@@ -65,7 +66,7 @@ func (m *LoginMode) updateCharacterSelectWindow(ctx client.Context) {
 	m.charSelectWindow.SetOptions(ctx, opts)
 }
 
-func (m *LoginMode) characterSelectWindowCallbacks(ctx client.Context) gameui.CharacterSelectWindowCallbacks {
+func (m *Screen) characterSelectWindowCallbacks(ctx client.Context) gameui.CharacterSelectWindowCallbacks {
 	return gameui.CharacterSelectWindowCallbacks{
 		OnSelectSlot: func(slot int) {
 			m.selectedSlot = clampCharacterSlot(slot, m.maxSlots)
@@ -95,7 +96,7 @@ func (m *LoginMode) characterSelectWindowCallbacks(ctx client.Context) gameui.Ch
 	}
 }
 
-func (m *LoginMode) activateCharacterSelectSlot(ctx client.Context, slot int, now time.Time) {
+func (m *Screen) activateCharacterSelectSlot(ctx client.Context, slot int, now time.Time) {
 	if m.charSelectPending {
 		return
 	}
@@ -107,7 +108,7 @@ func (m *LoginMode) activateCharacterSelectSlot(ctx client.Context, slot int, no
 	m.openCharacterCreate(ctx, m.selectedSlot, now)
 }
 
-func (m *LoginMode) characterSelectPreviewImages(ctx client.Context, opts gameui.CharacterSelectWindowOptions) map[int]image.Image {
+func (m *Screen) characterSelectPreviewImages(ctx client.Context, opts gameui.CharacterSelectWindowOptions) map[int]image.Image {
 	images := make(map[int]image.Image, 3)
 	pageStart := gameui.CharacterSelectPage(opts.SelectedSlot) * 3
 	for localSlot := 0; localSlot < 3; localSlot++ {
@@ -123,14 +124,14 @@ func (m *LoginMode) characterSelectPreviewImages(ctx client.Context, opts gameui
 	return images
 }
 
-func (m *LoginMode) showCharacterSelectWindow(ctx client.Context) {
+func (m *Screen) showCharacterSelectWindow(ctx client.Context) {
 	m.updateCharacterSelectWindow(ctx)
 	if m.charSelectWindow != nil {
 		m.charSelectWindow.Publish(ctx)
 	}
 }
 
-func (m *LoginMode) updateCharacterDelete(ctx client.Context) bool {
+func (m *Screen) updateCharacterDelete(ctx client.Context) bool {
 	if m.charDeleteConfirm.Update(ctx) {
 		return true
 	}
@@ -143,7 +144,7 @@ func (m *LoginMode) updateCharacterDelete(ctx client.Context) bool {
 	return consumed
 }
 
-func (m *LoginMode) openCharacterDeleteConfirm(ctx client.Context) {
+func (m *Screen) openCharacterDeleteConfirm(ctx client.Context) {
 	if ctx.Session == nil {
 		m.status = "delete character failed: no session"
 		return
@@ -159,7 +160,7 @@ func (m *LoginMode) openCharacterDeleteConfirm(ctx client.Context) {
 	}, nil)
 }
 
-func (m *LoginMode) submitCharacterDelete(ctx client.Context, key string) {
+func (m *Screen) submitCharacterDelete(ctx client.Context, key string) {
 	if m.deleteCharID == 0 {
 		m.status = "delete character failed: no character selected"
 		return
@@ -175,7 +176,7 @@ func (m *LoginMode) submitCharacterDelete(ctx client.Context, key string) {
 	m.status = "delete character request sent"
 }
 
-func (m *LoginMode) applyDeleteCharacterAccept(ctx client.Context) {
+func (m *Screen) applyDeleteCharacterAccept(ctx client.Context) {
 	if m.deleteCharID == 0 {
 		m.status = "deleted character"
 		return
@@ -190,8 +191,7 @@ func (m *LoginMode) applyDeleteCharacterAccept(ctx client.Context) {
 		deletedName = character.Name
 	}
 	ctx.Session.Characters = removeCharacterByID(ctx.Session.Characters, m.deleteCharID)
-	m.charViews = nil
-	m.charViewFailed = nil
+
 	m.charPreviewImages = nil
 	m.maxSlots = charSelectMaxSlots(ctx.Session.Characters)
 	if _, ok := characterBySlot(ctx.Session.Characters, m.selectedSlot); !ok {
@@ -210,13 +210,13 @@ func (m *LoginMode) applyDeleteCharacterAccept(ctx client.Context) {
 	m.showCharacterSelectWindow(ctx)
 }
 
-func (m *LoginMode) applyDeleteCharacterRefuse(ctx client.Context, code uint8) {
+func (m *Screen) applyDeleteCharacterRefuse(ctx client.Context, code uint8) {
 	m.deleteCharID = 0
 	m.status = describeDeleteCharacterRefuse(code)
 	m.charDeleteConfirm.OpenAlert(ctx, "Delete Character", m.status, nil)
 }
 
-func (m *LoginMode) cancelCharacterSelect(ctx client.Context) {
+func (m *Screen) cancelCharacterSelect(ctx client.Context) {
 	m.charSelectWindow = nil
 	m.disableCharServerPing()
 	m.startPhaseFade(loginPhaseAccount, time.Now())
@@ -226,7 +226,7 @@ func (m *LoginMode) cancelCharacterSelect(ctx client.Context) {
 	m.status = "char select cancelled"
 }
 
-func (m *LoginMode) prepareCharacterSelectFromSession(ctx client.Context) {
+func (m *Screen) prepareCharacterSelectFromSession(ctx client.Context) {
 	m.maxSlots = 9
 	m.selectedSlot = 0
 	if ctx.Session == nil || len(ctx.Session.Characters) == 0 {
@@ -241,7 +241,7 @@ func (m *LoginMode) prepareCharacterSelectFromSession(ctx client.Context) {
 	}
 }
 
-func (m *LoginMode) autoSelectCharacter(ctx client.Context) bool {
+func (m *Screen) autoSelectCharacter(ctx client.Context) bool {
 	slot := ctx.Config.Login.CharSlot
 	if !ctx.Config.Login.AutoLogin || slot < 0 || m.autoCharAttempted {
 		return false
@@ -258,7 +258,7 @@ func (m *LoginMode) autoSelectCharacter(ctx client.Context) bool {
 	return true
 }
 
-func (m *LoginMode) reconnectCharacterServer(ctx client.Context) {
+func (m *Screen) reconnectCharacterServer(ctx client.Context) {
 	if ctx.Network == nil || ctx.Session == nil || len(ctx.Session.CharServers) == 0 {
 		return
 	}
@@ -282,29 +282,26 @@ type characterPreviewTarget interface {
 	DrawImage(*render.Image, *render.DrawImageOptions)
 }
 
-func (m *LoginMode) drawCharacterPreview(screen characterPreviewTarget, ctx client.Context, character session.Character, centerX, feetY int) {
-	view := m.characterPreviewView(ctx, character)
-	if view == nil {
+func (m *Screen) drawCharacterPreview(screen characterPreviewTarget, ctx client.Context, character session.Character, centerX, feetY int) {
+	if m.bindings.Preview == nil {
 		return
 	}
-	billboard, ok := humanoidBillboardForState(view, spriteState{
-		actionFamily: scene.SpriteActionIdle,
-		direction:    charSelectPreviewDirection,
-		started:      time.Now(),
-		loopIdle:     true,
-	}, time.Now())
-	if !ok || billboard == nil || billboard.Image == nil {
+	billboard := m.bindings.Preview(ctx, character, charSelectPreviewDirection)
+	if billboard == nil || billboard.Image == nil {
 		return
 	}
 	var opts render.DrawImageOptions
-	scale := charSelectPreviewScale * playerBodyScaleForJob(character.Job)
+	scale := charSelectPreviewScale
+	if db.IsBabyJob(int(character.Job)) {
+		scale *= scene.BabyPlayerBodyScale
+	}
 	opts.GeoM.Scale(scale, scale)
 	opts.GeoM.Translate(float64(centerX)-billboard.AnchorX*scale, float64(feetY)-billboard.AnchorY*scale)
 	opts.Filter = scene.SpriteDrawFilter()
 	screen.DrawImage(billboard.Image, &opts)
 }
 
-func (m *LoginMode) characterPreviewImage(ctx client.Context, character session.Character) image.Image {
+func (m *Screen) characterPreviewImage(ctx client.Context, character session.Character) image.Image {
 	if character.ID == 0 {
 		return nil
 	}
@@ -320,34 +317,7 @@ func (m *LoginMode) characterPreviewImage(ctx client.Context, character session.
 	return m.charPreviewImages[character.ID]
 }
 
-func (m *LoginMode) characterPreviewView(ctx client.Context, character session.Character) *humanoidSpriteView {
-	if character.ID == 0 {
-		return nil
-	}
-	if _, failed := m.charViewFailed[character.ID]; failed {
-		return nil
-	}
-	if m.charViews == nil {
-		m.charViews = make(map[uint32]*humanoidSpriteView)
-	}
-	if view := m.charViews[character.ID]; view != nil {
-		return view
-	}
-	character = characterWithVisualJob(character)
-	view, status := loadPlayerHumanoidSpriteView(ctx.Resources, character, ctx.Session.Sex, false)
-	if view == nil {
-		if m.charViewFailed == nil {
-			m.charViewFailed = make(map[uint32]struct{})
-		}
-		m.charViewFailed[character.ID] = struct{}{}
-		glog.Debugf("char select sprite resources char_id=%d name=%s job=%d %s", character.ID, character.Name, character.Job, status)
-		return nil
-	}
-	m.charViews[character.ID] = view
-	return view
-}
-
-func (m *LoginMode) loadCharacterSelectSkin(ctx client.Context) {
+func (m *Screen) loadCharacterSelectSkin(ctx client.Context) {
 	if m.charWindow == nil {
 		if img, _, ok := loadLoginBackgroundImage(ctx.Resources, "login_interface/win_select.bmp"); ok {
 			m.charWindow = img

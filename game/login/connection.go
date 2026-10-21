@@ -1,11 +1,11 @@
-package game
+package login
 
 import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/glog"
 )
 
-func (m *LoginMode) showConnectionFailed(ctx client.Context) {
+func (m *Screen) showConnectionFailed(ctx client.Context) {
 	glog.Warnf("login connection failed: %s", m.status)
 	m.loginPending = false
 	m.autoAttempted = true
@@ -20,7 +20,7 @@ func (m *LoginMode) showConnectionFailed(ctx client.Context) {
 	if m.disconnectDialog.IsOpen() {
 		return
 	}
-	m.status = disconnectMessageText(ctx.Resources, disconnectMessage{1, "Failed to Connect to Server."})
+	m.status = MessageText(ctx.Resources, 1, "Failed to Connect to Server.")
 	m.disconnectDialog.OpenAlert(ctx, "Connection failed", m.status, func() {
 		m.phase = loginPhaseAccount
 		m.accountStep = loginAccountCredentials

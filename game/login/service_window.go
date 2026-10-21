@@ -1,4 +1,4 @@
-package game
+package login
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	gameui "github.com/kivutar/goro/ui"
 )
 
-func (m *LoginMode) updateLoginServerWindow(ctx client.Context) {
+func (m *Screen) updateLoginServerWindow(ctx client.Context) {
 	m.updateServiceWindow(ctx, "Server", loginServerNames(loginConnections(ctx)), m.selectedLoginServer, gameui.ServiceWindowCallbacks{
 		OnSelect: func(index int) {
 			m.selectLoginServer(ctx, index)
@@ -24,7 +24,7 @@ func (m *LoginMode) updateLoginServerWindow(ctx client.Context) {
 	})
 }
 
-func (m *LoginMode) updateCharacterServiceWindow(ctx client.Context) {
+func (m *Screen) updateCharacterServiceWindow(ctx client.Context) {
 	selected := 0
 	servers := []session.CharServer(nil)
 	if ctx.Session != nil {
@@ -41,7 +41,7 @@ func (m *LoginMode) updateCharacterServiceWindow(ctx client.Context) {
 	})
 }
 
-func (m *LoginMode) updateServiceWindow(ctx client.Context, title string, names []string, selected int, callbacks gameui.ServiceWindowCallbacks) {
+func (m *Screen) updateServiceWindow(ctx client.Context, title string, names []string, selected int, callbacks gameui.ServiceWindowCallbacks) {
 	if ctx.Config.Headless {
 		return
 	}
@@ -57,7 +57,7 @@ func (m *LoginMode) updateServiceWindow(ctx client.Context, title string, names 
 	m.serviceWindow.Publish(ctx)
 }
 
-func (m *LoginMode) selectLoginServer(ctx client.Context, index int) {
+func (m *Screen) selectLoginServer(ctx client.Context, index int) {
 	connections := loginConnections(ctx)
 	if index < 0 || index >= len(connections) {
 		return
@@ -70,7 +70,7 @@ func (m *LoginMode) selectLoginServer(ctx client.Context, index int) {
 	m.updateLoginWindow(ctx)
 }
 
-func (m *LoginMode) showLoginServerSelection(ctx client.Context) {
+func (m *Screen) showLoginServerSelection(ctx client.Context) {
 	if len(loginConnections(ctx)) <= 1 {
 		return
 	}
@@ -81,7 +81,7 @@ func (m *LoginMode) showLoginServerSelection(ctx client.Context) {
 	m.updateLoginServerWindow(ctx)
 }
 
-func (m *LoginMode) applyAccountAcceptLogin(ctx client.Context, login network.AccountAcceptLogin) error {
+func (m *Screen) applyAccountAcceptLogin(ctx client.Context, login network.AccountAcceptLogin) error {
 	m.loginPending = false
 	ctx.Session.AccountID = login.AccountID
 	ctx.Session.AuthCode = login.AuthCode
@@ -107,7 +107,7 @@ func (m *LoginMode) applyAccountAcceptLogin(ctx client.Context, login network.Ac
 	return nil
 }
 
-func (m *LoginMode) showCharacterServiceSelection(ctx client.Context) {
+func (m *Screen) showCharacterServiceSelection(ctx client.Context) {
 	m.hideLoginWindow(ctx)
 	m.hideServiceWindow(ctx)
 	m.accountStep = loginAccountCharacterService
@@ -115,7 +115,7 @@ func (m *LoginMode) showCharacterServiceSelection(ctx client.Context) {
 	m.updateCharacterServiceWindow(ctx)
 }
 
-func (m *LoginMode) selectCharacterService(ctx client.Context, index int, userConfirmed bool) {
+func (m *Screen) selectCharacterService(ctx client.Context, index int, userConfirmed bool) {
 	server, ok := selectedCharacterServer(ctx.Session, index)
 	if !ok {
 		return
@@ -132,7 +132,7 @@ func (m *LoginMode) selectCharacterService(ctx client.Context, index int, userCo
 	}
 }
 
-func (m *LoginMode) cancelCharacterServiceSelection(ctx client.Context) {
+func (m *Screen) cancelCharacterServiceSelection(ctx client.Context) {
 	m.disableLoginServerPing()
 	if ctx.Network != nil {
 		ctx.Network.Close()
@@ -143,7 +143,7 @@ func (m *LoginMode) cancelCharacterServiceSelection(ctx client.Context) {
 	m.updateLoginWindow(ctx)
 }
 
-func (m *LoginMode) hideLoginWindow(ctx client.Context) {
+func (m *Screen) hideLoginWindow(ctx client.Context) {
 	if m.loginWindow == nil {
 		return
 	}
@@ -153,7 +153,7 @@ func (m *LoginMode) hideLoginWindow(ctx client.Context) {
 	m.loginWindow = nil
 }
 
-func (m *LoginMode) hideServiceWindow(ctx client.Context) {
+func (m *Screen) hideServiceWindow(ctx client.Context) {
 	if m.serviceWindow == nil {
 		return
 	}

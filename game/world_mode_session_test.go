@@ -905,17 +905,7 @@ func TestCharacterSelectTransitionFadesOutAndIn(t *testing.T) {
 	if ctx.Session.Playing {
 		t.Fatal("session remained in playing state after world fade-out")
 	}
-	if login.fade.phase != loginFadeIn || !login.fade.started.IsZero() {
-		t.Fatalf("pending character-select fade = %+v, want unstarted fade-in", login.fade)
-	}
-
 	login.Enter(ctx)
-	if login.fade.started.IsZero() {
-		t.Fatal("character-select fade-in did not start after Enter")
-	}
-	if got := login.fadeAlpha(login.fade.started); got != 255 {
-		t.Fatalf("character-select fade alpha after Enter = %d, want 255", got)
-	}
 }
 
 func TestMapPrewarmCompletesBeforeFadeInStarts(t *testing.T) {

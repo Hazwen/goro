@@ -7,6 +7,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/companion"
+	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
@@ -36,7 +37,7 @@ func (m *WorldMode) handleNetworkPackets(ctx client.Context, now time.Time) (Mod
 		}
 	}
 	networkErrors := ctx.Network.DrainErrors()
-	if handleNetworkDisconnectErrors(ctx, &m.ui.disconnectDialog, networkErrors) {
+	if login.HandleNetworkDisconnectErrors(ctx, &m.ui.disconnectDialog, networkErrors) {
 		m.ui.npcCutin.Clear()
 		m.ui.mailWindow.CloseFromServer(ctx)
 		m.mail = mailState{}
@@ -59,7 +60,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if m.handleMailPacket(ctx, pkt, now) {
 		return nil, false
 	}
-	if handleDisconnectPacket(ctx, &m.ui.disconnectDialog, pkt) {
+	if login.HandleDisconnectPacket(ctx, &m.ui.disconnectDialog, pkt) {
 		m.ui.npcCutin.Clear()
 		m.ui.mailWindow.CloseFromServer(ctx)
 		m.mail = mailState{}

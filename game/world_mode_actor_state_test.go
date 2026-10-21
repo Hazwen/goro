@@ -796,12 +796,11 @@ func TestSpiritSpherePacketsUpdateCountsAndLifecycle(t *testing.T) {
 
 func TestSpiritEffectsSurviveLoginAndActorRefresh(t *testing.T) {
 	ctx := testutil.MonkEffectContext()
-	login := &LoginMode{}
 	for _, id := range []uint32{2000000, 300} {
-		if !login.applyLoginActorBootstrapPacket(ctx, testutil.SpiritSpherePacket(network.PacketZCSpirits2, id, 3)) {
+		if handled, err := applyLoginActorBootstrapPacket(ctx, testutil.SpiritSpherePacket(network.PacketZCSpirits2, id, 3)); !handled || err != nil {
 			t.Fatal("login dropped sphere packet")
 		}
-		login.applyLoginStatusEffectPacket(ctx, testStatusEffectChangePacket(db.StatusExplosionspirits, id, true))
+		applyLoginStatusEffectPacket(ctx, testStatusEffectChangePacket(db.StatusExplosionspirits, id, true))
 	}
 	m := &WorldMode{}
 	m.syncCurrentActorEffectStateEffects(ctx)
@@ -1500,7 +1499,7 @@ func TestMonsterEffectUpdatesPreserveActorDuringLoginAndPlay(t *testing.T) {
 		m := &WorldMode{}
 		packet := testutil.NpcEffectUpdatePacket(300, db.Opt3Overthrust|db.Opt3Energycoat|db.Opt3Steelbody)
 		if login {
-			if !(&LoginMode{}).applyLoginActorBootstrapPacket(ctx, packet) {
+			if handled, err := applyLoginActorBootstrapPacket(ctx, packet); !handled || err != nil {
 				t.Fatal("login dropped the monster effect snapshot")
 			}
 			m.syncCurrentActorEffectStateEffects(ctx)
