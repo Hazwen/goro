@@ -192,9 +192,9 @@ func TestPriestCasting(t *testing.T) {
 		db.SkillHPAssumptio, db.SkillHPBasilica, db.SkillPRRedemptio,
 	} {
 		m := &WorldMode{}
-		// Deliberately use a different property: native auras are skill-specific.
+		// Ordinary auras follow the property; High Priest and Redemptio stay white.
 		m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, DelayTime: 1000, Property: 3})
-		aura := effectBeginSpell
+		aura := effectBeginSpell3
 		if skill == db.SkillHPAssumptio || skill == db.SkillHPBasilica || skill == db.SkillPRRedemptio {
 			aura = effectBeginSpell6
 		}

@@ -169,11 +169,7 @@ func TestAlchemistCastAndGroundOwnership(t *testing.T) {
 	for _, skill := range []uint16{db.SkillAMDemonstration, db.SkillAMCannibalize, db.SkillAMSpheremine} {
 		m := &WorldMode{}
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: skill, X: 20, Y: 20})
-		want := 0
-		if skill == db.SkillAMSpheremine {
-			want = 1
-		}
-		if len(m.worldEffects) != want || m.actorAnims[2000000].started.IsZero() {
+		if len(m.worldEffects)+len(m.scheduledSounds) != 0 || m.actorAnims[2000000].started.IsZero() {
 			t.Fatal("ground notification must animate the caster and leave the visual to its unit/entity")
 		}
 		if skill != db.SkillAMDemonstration {
@@ -188,11 +184,11 @@ func TestAlchemistCastAndGroundOwnership(t *testing.T) {
 			t.Fatal("Demonstration survived unit removal")
 		}
 	}
-	for _, skill := range []uint16{db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3} {
+	for _, skill := range []uint16{db.SkillAMPharmacy, db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3} {
 		m := &WorldMode{}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SourceID: 2000000, TargetID: 2000000, SkillID: skill, Result: 1})
-		if len(m.worldEffects) != 1 || m.worldEffects[0].effectID != effectBashBegin {
-			t.Fatal("Twilight completion must play only the native release flare")
+		if len(m.worldEffects)+len(m.scheduledSounds) != 0 || m.actorAnims[2000000].started.IsZero() {
+			t.Fatal("crafting completion must animate the caster without a release flare or sound")
 		}
 	}
 }

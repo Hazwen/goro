@@ -26,7 +26,7 @@ func TestProfessorSkillPackets(t *testing.T) {
 		{375, map[int][]uint32{406: {300}, 380: {300}}, 1},
 		{402, map[int][]uint32{403: {300}}, 1},
 		{403, map[int][]uint32{505: {2000000}}, 1},
-		{482, map[int][]uint32{521: {300}, 16: {2000000}}, 2},
+		{482, map[int][]uint32{521: {300}}, 1},
 	} {
 		m := &WorldMode{}
 		n := network.SkillNoDamageNotify{SkillID: tc.skill, SourceID: 2000000, TargetID: 300, Result: 1}
@@ -129,7 +129,7 @@ func TestProfessorClientAssets(t *testing.T) {
 	for _, skill := range []uint16{373, 374, 375, 402, 403, 404, 405, 482} {
 		m := &WorldMode{}
 		m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, Property: 3, DelayTime: 1000})
-		aura := 12
+		aura := 55
 		if skill == 404 {
 			aura = 16
 		}

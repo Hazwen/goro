@@ -21,9 +21,9 @@ func TestStalkerPacketEffects(t *testing.T) {
 		owner uint32
 	}{
 		{389, []int{db.SkillEffectChaseWalkSmoke}, 2000000},
-		{390, []int{16, 392}, 2000000},
-		{475, []int{16, 496}, 2000000},
-		{476, []int{16, 495}, 300},
+		{390, []int{392}, 2000000},
+		{475, []int{496}, 2000000},
+		{476, []int{495}, 300},
 	} {
 		m := &WorldMode{}
 		n := network.SkillNoDamageNotify{SkillID: tc.skill, SourceID: 2000000, TargetID: 300, Amount: 65535}
@@ -37,20 +37,16 @@ func TestStalkerPacketEffects(t *testing.T) {
 			t.Fatalf("skill %d: wrong effects or release pose", tc.skill)
 		}
 		for i, e := range m.worldEffects {
-			owner := tc.owner
-			if e.effectID == 16 {
-				owner = n.SourceID
-			}
-			if e.effectID != tc.ids[i] || e.actorID != owner {
+			if e.effectID != tc.ids[i] || e.actorID != tc.owner {
 				t.Fatalf("skill %d: wrong packet owner: %+v", tc.skill, e)
 			}
 		}
 		if tc.skill == 476 {
-			if len(m.scheduledSounds) != 5 {
+			if len(m.scheduledSounds) != 4 {
 				t.Fatal("Full Strip needs four fragment sounds")
 			}
-			for i, sound := range m.scheduledSounds[1:] {
-				if sound.at.Sub(m.worldEffects[1].starts) != time.Duration(1+10*i)*db.EffectFrameDuration || !sound.positioned || sound.paths[0] != "effect\\복호격.wav" {
+			for i, sound := range m.scheduledSounds {
+				if sound.at.Sub(m.worldEffects[0].starts) != time.Duration(1+10*i)*db.EffectFrameDuration || !sound.positioned || sound.paths[0] != "effect\\복호격.wav" {
 					t.Fatal("wrong Full Strip sound timing")
 				}
 			}

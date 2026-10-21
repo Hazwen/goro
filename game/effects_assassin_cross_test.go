@@ -28,11 +28,11 @@ func TestAssassinCrossPacketSequence(t *testing.T) {
 		}
 		n.Result = 1
 		m.applySkillNoDamageNotify(ctx, n)
-		want := []int{16, 493}
+		want := []int{493}
 		if skill == 406 {
 			want = []int{409}
 		} else if skill == 407 {
-			want = []int{16}
+			want = nil
 		}
 		pose := spriteActionPCSkill
 		if skill == 406 {
@@ -47,10 +47,13 @@ func TestAssassinCrossPacketSequence(t *testing.T) {
 			}
 		}
 		if skill == 378 {
+			if len(m.scheduledSounds) != 6 {
+				t.Fatal("EDP needs exactly its six Enchant Poison sounds")
+			}
 			var ticks []int
 			for _, sound := range m.scheduledSounds {
 				if len(sound.paths) == 1 && sound.paths[0] == "effect\\assasin_enchantpoison.wav" {
-					ticks = append(ticks, int(sound.at.Sub(m.worldEffects[1].starts)/db.EffectFrameDuration))
+					ticks = append(ticks, int(sound.at.Sub(m.worldEffects[0].starts)/db.EffectFrameDuration))
 					if !sound.positioned {
 						t.Fatal("poison sounds must be positioned")
 					}
@@ -59,6 +62,9 @@ func TestAssassinCrossPacketSequence(t *testing.T) {
 			if !reflect.DeepEqual(ticks, []int{0, 5, 11, 18, 26, 40}) {
 				t.Fatalf("EDP sound ticks = %v", ticks)
 			}
+		}
+		if skill == 407 && len(m.scheduledSounds) != 0 {
+			t.Fatal("Create Deadly Poison must not play a release sound")
 		}
 		if skill == 406 {
 			a := network.ActorActionNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, Action: network.ActorActionSkill, Damage: 100}

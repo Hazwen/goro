@@ -1041,7 +1041,8 @@ func TestSkillCastAuraEffectMappings(t *testing.T) {
 		{property: 4, want: effectBeginSpell5},
 		{property: 5, want: effectBeginSpell7},
 		{property: 6, want: effectBeginSpell6},
-		{property: 8, want: effectBeginSpell6},
+		{property: 7, want: effectBeginSpell},
+		{property: 8, want: effectBeginSpell},
 		{property: 9, want: effectBeginSpell},
 	}
 	for _, tt := range tests {
@@ -1163,7 +1164,7 @@ func TestSkillCastNotifyAddsDurationAura(t *testing.T) {
 		t.Fatalf("lockon = %+v", lockon)
 	}
 	aura := mode.worldEffects[2]
-	if aura.effectID != effectBeginSpell || aura.actorID != 2000000 || aura.targetID != 1100 || aura.duration != 2500*time.Millisecond {
+	if aura.effectID != effectBeginSpell5 || aura.actorID != 2000000 || aura.targetID != 1100 || aura.duration != 2500*time.Millisecond {
 		t.Fatalf("aura = %+v", aura)
 	}
 	bar, ok := mode.actorCastBars[150000]
@@ -1222,7 +1223,7 @@ func TestSelfTargetSkillCastDoesNotAddLockOnTarget(t *testing.T) {
 	if len(mode.worldEffects) != 2 {
 		t.Fatalf("world effects = %+v, want cast ring and aura", mode.worldEffects)
 	}
-	if mode.worldEffects[0].effectID != effectCastRing || mode.worldEffects[1].effectID != effectBeginSpell {
+	if mode.worldEffects[0].effectID != effectCastRing || mode.worldEffects[1].effectID != effectBeginSpell3 {
 		t.Fatalf("effects = %+v", mode.worldEffects)
 	}
 }
@@ -1240,7 +1241,7 @@ func TestSkillCastEffectsDedupeServerAndLocalFallback(t *testing.T) {
 	if len(mode.worldEffects) != 2 {
 		t.Fatalf("world effects = %d, want 2", len(mode.worldEffects))
 	}
-	if mode.worldEffects[0].effectID != effectCastRing || mode.worldEffects[1].effectID != effectBeginSpell {
+	if mode.worldEffects[0].effectID != effectCastRing || mode.worldEffects[1].effectID != effectBeginSpell3 {
 		t.Fatalf("effects = %+v", mode.worldEffects)
 	}
 }
@@ -1284,7 +1285,7 @@ func TestGroundSkillCastEffectsAddGroundSampleMarker(t *testing.T) {
 	if marker.effectID != effectGroundSample || marker.actorID != 0 || marker.x != 123 || marker.y != 456 || marker.duration != 1800*time.Millisecond || marker.size != 7 || math.Abs(marker.groundSampleRotationRadiansPerSecond-wantSpeed) > 0.001 {
 		t.Fatalf("ground marker = %+v", marker)
 	}
-	if mode.worldEffects[1].effectID != effectCastRing || mode.worldEffects[2].effectID != effectBeginSpell {
+	if mode.worldEffects[1].effectID != effectCastRing || mode.worldEffects[2].effectID != effectBeginSpell5 {
 		t.Fatalf("cast effects = %+v", mode.worldEffects)
 	}
 }

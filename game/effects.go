@@ -1064,7 +1064,6 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
 	}
-	m.addSkillBeginEffectsAt(ctx, notify.SkillID, notify.SourceID, notify.TargetID, now)
 	if notify.SkillID == db.SkillTKSevenwind && notify.Amount >= 1 && notify.Amount <= 7 {
 		effectID := effectBeginAsura1 + int(notify.Amount) - 1
 		if m.addWorldEffectAt(ctx, effectID, notify.TargetID, now) {
@@ -1332,9 +1331,6 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
 			m.startSkillActionAnimation(ctx, notify.SourceID, actor, skillAction(notify.SkillID), now, defaultAttackAnimationDuration)
-		}
-		if notify.SkillID == db.SkillAMSpheremine {
-			m.addSkillBeginEffectsAt(ctx, notify.SkillID, notify.SourceID, 0, now)
 		}
 		if notify.SkillID == db.SkillHWGravitation {
 			m.scheduleSound(now, "effect\\wizard_earthspike.wav")
@@ -2046,14 +2042,9 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		skillID == db.SkillCGArrowvulcan || skillID == db.SkillCGTarotcard || skillID == db.SkillHWGanbantein {
 		effectID = effectBeginSpell6
 	}
-	if (skillID >= db.SkillALRuwach && skillID <= db.SkillALCure) || skillID == db.SkillALHolylight ||
-		skillID == db.SkillALLResurrection || (skillID >= db.SkillMGSrecovery && skillID <= db.SkillMGThunderstorm) || skillID == db.SkillMGEnergycoat ||
-		(skillID >= db.SkillWZFirepillar && skillID <= db.SkillWZQuagmire) || skillID == db.SkillWZSightblaster ||
-		(skillID >= db.SkillPRImpositio && skillID <= db.SkillPRMagnus && skillID != db.SkillPRSlowpoison) ||
-		skillID == db.SkillCRGrandcross || skillID == db.SkillCRProvidence || skillID == db.SkillCRDevotion || skillID == db.SkillBSRepairweapon {
-		effectID = effectBeginSpell
-	}
 	switch skillID {
+	case db.SkillACConcentration:
+		effectID = effectIncAgiDex
 	case db.SkillSTChasewalk:
 		m.addWorldEffectAt(ctx, effectCastSpin, sourceID, starts)
 		return
@@ -2065,11 +2056,6 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell7
 	case db.SkillASCEdp, db.SkillASCCdp:
 		effectID = effectBashBegin
-	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation:
-		effectID = effectBeginSpell
-	case db.SkillPFHpconversion, db.SkillPFSoulchange, db.SkillPFSoulburn, db.SkillPFMindbreaker,
-		db.SkillPFMemorize, db.SkillPFSpiderweb, db.SkillPFDoublecasting:
-		effectID = effectBeginSpell
 	case db.SkillAMCallhomun, db.SkillAMRest, db.SkillAMResurrecthomun:
 		effectID = effectCoupleCasting
 	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3:
@@ -2629,7 +2615,7 @@ func skillCastAuraEffectID(property uint32) int {
 		return effectBeginSpell5
 	case 5:
 		return effectBeginSpell7
-	case 6, 8:
+	case 6:
 		return effectBeginSpell6
 	default:
 		return effectBeginSpell

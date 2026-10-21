@@ -123,8 +123,8 @@ func TestAcolyteCastAuraAndPoses(t *testing.T) {
 		m.applySkillCastNotify(ctx, network.SkillCastNotify{
 			SkillID: skill, SourceID: 2000000, TargetID: 300, Property: 6, DelayTime: 1000,
 		})
-		if !m.hasActiveWorldEffect(effectBeginSpell, 2000000, time.Now()) || m.hasActiveWorldEffect(effectBeginSpell6, 2000000, time.Now()) {
-			t.Fatalf("skill %d: native cast aura must not depend on element", skill)
+		if !m.hasActiveWorldEffect(effectBeginSpell6, 2000000, time.Now()) || m.hasActiveWorldEffect(effectBeginSpell, 2000000, time.Now()) {
+			t.Fatalf("skill %d: native cast aura must follow the holy property", skill)
 		}
 		pose := spriteActionPCReadyFight
 		if skill == db.SkillALIncagi {
@@ -140,7 +140,7 @@ func TestAcolyteCastAuraAndPoses(t *testing.T) {
 
 func TestAgilityNativeLabels(t *testing.T) {
 	for _, decrease := range []bool{false, true} {
-		label := agilityLabel(decrease, 49)
+		label := agilityLabel(decrease, 49, 100)
 		wantY, wantHeight := -52.05, 20.0
 		if decrease {
 			wantY, wantHeight = -42.75, 10
@@ -148,7 +148,7 @@ func TestAgilityNativeLabels(t *testing.T) {
 		if label.halfWidth != 40 || label.halfHeight != wantHeight || math.Abs(label.y-wantY) > .0001 || label.alpha != 200 {
 			t.Fatalf("decrease=%t: native pixel dimensions, acceleration or fade changed: %+v", decrease, label)
 		}
-		if agilityLabel(decrease, 0).alpha >= label.alpha || agilityLabel(decrease, 99).alpha != 0 {
+		if agilityLabel(decrease, 0, 100).alpha >= label.alpha || agilityLabel(decrease, 99, 100).alpha != 0 {
 			t.Fatal("label must fade at both ends")
 		}
 	}

@@ -235,8 +235,8 @@ Homunculus utility skills use the pink Couple Casting rings. Demonstration's
 unit owns its looping, ground-anchored sprite; ground notifications animate
 the caster without duplicating the field. Twilight I–III use casting effects
 573–575, scattering 320 ingredients around the local viewer as both originals
-do, with incremental updates and at most three draw calls. Completion uses
-only the native release flare. ACT assets determine throw animation speed;
+do, with incremental updates and at most three draw calls. Completion has
+no additional flare or sound. ACT assets determine throw animation speed;
 the old SetAction speed argument is unused in the 2008 executable. Pharmacy's
 existing crafting UI/results and summon/homunculus entity lifecycles remain
 server-owned. Passives and unused draft homunculus skills have no invented
@@ -288,7 +288,7 @@ including the caster on failure. Its separate level-5 damage packet adds only
 the generic hit flash. Mind Breaker follows the 2008 transient random tint and
 tick-25 Provoke sound; later dhxj instead keeps the tint through the status.
 Memorize flashes yellow and plays Suffragium; Double Casting flashes red with
-an expanded body, the native release flare, and centered amplification sound.
+an expanded body and centered amplification sound.
 Wall of Fog uses the original translucent grey square walls and diagonals;
 Spider Web uses the pulsing ground texture. Both are owned by server units,
 without duplicate fields at cast notification. rAthena confirms the eight
@@ -354,12 +354,18 @@ shared Combo Finish sound and yellow combo rings. Both reviews, the full
 test suite with OldRO assets, and a normal build passed. No live visual
 comparison was performed; these procedural effects still need playtesting.
 
-Audit follow-up before closing this job sweep: recheck the no-damage release
-flare mappings added for Stalker and similar buffs. The native no-damage
-handler reads `GetSkillActionInfo` for its pose but does not launch that
-table's `beginEffectId`; only explicitly launched effects should be retained.
-Also verify elemental overrides at the end of `GetSkillActionInfo2` when
-checking existing explicit neutral casting-aura mappings.
+Shared audit correction: dhxj, HighPriest, and the actual 2008 Sakexe's
+no-damage (`0x59c930`) and ground (`0x578850`) handlers read the release
+action table for animation only. Removed the extra flares/sounds previously
+added to buff and crafting completions and Summon Marine Sphere's release flare.
+Concentration's AGI/DEX overlay belongs to casting and follows its duration;
+completion plays only the Concentration STR. Damage packets retain their explicit
+begin effects. Ordinary casting auras now follow the packet's element,
+matching the final override in `GetSkillActionInfo2` (`0x6853a9`): water,
+earth, fire, wind, poison, and holy select their colored variants; ghost
+remains neutral. Skill-specific auras still take precedence. Both reviews,
+full tests with OldRO assets, and a normal build passed; no live playtest was
+performed for these corrections.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,

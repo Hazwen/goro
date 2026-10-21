@@ -14,16 +14,18 @@ import (
 	"github.com/kivutar/goro/res"
 )
 
-func TestMageCastsUseNeutralAura(t *testing.T) {
+func TestMageCastsUseElementalAura(t *testing.T) {
 	ctx := knightEffectContext()
 	for _, skill := range []uint16{db.SkillMGNapalmbeat, db.SkillMGSafetywall, db.SkillMGSoulstrike, db.SkillMGColdbolt,
 		db.SkillMGFrostdiver, db.SkillMGStonecurse, db.SkillMGFireball, db.SkillMGFirewall, db.SkillMGFirebolt,
 		db.SkillMGLightningbolt, db.SkillMGThunderstorm, db.SkillMGEnergycoat} {
-		for _, property := range []uint32{1, 3, 4, 6, 8} {
+		// Native PROPERTY_WATER through PROPERTY_SAINT select colored auras;
+		// neutral, dark, ghost, and undead retain EF_BEGINSPELL.
+		for property, aura := range []int{12, 54, 56, 55, 57, 59, 58, 12, 12, 12} {
 			m := &WorldMode{}
-			m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, DelayTime: 1000, Property: property})
-			if len(m.worldEffects) != 3 || m.worldEffects[2].effectID != effectBeginSpell {
-				t.Fatalf("skill %d property %d: expected neutral casting aura", skill, property)
+			m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, DelayTime: 1000, Property: uint32(property)})
+			if len(m.worldEffects) != 3 || m.worldEffects[2].effectID != aura || m.worldEffects[2].duration != time.Second {
+				t.Fatalf("skill %d property %d: expected casting aura %d for one second", skill, property, aura)
 			}
 		}
 	}

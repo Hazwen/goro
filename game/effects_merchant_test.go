@@ -91,8 +91,8 @@ func TestMerchantUtilityEffects(t *testing.T) {
 	}
 	notify.Result = 1
 	m.applySkillNoDamageNotify(ctx, notify)
-	if len(m.worldEffects) != 2 || m.worldEffects[0].effectID != effectBashBegin || m.worldEffects[1].effectID != effectLoud || m.worldEffects[1].actorID != 2000000 {
-		t.Fatalf("Crazy Uproar must flash then show Loud on its caster: %+v", m.worldEffects)
+	if len(m.worldEffects) != 1 || m.worldEffects[0].effectID != effectLoud || m.worldEffects[0].actorID != 2000000 || len(m.scheduledSounds) != 1 {
+		t.Fatalf("Crazy Uproar must show only Loud on its caster: %+v", m.worldEffects)
 	}
 	for _, skill := range []uint16{db.SkillMCInccarry, db.SkillMCDiscount, db.SkillMCOvercharge, db.SkillMCPushcart, db.SkillMCIdentify, db.SkillMCVending, db.SkillMCChangecart} {
 		m := &WorldMode{}

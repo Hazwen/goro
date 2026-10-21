@@ -167,14 +167,14 @@ func TestPaladinCastAurasAndQuickenRefresh(t *testing.T) {
 	}{
 		{db.SkillPaPressure, effectBeginSpell6},
 		{db.SkillPaShieldchain, effectBeginSpell6},
-		{db.SkillCRGrandcross, effectBeginSpell},
-		{db.SkillCRProvidence, effectBeginSpell},
-		{db.SkillCRDevotion, effectBeginSpell},
+		{db.SkillCRGrandcross, effectBeginSpell7},
+		{db.SkillCRProvidence, effectBeginSpell7},
+		{db.SkillCRDevotion, effectBeginSpell7},
 	} {
 		m := &WorldMode{}
 		m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: tc.skill, Property: 5, SourceID: 2000000, TargetID: 300, DelayTime: 1000})
-		if !m.hasActiveWorldEffect(tc.aura, 2000000, time.Now()) || m.hasActiveWorldEffect(effectBeginSpell7, 2000000, time.Now()) {
-			t.Fatalf("skill %d used the element's aura instead of its native cast effect", tc.skill)
+		if len(m.worldEffects) != 3 || m.worldEffects[2].effectID != tc.aura {
+			t.Fatalf("skill %d needs casting aura %d", tc.skill, tc.aura)
 		}
 	}
 	m := &WorldMode{}

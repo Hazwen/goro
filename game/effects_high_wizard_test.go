@@ -82,7 +82,7 @@ func TestHighWizardMagicPowerLifecycle(t *testing.T) {
 			t.Fatal("recasting must replace the weapon sparkle")
 		}
 	}
-	if len(m.scheduledSounds) != 4 || m.scheduledSounds[0].positioned || m.scheduledSounds[0].paths[0] != "effect\\마법력 증폭.wav" {
+	if len(m.scheduledSounds) != 2 || m.scheduledSounds[0].positioned || m.scheduledSounds[0].paths[0] != "effect\\마법력 증폭.wav" {
 		t.Fatal("each successful activation must play one centered amplification sound")
 	}
 	change.Active = false
@@ -209,7 +209,7 @@ func TestHighWizardClientAssets(t *testing.T) {
 		skill uint16
 		aura  int
 	}{
-		{db.SkillHWMagiccrasher, 12}, {db.SkillHWMagicpower, 16}, {db.SkillHWNapalmvulcan, 12}, {db.SkillHWGanbantein, 58}, {db.SkillHWGravitation, 12},
+		{db.SkillHWMagiccrasher, 55}, {db.SkillHWMagicpower, 16}, {db.SkillHWNapalmvulcan, 55}, {db.SkillHWGanbantein, 58}, {db.SkillHWGravitation, 55},
 	} {
 		m := &WorldMode{}
 		m.addSkillCastEffects(ctx, tc.skill, 3, 2000000, 0, 0, 0, time.Second, start, "test")

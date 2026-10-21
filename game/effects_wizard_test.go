@@ -88,8 +88,8 @@ func TestWizardPacketEffects(t *testing.T) {
 	for skill := db.SkillWZFirepillar; skill <= db.SkillWZQuagmire; skill++ {
 		m := &WorldMode{}
 		m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, DelayTime: 1000, Property: 3})
-		if len(m.worldEffects) != 3 || m.worldEffects[2].effectID != effectBeginSpell {
-			t.Fatalf("skill %d must use the original neutral cast aura", skill)
+		if len(m.worldEffects) != 3 || m.worldEffects[2].effectID != effectBeginSpell3 {
+			t.Fatalf("skill %d must use the fire-property cast aura", skill)
 		}
 	}
 }

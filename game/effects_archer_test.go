@@ -34,13 +34,11 @@ func TestArcherConcentrationAndUtility(t *testing.T) {
 	}
 	notify.Result = 1
 	m.applySkillNoDamageNotify(ctx, notify)
-	if len(m.worldEffects) != 2 || len(m.scheduledSounds) != 2 {
-		t.Fatal("Concentration needs its AGI/DEX overlay and STR, each with its native sound")
+	if len(m.worldEffects) != 1 || len(m.scheduledSounds) != 1 || m.scheduledSounds[0].paths[0] != "effect\\ac_concentration.wav" {
+		t.Fatal("Concentration needs only its STR and native sound")
 	}
-	for i, id := range []int{effectIncAgiDex, effectConcentration} {
-		if e := m.worldEffects[i]; e.effectID != id || e.actorID != notify.SourceID {
-			t.Fatalf("Concentration effect must belong to the caster: %+v", e)
-		}
+	if e := m.worldEffects[0]; e.effectID != effectConcentration || e.actorID != notify.SourceID {
+		t.Fatalf("Concentration effect must belong to the caster: %+v", e)
 	}
 	for _, skill := range []uint16{db.SkillACOwl, db.SkillACVulture, db.SkillACMakingarrow} {
 		m := &WorldMode{}
@@ -49,6 +47,30 @@ func TestArcherConcentrationAndUtility(t *testing.T) {
 		if len(m.worldEffects)+len(m.scheduledSounds) != 0 {
 			t.Fatalf("utility skill %d must not invent a visual effect", skill)
 		}
+	}
+}
+
+func TestArcherConcentrationCast(t *testing.T) {
+	ctx := archerEffectContext()
+	m := &WorldMode{}
+	m.applySkillCastNotify(ctx, network.SkillCastNotify{
+		SkillID: db.SkillACConcentration, SourceID: 2000000, TargetID: 2000000, DelayTime: 4000, Property: 3,
+	})
+	if len(m.worldEffects) != 2 || m.worldEffects[1].effectID != effectIncAgiDex || m.worldEffects[1].duration != 4*time.Second || len(m.scheduledSounds) != 1 || m.scheduledSounds[0].paths[0] != "effect\\ef_incagidex.wav" {
+		t.Fatal("Concentration must use its AGI/DEX casting label and sound, regardless of element")
+	}
+	label := agilityLabel(false, 119, 240)
+	if math.Abs(label.y+125.55) > .001 || label.alpha != 200 {
+		t.Fatal("Concentration's label must follow the cast duration instead of ending after 100 ticks")
+	}
+	ctx.Resources = realDataManager(t)
+	frame := render.NewFrame(800, 600)
+	effect := m.worldEffects[1]
+	spec, _ := worldEffectSpecForID(effectIncAgiDex)
+	projection := newSceneProjectionForTarget(800, 600, 10, 20, 0)
+	m.drawAgilityEffect(frame, ctx, projection, spec.components[0], effect, 10.5, 20.5, 0, effect.starts.Add(120*db.EffectFrameDuration))
+	if reflect.ValueOf(frame).Elem().FieldByName("worldCommands").Len() == 0 {
+		t.Fatal("Concentration's rising streaks must remain visible during a longer cast")
 	}
 }
 

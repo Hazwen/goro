@@ -85,7 +85,7 @@ func TestBlacksmithHammerFallAndCastPoses(t *testing.T) {
 		aura  int
 	}{
 		{db.SkillBSHammerfall, effectBashBegin}, {db.SkillBSAdrenaline, effectBashBegin},
-		{db.SkillBSMaximize, effectBashBegin}, {db.SkillBSRepairweapon, effectBeginSpell},
+		{db.SkillBSMaximize, effectBashBegin}, {db.SkillBSRepairweapon, effectBeginSpell3},
 	} {
 		m := &WorldMode{}
 		m.addSkillCastEffects(ctx, tc.skill, 3, 2000000, 300, 0, 0, time.Second, start, "test")

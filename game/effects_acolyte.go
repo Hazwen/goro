@@ -24,12 +24,12 @@ func healEffectID(amount uint32) int {
 	}
 }
 
-func agilityLabel(decrease bool, frame int) effectScreenParticle {
+func agilityLabel(decrease bool, frame, duration int) effectScreenParticle {
 	n := float64(frame + 1)
 	label := effectScreenParticle{
 		halfWidth: 40, halfHeight: 20,
-		y:     -(1.5*n - .018*n*(n+1)/2),
-		alpha: effectParticleAlpha(frame, 100, 15, 85, 200),
+		y:     -(1.5*n - 1.8/float64(duration)*n*(n+1)/2),
+		alpha: effectParticleAlpha(frame, duration, 15, duration-15, 200),
 	}
 	if decrease {
 		label.halfHeight = 10
@@ -43,12 +43,16 @@ func (m *WorldMode) drawAgilityEffect(screen *render.Frame, ctx client.Context, 
 		return
 	}
 	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
-	if frame >= 100 {
+	duration := 100
+	if effect.effectID == effectIncAgiDex && effect.duration > 0 {
+		duration = max(1, int(effect.duration/db.EffectFrameDuration))
+	}
+	if frame >= duration {
 		return
 	}
 	decrease := effect.effectID == effectDecAgility
 	if origin, ok := projection.projectPoint(x, y, z); ok {
-		drawEffectScreenParticle(screen, m.effectFileTexture(ctx.Resources, component.textureFile), origin, agilityLabel(decrease, frame))
+		drawEffectScreenParticle(screen, m.effectFileTexture(ctx.Resources, component.textureFile), origin, agilityLabel(decrease, frame, duration))
 	}
 	texture := m.effectFileTexture(ctx.Resources, component.textureFiles[0])
 	if texture == nil {
@@ -58,7 +62,7 @@ func (m *WorldMode) drawAgilityEffect(screen *render.Frame, ctx client.Context, 
 	indices := make([]uint16, 0, 26*12)
 	// Native Prim3DTexture follows the actor. One crossed streak is born every
 	// two ticks; births whose 50-tick lifetime exceeds the parent fade from zero.
-	for birth := 0; birth <= minInt(frame, 50); birth += 2 {
+	for birth := max(0, frame/2*2-48); birth <= minInt(frame, duration-50); birth += 2 {
 		age := frame - birth
 		alpha := effectParticleAlpha(age, 50, 20, 30, 200)
 		if alpha == 0 {
