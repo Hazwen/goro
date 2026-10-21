@@ -33,7 +33,6 @@ import (
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 	gameui "github.com/kivutar/goro/ui"
-	"github.com/kivutar/goro/world"
 	worldstate "github.com/kivutar/goro/world"
 )
 
@@ -995,8 +994,8 @@ func TestGrimtoothCastPackets(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := testutil.AssassinEffectContext()
-			ctx.World.Actors[301] = world.Actor{ID: 301, X: 16, Y: 21, Job: 1002}
-			ctx.World.Actors[2000001] = world.Actor{ID: 2000001, X: 10, Y: 21, Job: db.JobAssassin}
+			ctx.World.Actors[301] = worldstate.Actor{ID: 301, X: 16, Y: 21, Job: 1002}
+			ctx.World.Actors[2000001] = worldstate.Actor{ID: 2000001, X: 10, Y: 21, Job: db.JobAssassin}
 			m := &WorldMode{}
 			starts := time.Unix(100, 0)
 			action := network.ActorActionNotify{SkillID: db.SkillASGrimtooth, SkillLevel: 5,

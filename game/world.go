@@ -1457,16 +1457,6 @@ func skillTargetFlagsIncludeSelfPick(flags uint32) bool {
 	return flags&(skills.SkillTargetFriend|skills.SkillTargetSelf) != 0
 }
 
-func clampGameInt(value, minValue, maxValue int) int {
-	if value < minValue {
-		return minValue
-	}
-	if value > maxValue {
-		return maxValue
-	}
-	return value
-}
-
 type sceneDrawEntry struct {
 	depth           float64
 	entityID        uint32

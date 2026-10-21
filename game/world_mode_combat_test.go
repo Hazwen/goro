@@ -26,7 +26,6 @@ import (
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 	gameui "github.com/kivutar/goro/ui"
-	"github.com/kivutar/goro/world"
 	worldstate "github.com/kivutar/goro/world"
 )
 
@@ -347,7 +346,7 @@ func TestArcherArrowShowerReplacesPendingReleaseSound(t *testing.T) {
 	m.scheduleSkillActionSoundAtActor(otherRelease, 400, db.SkillACShower, db.WeaponAttackSounds(db.WeaponBow)...)
 	m.scheduleSoundAtActor(otherRelease, ground.SourceID, "effect\\ac_concentration.wav")
 	for _, id := range []uint32{300, 301, 302} {
-		ctx.World.Actors[id] = world.Actor{ID: id, Job: 1002, X: 20, Y: 20}
+		ctx.World.Actors[id] = worldstate.Actor{ID: id, Job: 1002, X: 20, Y: 20}
 		m.applyActorActionNotify(ctx, network.ActorActionNotify{
 			SourceID: ground.SourceID, TargetID: id, SkillID: ground.SkillID,
 			Action: 5, Damage: 100, HitCount: 1, SourceSpeed: 200,
