@@ -86,6 +86,8 @@ const (
 	effectFuncAgility
 	effectFuncMonkRays
 	effectFuncTripleAttack
+	effectFuncChainCrush
+	effectFuncAsuraGlyphs
 	effectFuncHitLine
 	effectFuncTurnUndead
 	effectFuncRevive
@@ -170,6 +172,10 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawCartTermination(screen, ctx, projection, component, effect, now)
 	case effectFuncSniper:
 		m.drawSniperEffect(screen, ctx, component, effect, now)
+	case effectFuncAsuraGlyphs:
+		m.drawAsuraGlyphs(screen, ctx, projection, component, effect, now)
+	case effectFuncChainCrush:
+		m.drawChainCrush(screen, ctx, component, effect, now)
 	case effectFuncTripleAttack:
 		m.drawTripleAttack(screen, ctx, component, effect, now)
 	case effectFuncHitLine:

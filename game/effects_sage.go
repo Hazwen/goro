@@ -17,7 +17,11 @@ func (m *WorldMode) drawSageGroundCastEffect(screen *render.Frame, ctx client.Co
 	if effect.effectID == effectGanbantein {
 		heightScale, initialRise, fade = 3, 70, 8
 	}
-	alpha := 20*min(n, 10) - fade*max(0, n-10)
+	fadeIn := 20
+	if effect.effectID == effectGumgang3 {
+		fadeIn = 10
+	}
+	alpha := fadeIn*min(n, 10) - fade*max(0, n-10)
 	if n <= 0 || alpha <= 0 {
 		return
 	}

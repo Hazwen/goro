@@ -500,7 +500,7 @@ func TestMonkAttackActivationSounds(t *testing.T) {
 		sound string
 	}{
 		{db.SkillMOExtremityfist, "effect\\mon_아수라 패황권.wav"},
-		{db.SkillMOCombofinish, "effect\\mon_금강불괴.wav"},
+		{db.SkillMOCombofinish, "effect\\mon_맹룡과강.wav"},
 	} {
 		for _, damage := range []int32{100, 0, -1} {
 			ctx := monkEffectContext()
@@ -702,7 +702,7 @@ func TestAsuraGlyphsBelongToCasterDuringCastOnly(t *testing.T) {
 		if job == db.JobMonkH {
 			want = effectBeginAsura11
 		}
-		if !m.hasActiveWorldEffect(want, 2000000, time.Now()) || len(m.scheduledSounds) != 0 {
+		if !m.hasActiveWorldEffect(want, 2000000, time.Now()) || len(m.scheduledSounds) != 1 || m.scheduledSounds[0].paths[0] != "effect\\EF_BeginSpell.wav" {
 			t.Fatalf("Asura cast = %+v sounds=%+v", m.worldEffects, m.scheduledSounds)
 		}
 		m.applyActorActionNotify(ctx, network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillMOExtremityfist, Action: network.ActorActionSkill, Damage: 100, HitCount: 1})

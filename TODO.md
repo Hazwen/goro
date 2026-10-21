@@ -129,7 +129,7 @@ Where they disagree, verify the actual Sakexe binary before choosing behaviour.
 - [x] Professor — all eight skills audited; particle trails, linking/body effects, ground units, casting, and sound timing reviewed twice and validated with client assets.
 - [x] Assassin Cross — all five skills audited; slashes, poison particles, packet ownership, casting, poses, and sounds reviewed twice and validated with client assets.
 - [x] Stalker — all four skills audited; casting spin/smoke, body flashes, Preserve, and Full Strip reviewed twice and validated with client assets.
-- [ ] Champion
+- [x] Champion — all four added skills and shared sphere/Asura effects audited; native packet timing, poses, sounds, geometry, and body flashes reviewed twice and validated with client assets.
 - [ ] Taekwon
 - [ ] Star Gladiator
 - [ ] Ninja
@@ -332,6 +332,34 @@ packets do not replay the buff/strip effects. rAthena owns the stealth toggle,
 reflect triggers, strip result, and status lifetime. Both reviews, full tests
 with OldRO assets, and a normal build passed. No live visual comparison was
 performed; the new procedural effects still benefit from playtesting.
+
+Champion reference checks: dhxj's `Am_Skill`, `Zc_useskill_ack`, effect
+primitives, HighPriest, and the actual 2008 Sakexe agree on the four added
+skills' routing. Sakexe confirms Palm Strike's skill frames 3–4 and Tiger
+Fist's held frame 4 (`0x578242`, `0x5782d2`), unlike HighPriest's ordinary
+attack poses. Palm Strike starts its red bouncing trails on the victim;
+Tiger Fist starts its blue/yellow rays and yellow rings on the caster.
+Chain Crush emits 32 flat streaks aimed at the victim, with sound and quake
+at tick 44. Secondary splash packets retain damage feedback without replaying
+the attack. Hit markers remain separate from release effects. Zen launches
+its yellow wind during casting, including a zero-time casting notification,
+holds skill frame zero, and finishes standing; sphere counts come only from
+server packets. The inherited sphere skills use the same casting pose.
+The shared Asura implementation now uses six glyphs at 20-tick intervals,
+ten fading layers, native ring timing, one casting sound, and separate captured
+origins for the two glyph groups. Sakexe's `BeginAsura` (`0x611af0`) and
+`RenderAsuraCasting` (`0x61f670`) confirm the dark Champion glyph variant;
+HighPriest uses a later blue additive variant. This pass also corrects the
+shared Combo Finish sound and yellow combo rings. Both reviews, the full
+test suite with OldRO assets, and a normal build passed. No live visual
+comparison was performed; these procedural effects still need playtesting.
+
+Audit follow-up before closing this job sweep: recheck the no-damage release
+flare mappings added for Stalker and similar buffs. The native no-damage
+handler reads `GetSkillActionInfo` for its pose but does not launch that
+table's `beginEffectId`; only explicitly launched effects should be retained.
+Also verify elemental overrides at the end of `GetSkillActionInfo2` when
+checking existing explicit neutral casting-aura mappings.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,

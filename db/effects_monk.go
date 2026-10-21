@@ -138,66 +138,20 @@ func gumgangRingEffectSpec(duration time.Duration, alphaMax, bottomSize, topSize
 	return spec
 }
 
-func beginAsuraEffectSpec() EffectSpec {
-	components := []EffectComponent{
-		robrCylinderBlendComponent("ring_white", color.RGBA{}, 800*time.Millisecond, 0, 2, 1, 4.5, -4, true, false, true, 2),
-		robrCylinderBlendComponent("ring_white", color.RGBA{}, 800*time.Millisecond, 0, 2, 1, 2.5, -4, true, false, true, 2),
+func beginAsuraEffectSpec(champion bool) EffectSpec {
+	spec := blueCastingEffectSpec()
+	spec.Duration = 350 * EffectFrameDuration
+	spec.Components[0].TextureFile = "effect/ring_white.tga"
+	glyphs := EffectComponent{Kind: EffectComponentFUNC, FuncName: "AsuraGlyphs"}
+	for i := 1; i <= 6; i++ {
+		index := i
+		if champion {
+			index += 10
+		}
+		glyphs.TextureFiles = append(glyphs.TextureFiles, "effect/asura"+strconv.Itoa(index)+".tga")
 	}
-	positions := []float64{-6, -3.6, -1.2, 1.2, 3.6, 6}
-	for i, posX := range positions {
-		components = append(components,
-			asuraGlyphComponent(i+1, posX, time.Duration(i)*100*time.Millisecond, 1200*time.Millisecond, 250, 120, true, false),
-			asuraGlyphComponent(i+1, posX, time.Duration(1200+i*100)*time.Millisecond, 400*time.Millisecond, 120, 200, false, true),
-		)
-	}
-	return EffectSpec{
-		Duration:   2100 * time.Millisecond,
-		Components: components,
-	}
-}
-
-func beginAsura11EffectSpec() EffectSpec {
-	components := []EffectComponent{
-		robrCylinderBlendComponent("ring_white", color.RGBA{}, 800*time.Millisecond, 0, 2, 1, 4.5, -4, true, false, true, 2),
-		robrCylinderBlendComponent("ring_white", color.RGBA{}, 800*time.Millisecond, 0, 2, 1, 2.5, -4, true, false, true, 2),
-	}
-	positions := []float64{-8, -4.8, -1.6, 1.6, 4.8, 8}
-	for i, posX := range positions {
-		components = append(components,
-			asuraGlyphComponent(i+11, posX, time.Duration(i)*100*time.Millisecond, 1200*time.Millisecond, 300, 150, true, false),
-			asuraGlyphComponent(i+11, posX, time.Duration(1200+i*100)*time.Millisecond, 400*time.Millisecond, 150, 250, false, true),
-		)
-	}
-	return EffectSpec{
-		Duration:   2100 * time.Millisecond,
-		Components: components,
-	}
-}
-
-func asuraGlyphComponent(index int, posX float64, delay, duration time.Duration, sizeStart, sizeEnd float64, duplicate, fadeOut bool) EffectComponent {
-	component := EffectComponent{
-		Kind:           EffectComponent3D,
-		TextureFile:    "effect/asura" + strconv.Itoa(index) + ".tga",
-		Color:          color.RGBA{R: 26, G: 26, B: 26, A: 255},
-		Duration:       duration,
-		Delay:          delay,
-		AlphaMax:       1,
-		AttachedEntity: true,
-		FadeIn:         !fadeOut,
-		FadeOut:        fadeOut,
-		SizeStart:      effectTableSize(sizeStart),
-		SizeEnd:        effectTableSize(sizeEnd),
-		SizeSmooth:     true,
-		PosX:           posX,
-		PosZ:           4,
-		Overlay:        true,
-	}
-	if duplicate {
-		component.Duplicate = 3
-		component.DuplicateDelay = 150 * time.Millisecond
-		component.AlphaMaxDelta = -0.25
-	}
-	return component
+	spec.Components = append(spec.Components, glyphs)
+	return spec
 }
 
 func steelBodyEffectSpec() EffectSpec {

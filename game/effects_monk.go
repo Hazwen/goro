@@ -142,8 +142,11 @@ func (m *WorldMode) drawHitLine(screen *render.Frame, ctx client.Context, compon
 			// The native shift copies the new head into slot 1 as well.
 			from := add3(effect.actorOrigin, hitLinePoint(age-max(0, j-1), speed, direction))
 			to := add3(effect.actorOrigin, hitLinePoint(age-j, speed, direction))
-			appendMonkTrail(&vertices, &indices, texture, from, to, .02, 3,
-				color.RGBA{255, 200, uint8(10 + j*7), uint8(alpha - j*5)})
+			tint := color.RGBA{255, 200, uint8(10 + j*7), uint8(alpha - j*5)}
+			if effect.effectID == effectHitLine2 {
+				tint.G, tint.B = uint8(60+j*7), uint8(60+j*7)
+			}
+			appendMonkTrail(&vertices, &indices, texture, from, to, .02, 3, tint)
 		}
 	}
 	if len(indices) > 0 {
@@ -167,5 +170,68 @@ func appendMonkTrail(vertices *[]render.Vertex3D, indices *[]uint16, texture *re
 			}, tint)
 		}
 		previous = offset
+	}
+}
+
+type asuraGlyphs struct {
+	origins [2]modelPoint3
+	count   int
+}
+
+func (m *WorldMode) drawAsuraGlyphs(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	if effect.asuraGlyphs == nil {
+		return
+	}
+	for effect.asuraGlyphs.count < 2 {
+		i := effect.asuraGlyphs.count
+		at := effect.starts.Add(time.Duration(1+20*i) * db.EffectFrameDuration)
+		if now.Before(at) {
+			break
+		}
+		effect.asuraGlyphs.origins[i] = effectWorldAnchor(ctx, effect, at)
+		effect.asuraGlyphs.count++
+	}
+	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
+	champion := effect.effectID == effectBeginAsura11
+	spacing, radiusBase, shade := 12.0, 18.0, uint8(0)
+	if champion {
+		spacing, radiusBase, shade = 16, 24, 10
+	}
+	origin := effect.actorOrigin
+	right, _, _, ok := projection.BillboardBasis(origin.x, origin.z, origin.y)
+	if !ok {
+		return
+	}
+	for i, file := range component.textureFiles {
+		// The left and right primitives start at ticks 1 and 21; their
+		// internal delays make the six characters appear 20 ticks apart.
+		age := frame - 20*i
+		if age <= 0 {
+			continue
+		}
+		texture := m.effectFileTexture(ctx.Resources, file)
+		origin = effect.asuraGlyphs.origins[i/3]
+		position := add3(origin, mul3(right, (float64(i)-2.5)*spacing/5))
+		position.y += 6
+		radius := (radiusBase - .1*float64(min(age, 49))) * math.Pow(1.01, float64(clampInt(age-140, 0, 49)))
+		for layer := 10; layer >= 1; layer-- {
+			alpha := min(13*min(age, 19), 50+layer*20)
+			if layer < 10 {
+				alpha -= 5 * max(0, age-19)
+			} else {
+				alpha -= 5 * max(0, age-140)
+			}
+			if alpha <= 0 {
+				continue
+			}
+			size := math.Sqrt2 * (radius + float64(10-layer)*3) / 5
+			tint := color.RGBA{shade, shade, shade, uint8(alpha)}
+			if champion && layer == 10 {
+				tint.A = uint8(alpha / 2)
+				drawTexturedEffectBillboardRotatedXY(screen, projection, texture, position.x, position.z, position.y, size, size, 0, tint, false)
+				tint.A = uint8(alpha)
+			}
+			drawTexturedEffectBillboardRotatedXY(screen, projection, texture, position.x, position.z, position.y, size, size, 0, tint, false)
+		}
 	}
 }

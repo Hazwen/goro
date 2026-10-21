@@ -317,8 +317,6 @@ func (m *WorldMode) actorBodyColorTint(actorID uint32, tint color.RGBA, now time
 			}
 		case effectBodyColor:
 			tint = effectBodyColorTint(tint, now.Sub(effect.starts))
-		case effectPortal5:
-			tint = portal5BodyColorTint(tint, now.Sub(effect.starts))
 		case effectMagicCrasher2:
 			tint = magicCrasher2BodyColorTint(tint, actorID, effect.starts, now.Sub(effect.starts))
 		case effectMagicCrasher:
@@ -346,20 +344,6 @@ func effectBodyColorTint(tint color.RGBA, elapsed time.Duration) color.RGBA {
 		B: mixTintChannel(tint.B, 0, alpha),
 		A: tint.A,
 	}
-}
-
-func portal5BodyColorTint(tint color.RGBA, elapsed time.Duration) color.RGBA {
-	if elapsed < 0 || elapsed >= 800*time.Millisecond {
-		return tint
-	}
-	blue := 0.0
-	alpha := 0.1
-	if elapsed >= 200*time.Millisecond {
-		progress := clampFloat(float64(elapsed-200*time.Millisecond)/float64(600*time.Millisecond), 0, 1)
-		blue = progress
-		alpha = 0.1 + 0.9*progress
-	}
-	return multiplyTint(tint, 1, 1, blue, alpha)
 }
 
 func magicCrasher2BodyColorTint(tint color.RGBA, actorID uint32, starts time.Time, elapsed time.Duration) color.RGBA {

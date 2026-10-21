@@ -779,6 +779,7 @@ type worldEffect struct {
 	buffParticles                        *soulLinkerParticles
 	soulLights                           *soulLights
 	blueCasting                          *blueCasting
+	asuraGlyphs                          *asuraGlyphs
 	twilight                             *twilightParticles
 	itemLevel                            int
 	coinTrails                           *[5][]modelPoint3
@@ -1129,6 +1130,9 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 func (m *WorldMode) applySkillCastNotify(ctx client.Context, notify network.SkillCastNotify) {
 	now := time.Now()
 	m.applySkillNameBubble(ctx, notify.SourceID, notify.SkillID, now)
+	if notify.SkillID == db.SkillChSoulcollect {
+		m.addWorldEffectAt(ctx, effectPortal5, notify.SourceID, now)
+	}
 	if notify.SkillID == db.SkillCRAciddemonstration && notify.SourceID != notify.TargetID {
 		_, sourceOK, _ := actorForCombatID(ctx, notify.SourceID)
 		if _, targetOK, _ := actorForCombatID(ctx, notify.TargetID); sourceOK && targetOK {
@@ -1250,7 +1254,7 @@ func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID u
 	if skillID == db.SkillBSHammerfall {
 		actionFamily = attackActionFamilyForActorWithResources(ctx.Resources, source)
 	}
-	if (skillID == db.SkillSNSharpshooting || skillID == db.SkillCGArrowvulcan) && res.HasPlayerJobToken(int(source.Job)) {
+	if (skillID == db.SkillSNSharpshooting || skillID == db.SkillCGArrowvulcan || skillID == db.SkillChSoulcollect || skillID == db.SkillMOCallspirits || skillID == db.SkillMOKitranslation) && res.HasPlayerJobToken(int(source.Job)) {
 		m.setCombatActorAction(ctx, sourceID, actorAnimation{
 			actionFamily: actionFamily, started: now, duration: duration,
 			hasPlay: true, hasFixedMotion: true, fixedMotion: 0,
@@ -1746,10 +1750,10 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectFVoice || effectID == effectWink {
 		m.initDirectedSpriteEffect(ctx, &effect)
 	}
-	if effectID == effectTripleAttack || effectID == effectTripleAttack2 || effectID == effectTripleAttack3 {
+	if effectID == effectTripleAttack || effectID == effectTripleAttack2 || effectID == effectTripleAttack3 || effectID == effectChemical2Dash {
 		initTripleAttack(ctx, &effect)
 	}
-	if effectID >= effectTarotCard1 && effectID <= effectTarotCard14 || effectID == effectTeiHit1 || effectID == effectTeiHit1X || effectID == effectHitLine || effectID == effectPortal4 {
+	if effectID >= effectTarotCard1 && effectID <= effectTarotCard14 || effectID == effectTeiHit1 || effectID == effectTeiHit1X || effectID == effectHitLine || effectID == effectHitLine2 || effectID == effectPortal4 || effectID == effectPortal5 || effectID == effectBeginAsura || effectID == effectBeginAsura11 {
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -1804,8 +1808,11 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID >= effectTwilight1 && effectID <= effectTwilight3 {
 		effect.twilight = newTwilightParticles(ctx, effect)
 	}
-	if effectID == effectBlueCasting || effectID == effectAuraBlade || effectID == effectCoupleCasting {
+	if effectID == effectBlueCasting || effectID == effectAuraBlade || effectID == effectCoupleCasting || effectID == effectBeginAsura || effectID == effectBeginAsura11 {
 		effect.blueCasting = &blueCasting{auraBlade: effectID == effectAuraBlade}
+	}
+	if effectID == effectBeginAsura || effectID == effectBeginAsura11 {
+		effect.asuraGlyphs = &asuraGlyphs{}
 	}
 	m.worldEffects = append(m.worldEffects, effect)
 	m.scheduleWorldEffectSound(starts, spec, effect)
@@ -3002,6 +3009,10 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncClown
 	case "TrueSight", "WindWalk", "SharpShooting":
 		return effectFuncSniper
+	case "AsuraGlyphs":
+		return effectFuncAsuraGlyphs
+	case "ChainCrush":
+		return effectFuncChainCrush
 	case "TripleAttack":
 		return effectFuncTripleAttack
 	case "HitLine":

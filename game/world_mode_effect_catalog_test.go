@@ -1393,7 +1393,6 @@ func TestRobrowserSpecialEffectsTwoFiftyToThreeHundredMatchTableRows(t *testing.
 		wav      string
 	}{
 		{"EF_GUMGANG2", effectGumgang2, 1500 * time.Millisecond, 0.5, 2, 5, ""},
-		{"EF_GUMGANG3", effectGumgang3, 1000 * time.Millisecond, 0.3, 3, 6, ""},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 1 || spec.duration != tc.duration+300*time.Millisecond {
@@ -1628,32 +1627,6 @@ func TestRobrowserHealAndRecoveryEffectsThreeHundredToThreeFiftyMatchTableRows(t
 	}
 }
 
-func TestRobrowserAsuraAndGuardEffectsThreeHundredToThreeFiftyMatchTableRows(t *testing.T) {
-	asura, ok := worldEffectSpecForID(effectBeginAsura)
-	if !ok || len(asura.components) != 14 || asura.duration != 2100*time.Millisecond {
-		t.Fatalf("EF_BEGINASURA spec = %+v ok=%t", asura, ok)
-	}
-	firstRing, secondRing := asura.components[0], asura.components[1]
-	if firstRing.kind != effectComponentCylinder || firstRing.textureName != "ring_white" || firstRing.duration != 800*time.Millisecond || firstRing.animation != 2 || firstRing.bottomSize != 1 || firstRing.topSize != 4.5 || firstRing.height != -4 || !firstRing.fade || !firstRing.attachedEntity || firstRing.blendMode != 2 {
-		t.Fatalf("EF_BEGINASURA first ring = %+v", firstRing)
-	}
-	if secondRing.topSize != 2.5 || secondRing.height != -4 {
-		t.Fatalf("EF_BEGINASURA second ring = %+v", secondRing)
-	}
-	firstGlyph := asura.components[2]
-	if firstGlyph.kind != effectComponent3D || firstGlyph.textureFile != "effect/asura1.tga" || firstGlyph.duration != 1200*time.Millisecond || firstGlyph.delay != 0 || firstGlyph.duplicate != 3 || firstGlyph.duplicateDelay != 150*time.Millisecond || firstGlyph.alphaMax != 1 || firstGlyph.alphaMaxDelta != -0.25 || !firstGlyph.fadeIn || firstGlyph.fadeOut || firstGlyph.sizeStart != effectTableSize(250) || firstGlyph.sizeEnd != effectTableSize(120) || !firstGlyph.sizeSmooth || firstGlyph.posX != -6 || firstGlyph.posZ != 4 || !firstGlyph.overlay || !firstGlyph.attachedEntity {
-		t.Fatalf("EF_BEGINASURA first glyph = %+v", firstGlyph)
-	}
-	if firstGlyph.color != (color.RGBA{R: 26, G: 26, B: 26, A: 255}) {
-		t.Fatalf("EF_BEGINASURA glyph color = %+v", firstGlyph.color)
-	}
-	lastGlyph := asura.components[13]
-	if lastGlyph.textureFile != "effect/asura6.tga" || lastGlyph.duration != 400*time.Millisecond || lastGlyph.delay != 1700*time.Millisecond || lastGlyph.duplicate != 0 || !lastGlyph.fadeOut || lastGlyph.sizeStart != effectTableSize(120) || lastGlyph.sizeEnd != effectTableSize(200) || lastGlyph.posX != 6 || lastGlyph.posZ != 4 {
-		t.Fatalf("EF_BEGINASURA last glyph = %+v", lastGlyph)
-	}
-
-}
-
 func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -1722,7 +1695,6 @@ func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		wav  string
 	}{
 		{"EF_BOTTOM_GOSPEL", effectBottomGospel, "effect\\가스펠.wav"},
-		{"EF_HITLINE2", effectHitLine2, "effect\\맹호경파산.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
@@ -1771,9 +1743,7 @@ func TestRobrowserCombatEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 		duration  time.Duration
 		delay     time.Duration
 		duplicate int
-	}{
-		{"EF_BASH3D2", effectBash3D2, "Bash3D2", "effect\\mon_폭기.wav", 400 * time.Millisecond, 50 * time.Millisecond, 8},
-	} {
+	}{} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 3 || spec.duration != tc.duration {
 			t.Fatalf("%s spec = %+v ok=%t", tc.name, spec, ok)
@@ -1830,13 +1800,6 @@ func TestRobrowserDrainAndMagicEffectsThreeFiftyToFourHundredMatchTableRows(t *t
 }
 
 func TestRobrowserEffectsFourHundredToFourFiftyMatchTableRows(t *testing.T) {
-	portal, ok := worldEffectSpecForID(effectPortal5)
-	if !ok || len(portal.components) != 1 || portal.duration != 800*time.Millisecond {
-		t.Fatalf("EF_PORTAL5 spec = %+v ok=%t", portal, ok)
-	}
-	if component := portal.components[0]; component.kind != effectComponentFUNC || component.funcName != "EffectBodyColor" || component.funcAdapter != effectFuncBodyColor || component.duration != 800*time.Millisecond || !component.attachedEntity {
-		t.Fatalf("EF_PORTAL5 component = %+v", component)
-	}
 
 	for _, tc := range []struct {
 		name string
@@ -2105,41 +2068,6 @@ func TestRobrowserFuncEffectsFiveHundredToFiveFiftyMatchTableRows(t *testing.T) 
 		t.Fatalf("EF_CHOOKGI2 component = %+v", sphere)
 	}
 
-	chemical, ok := worldEffectSpecForID(effectChemical2Dash)
-	if !ok || chemical.duration != 500*time.Millisecond || chemical.cameraShake != 200*time.Millisecond || chemical.cameraShakeDelay != 132*time.Millisecond || len(chemical.components) != 1 {
-		t.Fatalf("EF_CHEMICAL2DASH spec = %+v ok=%t", chemical, ok)
-	}
-	if component := chemical.components[0]; component.kind != effectComponentFUNC || component.funcName != "CameraQuake" || !component.attachedEntity {
-		t.Fatalf("EF_CHEMICAL2DASH component = %+v", component)
-	}
-
-}
-
-func TestRobrowserBeginAsuraElevenMatchesTableRow(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectBeginAsura11)
-	if !ok || spec.duration != 2100*time.Millisecond || len(spec.components) != 14 {
-		t.Fatalf("EF_BEGINASURA11 spec = %+v ok=%t", spec, ok)
-	}
-	firstRing, secondRing := spec.components[0], spec.components[1]
-	for i, ring := range []worldEffectComponent{firstRing, secondRing} {
-		if ring.kind != effectComponentCylinder || ring.textureName != "ring_white" || ring.duration != 800*time.Millisecond || ring.animation != 2 || ring.bottomSize != 1 || ring.height != -4 || !ring.fade || ring.rotate || !ring.attachedEntity || ring.blendMode != 2 || !ring.blendAdditive {
-			t.Fatalf("EF_BEGINASURA11 ring %d = %+v", i, ring)
-		}
-	}
-	if firstRing.topSize != 4.5 || secondRing.topSize != 2.5 {
-		t.Fatalf("EF_BEGINASURA11 ring top sizes = %.1f %.1f", firstRing.topSize, secondRing.topSize)
-	}
-
-	firstGlyph, firstOut, lastOut := spec.components[2], spec.components[3], spec.components[13]
-	if firstGlyph.kind != effectComponent3D || firstGlyph.textureFile != "effect/asura11.tga" || firstGlyph.duration != 1200*time.Millisecond || firstGlyph.delay != 0 || firstGlyph.posX != -8 || firstGlyph.posZ != 4 || firstGlyph.alphaMax != 1 || firstGlyph.duplicate != 3 || firstGlyph.duplicateDelay != 150*time.Millisecond || firstGlyph.alphaMaxDelta != -0.25 || !firstGlyph.fadeIn || firstGlyph.fadeOut || firstGlyph.sizeStart != effectTableSize(300) || firstGlyph.sizeEnd != effectTableSize(150) || !firstGlyph.sizeSmooth || !firstGlyph.attachedEntity || !firstGlyph.overlay {
-		t.Fatalf("EF_BEGINASURA11 first glyph = %+v", firstGlyph)
-	}
-	if firstOut.textureFile != "effect/asura11.tga" || firstOut.duration != 400*time.Millisecond || firstOut.delay != 1200*time.Millisecond || firstOut.posX != -8 || firstOut.sizeStart != effectTableSize(150) || firstOut.sizeEnd != effectTableSize(250) || firstOut.fadeIn || !firstOut.fadeOut || firstOut.duplicate != 0 {
-		t.Fatalf("EF_BEGINASURA11 first fade-out glyph = %+v", firstOut)
-	}
-	if lastOut.textureFile != "effect/asura16.tga" || lastOut.delay != 1700*time.Millisecond || lastOut.posX != 8 || lastOut.sizeStart != effectTableSize(150) || lastOut.sizeEnd != effectTableSize(250) {
-		t.Fatalf("EF_BEGINASURA11 last glyph = %+v", lastOut)
-	}
 }
 
 func TestRobrowserSimpleEffectsFiveFiftyToSixHundredMatchTableRows(t *testing.T) {

@@ -653,7 +653,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return true
 	case db.SkillALLResurrection, db.SkillPRAspersio, db.SkillPRBenedictio, db.SkillPRSanctuary, db.SkillPRTurnundead, db.SkillPRMagnus:
 		return true
-	case db.SkillMOTripleattack, db.SkillMOInvestigate, db.SkillMOFingeroffensive, db.SkillMOExtremityfist, db.SkillMOChaincombo, db.SkillMOBalkyoung:
+	case db.SkillMOTripleattack, db.SkillMOInvestigate, db.SkillMOFingeroffensive, db.SkillMOExtremityfist, db.SkillMOChaincombo, db.SkillMOBalkyoung, db.SkillChPalmstrike, db.SkillChTigerfist, db.SkillChChaincrush:
 		return true
 	case db.SkillLKSpiralpierce, db.SkillLKHeadcrush, db.SkillLKJointbeat:
 		return true
@@ -899,7 +899,7 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 			if (effectID == effectBowlingBash || effectID == effectBlitzBeat) && i > 0 {
 				continue
 			}
-			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillSNSharpshooting || action.SkillID == db.SkillCGArrowvulcan || action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish) {
+			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillSNSharpshooting || action.SkillID == db.SkillCGArrowvulcan || action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish || action.SkillID == db.SkillChTigerfist || action.SkillID == db.SkillChChaincrush) {
 				continue
 			}
 			if i > 0 && (action.SkillID == db.SkillMGNapalmbeat || action.SkillID == db.SkillMGSoulstrike || action.SkillID == db.SkillMGFireball || action.SkillID == db.SkillMGFrostdiver) && (effectID == effectBashHit || effectID == effectFrostDiverHit) {
@@ -1492,7 +1492,7 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 		return spriteActionPCAttack1
 	case db.SkillCRFullprotection, db.SkillSTChasewalk, db.SkillSTPreserve:
 		return spriteActionIdle
-	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3:
+	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3, db.SkillChSoulcollect, db.SkillMOCallspirits, db.SkillMOKitranslation:
 		return spriteActionPCSkill
 	}
 	if skillID == db.SkillALIncagi {

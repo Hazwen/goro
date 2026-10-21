@@ -306,6 +306,10 @@ func (m *WorldMode) drawGuardEffect(screen *render.Frame, ctx client.Context, _ 
 func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context, _ sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
 	process := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1 - 24
 	alpha := min(process, 10)*20 - max(0, process-12)*15
+	if effect.effectID == effectBash3D2 {
+		process += 24
+		alpha = min(process, 10)*10 - max(0, process-11)*3
+	}
 	if process <= 0 || alpha <= 0 {
 		return
 	}
@@ -318,6 +322,11 @@ func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context
 	distance := .4 * math.Pow(1.15, float64(process))
 	vertices, indices := []render.Vertex3D{}, []uint16{}
 	count := 20
+	widths := []float64{2, 5}
+	if effect.effectID == effectBash3D2 {
+		count, distance = 32, float64(2+3*process)/5
+		widths = []float64{1, 2}
+	}
 	if effect.effectID == effectBash3D3 || effect.effectID == effectBash3D4 {
 		count = 24
 	}
@@ -328,12 +337,12 @@ func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context
 			r := distance * math.Cos(angle)
 			return add3(origin, modelPoint3{x: r * math.Cos(roll), y: -r * math.Sin(roll), z: distance * math.Sin(angle)})
 		}
-		for layer, width := range []float64{2, 5} {
+		for layer, width := range widths {
 			tint := color.RGBA{0, 250, 250, uint8(alpha)}
 			if layer == 1 {
 				tint = color.RGBA{250, 0, 0, uint8(alpha)}
 			}
-			if effect.effectID == effectBash3D3 {
+			if effect.effectID == effectBash3D2 || effect.effectID == effectBash3D3 {
 				tint = color.RGBA{0, 0, 250, uint8(alpha)}
 				if layer == 1 {
 					tint = color.RGBA{250, 250, 0, uint8(alpha)}

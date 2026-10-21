@@ -1731,18 +1731,6 @@ func entry2EffectSpec() EffectSpec {
 	}
 }
 
-func portal5EffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 800 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "EffectBodyColor",
-			Duration:       800 * time.Millisecond,
-			AttachedEntity: true,
-		}},
-	}
-}
-
 func bodySizeEffectSpec(name string, duration time.Duration, targetSize float64) EffectSpec {
 	return EffectSpec{
 		Duration: duration,
@@ -3761,7 +3749,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectSeismicWeapon:          sageEndowEffectSpec("enc_earth"),
 	effectGumgang2:               gumgangRingEffectSpec(1500*time.Millisecond, 0.5, 2, 5, ""),
 	effectTeiHit1:                teiHitEffectSpec(false),
-	effectGumgang3:               gumgangRingEffectSpec(1000*time.Millisecond, 0.3, 3, 6, ""),
+	effectGumgang3:               sageGroundCastEffectSpec("ring_yellow", 300),
 	effectTeiHit2:                teiHit2EffectSpec(),
 	effectTanji:                  tanjiEffectSpec(),
 	effectTeiHit1X:               teiHitEffectSpec(true),
@@ -3826,7 +3814,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectBottomSanc:             priestGroundEffectSpec(effectBottomSanc),
 	effectWarpZone2:              warpZone2EffectSpec(),
 	effectHeal4:                  heal4EffectSpec(),
-	effectBeginAsura:             beginAsuraEffectSpec(),
+	effectBeginAsura:             beginAsuraEffectSpec(false),
 	effectTripleAttack:           tripleAttackEffectSpec(),
 	effectHitLine:                hitLineEffectSpec(),
 	effectHPTime:                 naturalRecoveryEffectSpec(color.RGBA{R: 230, G: 255, B: 230, A: 255}, "_heal_effect.wav"),
@@ -3867,8 +3855,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectDeath:             strEffectSpecAttached("devil", "", false),
 	effectBottomBasilica:    priestGroundEffectSpec(effectBottomBasilica),
 	effectAssumptio:         funcEffectSpec("EffectBodyColor", 2*time.Second, true),
-	effectHitLine2:          soundOnlyEffectSpec("effect\\맹호경파산.wav"),
-	effectBash3D2:           bash3DEffectSpec("Bash3D2", "effect\\mon_폭기.wav", 400*time.Millisecond, 50*time.Millisecond, 8),
+	effectHitLine2:          palmStrikeEffectSpec(),
+	effectBash3D2:           tigerFistEffectSpec(),
 	effectEnergyDrain2:      soulDrainEffectSpec(),
 	effectTransBlueBody:     transBlueBodyEffectSpec(),
 	effectMagicCrasher:      magicCrasherEffectSpec(),
@@ -3948,8 +3936,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectMapae:             strEffectSpecAttached("mapae", "effect\\mapae.wav", false),
 	effectItemPokJuk:        strEffectSpecAttached("itempokjuk", "effect\\itempokjuk.wav", false),
 	effectValentine05:       sprEffectSpec("05vallentine", "", true, false),
-	effectBeginAsura11:      beginAsura11EffectSpec(),
-	effectChemical2Dash:     chemical2EffectSpec(),
+	effectBeginAsura11:      beginAsuraEffectSpec(true),
+	effectChemical2Dash:     chainCrushEffectSpec(),
 	effectBottomHermode:     hermodeEffectSpec(),
 	effectHermodeMusic:      soundOnlyEffectSpec("effect\\헤르모드의 지팡이.wav"),
 	effectItemFastDown:      sprEffectSpec("fast", "effect\\fast.wav", true, false),

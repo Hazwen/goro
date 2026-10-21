@@ -59,6 +59,27 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		}
 		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 		switch effect.effectID {
+		case effectHitLine2:
+			if frame >= 10 && frame <= 20 {
+				doubleBody = doubleBody || billboard.layerGroup == 0
+				tint.R, tint.G, tint.B = 255, 120, 50
+			}
+		case effectChemical2Dash:
+			if frame >= 20 && frame <= 100 {
+				doubleBody = doubleBody || billboard.layerGroup == 0
+				tint.R, tint.G, tint.B = 255, 255, 150
+			}
+		case effectBash3D2:
+			if frame >= 5 && frame <= 35 && billboard.layerGroup == 0 {
+				blend = render.BlendLighter
+			}
+		case effectPortal5:
+			if frame >= 5 && frame <= 65 {
+				tint.R, tint.G, tint.B = 250, 250, 200
+				if billboard.layerGroup == 0 {
+					blend = render.BlendLighter
+				}
+			}
 		case effectRejectSword:
 			if frame < 30 {
 				doubleBody = doubleBody || billboard.layerGroup == 0

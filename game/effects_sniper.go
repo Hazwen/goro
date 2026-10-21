@@ -61,7 +61,7 @@ func (m *WorldMode) drawSniperEffect(screen *render.Frame, ctx client.Context, c
 			screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(layer == 0, false))
 		}
 		return
-	case effectPortal4:
+	case effectPortal4, effectPortal5:
 		alpha := 10*min(n, 11) - 2*max(0, n-20)
 		if alpha <= 0 {
 			return
@@ -70,15 +70,21 @@ func (m *WorldMode) drawSniperEffect(screen *render.Frame, ctx client.Context, c
 		fullAngle := min(120, 30+3*n)
 		step := fullAngle / 21
 		segments := (fullAngle - 1) / step
+		height, radiusBase, radiusRandom := 5, 4.5, .03
+		tint := color.RGBA{255, 255, 255, uint8(alpha)}
+		if effect.effectID == effectPortal5 {
+			height, radiusBase, radiusRandom = 3, 2.5, .01
+			tint.B = 170
+		}
 		for i := 0; i < 4; i++ {
 			origin := effect.actorOrigin
-			origin.y += float64(5+2*i) / 5
+			origin.y += float64(height+2*i) / 5
 			rise := degreesToRadians(float64(80 + hitEffectRandom(effect, 2*i, 21)))
-			radius := (4.5 + .03*float64(hitEffectRandom(effect, 2*i+1, 101)) + .1*float64(max(0, n-20))) / 5
+			radius := (radiusBase + radiusRandom*float64(hitEffectRandom(effect, 2*i+1, 101)) + .1*float64(max(0, n-20))) / 5
 			start := len(vertices)
 			appendEffectBand(&vertices, &indices, texture, origin, radius,
 				degreesToRadians(float64(i*90+n*5)), degreesToRadians(float64(segments*step)), 1/math.Tan(rise), segments,
-				color.RGBA{255, 255, 255, uint8(alpha)}, func(int) float64 { return math.Sin(rise) / 5 })
+				tint, func(int) float64 { return math.Sin(rise) / 5 })
 			for j := 0; j < segments; j++ {
 				for k, u := range []int{min(j, 19), min(j+1, 20), min(j+1, 20), min(j, 19)} {
 					vertices[start+4*j+k].SrcX = float32(u) / 21 * float32(texture.Bounds().Dx())

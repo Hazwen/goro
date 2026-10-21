@@ -50,28 +50,6 @@ func TestEffectBodyColorTintFollowsRobrowserFlashWindow(t *testing.T) {
 	}
 }
 
-func TestPortal5BodyColorTintFollowsRobrowserFlashWindow(t *testing.T) {
-	base := color.RGBA{R: 100, G: 150, B: 200, A: 255}
-	starts := time.Unix(10, 0)
-	mode := WorldMode{
-		worldEffects: []worldEffect{{
-			effectID: effectPortal5,
-			actorID:  42,
-			starts:   starts,
-			expires:  starts.Add(800 * time.Millisecond),
-		}},
-	}
-	if got := mode.actorBodyColorTint(42, base, starts); got != (color.RGBA{R: 100, G: 150, B: 0, A: 25}) {
-		t.Fatalf("initial tint = %+v", got)
-	}
-	if got := mode.actorBodyColorTint(42, base, starts.Add(500*time.Millisecond)); got != (color.RGBA{R: 100, G: 150, B: 100, A: 140}) {
-		t.Fatalf("mid tint = %+v", got)
-	}
-	if got := mode.actorBodyColorTint(42, base, starts.Add(800*time.Millisecond)); got != base {
-		t.Fatalf("final tint = %+v, want base %+v", got, base)
-	}
-}
-
 func TestMagicCrasher2BodyColorTintUsesOriginalColorWindow(t *testing.T) {
 	base := color.RGBA{R: 100, G: 150, B: 200, A: 255}
 	starts := time.Unix(10, 0)
@@ -1599,10 +1577,10 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "PA_GOSPEL imported", skillEffectIDs(db.SkillPaGospel), effectBottomGospel)
 	expectEffectIDs(t, "PA_GOSPEL imported ground", skillGroundEffectIDs(db.SkillPaGospel), effectGospelGround)
 	expectEffectIDs(t, "PA_SHIELDCHAIN imported before hit", skillEffectIDs(db.SkillPaShieldchain), effectShieldBoomerang3)
-	expectEffectIDs(t, "CH_PALMSTRIKE imported hit", skillHitEffectIDs(db.SkillChPalmstrike), effectHitLine2, effectQuake)
-	expectEffectIDs(t, "CH_TIGERFIST imported", skillEffectIDs(db.SkillChTigerfist), effectBash3D2, effectQuake)
+	expectEffectIDs(t, "CH_PALMSTRIKE imported hit", skillHitEffectIDs(db.SkillChPalmstrike), effectHit1)
+	expectEffectIDs(t, "CH_TIGERFIST imported", skillEffectOnCasterIDs(db.SkillChTigerfist), effectBash3D2, effectQuake, effectGumgang3)
 	expectEffectIDs(t, "CH_CHAINCRUSH imported", skillEffectIDs(db.SkillChChaincrush), effectChemical2Dash)
-	expectEffectIDs(t, "CH_SOULCOLLECT imported begin", skillBeginEffectIDs(db.SkillChSoulcollect), effectPortal5, effectBeginSpell)
+	expectEffectIDs(t, "CH_SOULCOLLECT imported begin", skillBeginEffectIDs(db.SkillChSoulcollect))
 	expectEffectIDs(t, "SN_SIGHT imported", skillSuccessEffectSelfIDs(db.SkillSNSight), effectTrueSight)
 	expectEffectIDs(t, "SN_FALCONASSAULT imported", skillEffectIDs(db.SkillSNFalconassault), effectFalconAssault)
 	expectEffectIDs(t, "HT_PHANTASMIC imported before hit", skillBeforeHitEffectIDs(db.SkillHTPhantasmic), effectArrowShot)

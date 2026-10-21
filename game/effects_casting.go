@@ -105,6 +105,9 @@ func (m *WorldMode) drawBlueCastingEffect(screen *render.Frame, ctx client.Conte
 		for segment := 0; segment <= 20; segment++ {
 			sin, cos := math.Sincos(degreesToRadians(float64(segment*18 + (layer+2)*90)))
 			maxHeight := 20 - layer
+			if effect.effectID == effectBeginAsura || effect.effectID == effectBeginAsura11 {
+				maxHeight = 25 - layer
+			}
 			if effect.blueCasting.auraBlade {
 				maxHeight = 15 - layer
 			}
@@ -113,7 +116,7 @@ func (m *WorldMode) drawBlueCastingEffect(screen *render.Frame, ctx client.Conte
 			top := add3(bottom, modelPoint3{x: cos * riseCos * height / 5, y: riseSin * height / 5, z: sin * riseCos * height / 5})
 			u := float32(segment) / 21
 			c := color.RGBA{100, 100, 255, uint8(clampInt(r.alpha, 0, 255))}
-			if effect.blueCasting.auraBlade {
+			if effect.blueCasting.auraBlade || effect.effectID == effectBeginAsura || effect.effectID == effectBeginAsura11 {
 				c.R, c.G = 255, 255
 			}
 			if effect.effectID == effectCoupleCasting {
