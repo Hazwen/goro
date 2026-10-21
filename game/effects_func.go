@@ -103,6 +103,7 @@ const (
 	effectFuncGravitation
 	effectFuncHPConversion
 	effectFuncSoulChangeLink
+	effectFuncSoulBreaker
 )
 
 const (
@@ -114,6 +115,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	switch component.funcAdapter {
 	case effectFuncHPConversion:
 		m.drawHPConversion(screen, ctx, projection, component, effect, now)
+	case effectFuncSoulBreaker:
+		m.drawSoulBreaker(screen, ctx, component, effect, now)
 	case effectFuncSoulChangeLink:
 		m.drawSoulChangeLink(screen, ctx, component, effect, now)
 	case effectFuncSoulDrain:

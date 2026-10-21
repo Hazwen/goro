@@ -45,6 +45,10 @@ func risingParticleAt(effect worldEffect, index, age int) effectParticle {
 	size := float64(40+hitEffectRandom(effect, index*4+2, 50)) / 100
 	yaw := degreesToRadians(float64(hitEffectRandom(effect, index*4+3, 360)))
 	radius := float64(2+hitEffectRandom(effect, index*4+4, 6)) / 5
+	if effect.effectID == effectEDP {
+		speed = float64(30+hitEffectRandom(effect, index*4+1, 50)) / 500
+		size = float64(20+hitEffectRandom(effect, index*4+2, 20)) / 100
+	}
 	if effect.effectID == effectVenomDust2 {
 		life, fade, initial = 10, 8, 70
 		speed = float64(20+hitEffectRandom(effect, index*4+1, 20)) / 400
@@ -71,16 +75,21 @@ func (m *WorldMode) drawRisingParticlesEffect(screen *render.Frame, ctx client.C
 	}
 	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 	life, last := 40, min(frame/5, 42)
+	interval := 5
+	origin := effect.actorOrigin
 	if effect.effectID == effectVenomDust2 {
 		life, last = 10, frame/5
 	} else if effect.effectID == effectDetoxication {
 		// ProcessAlpha puts particles that would outlive the emitter straight
 		// into their final fade, starting from zero alpha.
 		last = min(frame/5, 12)
+	} else if effect.effectID == effectEDP {
+		interval, last = 3, min(frame/3, 26)
+		origin = effectWorldAnchor(ctx, effect, now)
 	}
 	options := triangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
-	for i := max(0, (frame-life+5)/5); i <= last; i++ {
-		age := frame - i*5
+	for i := max(0, (frame-life+interval)/interval); i <= last; i++ {
+		age := frame - i*interval
 		particle := risingParticleAt(effect, i, age)
 		if particle.alpha <= 0 {
 			continue
@@ -95,7 +104,7 @@ func (m *WorldMode) drawRisingParticlesEffect(screen *render.Frame, ctx client.C
 			}
 			view.billboards[key] = billboard
 		}
-		position := add3(effect.actorOrigin, particle.position)
+		position := add3(origin, particle.position)
 		drawSpriteBillboardTintAlphaWorld3DWithOptions(screen, projection, billboard,
 			position.x, position.z, position.y, particle.size*effectPixelRatio, -particle.angle, particle.alpha, 1, color.RGBA{255, 255, 255, 255}, options)
 	}

@@ -1730,29 +1730,6 @@ func entry2EffectSpec() EffectSpec {
 	}
 }
 
-func soulBreakerEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 500 * time.Millisecond,
-		SFX:      []string{"effect\\기공포.wav"},
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			TextureFile:      "effect/purpleslash.tga",
-			Duration:         500 * time.Millisecond,
-			AlphaMax:         0.4,
-			FadeIn:           true,
-			FadeOut:          true,
-			ToSrc:            true,
-			RotateWithCamera: true,
-			RotateToTarget:   true,
-			AngleStart:       90,
-			PosZ:             2,
-			SizeStart:        effectTableSize(100),
-			SizeEnd:          effectTableSize(200),
-			AttachedEntity:   true,
-		}},
-	}
-}
-
 func portal5EffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 800 * time.Millisecond,
@@ -1762,41 +1739,6 @@ func portal5EffectSpec() EffectSpec {
 			Duration:       800 * time.Millisecond,
 			AttachedEntity: true,
 		}},
-	}
-}
-
-func soulBreaker2EffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 500 * time.Millisecond,
-		SFX:      []string{"effect\\메테오 어썰트.wav"},
-		Components: []EffectComponent{
-			soulBreaker2SlashComponent(-1, 0, -5, 0, 0),
-			soulBreaker2SlashComponent(-0.7, -0.7, -3.53, -3.53, -45),
-			soulBreaker2SlashComponent(0, -1, 0, -5, -90),
-			soulBreaker2SlashComponent(0.7, -0.7, 3.53, -3.53, -135),
-			soulBreaker2SlashComponent(1, 0, 5, 0, -180),
-			soulBreaker2SlashComponent(0.7, 0.7, 3.53, 3.53, -225),
-			soulBreaker2SlashComponent(0, 1, 0, 5, -270),
-			soulBreaker2SlashComponent(-0.7, 0.7, -3.53, 3.53, -315),
-		},
-	}
-}
-
-func soulBreaker2SlashComponent(posX, posY, posXEnd, posYEnd, angle float64) EffectComponent {
-	return EffectComponent{
-		Kind:             EffectComponent3D,
-		TextureFile:      "effect/purpleslash.tga",
-		Duration:         500 * time.Millisecond,
-		AlphaMax:         0.6,
-		FadeOut:          true,
-		RotateWithCamera: true,
-		AngleStart:       angle,
-		PosX:             posX,
-		PosY:             posY,
-		PosXEnd:          posXEnd,
-		PosYEnd:          posYEnd,
-		SizeStart:        effectTableSize(100),
-		SizeEnd:          effectTableSize(200),
 	}
 }
 
@@ -3901,7 +3843,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectMagnum2:      magnum2EffectSpec(),
 	effectEntry2:       entry2EffectSpec(),
 	effectColorPaper:   soundOnlyEffectSpec("effect\\wedding.wav"),
-	effectSoulBreaker:  soulBreakerEffectSpec(),
+	effectSoulBreaker:  soulBreakerEffectSpec(false),
 	effectLevel99Aura1: level99BubbleEffectSpec(),
 	effectFoodChocolate: sprEffectSpec(
 		"vallentine",
@@ -3956,7 +3898,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectBottomSpider:      spiderWebEffectSpec(),
 	effectSoulBurn:          strEffectSpecAttached("소울번", "", false),
 	effectSoulChange:        strEffectSpecAttached("사람효과", "", false),
-	effectSoulBreaker2:      soulBreaker2EffectSpec(),
+	effectSoulBreaker2:      soulBreakerEffectSpec(true),
 	effectReflectBody:       soulLinkerBodyEffectSpec("ReflectBody", "effect\\t_마법반사.wav", 200),
 	effectFourWayBody:       soulLinkerBodyEffectSpec("FourWayBody", "", 100),
 	effectAsuraBody:         soulLinkerBodyEffectSpec("AsuraBody", "", 500),
@@ -3993,7 +3935,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectBeginAsura7:       mildWindEffectSpec("effect/hanmoon6.tga"),
 	effectMochi:             strEffectSpecAttached("찹쌀떡", "", false),
 	effectRamadan:           strEffectSpecAttached("ramadan", "", false),
-	effectEDP:               soundOnlyEffectSpec("effect\\assasin_cloaking.wav"),
+	effectEDP:               enchantDeadlyPoisonEffectSpec(),
 	effectPreserve:          soundOnlyEffectSpec("effect\\black_maximize_power_sword_bic.wav"),
 	effectCastSpin:          funcEffectSpec("CastSpin", 500*time.Millisecond, true),
 	effectChookgi2:          spiritSphereEffectSpec(),

@@ -659,6 +659,8 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return true
 	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation, db.SkillPFSoulburn:
 		return true
+	case db.SkillASCBreaker, db.SkillASCMeteorassault:
+		return true
 	case db.SkillCRShieldcharge, db.SkillCRShieldboomerang, db.SkillCRHolycross, db.SkillCRGrandcross, db.SkillPaPressure, db.SkillPaSacrifice, db.SkillPaShieldchain,
 		db.SkillKNPierce, db.SkillKNBrandishspear, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNBowlingbash, db.SkillKNChargeatk:
 		return true
@@ -761,6 +763,14 @@ func normalAttackProjectileEffectIDForName(name string) (int, bool) {
 
 func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActionNotify, actionAt, hitAt time.Time) {
 	if action.SkillID == 0 || skillSplashAction(action) {
+		return
+	}
+	if action.SkillID == db.SkillASCBreaker {
+		if _, sourceOK, _ := actorForCombatID(ctx, action.SourceID); sourceOK {
+			if _, targetOK, _ := actorForCombatID(ctx, action.TargetID); targetOK {
+				m.addWorldEffectBetweenAt(ctx, effectSoulBreaker, action.SourceID, action.TargetID, actionAt)
+			}
+		}
 		return
 	}
 	if action.SkillID == db.SkillACShower {

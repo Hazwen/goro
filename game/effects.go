@@ -1731,6 +1731,13 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
+	if effectID == effectSoulBreaker || effectID == effectSoulBreaker2 {
+		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
+		effect.hasActorTransform = true
+		if targetID != 0 {
+			effect.projectileDirection = sub3(effectWorldAnchor(ctx, worldEffect{actorID: targetID}, starts), effect.actorOrigin)
+		}
+	}
 	if effectID == effectBackStab || effectID == effectTeiHit2 {
 		initImpactParticles(ctx, &effect)
 	}
@@ -2038,6 +2045,10 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell
 	}
 	switch skillID {
+	case db.SkillASCBreaker, db.SkillASCMeteorassault:
+		effectID = effectBeginSpell7
+	case db.SkillASCEdp, db.SkillASCCdp:
+		effectID = effectBashBegin
 	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation:
 		effectID = effectBeginSpell
 	case db.SkillPFHpconversion, db.SkillPFSoulchange, db.SkillPFSoulburn, db.SkillPFMindbreaker,
@@ -2848,6 +2859,8 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncHPConversion
 	case "SoulChangeLink":
 		return effectFuncSoulChangeLink
+	case "SoulBreaker":
+		return effectFuncSoulBreaker
 	case "Gravitation":
 		return effectFuncGravitation
 	case "ChemicalProtection":

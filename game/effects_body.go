@@ -59,6 +59,20 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		}
 		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 		switch effect.effectID {
+		case effectSoulBreaker, effectSoulBreaker2, effectEDP:
+			end := 10
+			if effect.effectID == effectEDP {
+				end = 80
+			}
+			if frame <= end {
+				tint.R, tint.G, tint.B = 255, 255, 255
+				if effect.effectID != effectEDP || frame%2 == 0 {
+					tint.G = 0
+					if billboard.layerGroup == 0 {
+						blend = render.BlendLighter
+					}
+				}
+			}
 		case effectMagicCrasher:
 			if billboard.layerGroup == 0 && entry.stealth == stealthVisible && magicCrasherFlashActive(now.Sub(effect.starts)) {
 				blend = render.BlendLighter

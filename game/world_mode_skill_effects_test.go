@@ -1603,12 +1603,6 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "CH_TIGERFIST imported", skillEffectIDs(db.SkillChTigerfist), effectBash3D2, effectQuake)
 	expectEffectIDs(t, "CH_CHAINCRUSH imported", skillEffectIDs(db.SkillChChaincrush), effectChemical2Dash)
 	expectEffectIDs(t, "CH_SOULCOLLECT imported begin", skillBeginEffectIDs(db.SkillChSoulcollect), effectPortal5, effectBeginSpell)
-	expectEffectIDs(t, "ASC_BREAKER imported before hit", skillBeforeHitEffectIDs(db.SkillASCBreaker), effectSoulBreaker)
-	expectEffectIDs(t, "ASC_METEORASSAULT imported caster", skillEffectOnCasterIDs(db.SkillASCMeteorassault), effectSoulBreaker2)
-	if !skillHidesCastAura(db.SkillASCMeteorassault) {
-		t.Fatal("ASC_METEORASSAULT should hide cast aura like robr")
-	}
-	expectEffectIDs(t, "ASC_CDP imported empty", skillEffectIDs(db.SkillASCCdp))
 	expectEffectIDs(t, "SN_SIGHT imported", skillSuccessEffectSelfIDs(db.SkillSNSight), effectTrueSight)
 	expectEffectIDs(t, "SN_FALCONASSAULT imported", skillEffectIDs(db.SkillSNFalconassault), effectFalconAssault)
 	expectEffectIDs(t, "HT_PHANTASMIC imported before hit", skillBeforeHitEffectIDs(db.SkillHTPhantasmic), effectArrowShot)
@@ -1621,7 +1615,6 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "WS_CREATENUGGET imported empty", skillEffectIDs(db.SkillWSCreatenugget))
 	expectEffectIDs(t, "WS_SYSTEMCREATE imported empty", skillEffectIDs(db.SkillWSSystemcreate))
 	expectEffectIDs(t, "WS_WEAPONREFINE imported empty", skillEffectIDs(db.SkillWSWeaponrefine))
-	expectEffectIDs(t, "ASC_EDP imported", skillEffectIDs(db.SkillASCEdp), effectEDP)
 	expectEffectIDs(t, "ST_CHASEWALK imported begin", skillBeginEffectIDs(db.SkillSTChasewalk), effectCastSpin)
 	expectEffectIDs(t, "ST_REJECTSWORD imported", skillEffectIDs(db.SkillSTRejectsword), effectRejectSword)
 	expectEffectIDs(t, "ST_PRESERVE imported", skillEffectIDs(db.SkillSTPreserve), effectPreserve)

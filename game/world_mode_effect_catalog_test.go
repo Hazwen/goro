@@ -1763,17 +1763,6 @@ func TestRobrowserLevel99AliasesThreeFiftyToFourHundredMatchTableRows(t *testing
 }
 
 func TestRobrowserCombatEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.T) {
-	soul, ok := worldEffectSpecForID(effectSoulBreaker)
-	if !ok || len(soul.components) != 1 || soul.duration != 500*time.Millisecond {
-		t.Fatalf("EF_SOULBREAKER spec = %+v ok=%t", soul, ok)
-	}
-	if len(soul.sfx) != 1 || soul.sfx[0] != "effect\\기공포.wav" {
-		t.Fatalf("EF_SOULBREAKER sfx = %#v", soul.sfx)
-	}
-	if component := soul.components[0]; component.kind != effectComponent3D || component.textureFile != "effect/purpleslash.tga" || component.alphaMax != 0.4 || !component.fadeIn || !component.fadeOut || !component.toSrc || !component.rotateWithCamera || !component.rotateToTarget || component.angleStart != 90 || component.posZ != 2 || component.sizeStart != effectTableSize(100) || component.sizeEnd != effectTableSize(200) || !component.attachedEntity {
-		t.Fatalf("EF_SOULBREAKER component = %+v", component)
-	}
-
 	for _, tc := range []struct {
 		name      string
 		id        int
@@ -1864,35 +1853,6 @@ func TestRobrowserEffectsFourHundredToFourFiftyMatchTableRows(t *testing.T) {
 		component := spec.components[0]
 		if component.kind != effectComponentSTR || component.strFile != tc.file || !component.attachedEntity {
 			t.Fatalf("%s component = %+v, want attached STR %q", tc.name, component, tc.file)
-		}
-	}
-
-	meteor, ok := worldEffectSpecForID(effectSoulBreaker2)
-	if !ok || len(meteor.components) != 8 || meteor.duration != 500*time.Millisecond {
-		t.Fatalf("EF_SOULBREAKER2 spec = %+v ok=%t", meteor, ok)
-	}
-	if len(meteor.sfx) != 1 || meteor.sfx[0] != "effect\\메테오 어썰트.wav" {
-		t.Fatalf("EF_SOULBREAKER2 sfx = %#v", meteor.sfx)
-	}
-	for i, tc := range []struct {
-		posX    float64
-		posY    float64
-		posXEnd float64
-		posYEnd float64
-		angle   float64
-	}{
-		{-1, 0, -5, 0, 0},
-		{-0.7, -0.7, -3.53, -3.53, -45},
-		{0, -1, 0, -5, -90},
-		{0.7, -0.7, 3.53, -3.53, -135},
-		{1, 0, 5, 0, -180},
-		{0.7, 0.7, 3.53, 3.53, -225},
-		{0, 1, 0, 5, -270},
-		{-0.7, 0.7, -3.53, 3.53, -315},
-	} {
-		component := meteor.components[i]
-		if component.kind != effectComponent3D || component.textureFile != "effect/purpleslash.tga" || component.duration != 500*time.Millisecond || math.Abs(component.alphaMax-0.6) > 0.0001 || !component.fadeOut || !component.rotateWithCamera || component.sizeStart != effectTableSize(100) || component.sizeEnd != effectTableSize(200) || component.posX != tc.posX || component.posY != tc.posY || component.posXEnd != tc.posXEnd || component.posYEnd != tc.posYEnd || component.angleStart != tc.angle {
-			t.Fatalf("EF_SOULBREAKER2 slash %d = %+v", i, component)
 		}
 	}
 
@@ -1996,7 +1956,6 @@ func TestRobrowserSimpleEffectsFourFiftyToFiveHundredMatchTableRows(t *testing.T
 	}{
 		{"EF_AGIUP", effectNPCPowerUp, "effect\\mon_폭기.wav"},
 		{"EF_JUMPKICK", effectJumpKick, "effect\\t_날라차기.wav"},
-		{"EF_EDP", effectEDP, "effect\\assasin_cloaking.wav"},
 		{"EF_GUARD2", effectPreserve, "effect\\black_maximize_power_sword_bic.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)

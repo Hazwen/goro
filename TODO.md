@@ -110,6 +110,11 @@ For each class: inspect every skill against dhxj and the 2008 HighPriest client,
 cross-check server packets, implement discrepancies, review and fix twice,
 validate, then commit and push. Existing support is not proof of visual parity.
 
+Reference caveat from the Assassin Cross pass: HighPriest and the actual
+`2008-09-10aSakexe.exe` are not interchangeable. HighPriest uses different
+Soul Breaker/Meteor Assault poses and adds an Asura sound/quake to Soul Breaker.
+Where they disagree, verify the actual Sakexe binary before choosing behaviour.
+
 - [x] Hunter — traps, Detecting, Blitz Beat, Phantasmic Arrow, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
 - [x] Sniper — all four skills audited; procedural visuals, casting poses, hit routing, and sound timing reviewed twice and validated with OldRO assets.
 - [x] Bard — songs/ensembles, Musical Strike, Frost Joke, Pang Voice, and utility/passive skills audited; reviewed twice and validated with OldRO assets.
@@ -122,7 +127,7 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Creator — all four active skills audited; potion bursts, Acid Demonstration, protection, and Cultivation reviewed twice and validated with client assets.
 - [x] High Wizard — all six skills audited; Soul Drain, Amplification, Magic Crasher, Napalm Vulcan, Ganbantein, and Gravitation reviewed twice and validated with client assets.
 - [x] Professor — all eight skills audited; particle trails, linking/body effects, ground units, casting, and sound timing reviewed twice and validated with client assets.
-- [ ] Assassin Cross
+- [x] Assassin Cross — all five skills audited; slashes, poison particles, packet ownership, casting, poses, and sounds reviewed twice and validated with client assets.
 - [ ] Stalker
 - [ ] Champion
 - [ ] Taekwon
@@ -291,6 +296,23 @@ active skills, packet outcomes, and unit lifetimes. Mage/Sage skills inherit
 their earlier audits. Both reviews, full tests with client assets, and a normal
 build passed. No live playtest was performed; visual comparison remains useful,
 especially for the procedural trails and ground walls.
+
+Assassin Cross reference checks: dhxj and HighPriest describe four delayed
+Soul Breaker slashes and eight groups of four Meteor Assault slashes, with
+acceleration, fade, fixed launch position, and a brief purple caster flash.
+The actual 2008 Sakexe confirms normal-alpha pale-blue slashes (renderer at
+`0x62a6e0`), weapon-dependent attack poses for both skills (`0x6847c0`), and
+no extra Asura sound/quake in Soul Breaker's release (`0x686972`). These last
+two behaviours differ from HighPriest. Soul Breaker's spatial sound starts
+at tick 20; Meteor Assault sounds immediately and only its successful
+no-damage packet starts the burst. Damage packets add the ordinary hit flash;
+secondary splash packets do not replay effects. Enchant Deadly Poison restores
+the small rising particles, alternating purple body flash, and six Enchant
+Poison sounds at ticks 0/5/11/18/26/40. Create Deadly Poison reuses crafting
+success/failure effects; rAthena owns production, self-damage on failure, and
+the poison status. Advanced Katar Mastery is passive. Both reviews, full tests
+with client assets, and a normal build passed. No live visual comparison was
+performed; the procedural geometry still benefits from playtesting.
 
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
