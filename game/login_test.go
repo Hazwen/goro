@@ -14,6 +14,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -48,7 +49,7 @@ func TestLoginInterfaceCandidatesUseROInterfacePath(t *testing.T) {
 }
 
 func TestLoginBackgroundRealDataWhenConfigured(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	img, source, ok := loadLoginBackgroundImage(manager, "bgi_temp.bmp")
 	if !ok {
 		t.Skip("bgi_temp.bmp not present in configured client data")
@@ -1253,8 +1254,11 @@ type fakeCursorUIApp struct {
 }
 
 func (fakeCursorUIApp) SetUIRoot(widget.Widget) {}
-func (fakeCursorUIApp) Frame()                  {}
-func (fakeCursorUIApp) Invalidate()             {}
+
+func (fakeCursorUIApp) Frame() {}
+
+func (fakeCursorUIApp) Invalidate() {}
+
 func (a fakeCursorUIApp) Cursor() widget.CursorType {
 	return a.cursor
 }
@@ -1568,7 +1572,7 @@ func TestLoginConfirmSFXUsesClassicButtonSound(t *testing.T) {
 }
 
 func TestCharacterSelectSkinRealDataWhenConfigured(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	for _, name := range []string{"login_interface/win_select.bmp", "login_interface/box_select.bmp"} {
 		img, source, ok := loadLoginBackgroundImage(manager, name)
 		if !ok {

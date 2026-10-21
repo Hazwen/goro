@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
@@ -27,7 +28,7 @@ func loadGND(manager *res.Manager, mapName string) (*res.GND, string, error) {
 	return gnd, source, err
 }
 
-func (m *WorldMode) drawGNDWater(screen *render.Frame, manager *res.Manager, gnd *res.GND, rsw *res.RSW, projection sceneProjection, now time.Time, fog sceneFog) {
+func (m *WorldMode) drawGNDWater(screen *render.Frame, manager *res.Manager, gnd *res.GND, rsw *res.RSW, projection scene.Projection, now time.Time, fog scene.SceneFog) {
 	water, ok := mapWater(gnd, rsw)
 	if !ok {
 		return
@@ -60,11 +61,11 @@ func (m *WorldMode) drawGNDWater(screen *render.Frame, manager *res.Manager, gnd
 	}
 }
 
-func gndDrawBounds(gnd *res.GND, projection sceneProjection, screenWidth, screenHeight int) (int, int, int, int, bool) {
+func gndDrawBounds(gnd *res.GND, projection scene.Projection, screenWidth, screenHeight int) (int, int, int, int, bool) {
 	return gndDrawBoundsWithMargin(gnd, projection, screenWidth, screenHeight, 24)
 }
 
-func gndDrawBoundsWithMargin(gnd *res.GND, projection sceneProjection, screenWidth, screenHeight, margin int) (int, int, int, int, bool) {
+func gndDrawBoundsWithMargin(gnd *res.GND, projection scene.Projection, screenWidth, screenHeight, margin int) (int, int, int, int, bool) {
 	if gnd == nil || gnd.Width <= 0 || gnd.Height <= 0 {
 		return 0, 0, 0, 0, false
 	}
@@ -72,13 +73,13 @@ func gndDrawBoundsWithMargin(gnd *res.GND, projection sceneProjection, screenWid
 		margin = 0
 	}
 
-	centerX := gndTileFromWorld(projection.playerX)
-	centerY := gndTileFromWorld(projection.playerY)
+	centerX := gndTileFromWorld(projection.PlayerX)
+	centerY := gndTileFromWorld(projection.PlayerY)
 	if minWorldX, maxWorldX, minWorldY, maxWorldY, ok := cameraGroundFootprint(projection, screenWidth, screenHeight); ok {
-		startX := minInt(gndTileFromWorld(minWorldX), centerX) - margin
-		endX := maxInt(gndTileFromWorld(maxWorldX), centerX) + margin
-		startY := minInt(gndTileFromWorld(minWorldY), centerY) - margin
-		endY := maxInt(gndTileFromWorld(maxWorldY), centerY) + margin
+		startX := scene.MinInt(gndTileFromWorld(minWorldX), centerX) - margin
+		endX := scene.MaxInt(gndTileFromWorld(maxWorldX), centerX) + margin
+		startY := scene.MinInt(gndTileFromWorld(minWorldY), centerY) - margin
+		endY := scene.MaxInt(gndTileFromWorld(maxWorldY), centerY) + margin
 		return clampGNDRange(gnd, startX, endX, startY, endY)
 	}
 	const fallbackRadius = 96
@@ -90,10 +91,10 @@ func gndTileFromWorld(coord float64) int {
 }
 
 func clampGNDRange(gnd *res.GND, startX, endX, startY, endY int) (int, int, int, int, bool) {
-	startX = maxInt(0, startX)
-	endX = minInt(gnd.Width-1, endX)
-	startY = maxInt(0, startY)
-	endY = minInt(gnd.Height-1, endY)
+	startX = scene.MaxInt(0, startX)
+	endX = scene.MinInt(gnd.Width-1, endX)
+	startY = scene.MaxInt(0, startY)
+	endY = scene.MinInt(gnd.Height-1, endY)
 	return startX, endX, startY, endY, startX <= endX && startY <= endY
 }
 
@@ -109,7 +110,7 @@ func worldGNDHeightAt(world *worldstate.World, x, y float64) (float64, bool) {
 	if !ok {
 		return 0, false
 	}
-	return bilinearHeight(cell.Heights, gridX-float64(cellX), gridY-float64(cellY)), true
+	return scene.BilinearHeight(cell.Heights, gridX-float64(cellX), gridY-float64(cellY)), true
 }
 
 func gndShadowMapPoint(x, y float64) (int, int) {
@@ -127,8 +128,8 @@ func gndShadowMapPoint(x, y float64) (int, int) {
 	}
 	localX += int(math.Floor((x - math.Floor(x)) * 4))
 	localY += int(math.Floor((y - math.Floor(y)) * 4))
-	shadowX += minInt(localX, 6)
-	shadowY += minInt(localY, 6)
+	shadowX += scene.MinInt(localX, 6)
+	shadowY += scene.MinInt(localY, 6)
 	return shadowX, shadowY
 }
 
@@ -155,14 +156,14 @@ func gndShadowMapAlpha(gnd *res.GND, shadowX, shadowY int) uint8 {
 	return lightmap.Alpha[localY][localX]
 }
 
-func cameraGroundFootprint(projection sceneProjection, screenWidth, screenHeight int) (float64, float64, float64, float64, bool) {
+func cameraGroundFootprint(projection scene.Projection, screenWidth, screenHeight int) (float64, float64, float64, float64, bool) {
 	aspect := 1.0
 	if screenHeight > 0 {
 		aspect = float64(screenWidth) / float64(screenHeight)
 	}
 
-	eye, forward, right, up := projection.cameraBasis()
-	tanHalfFOV := math.Tan(degreesToRadians(sceneCameraFOV()) * 0.5)
+	eye, forward, right, up := projection.CameraBasis()
+	tanHalfFOV := math.Tan(scene.DegreesToRadians(scene.SceneCameraFOV()) * 0.5)
 
 	samples := [][2]float64{
 		{-1, -1}, {1, -1}, {-1, 1}, {1, 1},
@@ -172,40 +173,40 @@ func cameraGroundFootprint(projection sceneProjection, screenWidth, screenHeight
 	minY, maxY := 0.0, 0.0
 	found := false
 	for _, sample := range samples {
-		dir := normalize3(add3(add3(forward, mul3(right, sample[0]*tanHalfFOV*aspect)), mul3(up, sample[1]*tanHalfFOV)))
-		if math.Abs(dir.y) < 0.000001 {
+		dir := scene.Normalize3(scene.Add3(scene.Add3(forward, scene.Mul3(right, sample[0]*tanHalfFOV*aspect)), scene.Mul3(up, sample[1]*tanHalfFOV)))
+		if math.Abs(dir.Y) < 0.000001 {
 			continue
 		}
-		t := (projection.playerZ - eye.y) / dir.y
-		if t <= 0 || !isFinite(t) {
+		t := (projection.PlayerZ - eye.Y) / dir.Y
+		if t <= 0 || !scene.IsFinite(t) {
 			continue
 		}
-		hit := add3(eye, mul3(dir, t))
-		if !isFinite(hit.x) || !isFinite(hit.z) {
+		hit := scene.Add3(eye, scene.Mul3(dir, t))
+		if !scene.IsFinite(hit.X) || !scene.IsFinite(hit.Z) {
 			continue
 		}
 		if !found {
-			minX, maxX = hit.x, hit.x
-			minY, maxY = hit.z, hit.z
+			minX, maxX = hit.X, hit.X
+			minY, maxY = hit.Z, hit.Z
 			found = true
 			continue
 		}
-		minX = math.Min(minX, hit.x)
-		maxX = math.Max(maxX, hit.x)
-		minY = math.Min(minY, hit.z)
-		maxY = math.Max(maxY, hit.z)
+		minX = math.Min(minX, hit.X)
+		maxX = math.Max(maxX, hit.X)
+		minY = math.Min(minY, hit.Z)
+		maxY = math.Max(maxY, hit.Z)
 	}
 	return minX, maxX, minY, maxY, found
 }
 
 type gndSurfaceDraw struct {
-	verts   [4]modelPoint3
-	uvs     [4]texturePoint
+	verts   [4]scene.Point3
+	uvs     [4]scene.UV
 	indices []uint16
 	tint    color.RGBA
 }
 
-func (m *WorldMode) smoothGNDTopNormals(gnd *res.GND) [][4]modelPoint3 {
+func (m *WorldMode) smoothGNDTopNormals(gnd *res.GND) [][4]scene.Point3 {
 	if gnd == nil {
 		return nil
 	}
@@ -217,36 +218,36 @@ func (m *WorldMode) smoothGNDTopNormals(gnd *res.GND) [][4]modelPoint3 {
 	return m.gndTopNormals
 }
 
-func buildSmoothGNDTopNormals(gnd *res.GND) [][4]modelPoint3 {
+func buildSmoothGNDTopNormals(gnd *res.GND) [][4]scene.Point3 {
 	if gnd == nil || gnd.Width <= 0 || gnd.Height <= 0 {
 		return nil
 	}
 	count := gnd.Width * gnd.Height
-	cellNormals := make([]modelPoint3, count)
+	cellNormals := make([]scene.Point3, count)
 	for y := 0; y < gnd.Height; y++ {
 		for x := 0; x < gnd.Width; x++ {
 			cell, ok := gnd.Cell(x, y)
 			if !ok || cell.Top < 0 {
 				continue
 			}
-			verts := [4]modelPoint3{
-				{x: float64(x) * 2, y: float64(cell.Heights[0]), z: float64(y) * 2},
-				{x: float64(x+1) * 2, y: float64(cell.Heights[1]), z: float64(y) * 2},
-				{x: float64(x+1) * 2, y: float64(cell.Heights[3]), z: float64(y+1) * 2},
-				{x: float64(x) * 2, y: float64(cell.Heights[2]), z: float64(y+1) * 2},
+			verts := [4]scene.Point3{
+				{X: float64(x) * 2, Y: float64(cell.Heights[0]), Z: float64(y) * 2},
+				{X: float64(x+1) * 2, Y: float64(cell.Heights[1]), Z: float64(y) * 2},
+				{X: float64(x+1) * 2, Y: float64(cell.Heights[3]), Z: float64(y+1) * 2},
+				{X: float64(x) * 2, Y: float64(cell.Heights[2]), Z: float64(y+1) * 2},
 			}
 			cellNormals[x+y*gnd.Width] = quadNormal(verts)
 		}
 	}
 
-	normals := make([][4]modelPoint3, count)
+	normals := make([][4]scene.Point3, count)
 	for y := 0; y < gnd.Height; y++ {
 		for x := 0; x < gnd.Width; x++ {
 			cellNormal := gndCellNormalAt(cellNormals, gnd.Width, gnd.Height, x, y)
-			if cellNormal == (modelPoint3{}) {
-				cellNormal = modelPoint3{y: -1}
+			if cellNormal == (scene.Point3{}) {
+				cellNormal = scene.Point3{Y: -1}
 			}
-			normals[x+y*gnd.Width] = [4]modelPoint3{
+			normals[x+y*gnd.Width] = [4]scene.Point3{
 				smoothGNDNormalAt(cellNormals, gnd.Width, gnd.Height, cellNormal, [][2]int{{x, y}, {x - 1, y}, {x - 1, y - 1}, {x, y - 1}}),
 				smoothGNDNormalAt(cellNormals, gnd.Width, gnd.Height, cellNormal, [][2]int{{x, y}, {x + 1, y}, {x + 1, y - 1}, {x, y - 1}}),
 				smoothGNDNormalAt(cellNormals, gnd.Width, gnd.Height, cellNormal, [][2]int{{x, y}, {x + 1, y}, {x + 1, y + 1}, {x, y + 1}}),
@@ -257,35 +258,35 @@ func buildSmoothGNDTopNormals(gnd *res.GND) [][4]modelPoint3 {
 	return normals
 }
 
-func gndCellNormalAt(normals []modelPoint3, width, height, x, y int) modelPoint3 {
+func gndCellNormalAt(normals []scene.Point3, width, height, x, y int) scene.Point3 {
 	if x < 0 || y < 0 || x >= width || y >= height {
-		return modelPoint3{}
+		return scene.Point3{}
 	}
 	return normals[x+y*width]
 }
 
-func smoothGNDNormalAt(normals []modelPoint3, width, height int, fallback modelPoint3, samples [][2]int) modelPoint3 {
-	var sum modelPoint3
+func smoothGNDNormalAt(normals []scene.Point3, width, height int, fallback scene.Point3, samples [][2]int) scene.Point3 {
+	var sum scene.Point3
 	for _, sample := range samples {
 		normal := gndCellNormalAt(normals, width, height, sample[0], sample[1])
-		if normal == (modelPoint3{}) {
+		if normal == (scene.Point3{}) {
 			continue
 		}
-		sum = add3(sum, normal)
+		sum = scene.Add3(sum, normal)
 	}
-	if sum == (modelPoint3{}) {
+	if sum == (scene.Point3{}) {
 		return fallback
 	}
-	return normalize3(sum)
+	return scene.Normalize3(sum)
 }
 
-func gndTopNormalsAt(normals [][4]modelPoint3, gnd *res.GND, x, y int) [4]modelPoint3 {
+func gndTopNormalsAt(normals [][4]scene.Point3, gnd *res.GND, x, y int) [4]scene.Point3 {
 	if gnd == nil || x < 0 || y < 0 || x >= gnd.Width || y >= gnd.Height {
-		return [4]modelPoint3{}
+		return [4]scene.Point3{}
 	}
 	index := x + y*gnd.Width
 	if index < 0 || index >= len(normals) {
-		return [4]modelPoint3{}
+		return [4]scene.Point3{}
 	}
 	return normals[index]
 }
@@ -322,9 +323,9 @@ func gndSurfaceBaseTint(surfaceColor color.RGBA) color.RGBA {
 	return color.RGBA{R: surfaceColor.R, G: surfaceColor.G, B: surfaceColor.B, A: 255}
 }
 
-func uniformGNDNormals(normal modelPoint3) [4]modelPoint3 {
-	normal = normalize3(normal)
-	return [4]modelPoint3{normal, normal, normal, normal}
+func uniformGNDNormals(normal scene.Point3) [4]scene.Point3 {
+	normal = scene.Normalize3(normal)
+	return [4]scene.Point3{normal, normal, normal, normal}
 }
 
 func newGNDWaterDraw(x, y int, cell res.GNDCell, water res.RSWWater, tint color.RGBA, waterOffset float64) (gndSurfaceDraw, bool) {
@@ -332,16 +333,16 @@ func newGNDWaterDraw(x, y int, cell res.GNDCell, water res.RSWWater, tint color.
 		return gndSurfaceDraw{}, false
 	}
 	heights := waterHeightsForCell(water, x, y, waterOffset)
-	verts := [4]modelPoint3{
-		{x: float64(x) * 2, y: float64(heights[0]), z: float64(y) * 2},
-		{x: float64(x+1) * 2, y: float64(heights[1]), z: float64(y) * 2},
-		{x: float64(x+1) * 2, y: float64(heights[3]), z: float64(y+1) * 2},
-		{x: float64(x) * 2, y: float64(heights[2]), z: float64(y+1) * 2},
+	verts := [4]scene.Point3{
+		{X: float64(x) * 2, Y: float64(heights[0]), Z: float64(y) * 2},
+		{X: float64(x+1) * 2, Y: float64(heights[1]), Z: float64(y) * 2},
+		{X: float64(x+1) * 2, Y: float64(heights[3]), Z: float64(y+1) * 2},
+		{X: float64(x) * 2, Y: float64(heights[2]), Z: float64(y+1) * 2},
 	}
 	return gndSurfaceDraw{
 		verts:   verts,
 		uvs:     waterUVs(x, y),
-		indices: quadIndices012023,
+		indices: scene.QuadIndices012023,
 		tint:    tint,
 	}, true
 }
@@ -363,8 +364,8 @@ func mapWater(gnd *res.GND, rsw *res.RSW) (res.RSWWater, bool) {
 	return res.RSWWater{}, false
 }
 
-func (m *WorldMode) drawWaterSurface(screen *render.Frame, texture *render.Image, draw gndSurfaceDraw, projection sceneProjection, fog sceneFog) {
-	tints := fog.mixVertexTints(projection, draw.verts, [4]color.RGBA{draw.tint, draw.tint, draw.tint, draw.tint})
+func (m *WorldMode) drawWaterSurface(screen *render.Frame, texture *render.Image, draw gndSurfaceDraw, projection scene.Projection, fog scene.SceneFog) {
+	tints := fog.MixVertexTints(projection, draw.verts, [4]color.RGBA{draw.tint, draw.tint, draw.tint, draw.tint})
 	if texture == nil {
 		drawColoredSurfaceTints3DAlpha(screen, m.whitePixel, draw.verts, draw.indices, tints)
 		return
@@ -422,24 +423,24 @@ func gndTextureName(gnd *res.GND, textureID int) string {
 	return gnd.Textures[textureID]
 }
 
-func surfaceUVs(surface res.GNDSurface, order [4]int) [4]texturePoint {
-	return [4]texturePoint{
-		{u: surface.U[order[0]], v: surface.V[order[0]]},
-		{u: surface.U[order[1]], v: surface.V[order[1]]},
-		{u: surface.U[order[2]], v: surface.V[order[2]]},
-		{u: surface.U[order[3]], v: surface.V[order[3]]},
+func surfaceUVs(surface res.GNDSurface, order [4]int) [4]scene.UV {
+	return [4]scene.UV{
+		{U: surface.U[order[0]], V: surface.V[order[0]]},
+		{U: surface.U[order[1]], V: surface.V[order[1]]},
+		{U: surface.U[order[2]], V: surface.V[order[2]]},
+		{U: surface.U[order[3]], V: surface.V[order[3]]},
 	}
 }
 
-func waterUVs(x, y int) [4]texturePoint {
+func waterUVs(x, y int) [4]scene.UV {
 	const scale = 0.25
 	baseU := float32(x&3) * scale
 	baseV := float32(y&3) * scale
-	return [4]texturePoint{
-		{u: baseU, v: baseV},
-		{u: baseU + scale, v: baseV},
-		{u: baseU + scale, v: baseV + scale},
-		{u: baseU, v: baseV + scale},
+	return [4]scene.UV{
+		{U: baseU, V: baseV},
+		{U: baseU + scale, V: baseV},
+		{U: baseU + scale, V: baseV + scale},
+		{U: baseU, V: baseV + scale},
 	}
 }
 
@@ -482,7 +483,7 @@ func waterOffsetForTime(water res.RSWWater, now time.Time) float64 {
 }
 
 func waterSin(degrees float64) float32 {
-	return float32(math.Sin(degreesToRadians(degrees)))
+	return float32(math.Sin(scene.DegreesToRadians(degrees)))
 }
 
 func waterTint(water res.RSWWater, rsw *res.RSW) color.RGBA {
@@ -492,27 +493,27 @@ func waterTint(water res.RSWWater, rsw *res.RSW) color.RGBA {
 	}
 	if rsw != nil && water.Type == 4 {
 		return color.RGBA{
-			R: clampColor(float64(rsw.Light.Ambient[0]) * 255),
-			G: clampColor(float64(rsw.Light.Ambient[1]) * 255),
-			B: clampColor(float64(rsw.Light.Ambient[2]) * 255),
+			R: scene.ClampColor(float64(rsw.Light.Ambient[0]) * 255),
+			G: scene.ClampColor(float64(rsw.Light.Ambient[1]) * 255),
+			B: scene.ClampColor(float64(rsw.Light.Ambient[2]) * 255),
 			A: alpha,
 		}
 	}
 	return color.RGBA{R: 255, G: 255, B: 255, A: alpha}
 }
 
-func surfaceTint(base color.RGBA, height float32, normal modelPoint3, lighting sceneLighting) color.RGBA {
+func surfaceTint(base color.RGBA, height float32, normal scene.Point3, lighting sceneLighting) color.RGBA {
 	scale := lighting.groundScale(normal)
 	heightShade := groundHeightShadeAt(height)
 	return color.RGBA{
-		R: clampColor(float64(base.R) * scale.x * heightShade),
-		G: clampColor(float64(base.G) * scale.y * heightShade),
-		B: clampColor(float64(base.B) * scale.z * heightShade),
+		R: scene.ClampColor(float64(base.R) * scale.X * heightShade),
+		G: scene.ClampColor(float64(base.G) * scale.Y * heightShade),
+		B: scene.ClampColor(float64(base.B) * scale.Z * heightShade),
 		A: 255,
 	}
 }
 
-func surfaceVertexTints(baseTints [4]color.RGBA, heights [4]float32, normals [4]modelPoint3, lighting sceneLighting) [4]color.RGBA {
+func surfaceVertexTints(baseTints [4]color.RGBA, heights [4]float32, normals [4]scene.Point3, lighting sceneLighting) [4]color.RGBA {
 	return [4]color.RGBA{
 		surfaceTint(baseTints[0], heights[0], normals[0], lighting),
 		surfaceTint(baseTints[1], heights[1], normals[1], lighting),
@@ -521,23 +522,23 @@ func surfaceVertexTints(baseTints [4]color.RGBA, heights [4]float32, normals [4]
 	}
 }
 
-func scaleSurfaceVertexTints(baseTints [4]color.RGBA, lightScales [4]modelPoint3) [4]color.RGBA {
+func scaleSurfaceVertexTints(baseTints [4]color.RGBA, lightScales [4]scene.Point3) [4]color.RGBA {
 	var tints [4]color.RGBA
 	for i := range tints {
 		lightScale := lightScales[i]
 		base := baseTints[i]
 		tints[i] = color.RGBA{
-			R: clampColor(float64(base.R) * lightScale.x),
-			G: clampColor(float64(base.G) * lightScale.y),
-			B: clampColor(float64(base.B) * lightScale.z),
+			R: scene.ClampColor(float64(base.R) * lightScale.X),
+			G: scene.ClampColor(float64(base.G) * lightScale.Y),
+			B: scene.ClampColor(float64(base.B) * lightScale.Z),
 			A: base.A,
 		}
 	}
 	return tints
 }
 
-func vertexLightScales(lighting sceneLighting, normals [4]modelPoint3) [4]modelPoint3 {
-	return [4]modelPoint3{
+func vertexLightScales(lighting sceneLighting, normals [4]scene.Point3) [4]scene.Point3 {
+	return [4]scene.Point3{
 		lighting.groundScale(normals[0]),
 		lighting.groundScale(normals[1]),
 		lighting.groundScale(normals[2]),
@@ -545,7 +546,7 @@ func vertexLightScales(lighting sceneLighting, normals [4]modelPoint3) [4]modelP
 	}
 }
 
-func groundSurfaceVertexColors(textureName string, surfaceColor color.RGBA, heights [4]float32, normals [4]modelPoint3, lighting sceneLighting) [4]color.RGBA {
+func groundSurfaceVertexColors(textureName string, surfaceColor color.RGBA, heights [4]float32, normals [4]scene.Point3, lighting sceneLighting) [4]color.RGBA {
 	base := textureColor(textureName)
 	if surfaceColor.A != 0 && !(surfaceColor.R == 255 && surfaceColor.G == 255 && surfaceColor.B == 255) {
 		base.R = uint8((uint16(base.R)*2 + uint16(surfaceColor.R)) / 3)
@@ -557,9 +558,9 @@ func groundSurfaceVertexColors(textureName string, surfaceColor color.RGBA, heig
 		scale := lighting.groundScale(normals[i])
 		heightShade := groundHeightShadeAt(heights[i])
 		colors[i] = color.RGBA{
-			R: clampColor(float64(base.R) * scale.x * heightShade),
-			G: clampColor(float64(base.G) * scale.y * heightShade),
-			B: clampColor(float64(base.B) * scale.z * heightShade),
+			R: scene.ClampColor(float64(base.R) * scale.X * heightShade),
+			G: scene.ClampColor(float64(base.G) * scale.Y * heightShade),
+			B: scene.ClampColor(float64(base.B) * scale.Z * heightShade),
 			A: 255,
 		}
 	}

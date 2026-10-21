@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -23,6 +25,8 @@ import (
 )
 
 type WorldMode struct {
+	effectSystem effects.System
+
 	mail              mailState
 	walkCooldownUntil time.Time
 	walkSequence      uint64
@@ -41,49 +45,47 @@ type WorldMode struct {
 	textureMiss       map[string]struct{}
 	imageCache        map[string]image.Image
 	imageMiss         map[string]struct{}
-	strEffects        map[string]*res.STR
-	strEffectMiss     map[string]struct{}
-	playerView        *humanoidSpriteView
-	shadowView        *spriteView
-	shadowViewMiss    bool
-	cartViews         map[int]*spriteView
-	cartViewMiss      map[int]struct{}
-	falconViews       map[int]*spriteView
-	falconViewMiss    map[int]struct{}
-	falcons           map[uint32]*falconRenderState
-	cursorView        *spriteView
-	cursorViewMiss    bool
-	slotMachineView   *spriteView
-	slotMachineMiss   bool
-	cursorFallback    *render.Image
-	cursorAction      int
-	cursorStarted     time.Time
-	damageNumberView  *spriteView
-	damageNumberMiss  bool
-	damageNumbers     map[string]*spriteBillboard
-	cursorLevelNums   map[string]*spriteBillboard
-	damageMsgView     *spriteView
-	damageMsgMiss     bool
-	timeFontView      *spriteView
-	timeFontMiss      bool
-	itemMarker        *render.Image
-	itemViews         map[itemSpriteKey]*spriteView
-	itemViewMiss      map[itemSpriteKey]struct{}
-	effectViews       map[string]*spriteView
-	effectViewMiss    map[string]struct{}
+
+	playerView       *humanoidSpriteView
+	shadowView       *scene.SpriteView
+	shadowViewMiss   bool
+	cartViews        map[int]*scene.SpriteView
+	cartViewMiss     map[int]struct{}
+	falconViews      map[int]*scene.SpriteView
+	falconViewMiss   map[int]struct{}
+	falcons          map[uint32]*falconRenderState
+	cursorView       *scene.SpriteView
+	cursorViewMiss   bool
+	slotMachineView  *scene.SpriteView
+	slotMachineMiss  bool
+	cursorFallback   *render.Image
+	cursorAction     int
+	cursorStarted    time.Time
+	damageNumberView *scene.SpriteView
+	damageNumberMiss bool
+	damageNumbers    map[string]*scene.Billboard
+	cursorLevelNums  map[string]*scene.Billboard
+	damageMsgView    *scene.SpriteView
+	damageMsgMiss    bool
+	timeFontView     *scene.SpriteView
+	timeFontMiss     bool
+	itemMarker       *render.Image
+	itemViews        map[itemSpriteKey]*scene.SpriteView
+	itemViewMiss     map[itemSpriteKey]struct{}
+
 	actorViews        map[actorSpriteKey]*humanoidSpriteView
 	actorViewMiss     map[actorSpriteKey]struct{}
 	mercenaryViews    map[actorSpriteKey]*humanoidSpriteView
 	mercenaryViewMiss map[actorSpriteKey]struct{}
-	nonPCViews        map[int]*spriteView
+	nonPCViews        map[int]*scene.SpriteView
 	nonPCViewMiss     map[int]struct{}
 	gr2Models         map[int]*gr2ModelView
 	gr2ModelMiss      map[int]struct{}
 	petAccessoryIDs   map[uint32]uint32
-	petAccessoryViews map[petAccessorySpriteKey]*spriteView
+	petAccessoryViews map[petAccessorySpriteKey]*scene.SpriteView
 	petAccessoryMiss  map[petAccessorySpriteKey]struct{}
 	rsmMeshCache      map[int][]retainedWorldMesh
-	rsmNodeMatrices   map[*res.RSM]map[string]mat4
+	rsmNodeMatrices   map[*res.RSM]map[string]scene.Mat4
 	rsmAnimNodes      map[*res.RSM]animatedRSMNodeCache
 	rsmBoundsCache    map[rsmBoundsCacheKey]rsmBounds
 	rsmFaceMetaCache  map[*res.RSM]map[*res.RSMNode][]rsmFaceMeta
@@ -117,41 +119,40 @@ type WorldMode struct {
 	lastAttackAt      time.Time
 	lastChaseAt       time.Time
 	actorAnims        map[uint32]actorAnimation
-	actorBlurs        map[uint32][]actorBlur
-	damageFloaters    []damageFloater
-	worldEffects      []worldEffect
-	effectSpecs       map[int]worldEffectSpec
-	actorCastBars     map[uint32]actorCastBar
-	serverProgress    serverProgressState
-	showDigit         showDigitState
-	scheduledSounds   []scheduledSound
-	scheduledStops    []scheduledActorStop
-	scheduledResumes  []scheduledWalkResume
-	mapSoundNext      map[int]time.Time
-	mapWeatherSounds  map[int]time.Time
-	mapWeatherCloud   mapWeatherCloudState
-	mapWeatherPokJuk  mapWeatherFireworkState
-	actorDeaths       map[uint32]time.Time
-	actorVanishes     map[uint32]actorVanishFade
-	actorSoundFrames  map[uint32]actorSoundFrame
-	actorLife         map[uint32]actorLife
-	graffiti          map[uint32]*groundGraffiti
-	skillUnitModels   map[uint32]skillUnitModel
-	hiddenSkillUnits  map[uint32]skillUnitModel
-	actorNameReqAt    map[uint32]time.Time
-	guildEmblems      map[uint32]guildEmblem
-	speechBubbles     map[uint32]speechBubble
-	gndNormalSource   *res.GND
-	gndTopNormals     [][4]modelPoint3
-	taekwonNight      bool
-	starFlights       map[uint32]*starFlight
-	ui                worldUI
-	pendingChatRoom   network.ChatRoomCreate
-	pendingTradeName  string
-	mapFade           mapFadeState
-	hoveredWalk       hoveredWalkCellCache
-	bot               *luaScript
-	companionAI       companionAISystem
+
+	damageFloaters []damageFloater
+
+	actorCastBars    map[uint32]actorCastBar
+	serverProgress   serverProgressState
+	showDigit        showDigitState
+	scheduledSounds  []scheduledSound
+	scheduledStops   []scheduledActorStop
+	scheduledResumes []scheduledWalkResume
+	mapSoundNext     map[int]time.Time
+	mapWeatherSounds map[int]time.Time
+	mapWeatherCloud  mapWeatherCloudState
+	mapWeatherPokJuk mapWeatherFireworkState
+	actorDeaths      map[uint32]time.Time
+	actorVanishes    map[uint32]actorVanishFade
+	actorSoundFrames map[uint32]actorSoundFrame
+	actorLife        map[uint32]actorLife
+	graffiti         map[uint32]*groundGraffiti
+	skillUnitModels  map[uint32]skillUnitModel
+	hiddenSkillUnits map[uint32]skillUnitModel
+	actorNameReqAt   map[uint32]time.Time
+	guildEmblems     map[uint32]guildEmblem
+	speechBubbles    map[uint32]speechBubble
+	gndNormalSource  *res.GND
+	gndTopNormals    [][4]scene.Point3
+	taekwonNight     bool
+
+	ui               worldUI
+	pendingChatRoom  network.ChatRoomCreate
+	pendingTradeName string
+	mapFade          mapFadeState
+	hoveredWalk      hoveredWalkCellCache
+	bot              *luaScript
+	companionAI      companionAISystem
 }
 
 type worldUI struct {
@@ -399,11 +400,6 @@ const (
 	actorNameRequestCooldown = time.Second
 )
 
-var (
-	quadIndices012023 = []uint16{0, 1, 2, 0, 2, 3}
-	quadIndices012213 = []uint16{0, 1, 2, 2, 1, 3}
-)
-
 func NewWorldMode() *WorldMode {
 	m := &WorldMode{}
 	m.bindNPCDialogLifecycle()
@@ -447,30 +443,30 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.cursorStarted = now
 	m.damageNumberView = nil
 	m.damageNumberMiss = false
-	m.damageNumbers = make(map[string]*spriteBillboard)
-	m.cursorLevelNums = make(map[string]*spriteBillboard)
+	m.damageNumbers = make(map[string]*scene.Billboard)
+	m.cursorLevelNums = make(map[string]*scene.Billboard)
 	m.damageMsgView = nil
 	m.damageMsgMiss = false
 	m.timeFontView = nil
 	m.timeFontMiss = false
 	m.itemMarker = nil
-	m.itemViews = make(map[itemSpriteKey]*spriteView)
+	m.itemViews = make(map[itemSpriteKey]*scene.SpriteView)
 	m.itemViewMiss = make(map[itemSpriteKey]struct{})
-	m.effectViews = make(map[string]*spriteView)
-	m.effectViewMiss = make(map[string]struct{})
+	m.effects().EffectViews = make(map[string]*scene.SpriteView)
+	m.effects().EffectViewMiss = make(map[string]struct{})
 	m.actorViews = make(map[actorSpriteKey]*humanoidSpriteView)
 	m.actorViewMiss = make(map[actorSpriteKey]struct{})
 	m.mercenaryViews = make(map[actorSpriteKey]*humanoidSpriteView)
 	m.mercenaryViewMiss = make(map[actorSpriteKey]struct{})
-	m.nonPCViews = make(map[int]*spriteView)
+	m.nonPCViews = make(map[int]*scene.SpriteView)
 	m.nonPCViewMiss = make(map[int]struct{})
 	m.gr2Models = make(map[int]*gr2ModelView)
 	m.gr2ModelMiss = make(map[int]struct{})
 	m.petAccessoryIDs = make(map[uint32]uint32)
-	m.petAccessoryViews = make(map[petAccessorySpriteKey]*spriteView)
+	m.petAccessoryViews = make(map[petAccessorySpriteKey]*scene.SpriteView)
 	m.petAccessoryMiss = make(map[petAccessorySpriteKey]struct{})
 	m.rsmMeshCache = make(map[int][]retainedWorldMesh)
-	m.rsmNodeMatrices = make(map[*res.RSM]map[string]mat4)
+	m.rsmNodeMatrices = make(map[*res.RSM]map[string]scene.Mat4)
 	m.rsmAnimNodes = make(map[*res.RSM]animatedRSMNodeCache)
 	m.rsmBoundsCache = make(map[rsmBoundsCacheKey]rsmBounds)
 	m.rsmFaceMetaCache = make(map[*res.RSM]map[*res.RSMNode][]rsmFaceMeta)
@@ -491,7 +487,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.lastAttackAt = time.Time{}
 	m.lastChaseAt = time.Time{}
 	m.actorAnims = make(map[uint32]actorAnimation)
-	m.actorBlurs = nil
+	m.effects().ActorBlurs = nil
 	m.damageFloaters = nil
 	m.serverProgress = serverProgressState{}
 	m.showDigit = showDigitState{}
@@ -503,7 +499,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.mapWeatherSounds = make(map[int]time.Time)
 	m.mapWeatherCloud = mapWeatherCloudState{}
 	m.mapWeatherPokJuk = mapWeatherFireworkState{}
-	m.starFlights = nil
+	m.effects().StarFlights = nil
 	m.actorDeaths = make(map[uint32]time.Time)
 	m.actorVanishes = make(map[uint32]actorVanishFade)
 	m.actorSoundFrames = make(map[uint32]actorSoundFrame)
@@ -538,9 +534,9 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 		m.shadowViewMiss = true
 		glog.Warnf("actor shadow resources unavailable: %s", status)
 	}
-	m.cartViews = make(map[int]*spriteView)
+	m.cartViews = make(map[int]*scene.SpriteView)
 	m.cartViewMiss = make(map[int]struct{})
-	m.falconViews = make(map[int]*spriteView)
+	m.falconViews = make(map[int]*scene.SpriteView)
 	m.falconViewMiss = make(map[int]struct{})
 	m.falcons = make(map[uint32]*falconRenderState)
 	if view, status := loadCursorSpriteView(ctx.Resources); view != nil {
@@ -692,7 +688,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	// Status presentation must follow server updates even when a window or
 	// modal consumes input for the rest of the frame.
 	m.removeExpiredStatusEffects(ctx.Session, now)
-	m.advanceTaekwonFootprints(ctx, now)
+	m.effects().AdvanceTaekwonFootprints(ctx, now)
 	m.updateMail(ctx, now)
 	progressBlocksActions := m.updateServerProgress(ctx, now)
 	if !ctx.Config.Headless {
@@ -1160,7 +1156,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 		}
 	}
 	minimapDragging := m.ui.minimap.Update(ctx)
-	m.syncLevel99AuraEffects(ctx, now)
+	m.effects().SyncLevel99AuraEffects(ctx, now)
 	pointerBlocked := minimapDragging || m.mapPointerBlocked(ctx)
 	if !pointerBlocked {
 		m.updateCameraZoom(ctx)
@@ -1588,9 +1584,9 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 	projection := m.sceneProjection(ctx, width, height, now)
 	fog := sceneFogFromMap(ctx.Resources, ctx.World.MapName, ctx.Config.Fog)
 	clearWorldScene(screen, ctx.World.MapName)
-	var actorOverlays []sceneActorDrawEntry
+	var actorOverlays []scene.ActorDrawEntry
 	screen.SetCamera3D(projection.RenderCameraWithFog(fog))
-	vertexFog := sceneFog{}
+	vertexFog := scene.SceneFog{}
 
 	if ctx.World.GND != nil {
 		m.drawGNDMeshes(screen, ctx.Resources, ctx.World.GND, ctx.World.RSW, projection)
@@ -1603,16 +1599,16 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 			actorOverlays = m.drawSceneModelsAndActors(screen, ctx, projection, now)
 		} else {
 			m.drawSkillUnitRSMModels(screen, ctx, projection, now)
-			m.drawWorldEffects(screen, ctx, projection, now, true)
+			m.effects().Draw(screen, ctx, projection, now, true)
 			m.drawGroundItems(screen, ctx, projection, now)
 			actorOverlays = m.drawSceneActors(screen, ctx, projection)
 		}
 	} else if ctx.World.GAT != nil {
-		m.drawWorldEffects(screen, ctx, projection, now, true)
+		m.effects().Draw(screen, ctx, projection, now, true)
 		m.drawGroundItems(screen, ctx, projection, now)
 		actorOverlays = m.drawSceneActors(screen, ctx, projection)
 	} else {
-		m.drawWorldEffects(screen, ctx, projection, now, true)
+		m.effects().Draw(screen, ctx, projection, now, true)
 	}
 
 	if !ctx.Config.Render.NoUI {
@@ -1620,7 +1616,7 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 	}
 	m.drawRSWEffects(screen, ctx, projection, now)
 	m.drawMapWeatherEffects(screen, ctx, projection, now)
-	m.drawWorldEffects(screen, ctx, projection, now, false)
+	m.effects().Draw(screen, ctx, projection, now, false)
 	m.drawDamageFloaters(screen, ctx, projection, now)
 
 	if !ctx.Config.Render.NoUI {
@@ -1692,7 +1688,7 @@ func (m *WorldMode) drawUIDragGhosts(screen *render.Frame, ctx client.Context) {
 	m.ui.guildWindow.DrawDragGhost(screen, ctx, m)
 }
 
-func clickedAttackTarget(ctx client.Context, projection sceneProjection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
+func clickedAttackTarget(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
 	if ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -1705,15 +1701,15 @@ func clickedAttackTarget(ctx client.Context, projection sceneProjection, mouseX,
 		if !actorCanBeAttackClicked(ctx, actor) {
 			continue
 		}
-		actorX, actorY := actorRenderPosition(actor, now)
-		terrainZ := terrainHeightAt(ctx.World, actorX, actorY)
-		point := projection.Project(cellCenter(actorX), cellCenter(actorY), terrainZ)
-		scale := actorBillboardScreenScale(projection, cellCenter(actorX), cellCenter(actorY), terrainZ)
-		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.x), float64(point.y), scale) {
+		actorX, actorY := scene.ActorRenderPosition(actor, now)
+		terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
+		point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+		scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
 			continue
 		}
-		dx := float64(point.x) - float64(mouseX)
-		dy := float64(point.y) - float64(mouseY)
+		dx := float64(point.X) - float64(mouseX)
+		dy := float64(point.Y) - float64(mouseY)
 		distance := dx*dx + dy*dy
 		if distance < bestDistance {
 			bestDistance = distance
@@ -1723,7 +1719,7 @@ func clickedAttackTarget(ctx client.Context, projection sceneProjection, mouseX,
 	return best, bestDistance < math.Inf(1)
 }
 
-func clickedSkillTarget(ctx client.Context, projection sceneProjection, skill session.Skill, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
+func clickedSkillTarget(ctx client.Context, projection scene.Projection, skill session.Skill, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
 	if ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -1736,15 +1732,15 @@ func clickedSkillTarget(ctx client.Context, projection sceneProjection, skill se
 		if !actorCanBeSkillTargeted(ctx, skill, actor) {
 			continue
 		}
-		actorX, actorY := actorRenderPosition(actor, now)
-		terrainZ := terrainHeightAt(ctx.World, actorX, actorY)
-		point := projection.Project(cellCenter(actorX), cellCenter(actorY), terrainZ)
-		scale := actorBillboardScreenScale(projection, cellCenter(actorX), cellCenter(actorY), terrainZ)
-		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.x), float64(point.y), scale) {
+		actorX, actorY := scene.ActorRenderPosition(actor, now)
+		terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
+		point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+		scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
 			continue
 		}
-		dx := float64(point.x) - float64(mouseX)
-		dy := float64(point.y) - float64(mouseY)
+		dx := float64(point.X) - float64(mouseX)
+		dy := float64(point.Y) - float64(mouseY)
 		distance := dx*dx + dy*dy
 		if distance < bestDistance {
 			bestDistance = distance
@@ -1754,7 +1750,7 @@ func clickedSkillTarget(ctx client.Context, projection sceneProjection, skill se
 	return best, bestDistance < math.Inf(1)
 }
 
-func clickedPlayerTarget(ctx client.Context, projection sceneProjection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
+func clickedPlayerTarget(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
 	if ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -1767,15 +1763,15 @@ func clickedPlayerTarget(ctx client.Context, projection sceneProjection, mouseX,
 		if !actorCanOpenPlayerContext(ctx, actor) {
 			continue
 		}
-		actorX, actorY := actorRenderPosition(actor, now)
-		terrainZ := terrainHeightAt(ctx.World, actorX, actorY)
-		point := projection.Project(cellCenter(actorX), cellCenter(actorY), terrainZ)
-		scale := actorBillboardScreenScale(projection, cellCenter(actorX), cellCenter(actorY), terrainZ)
-		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.x), float64(point.y), scale) {
+		actorX, actorY := scene.ActorRenderPosition(actor, now)
+		terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
+		point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+		scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
 			continue
 		}
-		dx := float64(point.x) - float64(mouseX)
-		dy := float64(point.y) - float64(mouseY)
+		dx := float64(point.X) - float64(mouseX)
+		dy := float64(point.Y) - float64(mouseY)
 		distance := dx*dx + dy*dy
 		if distance < bestDistance {
 			bestDistance = distance
@@ -1791,7 +1787,7 @@ func skillTargetCandidates(ctx client.Context, skill session.Skill) []worldstate
 	}
 	candidates := make([]worldstate.Actor, 0, len(ctx.World.Actors)+1)
 	if skillTargetFlagsIncludeSelfPick(skill.Type) {
-		if actor, ok, _ := actorForCombatID(ctx, localSkillTarget(ctx)); ok {
+		if actor, ok, _ := scene.ActorForCombatID(ctx, scene.LocalSkillTarget(ctx)); ok {
 			candidates = append(candidates, actor)
 		}
 	}
@@ -1805,33 +1801,12 @@ func skillTargetFlagsIncludeSelfPick(flags uint32) bool {
 	return flags&(skillTargetFriend|skillTargetSelf) != 0
 }
 
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 func clampGameInt(value, minValue, maxValue int) int {
 	if value < minValue {
 		return minValue
 	}
 	if value > maxValue {
 		return maxValue
-	}
-	return value
-}
-
-func absInt(value int) int {
-	if value < 0 {
-		return -value
 	}
 	return value
 }
@@ -1845,10 +1820,10 @@ type sceneDrawEntry struct {
 	itemShadowIndex int
 }
 
-func (m *WorldMode) drawSceneModelsAndActors(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) []sceneActorDrawEntry {
+func (m *WorldMode) drawSceneModelsAndActors(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) []scene.ActorDrawEntry {
 	m.drawRSMModels(screen, ctx.Resources, ctx.World.RSW, ctx.World.RSM, ctx.World.GND, projection, now)
 	m.drawSkillUnitRSMModels(screen, ctx, projection, now)
-	m.drawWorldEffects(screen, ctx, projection, now, true)
+	m.effects().Draw(screen, ctx, projection, now, true)
 	actors := m.collectSceneActorEntries(screen, ctx, projection)
 	items := m.collectSceneItemEntries(screen, ctx, projection, now)
 	for _, entry := range sortedSceneDrawEntries(actors, items) {
@@ -1870,7 +1845,7 @@ func (m *WorldMode) drawSceneModelsAndActors(screen *render.Frame, ctx client.Co
 	return actors
 }
 
-func sortedSceneDrawEntries(actors []sceneActorDrawEntry, items []sceneItemDrawEntry) []sceneDrawEntry {
+func sortedSceneDrawEntries(actors []scene.ActorDrawEntry, items []sceneItemDrawEntry) []sceneDrawEntry {
 	entries := make([]sceneDrawEntry, 0, len(actors)*2+len(items)*2)
 	for i, item := range items {
 		entries = append(entries,
@@ -1879,10 +1854,10 @@ func sortedSceneDrawEntries(actors []sceneActorDrawEntry, items []sceneItemDrawE
 		)
 	}
 	for i, actor := range actors {
-		if actor.castShadow {
-			entries = append(entries, sceneDrawEntry{depth: actor.shadowDepth, entityID: actor.actor.ID, actorIndex: -1, shadowIndex: i, itemIndex: -1, itemShadowIndex: -1})
+		if actor.CastShadow {
+			entries = append(entries, sceneDrawEntry{depth: actor.ShadowDepth, entityID: actor.Actor.ID, actorIndex: -1, shadowIndex: i, itemIndex: -1, itemShadowIndex: -1})
 		}
-		entries = append(entries, sceneDrawEntry{depth: actor.depth, entityID: actor.actor.ID, actorIndex: i, shadowIndex: -1, itemIndex: -1, itemShadowIndex: -1})
+		entries = append(entries, sceneDrawEntry{depth: actor.Depth, entityID: actor.Actor.ID, actorIndex: i, shadowIndex: -1, itemIndex: -1, itemShadowIndex: -1})
 	}
 	sort.SliceStable(entries, func(i, j int) bool {
 		// A stable sort alone preserves the world's random map iteration order
@@ -1969,58 +1944,48 @@ func loadRSMModel(manager *res.Manager, filename string) (*res.RSM, error) {
 	return res.ParseRSM(data)
 }
 
-type screenPoint struct {
-	x float32
-	y float32
-}
-
-type texturePoint struct {
-	u float32
-	v float32
-}
-
-func quadNormal(verts [4]modelPoint3) modelPoint3 {
-	normal := normalize3(cross3(sub3(verts[1], verts[0]), sub3(verts[2], verts[0])))
-	if normal == (modelPoint3{}) {
-		return modelPoint3{y: 1}
+func quadNormal(verts [4]scene.Point3) scene.Point3 {
+	normal := scene.Normalize3(scene.Cross3(scene.Sub3(verts[1], verts[0]), scene.Sub3(verts[2], verts[0])))
+	if normal == (scene.Point3{}) {
+		return scene.Point3{Y: 1}
 	}
 	return normal
 }
 
 type sceneLighting struct {
-	direction modelPoint3
-	diffuse   modelPoint3
-	ambient   modelPoint3
-	env       modelPoint3
+	direction scene.Point3
+	diffuse   scene.Point3
+	ambient   scene.Point3
+	env       scene.Point3
 }
 
 func sceneLightingFromRSW(rsw *res.RSW) sceneLighting {
 	longitude := 45.0
 	latitude := 45.0
-	diffuse := modelPoint3{x: 1, y: 1, z: 1}
-	ambient := modelPoint3{}
+	diffuse := scene.Point3{X: 1, Y: 1, Z: 1}
+	ambient := scene.Point3{}
 	if rsw != nil {
 		longitude = float64(rsw.Light.Longitude)
 		latitude = float64(rsw.Light.Latitude)
-		diffuse = modelPoint3{x: float64(rsw.Light.Diffuse[0]), y: float64(rsw.Light.Diffuse[1]), z: float64(rsw.Light.Diffuse[2])}
-		ambient = modelPoint3{x: float64(rsw.Light.Ambient[0]), y: float64(rsw.Light.Ambient[1]), z: float64(rsw.Light.Ambient[2])}
+		diffuse = scene.Point3{X: float64(rsw.Light.Diffuse[0]), Y: float64(rsw.Light.Diffuse[1]), Z: float64(rsw.Light.Diffuse[2])}
+		ambient = scene.Point3{X: float64(rsw.Light.Ambient[0]), Y: float64(rsw.Light.Ambient[1]), Z: float64(rsw.Light.Ambient[2])}
 	}
-	longitude = degreesToRadians(longitude)
-	latitude = degreesToRadians(latitude)
-	dir := normalize3(modelPoint3{
-		x: -math.Cos(longitude) * math.Sin(latitude),
-		y: -math.Cos(latitude),
-		z: -math.Sin(longitude) * math.Sin(latitude),
+	longitude = scene.DegreesToRadians(longitude)
+	latitude = scene.DegreesToRadians(latitude)
+	dir := scene.Normalize3(scene.Point3{
+		X: -math.Cos(longitude) * math.Sin(latitude),
+		Y: -math.Cos(latitude),
+		Z: -math.Sin(longitude) * math.Sin(latitude),
 	})
-	if dir == (modelPoint3{}) {
-		dir = normalize3(modelPoint3{x: -0.5, y: -0.7, z: -0.5})
+	if dir == (scene.Point3{}) {
+		dir = scene.Normalize3(scene.Point3{X: -0.5, Y: -0.7, Z: -0.5})
 	}
 	diffuse = clampUnitPoint(diffuse)
 	ambient = clampUnitPoint(ambient)
-	env := modelPoint3{
-		x: 1 - (1-ambient.x)*(1-diffuse.x),
-		y: 1 - (1-ambient.y)*(1-diffuse.y),
-		z: 1 - (1-ambient.z)*(1-diffuse.z),
+	env := scene.Point3{
+		X: 1 - (1-ambient.X)*(1-diffuse.X),
+		Y: 1 - (1-ambient.Y)*(1-diffuse.Y),
+		Z: 1 - (1-ambient.Z)*(1-diffuse.Z),
 	}
 	return sceneLighting{
 		direction: dir,
@@ -2035,40 +2000,40 @@ func (m *WorldMode) sceneLighting(rsw *res.RSW) sceneLighting {
 	if !m.taekwonNight {
 		return lighting
 	}
-	lighting.diffuse.x = math.Min(lighting.diffuse.x, 0.5)
-	lighting.diffuse.y = math.Min(lighting.diffuse.y, 0.5)
-	lighting.env = modelPoint3{
-		x: 1 - (1-lighting.ambient.x)*(1-lighting.diffuse.x),
-		y: 1 - (1-lighting.ambient.y)*(1-lighting.diffuse.y),
-		z: 1 - (1-lighting.ambient.z)*(1-lighting.diffuse.z),
+	lighting.diffuse.X = math.Min(lighting.diffuse.X, 0.5)
+	lighting.diffuse.Y = math.Min(lighting.diffuse.Y, 0.5)
+	lighting.env = scene.Point3{
+		X: 1 - (1-lighting.ambient.X)*(1-lighting.diffuse.X),
+		Y: 1 - (1-lighting.ambient.Y)*(1-lighting.diffuse.Y),
+		Z: 1 - (1-lighting.ambient.Z)*(1-lighting.diffuse.Z),
 	}
 	return lighting
 }
 
-func (l sceneLighting) groundScale(normal modelPoint3) modelPoint3 {
-	weight := math.Max(dot3(normalize3(normal), l.direction), 0)
-	return modelPoint3{
-		x: clampUnit(l.ambient.x+l.diffuse.x*weight) * clampUnit(l.env.x),
-		y: clampUnit(l.ambient.y+l.diffuse.y*weight) * clampUnit(l.env.y),
-		z: clampUnit(l.ambient.z+l.diffuse.z*weight) * clampUnit(l.env.z),
+func (l sceneLighting) groundScale(normal scene.Point3) scene.Point3 {
+	weight := math.Max(scene.Dot3(scene.Normalize3(normal), l.direction), 0)
+	return scene.Point3{
+		X: clampUnit(l.ambient.X+l.diffuse.X*weight) * clampUnit(l.env.X),
+		Y: clampUnit(l.ambient.Y+l.diffuse.Y*weight) * clampUnit(l.env.Y),
+		Z: clampUnit(l.ambient.Z+l.diffuse.Z*weight) * clampUnit(l.env.Z),
 	}
 }
 
-func (l sceneLighting) modelScaleNormalized(normal modelPoint3) modelPoint3 {
-	weight := math.Max(dot3(normal, l.direction), 0.5)
+func (l sceneLighting) modelScaleNormalized(normal scene.Point3) scene.Point3 {
+	weight := math.Max(scene.Dot3(normal, l.direction), 0.5)
 	return l.modelScaleFromWeight(weight)
 }
 
-func (l sceneLighting) modelScaleFromWeight(weight float64) modelPoint3 {
-	return modelPoint3{
-		x: clampUnit(l.ambient.x+l.diffuse.x*weight) * clampUnit(l.env.x),
-		y: clampUnit(l.ambient.y+l.diffuse.y*weight) * clampUnit(l.env.y),
-		z: clampUnit(l.ambient.z+l.diffuse.z*weight) * clampUnit(l.env.z),
+func (l sceneLighting) modelScaleFromWeight(weight float64) scene.Point3 {
+	return scene.Point3{
+		X: clampUnit(l.ambient.X+l.diffuse.X*weight) * clampUnit(l.env.X),
+		Y: clampUnit(l.ambient.Y+l.diffuse.Y*weight) * clampUnit(l.env.Y),
+		Z: clampUnit(l.ambient.Z+l.diffuse.Z*weight) * clampUnit(l.env.Z),
 	}
 }
 
-func clampUnitPoint(point modelPoint3) modelPoint3 {
-	return modelPoint3{x: clampUnit(point.x), y: clampUnit(point.y), z: clampUnit(point.z)}
+func clampUnitPoint(point scene.Point3) scene.Point3 {
+	return scene.Point3{X: clampUnit(point.X), Y: clampUnit(point.Y), Z: clampUnit(point.Z)}
 }
 
 func clampUnit(value float64) float64 {
@@ -2090,15 +2055,11 @@ func textureColor(name string) color.RGBA {
 	}
 }
 
-func clampColor(value float64) uint8 {
-	return uint8(min(255, max(0, int(value))))
+func drawColoredSurfaceTints3DAlpha(screen *render.Frame, white *render.Image, verts [4]scene.Point3, indices []uint16, colors [4]color.RGBA) {
+	drawColoredSurfaceTints3DWithOptions(screen, white, verts, indices, colors, scene.TriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
 }
 
-func drawColoredSurfaceTints3DAlpha(screen *render.Frame, white *render.Image, verts [4]modelPoint3, indices []uint16, colors [4]color.RGBA) {
-	drawColoredSurfaceTints3DWithOptions(screen, white, verts, indices, colors, triangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
-}
-
-func drawColoredSurfaceTints3DWithOptions(screen *render.Frame, white *render.Image, verts [4]modelPoint3, indices []uint16, colors [4]color.RGBA, options *render.DrawTrianglesOptions) {
+func drawColoredSurfaceTints3DWithOptions(screen *render.Frame, white *render.Image, verts [4]scene.Point3, indices []uint16, colors [4]color.RGBA, options *render.DrawTrianglesOptions) {
 	vertices := []render.Vertex3D{
 		coloredSurfaceVertex3D(verts[0], 0, 0, colors[0]),
 		coloredSurfaceVertex3D(verts[1], 1, 0, colors[1]),
@@ -2108,53 +2069,23 @@ func drawColoredSurfaceTints3DWithOptions(screen *render.Frame, white *render.Im
 	screen.DrawTriangles3DOwned(vertices, indices, white, options)
 }
 
-func drawTexturedSurface3DAlpha(screen *render.Frame, texture *render.Image, verts [4]modelPoint3, uvs [4]texturePoint, indices []uint16, tints [4]color.RGBA) {
-	drawTexturedSurface3DWithOptions(screen, texture, verts, uvs, indices, tints, triangleDrawOptions(render.FilterLinear, render.AddressRepeat))
+func drawTexturedSurface3DAlpha(screen *render.Frame, texture *render.Image, verts [4]scene.Point3, uvs [4]scene.UV, indices []uint16, tints [4]color.RGBA) {
+	scene.DrawTexturedSurface3DWithOptions(screen, texture, verts, uvs, indices, tints, scene.TriangleDrawOptions(render.FilterLinear, render.AddressRepeat))
 }
 
-func drawTexturedSurface3DWithOptions(screen *render.Frame, texture *render.Image, verts [4]modelPoint3, uvs [4]texturePoint, indices []uint16, tints [4]color.RGBA, options *render.DrawTrianglesOptions) {
-	bounds := texture.Bounds()
-	w := float32(bounds.Dx())
-	h := float32(bounds.Dy())
-	vertices := []render.Vertex3D{
-		texturedSurfaceVertex3D(verts[0], uvs[0], tints[0], w, h),
-		texturedSurfaceVertex3D(verts[1], uvs[1], tints[1], w, h),
-		texturedSurfaceVertex3D(verts[2], uvs[2], tints[2], w, h),
-		texturedSurfaceVertex3D(verts[3], uvs[3], tints[3], w, h),
-	}
-	screen.DrawTriangles3DOwned(vertices, indices, texture, options)
-}
-
-func coloredSurfaceVertex3D(point modelPoint3, u, v float32, tint color.RGBA) render.Vertex3D {
+func coloredSurfaceVertex3D(point scene.Point3, u, v float32, tint color.RGBA) render.Vertex3D {
 	return render.Vertex3D{
-		X:      float32(point.x),
-		Y:      float32(point.y),
-		Z:      float32(point.z),
+		X:      float32(point.X),
+		Y:      float32(point.Y),
+		Z:      float32(point.Z),
 		SrcX:   u,
 		SrcY:   v,
 		ColorR: float32(tint.R) / 255,
 		ColorG: float32(tint.G) / 255,
 		ColorB: float32(tint.B) / 255,
 		ColorA: float32(tint.A) / 255,
-		DepthX: float32(point.x),
-		DepthY: float32(point.y),
-		DepthZ: float32(point.z),
-	}
-}
-
-func texturedSurfaceVertex3D(point modelPoint3, uv texturePoint, tint color.RGBA, textureWidth, textureHeight float32) render.Vertex3D {
-	return render.Vertex3D{
-		X:      float32(point.x),
-		Y:      float32(point.y),
-		Z:      float32(point.z),
-		SrcX:   uv.u * textureWidth,
-		SrcY:   uv.v * textureHeight,
-		ColorR: float32(tint.R) / 255,
-		ColorG: float32(tint.G) / 255,
-		ColorB: float32(tint.B) / 255,
-		ColorA: float32(tint.A) / 255,
-		DepthX: float32(point.x),
-		DepthY: float32(point.y),
-		DepthZ: float32(point.z),
+		DepthX: float32(point.X),
+		DepthY: float32(point.Y),
+		DepthZ: float32(point.Z),
 	}
 }

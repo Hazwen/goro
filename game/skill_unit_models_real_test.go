@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/res"
 )
 
 func TestLegacySkillUnitTrapRSMModelsLoadFromRealDataWhenConfigured(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	checked := 0
 	for unitID, spec := range db.SkillUnitModels {
 		if len(spec.FallbackModelPaths) == 0 {

@@ -8,6 +8,8 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -24,18 +26,18 @@ func (m *WorldMode) applyActorStateChange(ctx client.Context, change network.Act
 	m.applyActorEffectStateEffects(ctx, change.ID, oldState, change.EffectState)
 	m.syncActorSpiritEffects(ctx, change.ID)
 	if (oldState^change.EffectState)&db.EffectStateHide != 0 {
-		m.addWorldEffect(ctx, effectSummonSlave, change.ID)
-		actor, _, _ := actorForCombatID(ctx, change.ID)
+		m.effects().Add(ctx, effects.SummonSlave, change.ID)
+		actor, _, _ := scene.ActorForCombatID(ctx, change.ID)
 		if change.EffectState&db.EffectStateHide != 0 && actor.Job != db.JobNinja {
-			m.addWorldEffect(ctx, effectBashBegin, change.ID)
+			m.effects().Add(ctx, effects.BashBegin, change.ID)
 		}
 	}
-	if change.EffectState&actorStealthMask != 0 {
-		m.removeLevel99AuraEffects(change.ID)
+	if change.EffectState&scene.ActorStealthMask != 0 {
+		m.effects().RemoveLevel99AuraEffects(change.ID)
 		delete(m.speechBubbles, change.ID)
 		if local {
-			m.removeLevel99AuraEffects(localSkillTarget(ctx))
-			delete(m.speechBubbles, localSkillTarget(ctx))
+			m.effects().RemoveLevel99AuraEffects(scene.LocalSkillTarget(ctx))
+			delete(m.speechBubbles, scene.LocalSkillTarget(ctx))
 		}
 	}
 	if local {
@@ -54,7 +56,7 @@ func (m *WorldMode) applyActorStateChange(ctx client.Context, change network.Act
 		glog.Debugf("actor state local id=%d body=%d health=0x%04X effect=0x%08X", change.ID, change.BodyState, change.HealthState, change.EffectState)
 		return
 	}
-	if change.EffectState&actorStealthMask != 0 {
+	if change.EffectState&scene.ActorStealthMask != 0 {
 		if m.pendingAttack.targetID == change.ID || m.lockedAttackID == change.ID {
 			m.cancelAttackIntent()
 		}
@@ -74,7 +76,7 @@ func applyActorStateSnapshot(ctx client.Context, change network.ActorStateChange
 	if change.ID == 0 || ctx.World == nil {
 		return 0, false, false
 	}
-	if isLocalActor(ctx, change.ID) {
+	if scene.IsLocalActor(ctx, change.ID) {
 		oldState = ctx.World.Player.EffectState
 		setActorRenderState(&ctx.World.Player, change.BodyState, change.HealthState, change.EffectState)
 		setSelectedCharacterOptionBit(ctx, db.EffectStateWedding, change.EffectState&db.EffectStateWedding != 0)
@@ -100,36 +102,36 @@ func (m *WorldMode) applyActorBladeStop(ctx client.Context, blade network.ActorB
 }
 
 func (m *WorldMode) applyActorBladeStopSide(ctx client.Context, actorID, lookID uint32, active, caster bool) {
-	actor, ok, local := actorForCombatID(ctx, actorID)
+	actor, ok, local := scene.ActorForCombatID(ctx, actorID)
 	if !ok {
 		return
 	}
 	now := time.Now()
-	anim := actorAnimation{actionFamily: spriteActionIdle, started: now, play: true, hasPlay: true}
+	anim := actorAnimation{actionFamily: scene.SpriteActionIdle, started: now, play: true, hasPlay: true}
 	if active {
 		// Freeze the victim's current frame, before stopping movement or turning.
 		state := m.nonPCSpriteState(actor, now)
 		if actor.Sitting {
-			state.actionFamily = spriteActionSit
+			state.actionFamily = scene.SpriteActionSit
 		}
 		started := now
-		if res.HasPlayerJobToken(actorVisualJob(actor)) || actorIsMercenary(actor) {
+		if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || actorIsMercenary(actor) {
 			state.loopIdle = false
 			state.headTurn, state.headDir = true, actor.HeadDir
 			if view := m.humanoidSpriteViewForActor(ctx, actor); view != nil {
 				started = view.started
 			}
 		} else if view := m.nonPCSpriteView(ctx, actor); view != nil {
-			started = view.started
+			started = view.Started
 		}
 		anim.actionFamily = state.actionFamily
 		anim.fixedMotion = state.fixedMotion
 		renderActor := actor
-		renderActor.Dir = spriteDirectionFromWorldDirForCamera(actor.Dir, cameraYawForMap(ctx))
+		renderActor.Dir = spriteDirectionFromWorldDirForCamera(actor.Dir, scene.CameraYawForMap(ctx))
 		if action, ok := m.actorResolvedAction(ctx, renderActor, state.actionFamily); ok {
 			anim.fixedMotion = bodyMotionForState(action, state, started, now)
 		}
-		if caster && res.HasPlayerJobToken(actorVisualJob(actor)) {
+		if caster && res.HasPlayerJobToken(scene.ActorVisualJob(actor)) {
 			anim.actionFamily = spriteActionPCSkill
 			anim.fixedMotion = 4
 		}
@@ -140,7 +142,7 @@ func (m *WorldMode) applyActorBladeStopSide(ctx client.Context, actorID, lookID 
 	} else {
 		actor.Opt3State &^= db.Opt3Bladestop
 	}
-	target, targetOK, _ := actorForCombatID(ctx, lookID)
+	target, targetOK, _ := scene.ActorForCombatID(ctx, lookID)
 	if targetOK {
 		actor.Dir = directionFromDelta(actor.X, actor.Y, target.X, target.Y, actor.Dir)
 	}
@@ -211,7 +213,7 @@ func actorStateTint(actor worldstate.Actor) color.RGBA {
 		b *= 0.2
 	}
 	opt3 := actor.Opt3State
-	if isMonsterLikeHoverActor(actor) {
+	if scene.IsMonsterLikeHoverActor(actor) {
 		opt3 &^= db.Opt3Energycoat | db.Opt3Overthrust // Monsters use these bits for Eske and Eswoo.
 	}
 	vr, vg, vb, va := actorOpt3StateTint(opt3)
@@ -262,12 +264,12 @@ func (m *WorldMode) playerRenderTint(ctx client.Context, actor worldstate.Actor,
 
 func (m *WorldMode) actorRenderBlend(actorID uint32, now time.Time) render.Blend {
 	if actorID != 0 {
-		for _, effect := range m.worldEffects {
-			if effect.actorID != actorID || now.Before(effect.starts) || effect.expired(now) {
+		for _, effect := range m.effects().Active {
+			if effect.ActorID != actorID || now.Before(effect.Starts) || effect.Expired(now) {
 				continue
 			}
-			elapsed := now.Sub(effect.starts)
-			if sniperBodyFlashActive(effect.effectID, int(elapsed/db.EffectFrameDuration)) {
+			elapsed := now.Sub(effect.Starts)
+			if effects.SniperBodyFlashActive(effect.EffectID, int(elapsed/db.EffectFrameDuration)) {
 				return render.BlendLighter // BL_LIGHT_BODY selects RF_EFFECT in the original client.
 			}
 		}
@@ -286,50 +288,45 @@ func (m *WorldMode) playerRenderBlend(ctx client.Context, actor worldstate.Actor
 	return m.actorRenderBlend(actor.ID, now)
 }
 
-func magicCrasherFlashActive(elapsed time.Duration) bool {
-	frame := elapsed / db.EffectFrameDuration
-	return frame >= 30 && frame <= 60
-}
-
 func (m *WorldMode) actorBodyColorTint(actorID uint32, tint color.RGBA, now time.Time) color.RGBA {
 	if actorID == 0 {
 		return tint
 	}
 	base := tint
-	for _, effect := range m.worldEffects {
-		if effect.actorID != actorID || now.Before(effect.starts) || effect.expired(now) {
+	for _, effect := range m.effects().Active {
+		if effect.ActorID != actorID || now.Before(effect.Starts) || effect.Expired(now) {
 			continue
 		}
-		switch effect.effectID {
-		case effectPortal4:
-			if sniperBodyFlashActive(effect.effectID, int(now.Sub(effect.starts)/db.EffectFrameDuration)) {
-				tint = multiplyTint(base, 220.0/255, 250.0/255, 220.0/255, 1)
+		switch effect.EffectID {
+		case effects.Portal4:
+			if effects.SniperBodyFlashActive(effect.EffectID, int(now.Sub(effect.Starts)/db.EffectFrameDuration)) {
+				tint = scene.MultiplyTint(base, 220.0/255, 250.0/255, 220.0/255, 1)
 			}
-		case effectShrink:
-			frame := now.Sub(effect.starts) / db.EffectFrameDuration
+		case effects.Shrink:
+			frame := now.Sub(effect.Starts) / db.EffectFrameDuration
 			if frame >= 5 && frame < 26 && frame%2 == 0 {
-				tint = multiplyTint(base, 250.0/255, 250.0/255, 100.0/255, 1)
+				tint = scene.MultiplyTint(base, 250.0/255, 250.0/255, 100.0/255, 1)
 			}
-		case effectBash3D:
-			frame := now.Sub(effect.starts) / db.EffectFrameDuration
+		case effects.Bash3D:
+			frame := now.Sub(effect.Starts) / db.EffectFrameDuration
 			if frame >= 20 && frame <= 40 {
-				tint = multiplyTint(base, 1, 200.0/255, 200.0/255, 1)
+				tint = scene.MultiplyTint(base, 1, 200.0/255, 200.0/255, 1)
 			}
-		case effectBodyColor:
-			tint = effectBodyColorTint(tint, now.Sub(effect.starts))
-		case effectMagicCrasher2:
-			tint = magicCrasher2BodyColorTint(tint, actorID, effect.starts, now.Sub(effect.starts))
-		case effectMagicCrasher:
-			frame := now.Sub(effect.starts) / db.EffectFrameDuration
-			if magicCrasherFlashActive(now.Sub(effect.starts)) {
-				seed := uint64(actorID)*0x9e3779b185ebca87 ^ uint64(effect.starts.UnixNano()) ^ uint64(frame)*0xc2b2ae3d27d4eb4f
-				tint = multiplyTint(base, randomBodyColorChannel(seed), randomBodyColorChannel(seed+1), randomBodyColorChannel(seed+2), 1)
+		case effects.BodyColor:
+			tint = effectBodyColorTint(tint, now.Sub(effect.Starts))
+		case effects.MagicCrasher2:
+			tint = magicCrasher2BodyColorTint(tint, actorID, effect.Starts, now.Sub(effect.Starts))
+		case effects.MagicCrasher:
+			frame := now.Sub(effect.Starts) / db.EffectFrameDuration
+			if effects.MagicCrasherFlashActive(now.Sub(effect.Starts)) {
+				seed := uint64(actorID)*0x9e3779b185ebca87 ^ uint64(effect.Starts.UnixNano()) ^ uint64(frame)*0xc2b2ae3d27d4eb4f
+				tint = scene.MultiplyTint(base, randomBodyColorChannel(seed), randomBodyColorChannel(seed+1), randomBodyColorChannel(seed+2), 1)
 			}
-		case effectTransBlueBody:
-			frame := now.Sub(effect.starts) / db.EffectFrameDuration
+		case effects.TransBlueBody:
+			frame := now.Sub(effect.Starts) / db.EffectFrameDuration
 			if frame < 200 {
 				channel := float64(205-frame) / 255
-				tint = multiplyTint(base, channel, channel, 1, 1)
+				tint = scene.MultiplyTint(base, channel, channel, 1, 1)
 			}
 		}
 	}
@@ -337,7 +334,7 @@ func (m *WorldMode) actorBodyColorTint(actorID uint32, tint color.RGBA, now time
 }
 
 func effectBodyColorTint(tint color.RGBA, elapsed time.Duration) color.RGBA {
-	alpha := clampFloat(float64(elapsed)/float64(100*time.Millisecond), 0, 1)
+	alpha := scene.ClampFloat(float64(elapsed)/float64(100*time.Millisecond), 0, 1)
 	return color.RGBA{
 		R: mixTintChannel(tint.R, 255, alpha),
 		G: mixTintChannel(tint.G, 0, alpha),
@@ -352,7 +349,7 @@ func magicCrasher2BodyColorTint(tint color.RGBA, actorID uint32, starts time.Tim
 	}
 	bucket := uint64(elapsed / db.EffectFrameDuration)
 	seed := uint64(actorID)*0x9e3779b185ebca87 ^ uint64(starts.UnixNano()) ^ bucket*0xc2b2ae3d27d4eb4f
-	return multiplyTint(tint, randomBodyColorChannel(seed), randomBodyColorChannel(seed+1), randomBodyColorChannel(seed+2), 1)
+	return scene.MultiplyTint(tint, randomBodyColorChannel(seed), randomBodyColorChannel(seed+1), randomBodyColorChannel(seed+2), 1)
 }
 
 func randomBodyColorChannel(seed uint64) float64 {
@@ -364,18 +361,9 @@ func randomBodyColorChannel(seed uint64) float64 {
 	return float64(byte(seed>>56)) / 255
 }
 
-func multiplyTint(tint color.RGBA, red, green, blue, alpha float64) color.RGBA {
-	return color.RGBA{
-		R: uint8(clampFloat(float64(tint.R)*red, 0, 255)),
-		G: uint8(clampFloat(float64(tint.G)*green, 0, 255)),
-		B: uint8(clampFloat(float64(tint.B)*blue, 0, 255)),
-		A: uint8(clampFloat(float64(tint.A)*alpha, 0, 255)),
-	}
-}
-
 func mixTintChannel(from, to uint8, alpha float64) uint8 {
 	value := float64(from)*(1-alpha) + float64(to)*alpha
-	return uint8(clampFloat(value, 0, 255))
+	return uint8(scene.ClampFloat(value, 0, 255))
 }
 
 func (m *WorldMode) actorRenderScale(actorID uint32, baseScale float64, now time.Time) float64 {
@@ -421,50 +409,50 @@ func (m *WorldMode) actorBodySizeMultiplierFrom(actorID uint32, now time.Time, b
 	}
 	multiplier := baseMultiplier
 	var latest time.Time
-	for _, effect := range m.worldEffects {
-		if effect.actorID != actorID || now.Before(effect.starts) || effect.expired(now) {
+	for _, effect := range m.effects().Active {
+		if effect.ActorID != actorID || now.Before(effect.Starts) || effect.Expired(now) {
 			continue
 		}
-		if effect.starts.Before(latest) {
+		if effect.Starts.Before(latest) {
 			continue
 		}
-		if effect.effectID == effectBabyBodyBack || (effect.effectID == effectBabyBody && effect.persistent) {
-			frame := float64(now.Sub(effect.starts) / db.EffectFrameDuration)
-			if effect.effectID == effectBabyBodyBack {
+		if effect.EffectID == effects.BabyBodyBack || (effect.EffectID == effects.BabyBody && effect.Persistent) {
+			frame := float64(now.Sub(effect.Starts) / db.EffectFrameDuration)
+			if effect.EffectID == effects.BabyBodyBack {
 				frame = 45 - frame*3
 			}
-			multiplier = baseMultiplier * (.75 + .25*math.Cos(degreesToRadians(clampFloat(frame, 0, 45)*4)))
-			latest = effect.starts
+			multiplier = baseMultiplier * (.75 + .25*math.Cos(scene.DegreesToRadians(scene.ClampFloat(frame, 0, 45)*4)))
+			latest = effect.Starts
 			continue
 		}
-		targetSize, transition, ok := actorBodySizeTarget(effect.effectID)
+		targetSize, transition, ok := actorBodySizeTarget(effect.EffectID)
 		if !ok {
 			continue
 		}
 		targetMultiplier := targetSize / 5
 		if transition {
-			duration := effect.duration
+			duration := effect.Duration
 			if duration <= 0 {
 				duration = 300 * time.Millisecond
 			}
-			progress := clampFloat(float64(now.Sub(effect.starts))/float64(duration), 0, 1)
+			progress := scene.ClampFloat(float64(now.Sub(effect.Starts))/float64(duration), 0, 1)
 			targetMultiplier = baseMultiplier + (targetMultiplier-baseMultiplier)*progress
 		}
 		multiplier = targetMultiplier
-		latest = effect.starts
+		latest = effect.Starts
 	}
 	return multiplier
 }
 
 func actorBodySizeTarget(effectID int) (targetSize float64, transition bool, ok bool) {
 	switch effectID {
-	case effectBabyBody:
+	case effects.BabyBody:
 		return 2.5, true, true
-	case effectBabyBody2:
+	case effects.BabyBody2:
 		return 2.5, false, true
-	case effectGiantBody:
+	case effects.GiantBody:
 		return 7.5, true, true
-	case effectGiantBody2:
+	case effects.GiantBody2:
 		return 7.5, false, true
 	default:
 		return 0, false, false
@@ -475,5 +463,5 @@ func freezeActionFamily(actor worldstate.Actor) int {
 	if res.HasPlayerJobToken(int(actor.Job)) {
 		return spriteActionPCFreeze2
 	}
-	return spriteActionIdle
+	return scene.SpriteActionIdle
 }

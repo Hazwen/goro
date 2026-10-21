@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -23,11 +25,11 @@ func applyCompanionActorEntry(ctx client.Context, entry network.ActorEntry) {
 		return
 	}
 	switch entry.ObjectType {
-	case actorObjectTypeHomunculus:
+	case scene.ActorObjectTypeHomunculus:
 		ctx.Session.Homunculus.ID = entry.ID
 		ctx.Session.Homunculus.Active = true
 		ctx.Session.Homunculus.Job = entry.Job
-	case actorObjectTypeMercenary:
+	case scene.ActorObjectTypeMercenary:
 		ctx.Session.Mercenary.ID = entry.ID
 		ctx.Session.Mercenary.Active = true
 		ctx.Session.Mercenary.Job = entry.Job
@@ -39,12 +41,12 @@ func companionActorEntryName(ctx client.Context, entry network.ActorEntry) strin
 		return ""
 	}
 	switch entry.ObjectType {
-	case actorObjectTypeHomunculus:
+	case scene.ActorObjectTypeHomunculus:
 		if ctx.Session.Homunculus.ID != 0 && ctx.Session.Homunculus.ID != entry.ID {
 			return ""
 		}
 		return sanitizeActorName(ctx.Session.Homunculus.Name)
-	case actorObjectTypeMercenary:
+	case scene.ActorObjectTypeMercenary:
 		if ctx.Session.Mercenary.ID != 0 && ctx.Session.Mercenary.ID != entry.ID {
 			return ""
 		}
@@ -83,7 +85,7 @@ func (m *WorldMode) applyHomunculusProperty(ctx client.Context, property network
 	hom.Skills.Points = property.SkillPoints
 	hom.AttackRange = property.AttackRange
 	if hom.ID == 0 {
-		hom.ID = findCompanionActorID(ctx, actorObjectTypeHomunculus)
+		hom.ID = findCompanionActorID(ctx, scene.ActorObjectTypeHomunculus)
 	}
 	m.applyCompanionActorName(ctx, hom.ID, hom.Name)
 	m.applyCompanionLife(ctx, hom.ID, property.HP, property.MaxHP, property.SP, property.MaxSP, property.AttackRange)
@@ -134,9 +136,9 @@ func (m *WorldMode) applyHomunculusParamChange(ctx client.Context, change networ
 	case network.StatusBaseLevel:
 		if previousLevel > 0 && value > previousLevel {
 			if hom.ID == 0 {
-				hom.ID = findCompanionActorID(ctx, actorObjectTypeHomunculus)
+				hom.ID = findCompanionActorID(ctx, scene.ActorObjectTypeHomunculus)
 			}
-			m.addWorldEffectIfMissing(ctx, effectHoUp, hom.ID)
+			m.effects().AddIfMissing(ctx, effects.HoUp, hom.ID)
 		}
 		hom.Level = value
 	case network.StatusSkillPoint:
@@ -180,7 +182,7 @@ func (m *WorldMode) applyMercenaryProperty(ctx client.Context, property network.
 		merc.ID = property.ID
 	}
 	if merc.ID == 0 {
-		merc.ID = findCompanionActorID(ctx, actorObjectTypeMercenary)
+		merc.ID = findCompanionActorID(ctx, scene.ActorObjectTypeMercenary)
 	}
 	if property.Name != "" {
 		merc.Name = property.Name
@@ -230,7 +232,7 @@ func (m *WorldMode) applyMercenaryParamChange(ctx client.Context, change network
 	case network.StatusMercFlee:
 		merc.Flee = value
 	case network.StatusMercKills:
-		merc.Kills = uint32(maxInt(0, value))
+		merc.Kills = uint32(scene.MaxInt(0, value))
 	case network.StatusMercFaith:
 		merc.Faith = value
 	default:
@@ -304,11 +306,11 @@ func (m *WorldMode) applyCompanionLife(ctx client.Context, id uint32, hp, maxHP,
 	}
 	life := m.actorLife[id]
 	if maxHP > 0 {
-		life.hp = clampInt(hp, 0, maxHP)
+		life.hp = scene.ClampInt(hp, 0, maxHP)
 		life.maxHP = maxHP
 	}
 	if maxSP > 0 {
-		life.sp = clampInt(sp, 0, maxSP)
+		life.sp = scene.ClampInt(sp, 0, maxSP)
 		life.maxSP = maxSP
 		life.hasSP = true
 	}
@@ -339,7 +341,7 @@ func (m *WorldMode) applyCompanionHunger(ctx client.Context, id uint32, hunger, 
 		m.actorLife = make(map[uint32]actorLife)
 	}
 	life := m.actorLife[id]
-	life.hunger = clampInt(hunger, 0, maxHunger)
+	life.hunger = scene.ClampInt(hunger, 0, maxHunger)
 	life.maxHunger = maxHunger
 	life.hasHunger = true
 	m.actorLife[id] = life
@@ -366,7 +368,7 @@ func (m *WorldMode) setActorAIMotion(ctx client.Context, id uint32, motion int, 
 	if id == 0 || ctx.World == nil {
 		return
 	}
-	if isLocalActor(ctx, id) {
+	if scene.IsLocalActor(ctx, id) {
 		ctx.World.Player.AIMotion = motion
 		ctx.World.Player.HasAIMotion = true
 		ctx.World.Player.AIMotionExpires = expires

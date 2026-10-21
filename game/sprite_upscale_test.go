@@ -8,6 +8,8 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 )
 
@@ -131,9 +133,9 @@ func TestSpriteUpscalingChangesTextureWithoutMovingBillboard(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := &WorldMode{textureUpscaling: true}
 		defer m.Leave()
-		base := &spriteBillboard{image: render.NewImage(31, 23), anchorX: 12.5, anchorY: 19}
+		base := &scene.Billboard{Image: render.NewImage(31, 23), AnchorX: 12.5, AnchorY: 19}
 		billboard := cartOffsetBillboard(base, 7, -3)
-		projection := newSceneProjectionForTarget(800, 600, 10.5, 20.5, 3)
+		projection := testutil.Projection(800, 600, 10.5, 20.5, 3)
 		draw := func() reflect.Value {
 			frame := render.NewFrame(800, 600)
 			m.drawActorSpriteBillboardTintAlpha3D(frame, projection, billboard, 10.5, 20.5, 3, 1.7, 0.6, 0.8, color.RGBA{R: 90, G: 160, B: 255, A: 200}, render.BlendSourceOver)
@@ -161,7 +163,7 @@ func TestSpriteUpscalingChangesTextureWithoutMovingBillboard(t *testing.T) {
 				}
 			}
 		}
-		if got := m.spriteTexture(base.image); got != m.spriteTexture(billboard.image) || len(m.spriteUpscaler.cache) != 1 {
+		if got := m.spriteTexture(base.Image); got != m.spriteTexture(billboard.Image) || len(m.spriteUpscaler.cache) != 1 {
 			t.Fatal("anchor offsets duplicated the processed texture")
 		}
 	})

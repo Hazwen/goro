@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -152,7 +153,7 @@ func currentHomunculusID(ctx client.Context) uint32 {
 	if ctx.Session != nil && ctx.Session.Homunculus.ID != 0 {
 		return ctx.Session.Homunculus.ID
 	}
-	return findCompanionActorID(ctx, actorObjectTypeHomunculus)
+	return findCompanionActorID(ctx, scene.ActorObjectTypeHomunculus)
 }
 
 func (m *WorldMode) clearDeletedHomunculus(ctx client.Context) {
@@ -173,7 +174,7 @@ func (m *WorldMode) clearDeletedHomunculus(ctx client.Context) {
 	m.ui.homunculusContext.Close()
 }
 
-func clickedHomunculusTarget(ctx client.Context, projection sceneProjection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
+func clickedHomunculusTarget(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
 	if ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -182,10 +183,10 @@ func clickedHomunculusTarget(ctx client.Context, projection sceneProjection, mou
 		expectedID = ctx.Session.Homunculus.ID
 	}
 	if expectedID == 0 {
-		expectedID = findCompanionActorID(ctx, actorObjectTypeHomunculus)
+		expectedID = findCompanionActorID(ctx, scene.ActorObjectTypeHomunculus)
 	}
 	actor, ok := hoveredCursorActor(ctx, projection, mouseX, mouseY, now, deadActors)
-	if !ok || actor.ID == 0 || !actor.HasObjectType || actor.ObjectType != actorObjectTypeHomunculus {
+	if !ok || actor.ID == 0 || !actor.HasObjectType || actor.ObjectType != scene.ActorObjectTypeHomunculus {
 		return worldstate.Actor{}, false
 	}
 	if expectedID != 0 && actor.ID != expectedID {
@@ -205,7 +206,7 @@ func (m *WorldMode) maybeQueueAggressiveCompanionTarget(ctx client.Context, kind
 	targetID := uint32(0)
 	bestDistance := 32.0
 	for _, actor := range ctx.World.Actors {
-		if actor.ID == 0 || actor.ID == id || isLocalActor(ctx, actor.ID) {
+		if actor.ID == 0 || actor.ID == id || scene.IsLocalActor(ctx, actor.ID) {
 			continue
 		}
 		if kind == companionAIHomunculus && actor.ID == ctx.Session.Mercenary.ID {

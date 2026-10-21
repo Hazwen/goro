@@ -7,6 +7,7 @@ import (
 	"github.com/gogpu/gpucontext"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -25,7 +26,7 @@ func TestWASDGamepadMovementAttackAndLoot(t *testing.T) {
 			ctx.World.GAT = flatWalkableGAT(64, 64)
 			ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 			ctx.World.Items[400] = worldstate.FloorItem{ID: 400, ItemID: 501, X: 11, Y: 20}
-			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 			pad := input.GamepadFrame{ID: "test"}
 			switch name {
 			case "stick", "keyboard_and_stick":
@@ -73,7 +74,7 @@ func TestWASDGamepadSkillChordUsesSelectedEnemyWithoutAttackOrLoot(t *testing.T)
 	ctx.World = worldstate.New()
 	ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	ctx.Session.AccountID = ctx.World.Player.ID
-	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	skill := session.Skill{ID: db.SkillACDouble, Type: skillTargetEnemy, Level: 3, Range: 9}
 	selfSkill := session.Skill{ID: db.SkillALAngelus, Type: skillTargetSelf, Level: 3}
 	ctx.Session.Skills.List = []session.Skill{skill, selfSkill}
@@ -210,7 +211,7 @@ func TestWASDKeyboardSkillTargetSurvivesWithoutGamepad(t *testing.T) {
 	ctx.Config.Script.Path = "builtin:wasd"
 	ctx.World = worldstate.New()
 	ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	mode := NewWorldMode()
 	mode.pendingSkill = pendingSkillTarget{skill: session.Skill{ID: db.SkillACDouble, Type: skillTargetEnemy, Level: 3, Range: 9}}
 	loadKeyboardTestBot(t, ctx, mode)
@@ -233,10 +234,10 @@ func TestWASDGamepadHealTargetsRespectNoShift(t *testing.T) {
 			ctx.Session.AccountID, ctx.Session.CharID = 100, 200
 			ctx.World.Player = worldstate.Actor{ID: 200, X: 10, Y: 20}
 			ctx.World.Actors[100] = ctx.World.Player // Local actor aliases must not duplicate self.
-			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 12, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-			ctx.World.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-			ctx.World.Actors[302] = worldstate.Actor{ID: 302, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true, EffectState: db.EffectStateHide}
-			ctx.World.Actors[303] = worldstate.Actor{ID: 303, X: 11, Y: 20, Job: actorJobHiddenWarpNPC}
+			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 12, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+			ctx.World.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+			ctx.World.Actors[302] = worldstate.Actor{ID: 302, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true, EffectState: db.EffectStateHide}
+			ctx.World.Actors[303] = worldstate.Actor{ID: 303, X: 11, Y: 20, Job: scene.ActorJobHiddenWarpNPC}
 			skill := session.Skill{ID: db.SkillALHeal, Type: skillTargetFriend, Level: 3, Range: 9}
 			ctx.Session.Skills.List = []session.Skill{skill}
 			ctx.Session.Hotkeys = session.Hotkeys{Loaded: true, Version: 1, Slots: []session.HotkeySlot{
@@ -286,10 +287,10 @@ func TestWASDGamepadTargetCyclingKeepsEnemyAndSkillSelectionsSeparate(t *testing
 	ctx.World = worldstate.New()
 	ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	ctx.Session.AccountID = ctx.World.Player.ID
-	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 12, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	ctx.World.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	ctx.World.Actors[302] = worldstate.Actor{ID: 302, X: 10, Y: 21, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	ctx.World.Actors[303] = worldstate.Actor{ID: 303, X: 10, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 12, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	ctx.World.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	ctx.World.Actors[302] = worldstate.Actor{ID: 302, X: 10, Y: 21, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	ctx.World.Actors[303] = worldstate.Actor{ID: 303, X: 10, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	mode := NewWorldMode()
 	mode.actorDeaths = map[uint32]time.Time{303: time.Now()}
 	loadKeyboardTestBot(t, ctx, mode)
@@ -345,7 +346,7 @@ func TestWASDGamepadUIClickDoesNotBecomeAnAttackWhenPointerLeavesWindow(t *testi
 			ctx.Config.Script.Path = "builtin:wasd"
 			ctx.World = worldstate.New()
 			ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 			ui := &gamepadHoverTestUI{blocked: true}
 			ctx.UIManager = ui
 			mode := NewWorldMode()
@@ -572,7 +573,7 @@ func TestWASDGamepadDeadzoneAndFocusedChat(t *testing.T) {
 	ctx.World = worldstate.New()
 	ctx.World.GAT = flatWalkableGAT(64, 64)
 	ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	mode := NewWorldMode()
 	loadKeyboardTestBot(t, ctx, mode)
 	pad := input.GamepadFrame{ID: "test"}

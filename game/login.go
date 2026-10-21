@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
-
-	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -100,9 +100,13 @@ type loginFadeState struct {
 }
 
 const loginTransitionDuration = 500 * time.Millisecond
+
 const loginWorldHandoffFrames = 1
+
 const loginConfirmSFX = "버튼소리.wav"
+
 const loginServerPingInterval = 10 * time.Second
+
 const charServerPingInterval = 10 * time.Second
 
 func NewLoginMode() *LoginMode {
@@ -796,12 +800,12 @@ func (m *LoginMode) fadeAlpha(now time.Time) uint8 {
 		if m.fade.started.IsZero() {
 			return 0
 		}
-		return clampColor(255 * clampUnit(float64(now.Sub(m.fade.started))/float64(loginTransitionDuration)))
+		return scene.ClampColor(255 * clampUnit(float64(now.Sub(m.fade.started))/float64(loginTransitionDuration)))
 	case loginFadeIn:
 		if m.fade.started.IsZero() {
 			return 0
 		}
-		return clampColor(255 * (1 - clampUnit(float64(now.Sub(m.fade.started))/float64(loginTransitionDuration))))
+		return scene.ClampColor(255 * (1 - clampUnit(float64(now.Sub(m.fade.started))/float64(loginTransitionDuration))))
 	default:
 		return 0
 	}

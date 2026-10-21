@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
@@ -88,7 +89,7 @@ func TestMapTexturesSkipDryMapsAndHeadless(t *testing.T) {
 		}
 		// A dry map must not start lazy water loads during subsequent draws.
 		// A nil resource manager makes any attempted file read fail this test.
-		m.drawGNDWater(render.NewFrame(100, 100), nil, ctx.World.GND, ctx.World.RSW, sceneProjection{}, time.Now(), sceneFog{})
+		m.drawGNDWater(render.NewFrame(100, 100), nil, ctx.World.GND, ctx.World.RSW, scene.Projection{}, time.Now(), scene.SceneFog{})
 	}
 }
 
@@ -215,10 +216,13 @@ func TestLeavingWorldReleasesMapTextures(t *testing.T) {
 
 type mapTextureExitMode struct{}
 
-func (*mapTextureExitMode) Name() string                        { return "test" }
-func (*mapTextureExitMode) Enter(client.Context) Mode           { return nil }
+func (*mapTextureExitMode) Name() string { return "test" }
+
+func (*mapTextureExitMode) Enter(client.Context) Mode { return nil }
+
 func (*mapTextureExitMode) Update(client.Context) (Mode, error) { return nil, nil }
-func (*mapTextureExitMode) Draw(client.Context, *render.Frame)  {}
+
+func (*mapTextureExitMode) Draw(client.Context, *render.Frame) {}
 
 func TestLoadMapModelsHasNo128ModelLimitAndCachesFailures(t *testing.T) {
 	root := t.TempDir()

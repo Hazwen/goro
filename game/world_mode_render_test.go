@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
@@ -118,21 +120,21 @@ func TestAppendActorDrawEntryUsesPathRenderDirection(t *testing.T) {
 			{X: 2, Y: 1},
 		},
 	}
-	projection := newSceneProjectionForTarget(800, 600, 0.5, 1.5, 0)
+	projection := testutil.Projection(800, 600, 0.5, 1.5, 0)
 
 	entries := appendActorDrawEntry(nil, world, projection, actor, false, now, 800, 600)
 	if len(entries) != 1 {
 		t.Fatalf("entries = %d, want 1", len(entries))
 	}
-	if got, want := entries[0].actor.Dir, directionFromDelta(0, 1, 1, 1, 4); got != want {
+	if got, want := entries[0].Actor.Dir, directionFromDelta(0, 1, 1, 1, 4); got != want {
 		t.Fatalf("entry direction = %d, want %d", got, want)
 	}
 }
 
 func TestActorBillboardSortDepthUsesTopInCameraProjection(t *testing.T) {
-	projection := newSceneProjectionForTarget(800, 600, 10.5, 20.5, 0)
+	projection := testutil.Projection(800, 600, 10.5, 20.5, 0)
 	footDepth := projection.Depth(10.5, 20.5, 0)
-	topDepth := projection.Depth(10.5, 20.5, actorBillboardWorldHeightUnit)
+	topDepth := projection.Depth(10.5, 20.5, scene.ActorBillboardWorldHeightUnit)
 	got := actorBillboardSortDepth(projection, 10.5, 20.5, 0)
 	want := math.Min(footDepth, topDepth)
 	if got != want {
@@ -160,12 +162,12 @@ func TestCameraYawForIndoorMapIsLocked(t *testing.T) {
 		Resources: manager,
 		World:     &worldstate.World{MapName: "geffen_in"},
 	}
-	if got := cameraYawForMap(ctx); got != -45 {
+	if got := scene.CameraYawForMap(ctx); got != -45 {
 		t.Fatalf("indoor camera yaw = %.1f, want -45.0", got)
 	}
 	ctx.World.MapName = "prontera"
-	if got := cameraYawForMap(ctx); got != defaultSceneCameraYaw {
-		t.Fatalf("outdoor camera yaw = %.1f, want %.1f", got, defaultSceneCameraYaw)
+	if got := scene.CameraYawForMap(ctx); got != scene.DefaultSceneCameraYaw {
+		t.Fatalf("outdoor camera yaw = %.1f, want %.1f", got, scene.DefaultSceneCameraYaw)
 	}
 }
 
@@ -186,17 +188,17 @@ func TestCameraYawForFixedViewPointMapIsLocked(t *testing.T) {
 		Resources: manager,
 		World:     &worldstate.World{MapName: "fixed_view"},
 	}
-	if got := cameraYawForMap(ctx); got != -30 {
+	if got := scene.CameraYawForMap(ctx); got != -30 {
 		t.Fatalf("fixed viewpoint yaw = %.1f, want -30.0", got)
 	}
-	if !cameraRotationLockedForMap(ctx) {
+	if !scene.CameraRotationLockedForMap(ctx) {
 		t.Fatal("fixed viewpoint should lock camera rotation")
 	}
 	ctx.World.MapName = "free_view"
-	if got := cameraYawForMap(ctx); got != defaultSceneCameraYaw {
-		t.Fatalf("free viewpoint yaw = %.1f, want %.1f", got, defaultSceneCameraYaw)
+	if got := scene.CameraYawForMap(ctx); got != scene.DefaultSceneCameraYaw {
+		t.Fatalf("free viewpoint yaw = %.1f, want %.1f", got, scene.DefaultSceneCameraYaw)
 	}
-	if cameraRotationLockedForMap(ctx) {
+	if scene.CameraRotationLockedForMap(ctx) {
 		t.Fatal("free viewpoint should not lock camera rotation")
 	}
 }
@@ -223,13 +225,13 @@ func TestIndoorCameraZoomIsLockedWithoutLosingOutdoorZoom(t *testing.T) {
 	camera := followCamera{initialized: true, x: 10.5, y: 20.5, z: 0, zoom: 150}
 
 	indoorProjection := camera.Projection(ctx, 800, 600, time.Now())
-	if got := indoorProjection.cameraZoom; got != sceneCameraZoom() {
-		t.Fatalf("indoor projection zoom = %.1f, want %.1f", got, sceneCameraZoom())
+	if got := indoorProjection.CameraZoom; got != scene.CameraZoom() {
+		t.Fatalf("indoor projection zoom = %.1f, want %.1f", got, scene.CameraZoom())
 	}
 
 	ctx.World.MapName = "prontera"
 	outdoorProjection := camera.Projection(ctx, 800, 600, time.Now())
-	if got := outdoorProjection.cameraZoom; got != 150 {
+	if got := outdoorProjection.CameraZoom; got != 150 {
 		t.Fatalf("restored outdoor projection zoom = %.1f, want 150.0", got)
 	}
 }
@@ -265,14 +267,14 @@ func TestFollowCameraProjectionIncludesRuntimeYawOffset(t *testing.T) {
 
 	camera.Rotate(90)
 	projection := camera.Projection(ctx, 800, 600, time.Now())
-	if got := projection.cameraYaw; got != 90 {
+	if got := projection.CameraYaw; got != 90 {
 		t.Fatalf("projection yaw = %.1f, want 90.0", got)
 	}
 
 	camera.ResetRotation()
 	projection = camera.Projection(ctx, 800, 600, time.Now())
-	if got := projection.cameraYaw; got != defaultSceneCameraYaw {
-		t.Fatalf("reset projection yaw = %.1f, want %.1f", got, defaultSceneCameraYaw)
+	if got := projection.CameraYaw; got != scene.DefaultSceneCameraYaw {
+		t.Fatalf("reset projection yaw = %.1f, want %.1f", got, scene.DefaultSceneCameraYaw)
 	}
 }
 
@@ -298,26 +300,26 @@ func TestIndoorCameraYawIsLockedWithoutLosingOutdoorRotation(t *testing.T) {
 	camera.Rotate(90)
 	camera.Tilt(30)
 	projection := camera.Projection(ctx, 800, 600, time.Now())
-	if got := projection.cameraYaw; got != -45 {
+	if got := projection.CameraYaw; got != -45 {
 		t.Fatalf("indoor projection yaw = %.1f, want -45.0", got)
 	}
-	if got := projection.cameraPitch; got != sceneCameraPitch() {
-		t.Fatalf("indoor projection pitch = %.1f, want fixed %.1f", got, sceneCameraPitch())
+	if got := projection.CameraPitch; got != scene.CameraPitch() {
+		t.Fatalf("indoor projection pitch = %.1f, want fixed %.1f", got, scene.CameraPitch())
 	}
 	if camera.yawOffset != 90 {
 		t.Fatalf("stored outdoor yaw offset = %.1f, want 90.0", camera.yawOffset)
 	}
-	if got := camera.currentPitch(); got != defaultCameraMaxPitch {
-		t.Fatalf("stored outdoor pitch = %.1f, want %.1f", got, defaultCameraMaxPitch)
+	if got := camera.currentPitch(); got != scene.DefaultCameraMaxPitch {
+		t.Fatalf("stored outdoor pitch = %.1f, want %.1f", got, scene.DefaultCameraMaxPitch)
 	}
 
 	ctx.World.MapName = "prontera"
 	projection = camera.Projection(ctx, 800, 600, time.Now())
-	if got := projection.cameraYaw; got != 90 {
+	if got := projection.CameraYaw; got != 90 {
 		t.Fatalf("restored outdoor projection yaw = %.1f, want 90.0", got)
 	}
-	if got := projection.cameraPitch; got != defaultCameraMaxPitch {
-		t.Fatalf("restored outdoor projection pitch = %.1f, want %.1f", got, defaultCameraMaxPitch)
+	if got := projection.CameraPitch; got != scene.DefaultCameraMaxPitch {
+		t.Fatalf("restored outdoor projection pitch = %.1f, want %.1f", got, scene.DefaultCameraMaxPitch)
 	}
 }
 
@@ -397,8 +399,8 @@ func TestShiftRightDragTiltsCameraWithoutRotating(t *testing.T) {
 
 	mode.updateCameraRotation(ctx)
 
-	if got := mode.camera.currentPitch(); got != defaultCameraMaxPitch {
-		t.Fatalf("camera pitch = %.1f, want %.1f", got, defaultCameraMaxPitch)
+	if got := mode.camera.currentPitch(); got != scene.DefaultCameraMaxPitch {
+		t.Fatalf("camera pitch = %.1f, want %.1f", got, scene.DefaultCameraMaxPitch)
 	}
 	if mode.camera.yawOffset != 45 {
 		t.Fatalf("camera yaw = %.1f, want unchanged 45.0", mode.camera.yawOffset)
@@ -408,12 +410,12 @@ func TestShiftRightDragTiltsCameraWithoutRotating(t *testing.T) {
 func TestCameraPitchIsClampedToReferenceClientOutdoorLimits(t *testing.T) {
 	camera := followCamera{}
 	camera.Tilt(-1000)
-	if got := camera.currentPitch(); got != defaultCameraMinPitch {
-		t.Fatalf("minimum camera pitch = %.1f, want %.1f", got, defaultCameraMinPitch)
+	if got := camera.currentPitch(); got != scene.DefaultCameraMinPitch {
+		t.Fatalf("minimum camera pitch = %.1f, want %.1f", got, scene.DefaultCameraMinPitch)
 	}
 	camera.Tilt(1000)
-	if got := camera.currentPitch(); got != defaultCameraMaxPitch {
-		t.Fatalf("maximum camera pitch = %.1f, want %.1f", got, defaultCameraMaxPitch)
+	if got := camera.currentPitch(); got != scene.DefaultCameraMaxPitch {
+		t.Fatalf("maximum camera pitch = %.1f, want %.1f", got, scene.DefaultCameraMaxPitch)
 	}
 }
 
@@ -430,18 +432,18 @@ func TestCameraWheelZoomDeltaMatchesRobrowserStep(t *testing.T) {
 }
 
 func TestCameraZoomRangeMatchesRobrowserOutdoorDefaults(t *testing.T) {
-	if got := sceneCameraZoom(); got != 125 {
+	if got := scene.CameraZoom(); got != 125 {
 		t.Fatalf("default zoom = %.1f, want reference client default 125", got)
 	}
-	if defaultCameraMinZoom != 65 || defaultCameraMaxZoom != 165 {
-		t.Fatalf("zoom range = %.1f..%.1f, want goro outdoor 65..165", defaultCameraMinZoom, defaultCameraMaxZoom)
+	if scene.DefaultCameraMinZoom != 65 || scene.DefaultCameraMaxZoom != 165 {
+		t.Fatalf("zoom range = %.1f..%.1f, want goro outdoor 65..165", scene.DefaultCameraMinZoom, scene.DefaultCameraMaxZoom)
 	}
 }
 
 func TestSceneFogDepthAtTargetMatchesRobrowserDefaultZoom(t *testing.T) {
-	projection := newSceneProjectionForTargetYawZoom(1280, 720, 10.5, 20.5, 0, 0, defaultSceneCameraZoom)
+	projection := testutil.ProjectionYawZoom(1280, 720, 10.5, 20.5, 0, 0, scene.DefaultSceneCameraZoom)
 	got := projection.FogDepth(10.5, 20.5, 0)
-	const want = 1000 * ((defaultSceneCameraZoom * 0.5) - 1) / 999
+	const want = 1000 * ((scene.DefaultSceneCameraZoom * 0.5) - 1) / 999
 	if math.Abs(got-want) > 0.001 {
 		t.Fatalf("target fog depth = %.3f, want %.3f", got, want)
 	}
@@ -462,16 +464,16 @@ func TestFollowCameraZoomIsClampedAndProjected(t *testing.T) {
 	camera := followCamera{initialized: true, x: 10.5, y: 20.5, z: 0}
 
 	camera.ZoomBy(0.1)
-	if got := camera.currentZoom(); got != defaultCameraMinZoom {
-		t.Fatalf("zoom in clamp = %.1f, want %.1f", got, defaultCameraMinZoom)
+	if got := camera.currentZoom(); got != scene.DefaultCameraMinZoom {
+		t.Fatalf("zoom in clamp = %.1f, want %.1f", got, scene.DefaultCameraMinZoom)
 	}
 	camera.ZoomBy(10)
-	if got := camera.currentZoom(); got != defaultCameraMaxZoom {
-		t.Fatalf("zoom out clamp = %.1f, want %.1f", got, defaultCameraMaxZoom)
+	if got := camera.currentZoom(); got != scene.DefaultCameraMaxZoom {
+		t.Fatalf("zoom out clamp = %.1f, want %.1f", got, scene.DefaultCameraMaxZoom)
 	}
 	projection := camera.Projection(ctx, 800, 600, time.Now())
-	if got := projection.cameraZoom; got != defaultCameraMaxZoom {
-		t.Fatalf("projection zoom = %.1f, want %.1f", got, defaultCameraMaxZoom)
+	if got := projection.CameraZoom; got != scene.DefaultCameraMaxZoom {
+		t.Fatalf("projection zoom = %.1f, want %.1f", got, scene.DefaultCameraMaxZoom)
 	}
 }
 
@@ -513,10 +515,10 @@ func TestSceneLightingFromRSWMatchesReferenceDirection(t *testing.T) {
 		Diffuse:   [3]float32{1, 1, 1},
 		Opacity:   1,
 	}})
-	want := modelPoint3{x: -math.Sqrt2 / 2, y: -math.Sqrt2 / 2, z: 0}
-	if math.Abs(lighting.direction.x-want.x) > 0.0001 ||
-		math.Abs(lighting.direction.y-want.y) > 0.0001 ||
-		math.Abs(lighting.direction.z-want.z) > 0.0001 {
+	want := scene.Point3{X: -math.Sqrt2 / 2, Y: -math.Sqrt2 / 2, Z: 0}
+	if math.Abs(lighting.direction.X-want.X) > 0.0001 ||
+		math.Abs(lighting.direction.Y-want.Y) > 0.0001 ||
+		math.Abs(lighting.direction.Z-want.Z) > 0.0001 {
 		t.Fatalf("light direction = %+v, want %+v", lighting.direction, want)
 	}
 }
@@ -536,7 +538,7 @@ func TestSceneLightingModelScaleIgnoresOpacityLikeRobrowser(t *testing.T) {
 		Ambient:   [3]float32{0.4, 0.4, 0.4},
 		Opacity:   0.5,
 	}})
-	normal := modelPoint3{x: 0, y: 1, z: 0}
+	normal := scene.Point3{X: 0, Y: 1, Z: 0}
 	if got, want := half.modelScaleNormalized(normal), opaque.modelScaleNormalized(normal); got != want {
 		t.Fatalf("model scale changed with opacity: got %+v want %+v", got, want)
 	}
@@ -544,13 +546,13 @@ func TestSceneLightingModelScaleIgnoresOpacityLikeRobrowser(t *testing.T) {
 
 func TestSceneLightingModelScaleUsesReferenceMinimumLightWeight(t *testing.T) {
 	lighting := sceneLighting{
-		direction: modelPoint3{y: -1},
-		diffuse:   modelPoint3{x: 1, y: 1, z: 1},
-		ambient:   modelPoint3{},
-		env:       modelPoint3{x: 1, y: 1, z: 1},
+		direction: scene.Point3{Y: -1},
+		diffuse:   scene.Point3{X: 1, Y: 1, Z: 1},
+		ambient:   scene.Point3{},
+		env:       scene.Point3{X: 1, Y: 1, Z: 1},
 	}
-	got := lighting.modelScaleNormalized(modelPoint3{y: 1})
-	want := modelPoint3{x: 0.5, y: 0.5, z: 0.5}
+	got := lighting.modelScaleNormalized(scene.Point3{Y: 1})
+	want := scene.Point3{X: 0.5, Y: 0.5, Z: 0.5}
 	if got != want {
 		t.Fatalf("model scale = %+v, want %+v", got, want)
 	}
@@ -558,13 +560,13 @@ func TestSceneLightingModelScaleUsesReferenceMinimumLightWeight(t *testing.T) {
 
 func TestSceneLightingScaleClampsLightBeforeEnvLikeRobrowser(t *testing.T) {
 	lighting := sceneLighting{
-		direction: modelPoint3{y: -1},
-		diffuse:   modelPoint3{x: 0.8, y: 0.8, z: 0.8},
-		ambient:   modelPoint3{x: 0.8, y: 0.8, z: 0.8},
-		env:       modelPoint3{x: 0.5, y: 0.5, z: 0.5},
+		direction: scene.Point3{Y: -1},
+		diffuse:   scene.Point3{X: 0.8, Y: 0.8, Z: 0.8},
+		ambient:   scene.Point3{X: 0.8, Y: 0.8, Z: 0.8},
+		env:       scene.Point3{X: 0.5, Y: 0.5, Z: 0.5},
 	}
-	got := lighting.groundScale(modelPoint3{y: -1})
-	want := modelPoint3{x: 0.5, y: 0.5, z: 0.5}
+	got := lighting.groundScale(scene.Point3{Y: -1})
+	want := scene.Point3{X: 0.5, Y: 0.5, Z: 0.5}
 	if got != want {
 		t.Fatalf("ground scale = %+v, want %+v", got, want)
 	}
@@ -580,7 +582,7 @@ func TestSmoothGNDTopNormalsKeepsFlatTilesUniform(t *testing.T) {
 	}
 	center := normals[0]
 	for i := 1; i < 4; i++ {
-		if !modelPointNear(center[0], center[i], 0.0001) {
+		if !testutil.ModelPointNear(center[0], center[i], 0.0001) {
 			t.Fatalf("flat tile normals differ: %v vs %v", center[0], center[i])
 		}
 	}
@@ -599,7 +601,7 @@ func TestSmoothGNDTopNormalsVariesSlopedTileCorners(t *testing.T) {
 	tile := normals[1+1*gnd.Width]
 	same := true
 	for i := 1; i < 4; i++ {
-		if !modelPointNear(tile[0], tile[i], 0.0001) {
+		if !testutil.ModelPointNear(tile[0], tile[i], 0.0001) {
 			same = false
 		}
 	}
@@ -616,11 +618,11 @@ func TestSurfaceVertexTintsUsePerVertexNormals(t *testing.T) {
 		Ambient:   [3]float32{0, 0, 0},
 		Opacity:   1,
 	}})
-	tints := surfaceVertexTints(uniformGNDSurfaceBaseTints(color.RGBA{}), [4]float32{}, [4]modelPoint3{
-		{x: -0.5, y: -math.Sqrt2 / 2, z: -0.5},
-		{x: 0.5, y: -math.Sqrt2 / 2, z: -0.5},
-		{x: 0.5, y: -math.Sqrt2 / 2, z: 0.5},
-		{x: -0.5, y: -math.Sqrt2 / 2, z: 0.5},
+	tints := surfaceVertexTints(uniformGNDSurfaceBaseTints(color.RGBA{}), [4]float32{}, [4]scene.Point3{
+		{X: -0.5, Y: -math.Sqrt2 / 2, Z: -0.5},
+		{X: 0.5, Y: -math.Sqrt2 / 2, Z: -0.5},
+		{X: 0.5, Y: -math.Sqrt2 / 2, Z: 0.5},
+		{X: -0.5, Y: -math.Sqrt2 / 2, Z: 0.5},
 	}, lighting)
 	if tints[0] == tints[1] && tints[0] == tints[2] && tints[0] == tints[3] {
 		t.Fatalf("vertex tints are uniform: %+v", tints)
@@ -679,19 +681,15 @@ func testGNDWithTopHeights(width, height int, fn func(x, y int) [4]float32) *res
 	return gnd
 }
 
-func modelPointNear(a, b modelPoint3, epsilon float64) bool {
-	return math.Abs(a.x-b.x) <= epsilon && math.Abs(a.y-b.y) <= epsilon && math.Abs(a.z-b.z) <= epsilon
-}
-
 func TestGNDDrawBoundsUseCameraFootprint(t *testing.T) {
 	gnd := &res.GND{Width: 200, Height: 200}
-	projection := newSceneProjectionForTargetYaw(1024, 768, 200.5, 260.5, 8, 0)
+	projection := testutil.ProjectionYaw(1024, 768, 200.5, 260.5, 8, 0)
 	startX, endX, startY, endY, ok := gndDrawBounds(gnd, projection, 1024, 768)
 	if !ok {
 		t.Fatal("missing GND bounds")
 	}
-	centerX := gndTileFromWorld(projection.playerX)
-	centerY := gndTileFromWorld(projection.playerY)
+	centerX := gndTileFromWorld(projection.PlayerX)
+	centerY := gndTileFromWorld(projection.PlayerY)
 	if startX > centerX || endX < centerX || startY > centerY || endY < centerY {
 		t.Fatalf("bounds %d..%d,%d..%d do not include center %d,%d", startX, endX, startY, endY, centerX, centerY)
 	}
@@ -784,7 +782,7 @@ func TestActorShadowFactorDefaultsToLitWithoutGroundLightmap(t *testing.T) {
 }
 
 func TestQuadHasInvalidPointDetectsCameraSentinel(t *testing.T) {
-	points := [4]screenPoint{{x: -1 << 20, y: -1 << 20}, {x: 1, y: 1}, {x: 2, y: 1}, {x: 1, y: 2}}
+	points := [4]scene.Point2{{X: -1 << 20, Y: -1 << 20}, {X: 1, Y: 1}, {X: 2, Y: 1}, {X: 1, Y: 2}}
 	if !quadHasInvalidPoint(points) {
 		t.Fatal("expected camera sentinel point to invalidate GND quad")
 	}
@@ -804,7 +802,7 @@ func TestMapWaterPrefersGNDOverride(t *testing.T) {
 
 func TestWaterUVsUseFourTileRepeat(t *testing.T) {
 	uvs := waterUVs(3, 4)
-	if uvs[0] != (texturePoint{u: 0.75, v: 0}) || uvs[2] != (texturePoint{u: 1.0, v: 0.25}) {
+	if uvs[0] != (scene.UV{U: 0.75, V: 0}) || uvs[2] != (scene.UV{U: 1.0, V: 0.25}) {
 		t.Fatalf("water uvs = %+v", uvs)
 	}
 }
@@ -822,10 +820,10 @@ func TestWaterVisibleForCellUsesInvertedHeightConvention(t *testing.T) {
 func TestRayWalkCellHitsProjectedGATCellCenter(t *testing.T) {
 	world := worldstate.New()
 	world.GAT = flatWalkableGAT(180, 160)
-	projection := newSceneProjectionForTargetYawZoom(1280, 720, cellCenter(107), cellCenter(90), 0, -45, sceneCameraZoom())
-	point := projection.Project(cellCenter(107), cellCenter(87), 0)
+	projection := testutil.ProjectionYawZoom(1280, 720, scene.CellCenter(107), scene.CellCenter(90), 0, -45, scene.CameraZoom())
+	point := projection.Project(scene.CellCenter(107), scene.CellCenter(87), 0)
 
-	x, y, ok := rayWalkCell(client.Context{World: world}, projection, int(math.Round(float64(point.x))), int(math.Round(float64(point.y))))
+	x, y, ok := rayWalkCell(client.Context{World: world}, projection, int(math.Round(float64(point.X))), int(math.Round(float64(point.Y))))
 	if !ok || x != 107 || y != 87 {
 		t.Fatalf("ray walk cell = %d,%d ok=%t, want 107,87 true", x, y, ok)
 	}
@@ -835,10 +833,10 @@ func TestRayWalkCellSkipsBlockedGATCell(t *testing.T) {
 	world := worldstate.New()
 	world.GAT = flatWalkableGAT(180, 160)
 	world.GAT.Cells[87*world.GAT.Width+107] = res.GATCell{Type: res.GATTypeNone}
-	projection := newSceneProjectionForTargetYawZoom(1280, 720, cellCenter(107), cellCenter(90), 0, -45, sceneCameraZoom())
-	point := projection.Project(cellCenter(107), cellCenter(87), 0)
+	projection := testutil.ProjectionYawZoom(1280, 720, scene.CellCenter(107), scene.CellCenter(90), 0, -45, scene.CameraZoom())
+	point := projection.Project(scene.CellCenter(107), scene.CellCenter(87), 0)
 
-	_, _, ok := rayWalkCell(client.Context{World: world}, projection, int(math.Round(float64(point.x))), int(math.Round(float64(point.y))))
+	_, _, ok := rayWalkCell(client.Context{World: world}, projection, int(math.Round(float64(point.X))), int(math.Round(float64(point.Y))))
 	if ok {
 		t.Fatal("blocked ray walk cell should not be picked")
 	}
@@ -847,10 +845,10 @@ func TestRayWalkCellSkipsBlockedGATCell(t *testing.T) {
 func TestRayWalkCellWorksAtCloseZoom(t *testing.T) {
 	world := worldstate.New()
 	world.GAT = flatWalkableGAT(180, 160)
-	projection := newSceneProjectionForTargetYawZoom(1280, 720, cellCenter(107), cellCenter(90), 0, -45, defaultCameraMinZoom)
-	point := projection.Project(cellCenter(107), cellCenter(87), 0)
+	projection := testutil.ProjectionYawZoom(1280, 720, scene.CellCenter(107), scene.CellCenter(90), 0, -45, scene.DefaultCameraMinZoom)
+	point := projection.Project(scene.CellCenter(107), scene.CellCenter(87), 0)
 
-	x, y, ok := rayWalkCell(client.Context{World: world}, projection, int(math.Round(float64(point.x))), int(math.Round(float64(point.y))))
+	x, y, ok := rayWalkCell(client.Context{World: world}, projection, int(math.Round(float64(point.X))), int(math.Round(float64(point.Y))))
 	if !ok || x != 107 || y != 87 {
 		t.Fatalf("close zoom ray walk cell = %d,%d ok=%t, want 107,87 true", x, y, ok)
 	}
@@ -859,10 +857,10 @@ func TestRayWalkCellWorksAtCloseZoom(t *testing.T) {
 func TestClickedWalkTargetUsesRayWalkCell(t *testing.T) {
 	world := worldstate.New()
 	world.GAT = flatWalkableGAT(180, 160)
-	projection := newSceneProjectionForTargetYawZoom(1280, 720, cellCenter(107), cellCenter(90), 0, -45, sceneCameraZoom())
-	point := projection.Project(cellCenter(107), cellCenter(87), 0)
+	projection := testutil.ProjectionYawZoom(1280, 720, scene.CellCenter(107), scene.CellCenter(90), 0, -45, scene.CameraZoom())
+	point := projection.Project(scene.CellCenter(107), scene.CellCenter(87), 0)
 
-	x, y, ok := clickedWalkTarget(client.Context{World: world}, projection, int(math.Round(float64(point.x))), int(math.Round(float64(point.y))))
+	x, y, ok := clickedWalkTarget(client.Context{World: world}, projection, int(math.Round(float64(point.X))), int(math.Round(float64(point.Y))))
 	if !ok || x != 107 || y != 87 {
 		t.Fatalf("clicked walk target = %d,%d ok=%t, want 107,87 true", x, y, ok)
 	}
@@ -873,10 +871,10 @@ func TestHoveredWalkCellUsesRayWalkCell(t *testing.T) {
 	world.Player.X = 5
 	world.Player.Y = 5
 	world.GAT = flatWalkableGAT(12, 12)
-	projection := newSceneProjectionForTarget(800, 600, 5.5, 5.5, 0)
+	projection := testutil.Projection(800, 600, 5.5, 5.5, 0)
 	point := projection.Project(6.5, 5.5, 0)
 
-	x, y, ok := hoveredWalkCell(client.Context{World: world}, projection, int(point.x), int(point.y))
+	x, y, ok := hoveredWalkCell(client.Context{World: world}, projection, int(point.X), int(point.Y))
 	if !ok || x != 6 || y != 5 {
 		t.Fatalf("hovered cell = %d,%d ok=%t, want 6,5 true", x, y, ok)
 	}
@@ -910,8 +908,8 @@ func TestTileCursorCellVertsUseWalkSurfaceHeights(t *testing.T) {
 	}
 	want := [4]float64{2, 3, 4, 5}
 	for i := range verts {
-		if math.Abs(verts[i].y-want[i]) > 0.001 {
-			t.Fatalf("cursor vertex %d y = %.4f, want %.4f", i, verts[i].y, want[i])
+		if math.Abs(verts[i].Y-want[i]) > 0.001 {
+			t.Fatalf("cursor vertex %d y = %.4f, want %.4f", i, verts[i].Y, want[i])
 		}
 	}
 }

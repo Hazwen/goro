@@ -8,6 +8,8 @@ import (
 	"github.com/gogpu/gpucontext"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -22,8 +24,8 @@ func wasdControlsTestContext(t *testing.T) client.Context {
 	ctx.World = worldstate.New()
 	ctx.World.GAT = flatWalkableGAT(64, 64)
 	ctx.World.Player = worldstate.Actor{ID: 100, X: 10, Y: 20}
-	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, HasObjectType: true, ObjectType: actorObjectTypeMob}
-	ctx.World.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 21, HasObjectType: true, ObjectType: actorObjectTypeMob}
+	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
+	ctx.World.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 21, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 	skill := session.Skill{ID: db.SkillACDouble, Type: skillTargetEnemy, Level: 3, Range: 9}
 	heal := session.Skill{ID: db.SkillALHeal, Type: skillTargetFriend, Level: 3, Range: 9}
 	ctx.Session.Skills.List = []session.Skill{skill, heal}
@@ -266,7 +268,7 @@ func TestWASDSkillChaseTakesOverMovement(t *testing.T) {
 				conn, server := newBotTestConnection(t, 20080910)
 				ctx.Network = conn
 				clear(ctx.World.Actors)
-				ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 30, Y: 20, HasObjectType: true, ObjectType: actorObjectTypeMob}
+				ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 30, Y: 20, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 				mode := NewWorldMode()
 				loadKeyboardTestBot(t, ctx, mode)
 				selectAction, castAction := "next", "skill"
@@ -407,9 +409,9 @@ func TestWASDGroundSkillChaseSurvivesMovementRelease(t *testing.T) {
 				Moving: true, MoveStarted: time.Now(), MoveDuration: 8 * time.Second}
 			frame(true, true)
 			frame(true, false)
-			projection := newSceneProjectionForTarget(ctx.ScreenW, ctx.ScreenH, cellCenter(10), cellCenter(20), 0)
-			point := projection.Project(cellCenter(30), cellCenter(20), 0)
-			ctx.Input.SetMousePosition(int(math.Round(float64(point.x))), int(math.Round(float64(point.y))))
+			projection := testutil.Projection(ctx.ScreenW, ctx.ScreenH, scene.CellCenter(10), scene.CellCenter(20), 0)
+			point := projection.Project(scene.CellCenter(30), scene.CellCenter(20), 0)
+			ctx.Input.SetMousePosition(int(math.Round(float64(point.X))), int(math.Round(float64(point.Y))))
 			if device == "gamepad" {
 				pad := input.GamepadFrame{ID: "test"}
 				pad.Axes[input.GamepadLeftY] = -1

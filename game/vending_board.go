@@ -7,37 +7,38 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	gameui "github.com/kivutar/goro/ui"
 	worldstate "github.com/kivutar/goro/world"
 )
 
-func (m *WorldMode) drawVendingBoardLabels(screen *render.Frame, ctx client.Context, entries []sceneActorDrawEntry) {
+func (m *WorldMode) drawVendingBoardLabels(screen *render.Frame, ctx client.Context, entries []scene.ActorDrawEntry) {
 	icon := m.vendingShopIcon(ctx.Resources)
 	for _, entry := range entries {
-		if !actorHasVending(entry.actor) {
+		if !actorHasVending(entry.Actor) {
 			continue
 		}
-		label := sanitizeActorName(entry.actor.VendingName)
-		labelY := actorSpriteTopY(entry.screenY, entry.scale) - boardLabelGap - boardLabelHeight(label)
-		drawBoardLabel(screen, entry.actor.VendingName, entry.screenX, labelY, icon)
+		label := sanitizeActorName(entry.Actor.VendingName)
+		labelY := actorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
+		drawBoardLabel(screen, entry.Actor.VendingName, entry.ScreenX, labelY, icon)
 	}
 }
 
-func (m *WorldMode) drawChatRoomBoardLabels(screen *render.Frame, ctx client.Context, entries []sceneActorDrawEntry) {
+func (m *WorldMode) drawChatRoomBoardLabels(screen *render.Frame, ctx client.Context, entries []scene.ActorDrawEntry) {
 	for _, entry := range entries {
-		if !actorHasChatRoom(entry.actor) {
+		if !actorHasChatRoom(entry.Actor) {
 			continue
 		}
-		label := chatRoomBoardLabel(entry.actor)
-		icon := m.chatRoomBoardIcon(ctx.Resources, entry.actor.ChatRoomPublic)
-		labelY := actorSpriteTopY(entry.screenY, entry.scale) - boardLabelGap - boardLabelHeight(label)
-		if actorHasVending(entry.actor) {
-			vendingLabel := sanitizeActorName(entry.actor.VendingName)
+		label := chatRoomBoardLabel(entry.Actor)
+		icon := m.chatRoomBoardIcon(ctx.Resources, entry.Actor.ChatRoomPublic)
+		labelY := actorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
+		if actorHasVending(entry.Actor) {
+			vendingLabel := sanitizeActorName(entry.Actor.VendingName)
 			labelY -= boardLabelHeight(vendingLabel) + boardLabelGap
 		}
-		drawBoardLabel(screen, label, entry.screenX, labelY, icon)
+		drawBoardLabel(screen, label, entry.ScreenX, labelY, icon)
 	}
 }
 
@@ -139,7 +140,7 @@ func cachedBoardSurface() *render.Image {
 		boardLabelH-blueInset*2,
 		boardLabelBorderColor,
 		color.RGBA{},
-		float32(maxInt(0, int(boardLabelRadius)-blueInset)),
+		float32(scene.MaxInt(0, int(boardLabelRadius)-blueInset)),
 	)
 	fillInset := boardLabelOutlineW + boardLabelBorderW
 	gameui.DrawRoundedSurface(
@@ -150,7 +151,7 @@ func cachedBoardSurface() *render.Image {
 		boardLabelH-fillInset*2,
 		boardLabelFillColor,
 		color.RGBA{},
-		float32(maxInt(0, int(boardLabelRadius)-fillInset)),
+		float32(scene.MaxInt(0, int(boardLabelRadius)-fillInset)),
 	)
 	boardSurfaceCache = img
 	return boardSurfaceCache
@@ -181,10 +182,10 @@ func drawBoardIcon(screen *render.Frame, icon *render.Image, x, y float64, size 
 		{DstX: float32(dstX), DstY: float32(dstY + dstH), SrcX: float32(src.Min.X), SrcY: float32(src.Max.Y), ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
 		{DstX: float32(dstX + dstW), DstY: float32(dstY + dstH), SrcX: float32(src.Max.X), SrcY: float32(src.Max.Y), ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
 	}
-	screen.DrawTrianglesOwned(vertices, quadIndices012213, icon, &render.DrawTrianglesOptions{Filter: spriteDrawFilter(), Address: render.AddressClampToZero})
+	screen.DrawTrianglesOwned(vertices, scene.QuadIndices012213, icon, &render.DrawTrianglesOptions{Filter: scene.SpriteDrawFilter(), Address: render.AddressClampToZero})
 }
 
-func (m *WorldMode) hoveredVendingBoard(ctx client.Context, projection sceneProjection, mouseX, mouseY int, now time.Time) (worldstate.Actor, bool) {
+func (m *WorldMode) hoveredVendingBoard(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time) (worldstate.Actor, bool) {
 	if ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -194,7 +195,7 @@ func (m *WorldMode) hoveredVendingBoard(ctx client.Context, projection sceneProj
 		if _, dead := m.actorDeaths[actor.ID]; dead {
 			continue
 		}
-		if actor.ID == 0 || isLocalActor(ctx, actor.ID) || !actorHasVending(actor) {
+		if actor.ID == 0 || scene.IsLocalActor(ctx, actor.ID) || !actorHasVending(actor) {
 			continue
 		}
 		bounds, ok := vendingBoardActorBounds(ctx, projection, actor, now)
@@ -212,7 +213,7 @@ func (m *WorldMode) hoveredVendingBoard(ctx client.Context, projection sceneProj
 	return best, bestDistance < math.Inf(1)
 }
 
-func (m *WorldMode) hoveredChatRoomBoard(ctx client.Context, projection sceneProjection, mouseX, mouseY int, now time.Time) (worldstate.Actor, bool) {
+func (m *WorldMode) hoveredChatRoomBoard(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time) (worldstate.Actor, bool) {
 	if ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -222,7 +223,7 @@ func (m *WorldMode) hoveredChatRoomBoard(ctx client.Context, projection scenePro
 		if _, dead := m.actorDeaths[actor.ID]; dead {
 			continue
 		}
-		if actor.ID == 0 || isLocalActor(ctx, actor.ID) || !actorHasChatRoom(actor) {
+		if actor.ID == 0 || scene.IsLocalActor(ctx, actor.ID) || !actorHasChatRoom(actor) {
 			continue
 		}
 		bounds, ok := m.chatRoomBoardActorBounds(ctx, projection, actor, now)
@@ -240,33 +241,33 @@ func (m *WorldMode) hoveredChatRoomBoard(ctx client.Context, projection scenePro
 	return best, bestDistance < math.Inf(1)
 }
 
-func vendingBoardActorBounds(ctx client.Context, projection sceneProjection, actor worldstate.Actor, now time.Time) (vendingBoardBounds, bool) {
+func vendingBoardActorBounds(ctx client.Context, projection scene.Projection, actor worldstate.Actor, now time.Time) (vendingBoardBounds, bool) {
 	label := sanitizeActorName(actor.VendingName)
 	if label == "" || ctx.World == nil {
 		return vendingBoardBounds{}, false
 	}
-	actorX, actorY := actorRenderPosition(actor, now)
-	terrainZ := terrainHeightAt(ctx.World, actorX, actorY)
-	point := projection.Project(cellCenter(actorX), cellCenter(actorY), terrainZ)
-	scale := actorBillboardScreenScale(projection, cellCenter(actorX), cellCenter(actorY), terrainZ)
-	topY := actorSpriteTopY(float64(point.y), scale) - boardLabelGap - boardLabelHeight(label)
-	return boardLabelBounds(label, float64(point.x), topY)
+	actorX, actorY := scene.ActorRenderPosition(actor, now)
+	terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
+	point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+	topY := actorSpriteTopY(float64(point.Y), scale) - boardLabelGap - boardLabelHeight(label)
+	return boardLabelBounds(label, float64(point.X), topY)
 }
 
-func (m *WorldMode) chatRoomBoardActorBounds(ctx client.Context, projection sceneProjection, actor worldstate.Actor, now time.Time) (vendingBoardBounds, bool) {
+func (m *WorldMode) chatRoomBoardActorBounds(ctx client.Context, projection scene.Projection, actor worldstate.Actor, now time.Time) (vendingBoardBounds, bool) {
 	label := chatRoomBoardLabel(actor)
 	if label == "" || ctx.World == nil {
 		return vendingBoardBounds{}, false
 	}
-	actorX, actorY := actorRenderPosition(actor, now)
-	terrainZ := terrainHeightAt(ctx.World, actorX, actorY)
-	point := projection.Project(cellCenter(actorX), cellCenter(actorY), terrainZ)
-	scale := actorBillboardScreenScale(projection, cellCenter(actorX), cellCenter(actorY), terrainZ)
-	topY := actorSpriteTopY(float64(point.y), scale) - boardLabelGap - boardLabelHeight(label)
+	actorX, actorY := scene.ActorRenderPosition(actor, now)
+	terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
+	point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+	topY := actorSpriteTopY(float64(point.Y), scale) - boardLabelGap - boardLabelHeight(label)
 	if actorHasVending(actor) {
 		topY -= boardLabelHeight(actor.VendingName) + boardLabelGap
 	}
-	return boardLabelBounds(label, float64(point.x), topY)
+	return boardLabelBounds(label, float64(point.X), topY)
 }
 
 func boardLabelBounds(label string, centerX, topY float64) (vendingBoardBounds, bool) {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -48,8 +49,8 @@ func TestWarpClickWalksTowardWarpActor(t *testing.T) {
 		ID:            900,
 		X:             14,
 		Y:             20,
-		Job:           actorJobWarpPortal,
-		ObjectType:    actorObjectTypeNPC,
+		Job:           scene.ActorJobWarpPortal,
+		ObjectType:    scene.ActorObjectTypeNPC,
 		HasObjectType: true,
 	}
 	world.UpsertActor(warp)
@@ -66,8 +67,8 @@ func TestWarpClickWalksTowardWarpActor(t *testing.T) {
 	}
 	now := time.Now()
 	projection := mode.sceneProjection(ctx, ctx.ScreenW, ctx.ScreenH, now)
-	point := projection.Project(cellCenter(float64(warp.X)), cellCenter(float64(warp.Y)), 0)
-	inputState.SetMousePosition(int(math.Round(float64(point.x))), int(math.Round(float64(point.y))))
+	point := projection.Project(scene.CellCenter(float64(warp.X)), scene.CellCenter(float64(warp.Y)), 0)
+	inputState.SetMousePosition(int(math.Round(float64(point.X))), int(math.Round(float64(point.Y))))
 	inputState.SetMouseButton(input.MouseButtonLeft, true)
 
 	if _, err := mode.Update(ctx); err != nil {
@@ -96,7 +97,7 @@ func TestWarpWalkTargetUsesWalkableNeighborWhenCenterIsBlocked(t *testing.T) {
 	world.GAT.SetCellRawType(14, 20, 1)
 	ctx := client.Context{World: world}
 
-	x, y, ok := warpWalkTarget(ctx, worldstate.Actor{X: 14, Y: 20, Job: actorJobWarpPortal}, time.Now())
+	x, y, ok := warpWalkTarget(ctx, worldstate.Actor{X: 14, Y: 20, Job: scene.ActorJobWarpPortal}, time.Now())
 	if !ok {
 		t.Fatal("expected reachable warp approach cell")
 	}

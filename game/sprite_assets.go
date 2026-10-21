@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/db"
-	"github.com/kivutar/goro/render"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 )
@@ -28,7 +28,7 @@ func loadPlayerHumanoidSpriteView(manager *res.Manager, character session.Charac
 	}, "player")
 }
 
-func loadNonPCSpriteView(manager *res.Manager, job int, label string) (*spriteView, string) {
+func loadNonPCSpriteView(manager *res.Manager, job int, label string) (*scene.SpriteView, string) {
 	if actorJobHasNoSprite(job) {
 		return nil, fmt.Sprintf("%s job=%d no-sprite", label, job)
 	}
@@ -39,15 +39,15 @@ func loadNonPCSpriteView(manager *res.Manager, job int, label string) (*spriteVi
 	if isGR2Resource(resourceName) {
 		return nil, fmt.Sprintf("%s job=%d resource=%s gr2-model=not-sprite", label, job, resourceName)
 	}
-	view, status := loadSpriteView(manager, res.NonPCSpriteResourceCandidates(job, resourceName, "act"), res.NonPCSpriteResourceCandidates(job, resourceName, "spr"), nil, label+" "+resourceName)
+	view, status := scene.LoadSpriteView(manager, res.NonPCSpriteResourceCandidates(job, resourceName, "act"), res.NonPCSpriteResourceCandidates(job, resourceName, "spr"), nil, label+" "+resourceName)
 	if view == nil {
 		return nil, status
 	}
-	if upgrade, ok := loadRicherNonPCSpritePair(manager, job, resourceName, len(view.act.Actions)); ok {
-		view.act = upgrade.act
-		view.actSource = upgrade.actSource
-		view.spr = upgrade.spr
-		view.source = upgrade.sprSource
+	if upgrade, ok := loadRicherNonPCSpritePair(manager, job, resourceName, len(view.Act.Actions)); ok {
+		view.Act = upgrade.act
+		view.ActSource = upgrade.actSource
+		view.Spr = upgrade.spr
+		view.Source = upgrade.sprSource
 		status += fmt.Sprintf(" sprite-upgraded act=%s spr=%s actions=%d frames=%d", upgrade.actSource, upgrade.sprSource, len(upgrade.act.Actions), len(upgrade.spr.Frames))
 	}
 	return view, status
@@ -57,7 +57,7 @@ func actorJobHasNoSprite(job int) bool {
 	if isWarpActorJob(job) {
 		return true
 	}
-	return job == actorJobHiddenNPC || job == actorJobHiddenWarpNPC || job == actorJobClearNPC
+	return job == scene.ActorJobHiddenNPC || job == scene.ActorJobHiddenWarpNPC || job == scene.ActorJobClearNPC
 }
 
 func isGR2Resource(resourceName string) bool {
@@ -95,7 +95,7 @@ func loadHumanoidSpriteViewWithAppearance(manager *res.Manager, appearance human
 		shield:          shield,
 		imf:             imf,
 		imfSource:       imfSource,
-		billboards:      make(map[humanoidBillboardKey]*spriteBillboard),
+		billboards:      make(map[humanoidBillboardKey]*scene.Billboard),
 		started:         time.Now(),
 	}
 	status := bodyStatus + " " + headStatus + imfStatus
@@ -134,7 +134,7 @@ func loadMercenaryHumanoidSpriteView(manager *res.Manager, appearance humanoidAp
 		weapon:          weapon,
 		weaponLight:     weaponLight,
 		shield:          shield,
-		billboards:      make(map[humanoidBillboardKey]*spriteBillboard),
+		billboards:      make(map[humanoidBillboardKey]*scene.Billboard),
 		started:         time.Now(),
 	}
 	status := bodyStatus + " " + headStatus
@@ -146,21 +146,21 @@ func loadMercenaryHumanoidSpriteView(manager *res.Manager, appearance humanoidAp
 	return view, status
 }
 
-func loadBodySpriteView(manager *res.Manager, job int, sex byte, palette int, admin bool, label string) (*spriteView, string) {
+func loadBodySpriteView(manager *res.Manager, job int, sex byte, palette int, admin bool, label string) (*scene.SpriteView, string) {
 	actCandidates := res.PlayerBodyResourceCandidates(job, sex, "act")
 	sprCandidates := res.PlayerBodyResourceCandidates(job, sex, "spr")
 	if admin {
 		actCandidates = append(res.PlayerAdminBodyResourceCandidates(sex, "act"), actCandidates...)
 		sprCandidates = append(res.PlayerAdminBodyResourceCandidates(sex, "spr"), sprCandidates...)
 	}
-	return loadSpriteView(manager, actCandidates, sprCandidates, res.PlayerBodyPaletteResourceCandidates(job, sex, palette, "pal"), label)
+	return scene.LoadSpriteView(manager, actCandidates, sprCandidates, res.PlayerBodyPaletteResourceCandidates(job, sex, palette, "pal"), label)
 }
 
-func loadHeadSpriteView(manager *res.Manager, job int, head int, sex byte, palette int, label string) (*spriteView, string) {
-	return loadSpriteView(manager, res.PlayerHeadResourceCandidates(job, head, sex, "act"), res.PlayerHeadResourceCandidates(job, head, sex, "spr"), res.PlayerHeadPaletteResourceCandidates(job, head, sex, palette, "pal"), label)
+func loadHeadSpriteView(manager *res.Manager, job int, head int, sex byte, palette int, label string) (*scene.SpriteView, string) {
+	return scene.LoadSpriteView(manager, res.PlayerHeadResourceCandidates(job, head, sex, "act"), res.PlayerHeadResourceCandidates(job, head, sex, "spr"), res.PlayerHeadPaletteResourceCandidates(job, head, sex, palette, "pal"), label)
 }
 
-func loadAccessorySpriteView(manager *res.Manager, job int, head int, sex byte, viewID int, resourceName string, label string) (*spriteView, string) {
+func loadAccessorySpriteView(manager *res.Manager, job int, head int, sex byte, viewID int, resourceName string, label string) (*scene.SpriteView, string) {
 	if viewID <= 0 {
 		return nil, ""
 	}
@@ -172,10 +172,10 @@ func loadAccessorySpriteView(manager *res.Manager, job int, head int, sex byte, 
 	if viewID != 185 && resourceName == "" {
 		return nil, fmt.Sprintf("%s skipped: missing accessory resource table", label)
 	}
-	return loadSpriteView(manager, res.PlayerAccessoryResourceCandidates(job, head, sex, viewID, resourceName, "act"), res.PlayerAccessoryResourceCandidates(job, head, sex, viewID, resourceName, "spr"), nil, label)
+	return scene.LoadSpriteView(manager, res.PlayerAccessoryResourceCandidates(job, head, sex, viewID, resourceName, "act"), res.PlayerAccessoryResourceCandidates(job, head, sex, viewID, resourceName, "spr"), nil, label)
 }
 
-func loadWeaponOverlaySpriteView(manager *res.Manager, job int, sex byte, weapon int, secondLayer bool, label string) (*spriteView, string) {
+func loadWeaponOverlaySpriteView(manager *res.Manager, job int, sex byte, weapon int, secondLayer bool, label string) (*scene.SpriteView, string) {
 	if weapon <= 0 {
 		return nil, ""
 	}
@@ -183,10 +183,10 @@ func loadWeaponOverlaySpriteView(manager *res.Manager, job int, sex byte, weapon
 	if manager != nil {
 		viewID = manager.PlayerWeaponViewID(weapon)
 	}
-	return loadSpriteView(manager, res.PlayerWeaponOverlayResourceCandidatesForItem(job, sex, weapon, viewID, secondLayer, "act"), res.PlayerWeaponOverlayResourceCandidatesForItem(job, sex, weapon, viewID, secondLayer, "spr"), nil, label)
+	return scene.LoadSpriteView(manager, res.PlayerWeaponOverlayResourceCandidatesForItem(job, sex, weapon, viewID, secondLayer, "act"), res.PlayerWeaponOverlayResourceCandidatesForItem(job, sex, weapon, viewID, secondLayer, "spr"), nil, label)
 }
 
-func loadMercenaryWeaponOverlaySpriteView(manager *res.Manager, resourceName string, job int, sex byte, weapon int, secondLayer bool, label string) (*spriteView, string) {
+func loadMercenaryWeaponOverlaySpriteView(manager *res.Manager, resourceName string, job int, sex byte, weapon int, secondLayer bool, label string) (*scene.SpriteView, string) {
 	if weapon <= 0 {
 		return nil, ""
 	}
@@ -197,22 +197,22 @@ func loadMercenaryWeaponOverlaySpriteView(manager *res.Manager, resourceName str
 	actCandidates := res.MercenaryWeaponOverlayResourceCandidates(resourceName, viewID, secondLayer, "act")
 	sprCandidates := res.MercenaryWeaponOverlayResourceCandidates(resourceName, viewID, secondLayer, "spr")
 	if len(actCandidates) > 0 && len(sprCandidates) > 0 {
-		if view, status := loadSpriteView(manager, actCandidates, sprCandidates, nil, label); view != nil {
+		if view, status := scene.LoadSpriteView(manager, actCandidates, sprCandidates, nil, label); view != nil {
 			return view, status
 		}
 	}
 	return loadWeaponOverlaySpriteView(manager, mercenaryWeaponBaseJob(job), sex, viewID, secondLayer, label)
 }
 
-func loadShieldOverlaySpriteView(manager *res.Manager, job int, sex byte, shield int, label string) (*spriteView, string) {
+func loadShieldOverlaySpriteView(manager *res.Manager, job int, sex byte, shield int, label string) (*scene.SpriteView, string) {
 	if shield <= 0 {
 		return nil, ""
 	}
-	return loadSpriteView(manager, res.PlayerShieldOverlayResourceCandidates(job, sex, shield, "act"), res.PlayerShieldOverlayResourceCandidates(job, sex, shield, "spr"), nil, label)
+	return scene.LoadSpriteView(manager, res.PlayerShieldOverlayResourceCandidates(job, sex, shield, "act"), res.PlayerShieldOverlayResourceCandidates(job, sex, shield, "spr"), nil, label)
 }
 
-func loadActorShadowSpriteView(manager *res.Manager) (*spriteView, string) {
-	return loadSpriteView(manager,
+func loadActorShadowSpriteView(manager *res.Manager) (*scene.SpriteView, string) {
+	return scene.LoadSpriteView(manager,
 		[]string{"data\\sprite\\shadow.act", "data/sprite/shadow.act"},
 		[]string{"data\\sprite\\shadow.spr", "data/sprite/shadow.spr"},
 		nil,
@@ -220,8 +220,8 @@ func loadActorShadowSpriteView(manager *res.Manager) (*spriteView, string) {
 	)
 }
 
-func loadCartSpriteView(manager *res.Manager, cartNum int) (*spriteView, string) {
-	return loadSpriteView(manager,
+func loadCartSpriteView(manager *res.Manager, cartNum int) (*scene.SpriteView, string) {
+	return scene.LoadSpriteView(manager,
 		res.PlayerCartResourceCandidates(cartNum, "act"),
 		res.PlayerCartResourceCandidates(cartNum, "spr"),
 		nil,
@@ -229,8 +229,8 @@ func loadCartSpriteView(manager *res.Manager, cartNum int) (*spriteView, string)
 	)
 }
 
-func loadFalconSpriteView(manager *res.Manager, job int) (*spriteView, string) {
-	return loadSpriteView(manager,
+func loadFalconSpriteView(manager *res.Manager, job int) (*scene.SpriteView, string) {
+	return scene.LoadSpriteView(manager,
 		res.PlayerFalconResourceCandidates(job, "act"),
 		res.PlayerFalconResourceCandidates(job, "spr"),
 		nil,
@@ -238,11 +238,11 @@ func loadFalconSpriteView(manager *res.Manager, job int) (*spriteView, string) {
 	)
 }
 
-func loadCursorSpriteView(manager *res.Manager) (*spriteView, string) {
+func loadCursorSpriteView(manager *res.Manager) (*scene.SpriteView, string) {
 	if manager == nil {
 		return nil, "no resource manager"
 	}
-	return loadSpriteView(manager,
+	return scene.LoadSpriteView(manager,
 		[]string{"data\\sprite\\cursors.act", "data/sprite/cursors.act", "data\\sprite\\interface\\cursors.act", "data/sprite/interface/cursors.act"},
 		[]string{"data\\sprite\\cursors.spr", "data/sprite/cursors.spr", "data\\sprite\\interface\\cursors.spr", "data/sprite/interface/cursors.spr"},
 		nil,
@@ -261,30 +261,7 @@ func loadPlayerIMF(manager *res.Manager, job int, sex byte) (*res.IMF, string, s
 	return imf, source, fmt.Sprintf(" imf=%s", source)
 }
 
-func loadSpriteView(manager *res.Manager, actCandidates []string, sprCandidates []string, palCandidates []string, label string) (*spriteView, string) {
-	act, actSource, err := manager.LoadACT(actCandidates)
-	if err != nil {
-		return nil, fmt.Sprintf("%s act: %v", label, err)
-	}
-	spr, sprSource, err := manager.LoadSPR(sprCandidates)
-	if err != nil {
-		return nil, fmt.Sprintf("%s spr: %v", label, err)
-	}
-	palette, paletteSource, paletteStatus := loadSpritePalette(manager, palCandidates)
-	return &spriteView{
-		spr:           spr,
-		act:           act,
-		actSource:     actSource,
-		source:        sprSource,
-		palette:       palette,
-		paletteSource: paletteSource,
-		images:        make(map[spriteFrameKey]*render.Image),
-		billboards:    make(map[singleSpriteBillboardKey]*spriteBillboard),
-		started:       time.Now(),
-	}, fmt.Sprintf("%s: %s actions=%d frames=%d%s", label, sprSource, len(act.Actions), len(spr.Frames), paletteStatus)
-}
-
-func loadPetAccessorySpriteView(manager *res.Manager, base *spriteView, accessoryID uint32, label string) (*spriteView, string) {
+func loadPetAccessorySpriteView(manager *res.Manager, base *scene.SpriteView, accessoryID uint32, label string) (*scene.SpriteView, string) {
 	if manager == nil || base == nil {
 		return nil, fmt.Sprintf("%s skipped: missing base sprite", label)
 	}
@@ -297,20 +274,20 @@ func loadPetAccessorySpriteView(manager *res.Manager, base *spriteView, accessor
 	if err != nil {
 		return nil, fmt.Sprintf("%s act: %v", label, err)
 	}
-	if !actFitsSPR(act, base.spr) {
-		return nil, fmt.Sprintf("%s act %s incompatible with %s", label, actSource, base.source)
+	if !actFitsSPR(act, base.Spr) {
+		return nil, fmt.Sprintf("%s act %s incompatible with %s", label, actSource, base.Source)
 	}
-	return &spriteView{
-		spr:           base.spr,
-		act:           act,
-		actSource:     actSource,
-		source:        base.source,
-		palette:       base.palette,
-		paletteSource: base.paletteSource,
-		images:        base.images,
-		billboards:    make(map[singleSpriteBillboardKey]*spriteBillboard),
-		started:       time.Now(),
-	}, fmt.Sprintf("%s: %s actions=%d frames=%d base=%s", label, actSource, len(act.Actions), len(base.spr.Frames), base.source)
+	return &scene.SpriteView{
+		Spr:           base.Spr,
+		Act:           act,
+		ActSource:     actSource,
+		Source:        base.Source,
+		Palette:       base.Palette,
+		PaletteSource: base.PaletteSource,
+		Images:        base.Images,
+		Billboards:    make(map[scene.SpriteBillboardKey]*scene.Billboard),
+		Started:       time.Now(),
+	}, fmt.Sprintf("%s: %s actions=%d frames=%d base=%s", label, actSource, len(act.Actions), len(base.Spr.Frames), base.Source)
 }
 
 func petActionResourceCandidates(path string) []string {
@@ -393,20 +370,6 @@ func actFitsSPR(act *res.ACT, spr *res.SPR) bool {
 		}
 	}
 	return true
-}
-
-func loadSpritePalette(manager *res.Manager, candidates []string) (*res.Palette, string, string) {
-	if len(candidates) == 0 {
-		return nil, "", ""
-	}
-	palette, source, err := manager.LoadPAL(candidates)
-	if err != nil {
-		if source == "" {
-			return nil, "", " palette=default"
-		}
-		return nil, "", fmt.Sprintf(" palette=%s parse-error=%v", source, err)
-	}
-	return palette, source, fmt.Sprintf(" palette=%s", source)
 }
 
 func readFirstResource(manager *res.Manager, candidates []string) ([]byte, string, error) {

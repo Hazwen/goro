@@ -13,6 +13,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/res"
@@ -210,9 +211,9 @@ func (m *WorldMode) companionActorPresent(ctx client.Context, kind companionAIKi
 	}
 	switch kind {
 	case companionAIHomunculus:
-		return actor.ObjectType == actorObjectTypeHomunculus
+		return actor.ObjectType == scene.ActorObjectTypeHomunculus
 	case companionAIMercenary:
-		return actor.ObjectType == actorObjectTypeMercenary
+		return actor.ObjectType == scene.ActorObjectTypeMercenary
 	default:
 		return false
 	}
@@ -373,7 +374,7 @@ func (ai *companionAI) registerAPI(ctx client.Context, mode *WorldMode) {
 	}))
 	L.SetGlobal("SkillObject", L.NewFunction(func(L *lua.LState) int {
 		id := uint32(L.CheckInt(1))
-		level := uint16(maxInt(1, L.CheckInt(2)))
+		level := uint16(scene.MaxInt(1, L.CheckInt(2)))
 		skillID := uint16(L.CheckInt(3))
 		targetID := uint32(L.CheckInt(4))
 		mode.luaCompanionSkillObject(ai.apiContext(ctx), ai.kind, id, level, skillID, targetID, ai.apiActorDeaths(mode))
@@ -382,7 +383,7 @@ func (ai *companionAI) registerAPI(ctx client.Context, mode *WorldMode) {
 	}))
 	L.SetGlobal("SkillGround", L.NewFunction(func(L *lua.LState) int {
 		id := uint32(L.CheckInt(1))
-		level := uint16(maxInt(1, L.CheckInt(2)))
+		level := uint16(scene.MaxInt(1, L.CheckInt(2)))
 		skillID := uint16(L.CheckInt(3))
 		x := L.CheckInt(4)
 		y := L.CheckInt(5)
@@ -762,7 +763,7 @@ func (m *WorldMode) luaCompanionGetV(L *lua.LState, ctx client.Context, kind com
 	id := uint32(L.CheckInt(2))
 	switch variable {
 	case 0:
-		L.Push(lua.LNumber(localSkillTarget(ctx)))
+		L.Push(lua.LNumber(scene.LocalSkillTarget(ctx)))
 		return 1
 	case 1, 13:
 		x, y := companionActorPosition(ctx, id)
@@ -785,7 +786,7 @@ func (m *WorldMode) luaCompanionGetV(L *lua.LState, ctx client.Context, kind com
 		}
 		level := uint16(0)
 		if variable == 14 && L.GetTop() >= 4 {
-			level = uint16(maxInt(1, L.CheckInt(4)))
+			level = uint16(scene.MaxInt(1, L.CheckInt(4)))
 		}
 		L.Push(lua.LNumber(m.companionSkillAttackRange(ctx, kind, id, skillID, level)))
 		return 1
@@ -841,7 +842,7 @@ func (m *WorldMode) luaCompanionActors(L *lua.LState, ctx client.Context, ai *co
 	if ctx.World == nil {
 		return result
 	}
-	if owner := localSkillTarget(ctx); owner != 0 {
+	if owner := scene.LocalSkillTarget(ctx); owner != 0 {
 		result.Append(lua.LNumber(owner))
 	}
 	ids := make([]int, 0, len(ctx.World.Actors))
@@ -861,7 +862,7 @@ func (m *WorldMode) luaCompanionActors(L *lua.LState, ctx client.Context, ai *co
 }
 
 func companionAIObjectTypeIsMonster(objectType uint8) bool {
-	return objectType == actorObjectTypeMob || objectType == actorObjectTypeNPCABR || objectType == actorObjectTypeNPCBionic
+	return objectType == scene.ActorObjectTypeMob || objectType == scene.ActorObjectTypeNPCABR || objectType == scene.ActorObjectTypeNPCBionic
 }
 
 func (m *WorldMode) luaCompanionMessageTable(L *lua.LState, id uint32, response bool) *lua.LTable {
@@ -1050,7 +1051,7 @@ func companionActorByID(ctx client.Context, id uint32) (worldstate.Actor, bool) 
 	if ctx.World == nil || id == 0 {
 		return worldstate.Actor{}, false
 	}
-	if isLocalActor(ctx, id) {
+	if scene.IsLocalActor(ctx, id) {
 		actor := ctx.World.Player
 		actor.ID = id
 		if ctx.Session != nil {
@@ -1072,7 +1073,7 @@ func companionActorPosition(ctx client.Context, id uint32) (int, int) {
 		return -1, -1
 	}
 	now := time.Now()
-	if isLocalActor(ctx, id) {
+	if scene.IsLocalActor(ctx, id) {
 		return companionActorRenderCell(ctx.World.Player, now)
 	}
 	actor, ok := ctx.World.Actors[id]
@@ -1084,7 +1085,7 @@ func companionActorPosition(ctx client.Context, id uint32) (int, int) {
 
 func companionActorRenderCell(actor worldstate.Actor, now time.Time) (int, int) {
 	if actor.Moving {
-		x, y := actorRenderPosition(actor, now)
+		x, y := scene.ActorRenderPosition(actor, now)
 		return int(x), int(y)
 	}
 	return actor.X, actor.Y
@@ -1098,8 +1099,8 @@ func (m *WorldMode) companionActorMotion(ctx client.Context, id uint32, actorDea
 	if _, dead := actorDeaths[id]; dead {
 		return aiMotionDead
 	}
-	if isLocalActor(ctx, id) {
-		if actorIsMovingAt(ctx.World.Player, now) {
+	if scene.IsLocalActor(ctx, id) {
+		if scene.ActorIsMovingAt(ctx.World.Player, now) {
 			return aiMotionMove
 		}
 		if ctx.World.Player.HasAIMotion {
@@ -1117,7 +1118,7 @@ func (m *WorldMode) companionActorMotion(ctx client.Context, id uint32, actorDea
 	if !ok {
 		return aiMotionStand
 	}
-	if actorIsMovingAt(actor, now) {
+	if scene.ActorIsMovingAt(actor, now) {
 		return aiMotionMove
 	}
 	if actor.HasAIMotion {
@@ -1140,7 +1141,7 @@ func companionActorTarget(ctx client.Context, id uint32) uint32 {
 	if ctx.World == nil || id == 0 {
 		return 0
 	}
-	if isLocalActor(ctx, id) {
+	if scene.IsLocalActor(ctx, id) {
 		return ctx.World.Player.AITargetID
 	}
 	if actor, ok := ctx.World.Actors[id]; ok {

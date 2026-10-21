@@ -6,6 +6,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -97,11 +98,11 @@ func currentMercenaryID(ctx client.Context) uint32 {
 	if ctx.Session != nil && ctx.Session.Mercenary.ID != 0 {
 		return ctx.Session.Mercenary.ID
 	}
-	return findCompanionActorID(ctx, actorObjectTypeMercenary)
+	return findCompanionActorID(ctx, scene.ActorObjectTypeMercenary)
 }
 
 func actorIsMercenary(actor worldstate.Actor) bool {
-	return actor.HasObjectType && actor.ObjectType == actorObjectTypeMercenary
+	return actor.HasObjectType && actor.ObjectType == scene.ActorObjectTypeMercenary
 }
 
 func mercenarySpriteKeyForActor(actor worldstate.Actor) actorSpriteKey {
@@ -207,7 +208,7 @@ func (m *WorldMode) clearDeletedMercenary(ctx client.Context) {
 	m.ui.mercenaryContext.Close()
 }
 
-func clickedMercenaryTarget(ctx client.Context, projection sceneProjection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
+func clickedMercenaryTarget(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (worldstate.Actor, bool) {
 	if ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -216,10 +217,10 @@ func clickedMercenaryTarget(ctx client.Context, projection sceneProjection, mous
 		expectedID = ctx.Session.Mercenary.ID
 	}
 	if expectedID == 0 {
-		expectedID = findCompanionActorID(ctx, actorObjectTypeMercenary)
+		expectedID = findCompanionActorID(ctx, scene.ActorObjectTypeMercenary)
 	}
 	actor, ok := hoveredCursorActor(ctx, projection, mouseX, mouseY, now, deadActors)
-	if !ok || actor.ID == 0 || !actor.HasObjectType || actor.ObjectType != actorObjectTypeMercenary {
+	if !ok || actor.ID == 0 || !actor.HasObjectType || actor.ObjectType != scene.ActorObjectTypeMercenary {
 		return worldstate.Actor{}, false
 	}
 	if expectedID != 0 && actor.ID != expectedID {

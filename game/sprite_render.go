@@ -7,15 +7,9 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
-)
-
-const (
-	spriteActionIdle = iota
-	spriteActionWalk
-	spriteActionSit
-	spriteActionPickup
 )
 
 const (
@@ -34,19 +28,6 @@ const (
 	spriteActionPCAttack2    = 10
 	spriteActionPCAttack3    = 11
 	spriteActionPCSkill      = 12
-)
-
-const (
-	humanoidBillboardWidth   = 224
-	humanoidBillboardHeight  = 160
-	humanoidBillboardAnchorX = 80
-	humanoidBillboardAnchorY = 120
-	// reference client lifts entity sprites by 0.2 map units before depth testing.
-	// Keeping actor billboards exactly coplanar with terrain lets sloped GND
-	// triangles clip the bottom pixels of tight NPC/mob sprite frames.
-	actorSpriteTerrainLift = 0.2
-	actorShadowTerrainLift = 0.05
-	actorShadowDepthBias   = groundDecalDepthBias
 )
 
 const (
@@ -69,40 +50,23 @@ const (
 	humanoidLayerCount
 )
 
-type spriteView struct {
-	spr           *res.SPR
-	act           *res.ACT
-	actSource     string
-	source        string
-	palette       *res.Palette
-	paletteSource string
-	images        map[spriteFrameKey]*render.Image
-	billboards    map[singleSpriteBillboardKey]*spriteBillboard
-	started       time.Time
-}
-
-type spriteFrameKey struct {
-	index   int32
-	sprType int32
-}
-
 type petAccessorySpriteKey struct {
 	job         int
 	accessoryID uint32
 }
 
 type humanoidSpriteView struct {
-	body            *spriteView
-	head            *spriteView
-	accessoryBottom *spriteView
-	accessoryMid    *spriteView
-	accessoryTop    *spriteView
-	weapon          *spriteView
-	weaponLight     *spriteView
-	shield          *spriteView
+	body            *scene.SpriteView
+	head            *scene.SpriteView
+	accessoryBottom *scene.SpriteView
+	accessoryMid    *scene.SpriteView
+	accessoryTop    *scene.SpriteView
+	weapon          *scene.SpriteView
+	weaponLight     *scene.SpriteView
+	shield          *scene.SpriteView
 	imf             *res.IMF
 	imfSource       string
-	billboards      map[humanoidBillboardKey]*spriteBillboard
+	billboards      map[humanoidBillboardKey]*scene.Billboard
 	started         time.Time
 }
 
@@ -127,23 +91,6 @@ type humanoidBillboardKey struct {
 	headMotion   int
 
 	separateEquipment bool
-}
-
-type singleSpriteBillboardKey struct {
-	actionIndex       int
-	motion            int
-	anchorX           float64
-	anchorY           float64
-	ignoreLayerAngles bool
-}
-
-type spriteBillboard struct {
-	image   *render.Image
-	anchorX float64
-	anchorY float64
-
-	parts      []*spriteBillboard
-	layerGroup int
 }
 
 type spriteState struct {
@@ -173,13 +120,13 @@ type spriteState struct {
 	walkDistance   float64
 }
 
-func (m *WorldMode) drawPlayerSprite3D(ctx client.Context, screen *render.Frame, projection sceneProjection, entry sceneActorDrawEntry, direction int, cameraYaw float64, shadow float64, alpha float64) bool {
+func (m *WorldMode) drawPlayerSprite3D(ctx client.Context, screen *render.Frame, projection scene.Projection, entry scene.ActorDrawEntry, direction int, cameraYaw float64, shadow float64, alpha float64) bool {
 	now := time.Now()
-	actor := entry.actor
-	moving := actorIsMovingAt(actor, now)
+	actor := entry.Actor
+	moving := scene.ActorIsMovingAt(actor, now)
 	state := spriteState{
-		separateEquipment: m.lordKnightSeparateEquipment(ctx, actor, now),
-		actionFamily:      spriteActionIdle,
+		separateEquipment: m.effects().LordKnightSeparateEquipment(ctx, actor, now),
+		actionFamily:      scene.SpriteActionIdle,
 		direction:         direction,
 		headDir:           actor.HeadDir,
 		headTurn:          true,
@@ -188,11 +135,11 @@ func (m *WorldMode) drawPlayerSprite3D(ctx client.Context, screen *render.Frame,
 		moveSpeedMS:       actor.Speed,
 	}
 	if moving {
-		state.actionFamily = spriteActionWalk
+		state.actionFamily = scene.SpriteActionWalk
 		state.loop = true
 		state.walkDistance = actorRenderWalkDistance(actor, now)
 	} else if actor.Sitting {
-		state.actionFamily = spriteActionSit
+		state.actionFamily = scene.SpriteActionSit
 	}
 	if ctx.Session != nil {
 		if anim, ok := m.actorAnimation(ctx.Session.CharID, now); ok {
@@ -208,7 +155,7 @@ func (m *WorldMode) drawPlayerSprite3D(ctx client.Context, screen *render.Frame,
 	if !ok {
 		return false
 	}
-	m.drawActorSpriteWithEffects3D(ctx, screen, projection, entry, billboard, m.playerRenderScale(ctx, actor, entry.scale, now), alpha, shadow, entry.stealth.tint(m.playerRenderTint(ctx, actor, now)), entry.stealth.blend(m.playerRenderBlend(ctx, actor, now)), now)
+	m.drawActorSpriteWithEffects3D(ctx, screen, projection, entry, billboard, m.playerRenderScale(ctx, actor, entry.Scale, now), alpha, shadow, entry.Stealth.Tint(m.playerRenderTint(ctx, actor, now)), entry.Stealth.Blend(m.playerRenderBlend(ctx, actor, now)), now)
 	return true
 }
 
@@ -244,19 +191,11 @@ func actorAnimationOverridesWalk(anim actorAnimation, playerLike bool) bool {
 	return anim.actionFamily == spriteActionNonPCDeath
 }
 
-func (m *WorldMode) drawActorSpriteBillboardTintAlpha3D(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA, blend render.Blend) {
-	options := spriteBillboardTriangleDrawOptions()
-	options.DepthWrite = true
-	options.Filter = render.FilterSprite
-	options.Blend = blend
-	drawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, m.spriteTexture(billboard.image), worldX, worldY, actorSpriteWorldZ(worldZ), scale, alpha, shadow, tintColor, options)
+func (m *WorldMode) drawActorSpriteBillboardTintAlpha3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA, blend render.Blend) {
+	m.effects().DrawActorSpriteBillboard(screen, projection, billboard, worldX, worldY, worldZ, scale, alpha, shadow, tintColor, blend)
 }
 
-func actorSpriteWorldZ(terrainZ float64) float64 {
-	return terrainZ + actorSpriteTerrainLift
-}
-
-func drawFixedSpriteShadowBillboard3D(screen *render.Frame, projection sceneProjection, view *spriteView, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) bool {
+func drawFixedSpriteShadowBillboard3D(screen *render.Frame, projection scene.Projection, view *scene.SpriteView, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) bool {
 	billboard, ok := fixedSpriteBillboard(view)
 	if !ok {
 		return false
@@ -264,190 +203,43 @@ func drawFixedSpriteShadowBillboard3D(screen *render.Frame, projection sceneProj
 	return drawSpriteShadowBillboard3D(screen, projection, billboard, worldX, worldY, worldZ, scale, alpha, shadow)
 }
 
-func drawSpriteShadowBillboard3D(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) bool {
+func drawSpriteShadowBillboard3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) bool {
 	if billboard == nil {
 		return false
 	}
-	options := spriteBillboardTriangleDrawOptions()
-	options.DepthBias = actorShadowDepthBias
-	drawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, billboard.image, worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, options)
+	options := scene.SpriteBillboardTriangleDrawOptions()
+	options.DepthBias = scene.ActorShadowDepthBias
+	scene.DrawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, billboard.Image, worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, options)
 	return true
 }
 
-func (m *WorldMode) drawSpriteBillboardAlpha3D(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) {
-	options := spriteBillboardTriangleDrawOptions()
+func (m *WorldMode) drawSpriteBillboardAlpha3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) {
+	options := scene.SpriteBillboardTriangleDrawOptions()
 	options.DepthWrite = true
 	options.Filter = render.FilterSprite
-	drawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, m.spriteTexture(billboard.image), worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, options)
+	scene.DrawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, m.spriteTexture(billboard.Image), worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, options)
 }
 
-func drawSpriteBillboardTintAlpha3D(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA) {
-	drawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, billboard.image, worldX, worldY, worldZ, scale, alpha, shadow, tintColor, spriteBillboardTriangleDrawOptions())
-}
-
-func drawSpriteBillboardTintAlphaOverlay3D(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA) {
-	drawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, billboard.image, worldX, worldY, worldZ, scale, alpha, shadow, tintColor, &render.DrawTrianglesOptions{
-		Filter:  spriteDrawFilter(),
+func drawSpriteBillboardTintAlphaOverlay3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA) {
+	scene.DrawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, billboard.Image, worldX, worldY, worldZ, scale, alpha, shadow, tintColor, &render.DrawTrianglesOptions{
+		Filter:  scene.SpriteDrawFilter(),
 		Address: render.AddressClampToZero,
 	})
 }
 
-func drawSpriteBillboardTintAlpha3DWithOptions(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, texture *render.Image, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA, options *render.DrawTrianglesOptions) {
-	if scale <= 0 || math.IsNaN(scale) || math.IsInf(scale, 0) {
-		scale = 1
-	}
-	if alpha < 0 || math.IsNaN(alpha) {
-		alpha = 0
-	}
-	if alpha > 1 || math.IsInf(alpha, 0) {
-		alpha = 1
-	}
-	if shadow < 0 || math.IsNaN(shadow) {
-		shadow = 0
-	}
-	if shadow > 1 || math.IsInf(shadow, 0) {
-		shadow = 1
-	}
-	tintR := float64(tintColor.R) / 255 * shadow
-	tintG := float64(tintColor.G) / 255 * shadow
-	tintB := float64(tintColor.B) / 255 * shadow
-	tintA := float64(tintColor.A) / 255 * alpha
-	right, up, unitsPerPixel, ok := projection.BillboardBasis(worldX, worldY, worldZ)
-	if !ok {
-		return
-	}
-	// Keep geometry and depth in original pixels, independently of texture resolution.
-	bounds := billboard.image.Bounds()
-	w := float64(bounds.Dx())
-	h := float64(bounds.Dy())
-	center := modelPoint3{x: worldX, y: worldZ, z: worldY}
-	tint := colorRGBAFromFloats(tintR, tintG, tintB, tintA)
-	axisScale := scale * unitsPerPixel
-	screen.DrawWorldBillboard(render.WorldBillboardCommand{
-		Texture:     texture,
-		Options:     *options,
-		Center:      [3]float32{float32(center.x), float32(center.y), float32(center.z)},
-		RightAxis:   [3]float32{float32(right.x * axisScale), float32(right.y * axisScale), float32(right.z * axisScale)},
-		UpAxis:      [3]float32{float32(-up.x * axisScale), float32(-up.y * axisScale), float32(-up.z * axisScale)},
-		DepthUpAxis: [3]float32{0, float32(-axisScale), 0},
-		Width:       float32(w),
-		Height:      float32(h),
-		AnchorX:     float32(billboard.anchorX),
-		AnchorY:     float32(billboard.anchorY),
-		ColorR:      float32(tint.R) / 255,
-		ColorG:      float32(tint.G) / 255,
-		ColorB:      float32(tint.B) / 255,
-		ColorA:      float32(tint.A) / 255,
-		DepthBias:   options.DepthBias,
-	})
-}
-
-func drawSpriteBillboardTintAlphaWorld3DWithOptions(screen *render.Frame, projection sceneProjection, billboard *spriteBillboard, worldX, worldY, worldZ, pixelScale, angle float64, alpha float64, shadow float64, tintColor color.RGBA, options *render.DrawTrianglesOptions) {
-	if screen == nil || billboard == nil || billboard.image == nil {
-		return
-	}
-	if options == nil {
-		options = spriteBillboardTriangleDrawOptions()
-	}
-	if pixelScale <= 0 || math.IsNaN(pixelScale) || math.IsInf(pixelScale, 0) {
-		pixelScale = effectPixelRatio
-	}
-	if alpha < 0 || math.IsNaN(alpha) {
-		alpha = 0
-	}
-	if alpha > 1 || math.IsInf(alpha, 0) {
-		alpha = 1
-	}
-	if shadow < 0 || math.IsNaN(shadow) {
-		shadow = 0
-	}
-	if shadow > 1 || math.IsInf(shadow, 0) {
-		shadow = 1
-	}
-	right, up, _, ok := projection.BillboardBasis(worldX, worldY, worldZ)
-	if !ok {
-		return
-	}
-	rightAxis := mul3(right, pixelScale)
-	upAxis := mul3(up, -pixelScale)
-	if angle != 0 {
-		sinA, cosA := math.Sin(angle), math.Cos(angle)
-		rightAxis = add3(mul3(right, cosA*pixelScale), mul3(up, sinA*pixelScale))
-		upAxis = add3(mul3(right, sinA*pixelScale), mul3(up, -cosA*pixelScale))
-	}
-	tint := colorRGBAFromFloats(
-		float64(tintColor.R)/255*shadow,
-		float64(tintColor.G)/255*shadow,
-		float64(tintColor.B)/255*shadow,
-		float64(tintColor.A)/255*alpha,
-	)
-	bounds := billboard.image.Bounds()
-	w := float64(bounds.Dx())
-	h := float64(bounds.Dy())
-	center := modelPoint3{x: worldX, y: worldZ, z: worldY}
-	cmd := worldSpriteBillboardCommand(billboard.image, *options, center, rightAxis, upAxis, float32(w), float32(h), float32(billboard.anchorX), float32(billboard.anchorY), tint)
-	screen.DrawWorldBillboard(cmd)
-}
-
-func worldSpriteBillboardCommand(texture *render.Image, options render.DrawTrianglesOptions, center, rightAxis, upAxis modelPoint3, width, height, anchorX, anchorY float32, tint color.RGBA) render.WorldBillboardCommand {
-	// robr's SpriteRenderer depth correction projects vertical billboards onto a
-	// center-anchored plane, so the lower edge of map effect sprites does not
-	// sink behind the floor.
-	return render.WorldBillboardCommand{
-		Texture:     texture,
-		Options:     options,
-		Center:      [3]float32{float32(center.x), float32(center.y), float32(center.z)},
-		RightAxis:   [3]float32{float32(rightAxis.x), float32(rightAxis.y), float32(rightAxis.z)},
-		UpAxis:      [3]float32{float32(upAxis.x), float32(upAxis.y), float32(upAxis.z)},
-		DepthUpAxis: [3]float32{},
-		Width:       width,
-		Height:      height,
-		AnchorX:     anchorX,
-		AnchorY:     anchorY,
-		ColorR:      float32(tint.R) / 255,
-		ColorG:      float32(tint.G) / 255,
-		ColorB:      float32(tint.B) / 255,
-		ColorA:      float32(tint.A) / 255,
-		DepthBias:   options.DepthBias,
-	}
-}
-
-func spriteBillboardTriangleDrawOptions() *render.DrawTrianglesOptions {
-	options := triangleDrawOptions(spriteDrawFilter(), render.AddressClampToZero)
-	options.Blend = render.BlendSourceOver
-	return options
-}
-
-func colorRGBAFromFloats(r, g, b, a float64) color.RGBA {
-	return color.RGBA{
-		R: clampColor(r * 255),
-		G: clampColor(g * 255),
-		B: clampColor(b * 255),
-		A: clampColor(a * 255),
-	}
-}
-
-func spriteDrawFilter() render.Filter {
-	return render.FilterLinear
-}
-
-func spriteCompositionFilter() render.Filter {
-	return render.FilterNearest
-}
-
-func humanoidBillboardForState(view *humanoidSpriteView, state spriteState, now time.Time) (*spriteBillboard, bool) {
-	if view == nil || view.body == nil || view.body.act == nil || view.body.spr == nil {
+func humanoidBillboardForState(view *humanoidSpriteView, state spriteState, now time.Time) (*scene.Billboard, bool) {
+	if view == nil || view.body == nil || view.body.Act == nil || view.body.Spr == nil {
 		return nil, false
 	}
 	state.direction = spriteDirectionFromWorldDirForCamera(state.direction, state.cameraYaw)
-	bodyActionIndex, bodyAction, ok := resolveSpriteAction(view.body.act, state.actionFamily, state.direction)
+	bodyActionIndex, bodyAction, ok := resolveSpriteAction(view.body.Act, state.actionFamily, state.direction)
 	if !ok || len(bodyAction.Animations) == 0 {
 		return nil, false
 	}
 	bodyMotion := bodyMotionForState(bodyAction, state, view.started, now)
 	headMotion := 0
 	if view.head != nil {
-		if _, headAction, headOK := resolveSpriteAction(view.head.act, state.actionFamily, state.direction); headOK && len(headAction.Animations) > 0 {
+		if _, headAction, headOK := resolveSpriteAction(view.head.Act, state.actionFamily, state.direction); headOK && len(headAction.Animations) > 0 {
 			headMotion = selectHeadMotion(state, bodyMotion, headAction)
 		}
 	}
@@ -469,55 +261,55 @@ func humanoidBillboardForState(view *humanoidSpriteView, state spriteState, now 
 	return billboard, true
 }
 
-func singleSpriteBillboardForState(view *spriteView, state spriteState, now time.Time) (*spriteBillboard, bool) {
-	if view == nil || view.act == nil || view.spr == nil {
+func singleSpriteBillboardForState(view *scene.SpriteView, state spriteState, now time.Time) (*scene.Billboard, bool) {
+	if view == nil || view.Act == nil || view.Spr == nil {
 		return nil, false
 	}
 	state.direction = spriteDirectionFromWorldDirForCamera(state.direction, state.cameraYaw)
-	actionIndex, action, ok := resolveSpriteAction(view.act, state.actionFamily, state.direction)
+	actionIndex, action, ok := resolveSpriteAction(view.Act, state.actionFamily, state.direction)
 	if !ok || len(action.Animations) == 0 {
 		return nil, false
 	}
-	motion := bodyMotionForState(action, state, view.started, now)
-	key := singleSpriteBillboardKey{actionIndex: actionIndex, motion: motion}
-	if billboard, ok := view.billboards[key]; ok {
+	motion := bodyMotionForState(action, state, view.Started, now)
+	key := scene.SpriteBillboardKey{ActionIndex: actionIndex, Motion: motion}
+	if billboard, ok := view.Billboards[key]; ok {
 		return billboard, true
 	}
 	if motion < 0 || motion >= len(action.Animations) {
 		return nil, false
 	}
-	billboard, ok := composeSingleSpriteBillboard(view, action.Animations[motion])
+	billboard, ok := scene.ComposeSingleSpriteBillboard(view, action.Animations[motion])
 	if !ok {
 		return nil, false
 	}
-	view.billboards[key] = billboard
+	view.Billboards[key] = billboard
 	return billboard, true
 }
 
-func fixedSpriteBillboard(view *spriteView) (*spriteBillboard, bool) {
-	if view == nil || view.act == nil || view.spr == nil || len(view.act.Actions) == 0 || len(view.act.Actions[0].Animations) == 0 {
+func fixedSpriteBillboard(view *scene.SpriteView) (*scene.Billboard, bool) {
+	if view == nil || view.Act == nil || view.Spr == nil || len(view.Act.Actions) == 0 || len(view.Act.Actions[0].Animations) == 0 {
 		return nil, false
 	}
-	key := singleSpriteBillboardKey{actionIndex: 0, motion: 0}
-	if billboard, ok := view.billboards[key]; ok {
+	key := scene.SpriteBillboardKey{ActionIndex: 0, Motion: 0}
+	if billboard, ok := view.Billboards[key]; ok {
 		return billboard, true
 	}
-	billboard, ok := composeSingleSpriteBillboard(view, view.act.Actions[0].Animations[0])
+	billboard, ok := scene.ComposeSingleSpriteBillboard(view, view.Act.Actions[0].Animations[0])
 	if !ok {
 		return nil, false
 	}
-	view.billboards[key] = billboard
+	view.Billboards[key] = billboard
 	return billboard, true
 }
 
-func cursorFrameBillboard(view *spriteView, actionIndex, motion int, anchorX, anchorY float64) (*spriteBillboard, bool) {
-	if view == nil || view.act == nil || view.spr == nil || len(view.act.Actions) == 0 {
+func cursorFrameBillboard(view *scene.SpriteView, actionIndex, motion int, anchorX, anchorY float64) (*scene.Billboard, bool) {
+	if view == nil || view.Act == nil || view.Spr == nil || len(view.Act.Actions) == 0 {
 		return nil, false
 	}
-	if actionIndex < 0 || actionIndex >= len(view.act.Actions) || len(view.act.Actions[actionIndex].Animations) == 0 {
+	if actionIndex < 0 || actionIndex >= len(view.Act.Actions) || len(view.Act.Actions[actionIndex].Animations) == 0 {
 		actionIndex = 0
 	}
-	action := view.act.Actions[actionIndex]
+	action := view.Act.Actions[actionIndex]
 	if len(action.Animations) == 0 {
 		return nil, false
 	}
@@ -525,12 +317,12 @@ func cursorFrameBillboard(view *spriteView, actionIndex, motion int, anchorX, an
 		motion = 0
 	}
 	motion %= len(action.Animations)
-	key := singleSpriteBillboardKey{actionIndex: actionIndex, motion: motion, anchorX: anchorX, anchorY: anchorY}
-	if billboard, ok := view.billboards[key]; ok {
+	key := scene.SpriteBillboardKey{ActionIndex: actionIndex, Motion: motion, AnchorX: anchorX, AnchorY: anchorY}
+	if billboard, ok := view.Billboards[key]; ok {
 		return billboard, true
 	}
 	anim := action.Animations[motion]
-	minX, minY, maxX, maxY, ok := spriteAnimationLayerBounds(view, anim, false)
+	minX, minY, maxX, maxY, ok := scene.SpriteAnimationLayerBounds(view, anim, false)
 	if !ok {
 		return nil, false
 	}
@@ -550,16 +342,16 @@ func cursorFrameBillboard(view *spriteView, actionIndex, motion int, anchorX, an
 	if !drawSpriteAnimation(target, view, anim, compositionAnchorX, compositionAnchorY, 0, 0) {
 		return nil, false
 	}
-	billboard := &spriteBillboard{
-		image:   target,
-		anchorX: compositionAnchorX,
-		anchorY: compositionAnchorY,
+	billboard := &scene.Billboard{
+		Image:   target,
+		AnchorX: compositionAnchorX,
+		AnchorY: compositionAnchorY,
 	}
-	view.billboards[key] = billboard
+	view.Billboards[key] = billboard
 	return billboard, true
 }
 
-func composeHumanoidBillboard(view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, separateEquipment bool) (*spriteBillboard, bool) {
+func composeHumanoidBillboard(view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, separateEquipment bool) (*scene.Billboard, bool) {
 	if bodyMotion < 0 || bodyMotion >= len(bodyAction.Animations) {
 		return nil, false
 	}
@@ -567,7 +359,7 @@ func composeHumanoidBillboard(view *humanoidSpriteView, actionFamily, direction 
 	bodyActionIndex := actionFamily*8 + direction
 	order := playerRenderLayerOrder(view.imf, bodyActionIndex, bodyMotion)
 	if separateEquipment {
-		billboard := &spriteBillboard{}
+		billboard := &scene.Billboard{}
 		// Keep IMF order, including equipment drawn behind the body.
 		for first := 0; first < len(order); {
 			group := humanoidLayerGroup(order[first])
@@ -582,12 +374,12 @@ func composeHumanoidBillboard(view *humanoidSpriteView, actionFamily, direction 
 				drawFallbackHumanoidLayers(target, view, actionFamily, direction, bodyAction, bodyMotion, headMotion, order[first:last])
 			}
 			if part, ok := cropHumanoidBillboard(target); ok {
-				part.layerGroup = group
-				billboard.parts = append(billboard.parts, part)
+				part.LayerGroup = group
+				billboard.Parts = append(billboard.Parts, part)
 			}
 			first = last
 		}
-		return billboard, len(billboard.parts) > 0
+		return billboard, len(billboard.Parts) > 0
 	}
 	drawn := false
 	if view.imf != nil {
@@ -612,7 +404,7 @@ func humanoidLayerGroup(layer int) int {
 	}
 }
 
-func cropHumanoidBillboard(source *render.Image) (*spriteBillboard, bool) {
+func cropHumanoidBillboard(source *render.Image) (*scene.Billboard, bool) {
 	minX, minY, maxX, maxY, ok := renderImageOpaqueBounds(source)
 	if !ok {
 		return nil, false
@@ -624,10 +416,10 @@ func cropHumanoidBillboard(source *render.Image) (*spriteBillboard, bool) {
 	maxY = min(bounds.Dy()-1, maxY+humanoidCompositionPadding)
 	cropRect := image.Rect(minX, minY, maxX+1, maxY+1)
 	cropped := render.NewImageFromImage(source.RGBA().SubImage(cropRect))
-	return &spriteBillboard{
-		image:   cropped,
-		anchorX: humanoidCompositionAnchorX - float64(minX),
-		anchorY: humanoidCompositionAnchorY - float64(minY),
+	return &scene.Billboard{
+		Image:   cropped,
+		AnchorX: humanoidCompositionAnchorX - float64(minX),
+		AnchorY: humanoidCompositionAnchorY - float64(minY),
 	}, true
 }
 
@@ -666,93 +458,6 @@ func renderImageOpaqueBounds(source *render.Image) (int, int, int, int, bool) {
 	return minX - bounds.Min.X, minY - bounds.Min.Y, maxX - bounds.Min.X, maxY - bounds.Min.Y, true
 }
 
-func composeSingleSpriteBillboard(view *spriteView, anim res.ACTAnimation) (*spriteBillboard, bool) {
-	return composeSingleSpriteBillboardWithOptions(view, anim, false)
-}
-
-func composeSingleSpriteBillboardWithOptions(view *spriteView, anim res.ACTAnimation, ignoreLayerAngles bool) (*spriteBillboard, bool) {
-	minX, minY, maxX, maxY, ok := spriteAnimationLayerBounds(view, anim, ignoreLayerAngles)
-	if !ok {
-		return nil, false
-	}
-	const padding = 4.0
-	minX -= padding
-	minY -= padding
-	maxX += padding
-	maxY += padding
-	width := int(math.Ceil(maxX - minX))
-	height := int(math.Ceil(maxY - minY))
-	if width <= 0 || height <= 0 {
-		return nil, false
-	}
-	target := render.NewImage(width, height)
-	anchorX := -minX
-	anchorY := -minY
-	if !drawSpriteAnimationWithOptions(target, view, anim, anchorX, anchorY, 0, 0, ignoreLayerAngles) {
-		return nil, false
-	}
-	return &spriteBillboard{
-		image:   target,
-		anchorX: anchorX,
-		anchorY: anchorY,
-	}, true
-}
-
-func spriteAnimationLayerBounds(view *spriteView, anim res.ACTAnimation, ignoreLayerAngles bool) (float64, float64, float64, float64, bool) {
-	minX, minY := math.Inf(1), math.Inf(1)
-	maxX, maxY := math.Inf(-1), math.Inf(-1)
-	ok := false
-	for _, layer := range anim.Layers {
-		if layer.Index < 0 {
-			continue
-		}
-		width, height, frameOK := spriteLayerFrameSize(view, layer.Index, layer.SPRType)
-		if !frameOK {
-			continue
-		}
-		scaleX := math.Abs(float64(layer.ScaleX))
-		scaleY := math.Abs(float64(layer.ScaleY))
-		if scaleX == 0 {
-			scaleX = 1
-		}
-		if scaleY == 0 {
-			scaleY = 1
-		}
-		width *= scaleX
-		height *= scaleY
-		if layer.Angle != 0 && !ignoreLayerAngles {
-			sin, cos := math.Sincos(float64(layer.Angle) * math.Pi / 180)
-			sin, cos = math.Abs(sin), math.Abs(cos)
-			width, height = width*cos+height*sin, width*sin+height*cos
-		}
-		centerX, centerY := spriteLayerCenter(0, 0, layer)
-		minX = math.Min(minX, centerX-width*0.5)
-		maxX = math.Max(maxX, centerX+width*0.5)
-		minY = math.Min(minY, centerY-height*0.5)
-		maxY = math.Max(maxY, centerY+height*0.5)
-		ok = true
-	}
-	return minX, minY, maxX, maxY, ok
-}
-
-func spriteLayerFrameSize(view *spriteView, index int32, sprType int32) (float64, float64, bool) {
-	if view == nil || view.spr == nil {
-		return 0, 0, false
-	}
-	frameIndex := int(index)
-	if sprType == res.SPRFrameRGBA {
-		frameIndex += view.spr.RGBAIndex
-	}
-	if frameIndex < 0 || frameIndex >= len(view.spr.Frames) {
-		return 0, 0, false
-	}
-	frame := view.spr.Frames[frameIndex]
-	if frame.Width <= 0 || frame.Height <= 0 {
-		return 0, 0, false
-	}
-	return float64(frame.Width), float64(frame.Height), true
-}
-
 func drawFallbackHumanoidLayers(target *render.Image, view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, order []int) bool {
 	bodyAnim := bodyAction.Animations[bodyMotion]
 	actionIndex := actionFamily*8 + direction
@@ -781,12 +486,12 @@ func drawFallbackHumanoidLayers(target *render.Image, view *humanoidSpriteView, 
 }
 
 func drawFallbackHeadMotion(target *render.Image, view *humanoidSpriteView, bodyAnim res.ACTAnimation, actionIndex, headMotion int) bool {
-	if view.head == nil || view.head.act == nil || view.head.spr == nil {
+	if view.head == nil || view.head.Act == nil || view.head.Spr == nil {
 		return false
 	}
-	headAnim, ok := actionAnimation(view.head.act, actionIndex, headMotion)
+	headAnim, ok := actionAnimation(view.head.Act, actionIndex, headMotion)
 	if !ok {
-		headAnim, ok = actionAnimation(view.head.act, actionIndex, 0)
+		headAnim, ok = actionAnimation(view.head.Act, actionIndex, 0)
 	}
 	if !ok {
 		return false
@@ -796,14 +501,14 @@ func drawFallbackHeadMotion(target *render.Image, view *humanoidSpriteView, body
 }
 
 func drawPlayerIMFLayers(target *render.Image, view *humanoidSpriteView, actionIndex, bodyMotion, headMotion int, order []int) bool {
-	bodyAnim, bodyAnimOK := actionAnimation(view.body.act, actionIndex, bodyMotion)
+	bodyAnim, bodyAnimOK := actionAnimation(view.body.Act, actionIndex, bodyMotion)
 	drawn := false
 	for _, layer := range order {
 		switch layer {
 		case humanoidLayerBody:
 			drawn = drawPlayerIMFLayer(target, view.body, view.imf, humanoidLayerBody, actionIndex, bodyMotion, nil) || drawn
 		case humanoidLayerHead:
-			if view.head == nil || view.head.act == nil || view.head.spr == nil {
+			if view.head == nil || view.head.Act == nil || view.head.Spr == nil {
 				continue
 			}
 			var attachBase *res.ACTAnimation
@@ -834,14 +539,14 @@ func drawPlayerIMFLayers(target *render.Image, view *humanoidSpriteView, actionI
 	return drawn
 }
 
-func drawPlayerIMFLayer(target *render.Image, sprite *spriteView, imf *res.IMF, layerPriority, actionIndex, motionIndex int, attachBase *res.ACTAnimation) bool {
-	if sprite == nil || sprite.act == nil || sprite.spr == nil {
+func drawPlayerIMFLayer(target *render.Image, sprite *scene.SpriteView, imf *res.IMF, layerPriority, actionIndex, motionIndex int, attachBase *res.ACTAnimation) bool {
+	if sprite == nil || sprite.Act == nil || sprite.Spr == nil {
 		return false
 	}
-	if actionIndex < 0 || actionIndex >= len(sprite.act.Actions) {
+	if actionIndex < 0 || actionIndex >= len(sprite.Act.Actions) {
 		return false
 	}
-	action := sprite.act.Actions[actionIndex]
+	action := sprite.Act.Actions[actionIndex]
 	if motionIndex < 0 || motionIndex >= len(action.Animations) {
 		return false
 	}
@@ -894,18 +599,18 @@ func actionAnimation(act *res.ACT, actionIndex, motionIndex int) (res.ACTAnimati
 	return action.Animations[motionIndex], true
 }
 
-func drawAttachedAccessoryMotion(target *render.Image, accessory *spriteView, head *spriteView, bodyAnim res.ACTAnimation, actionIndex, headMotionIndex int) bool {
-	if accessory == nil || accessory.act == nil || accessory.spr == nil || head == nil || head.act == nil || head.spr == nil {
+func drawAttachedAccessoryMotion(target *render.Image, accessory *scene.SpriteView, head *scene.SpriteView, bodyAnim res.ACTAnimation, actionIndex, headMotionIndex int) bool {
+	if accessory == nil || accessory.Act == nil || accessory.Spr == nil || head == nil || head.Act == nil || head.Spr == nil {
 		return false
 	}
-	headAnim, ok := actionAnimation(head.act, actionIndex, headMotionIndex)
+	headAnim, ok := actionAnimation(head.Act, actionIndex, headMotionIndex)
 	if !ok {
 		return false
 	}
 	accessoryMotion := headMotionIndex
-	accessoryAnim, ok := actionAnimation(accessory.act, actionIndex, accessoryMotion)
+	accessoryAnim, ok := actionAnimation(accessory.Act, actionIndex, accessoryMotion)
 	if !ok {
-		accessoryAnim, ok = actionAnimation(accessory.act, actionIndex, 0)
+		accessoryAnim, ok = actionAnimation(accessory.Act, actionIndex, 0)
 	}
 	if !ok {
 		return false
@@ -915,14 +620,14 @@ func drawAttachedAccessoryMotion(target *render.Image, accessory *spriteView, he
 	return drawSpriteAnimation(target, accessory, accessoryAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, headDX+accessoryDX, headDY+accessoryDY)
 }
 
-func drawPlayerOverlayMotion(target *render.Image, overlay *spriteView, body *spriteView, imf *res.IMF, layerPriority, actionIndex, bodyMotion int) bool {
-	if overlay == nil || overlay.act == nil || overlay.spr == nil || body == nil || body.act == nil || imf == nil {
+func drawPlayerOverlayMotion(target *render.Image, overlay *scene.SpriteView, body *scene.SpriteView, imf *res.IMF, layerPriority, actionIndex, bodyMotion int) bool {
+	if overlay == nil || overlay.Act == nil || overlay.Spr == nil || body == nil || body.Act == nil || imf == nil {
 		return false
 	}
-	motionIndex := resolveOverlayMotionIndex(overlay.act, body.act, actionIndex, bodyMotion)
-	overlayAnim, ok := actionAnimation(overlay.act, actionIndex, motionIndex)
+	motionIndex := resolveOverlayMotionIndex(overlay.Act, body.Act, actionIndex, bodyMotion)
+	overlayAnim, ok := actionAnimation(overlay.Act, actionIndex, motionIndex)
 	if !ok {
-		overlayAnim, ok = actionAnimation(overlay.act, actionIndex, 0)
+		overlayAnim, ok = actionAnimation(overlay.Act, actionIndex, 0)
 	}
 	if !ok {
 		return false
@@ -931,21 +636,21 @@ func drawPlayerOverlayMotion(target *render.Image, overlay *spriteView, body *sp
 	return drawSpriteAnimation(target, overlay, overlayAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, pointX, pointY)
 }
 
-func drawFallbackOverlayMotion(target *render.Image, overlay *spriteView, body *spriteView, actionIndex, bodyMotion int) bool {
-	if overlay == nil || overlay.act == nil || overlay.spr == nil || body == nil || body.act == nil {
+func drawFallbackOverlayMotion(target *render.Image, overlay *scene.SpriteView, body *scene.SpriteView, actionIndex, bodyMotion int) bool {
+	if overlay == nil || overlay.Act == nil || overlay.Spr == nil || body == nil || body.Act == nil {
 		return false
 	}
-	if len(overlay.act.Actions) == 0 {
+	if len(overlay.Act.Actions) == 0 {
 		return false
 	}
-	resolvedActionIndex := actionIndex % len(overlay.act.Actions)
+	resolvedActionIndex := actionIndex % len(overlay.Act.Actions)
 	if resolvedActionIndex < 0 {
-		resolvedActionIndex += len(overlay.act.Actions)
+		resolvedActionIndex += len(overlay.Act.Actions)
 	}
-	motionIndex := resolveOverlayMotionIndex(overlay.act, body.act, resolvedActionIndex, bodyMotion)
-	overlayAnim, ok := actionAnimation(overlay.act, resolvedActionIndex, motionIndex)
+	motionIndex := resolveOverlayMotionIndex(overlay.Act, body.Act, resolvedActionIndex, bodyMotion)
+	overlayAnim, ok := actionAnimation(overlay.Act, resolvedActionIndex, motionIndex)
 	if !ok {
-		overlayAnim, ok = actionAnimation(overlay.act, resolvedActionIndex, 0)
+		overlayAnim, ok = actionAnimation(overlay.Act, resolvedActionIndex, 0)
 	}
 	if !ok {
 		return false
@@ -1115,7 +820,7 @@ func resolveSpriteAction(act *res.ACT, actionFamily, direction int) (int, res.AC
 	if act == nil || len(act.Actions) == 0 {
 		return 0, res.ACTAction{}, false
 	}
-	direction = normalizeDirectionIndex(direction)
+	direction = scene.NormalizeDirectionIndex(direction)
 	preferred := actionFamily*8 + direction
 	if preferred >= 0 && preferred < len(act.Actions) && len(act.Actions[preferred].Animations) > 0 {
 		return preferred, act.Actions[preferred], true
@@ -1139,37 +844,7 @@ func resolveSpriteAction(act *res.ACT, actionFamily, direction int) (int, res.AC
 }
 
 func spriteMotionIndex(action res.ACTAction, started time.Time, now time.Time, loop bool) int {
-	return spriteMotionIndexWithDelay(action, started, now, loop, float64(action.DelayMS))
-}
-
-func spriteMotionIndexWithDelay(action res.ACTAction, started time.Time, now time.Time, loop bool, delayMS float64) int {
-	return spriteMotionIndexWithOptions(action, started, now, loop, delayMS, 0, 0)
-}
-
-func spriteMotionIndexWithOptions(action res.ACTAction, started time.Time, now time.Time, loop bool, delayMS float64, frameLimit int, frameOffset int) int {
-	if len(action.Animations) == 0 {
-		return 0
-	}
-	motionCount := len(action.Animations)
-	if frameLimit > 0 && frameLimit < motionCount {
-		motionCount = frameLimit
-	}
-	delay := delayMS
-	if delay <= 0 {
-		delay = 150
-	}
-	elapsed := now.Sub(started)
-	if elapsed < 0 {
-		elapsed = 0
-	}
-	index := int(float64(elapsed.Milliseconds()) / delay)
-	if loop || motionCount == 1 {
-		return minInt(frameOffset+index%motionCount, len(action.Animations)-1)
-	}
-	if index >= motionCount {
-		return minInt(frameOffset+motionCount-1, len(action.Animations)-1)
-	}
-	return minInt(frameOffset+index, len(action.Animations)-1)
+	return scene.SpriteMotionIndexWithDelay(action, started, now, loop, float64(action.DelayMS))
 }
 
 func bodyMotionForState(action res.ACTAction, state spriteState, started time.Time, now time.Time) int {
@@ -1188,20 +863,20 @@ func bodyMotionForState(action res.ACTAction, state spriteState, started time.Ti
 	}
 	if state.hasPlay && !state.play {
 		if state.hasFrameOffset {
-			return minInt(maxInt(0, state.frameOffset), len(action.Animations)-1)
+			return scene.MinInt(scene.MaxInt(0, state.frameOffset), len(action.Animations)-1)
 		}
 		return 0
 	}
-	if state.actionFamily == spriteActionWalk && state.moveSpeedMS > 0 {
+	if state.actionFamily == scene.SpriteActionWalk && state.moveSpeedMS > 0 {
 		if delayMS <= 0 {
 			delayMS = 150
 		}
 		delayMS = delayMS * float64(state.moveSpeedMS) / 150
 	}
-	if state.actionFamily == spriteActionWalk && state.walkDistance > 0 {
+	if state.actionFamily == scene.SpriteActionWalk && state.walkDistance > 0 {
 		return walkMotionIndex(action, state.walkDistance)
 	}
-	if state.headTurn && (state.actionFamily == spriteActionIdle || state.actionFamily == spriteActionSit) && int(state.headDir) < len(action.Animations) {
+	if state.headTurn && (state.actionFamily == scene.SpriteActionIdle || state.actionFamily == scene.SpriteActionSit) && int(state.headDir) < len(action.Animations) {
 		return int(state.headDir)
 	}
 	frameLimit := 0
@@ -1217,21 +892,21 @@ func bodyMotionForState(action res.ACTAction, state spriteState, started time.Ti
 		if index >= frameLimit {
 			index = 2*frameLimit - 2 - index
 		}
-		return minInt(frameOffset+index, len(action.Animations)-1)
+		return scene.MinInt(frameOffset+index, len(action.Animations)-1)
 	}
-	if state.actionFamily == spriteActionWalk || state.loop {
-		return spriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
+	if state.actionFamily == scene.SpriteActionWalk || state.loop {
+		return scene.SpriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
 	}
-	if state.actionFamily == spriteActionIdle && state.loopIdle {
-		return spriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
+	if state.actionFamily == scene.SpriteActionIdle && state.loopIdle {
+		return scene.SpriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
 	}
 	if !state.started.IsZero() {
-		return spriteMotionIndexWithOptions(action, started, now, false, delayMS, frameLimit, frameOffset)
+		return scene.SpriteMotionIndexWithOptions(action, started, now, false, delayMS, frameLimit, frameOffset)
 	}
-	if state.actionFamily != spriteActionWalk {
+	if state.actionFamily != scene.SpriteActionWalk {
 		return 0
 	}
-	return spriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
+	return scene.SpriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
 }
 
 const walkDistanceToMotion = 4.6 * 0.37 * 4 * 25
@@ -1255,10 +930,10 @@ func selectHeadMotion(state spriteState, bodyMotion int, headAction res.ACTActio
 	if len(headAction.Animations) == 0 {
 		return 0
 	}
-	if state.headTurn && (state.actionFamily == spriteActionIdle || state.actionFamily == spriteActionSit) && int(state.headDir) < len(headAction.Animations) {
+	if state.headTurn && (state.actionFamily == scene.SpriteActionIdle || state.actionFamily == scene.SpriteActionSit) && int(state.headDir) < len(headAction.Animations) {
 		return int(state.headDir)
 	}
-	if state.actionFamily == spriteActionWalk && bodyMotion >= 0 && bodyMotion < len(headAction.Animations) {
+	if state.actionFamily == scene.SpriteActionWalk && bodyMotion >= 0 && bodyMotion < len(headAction.Animations) {
 		return bodyMotion
 	}
 	if isTransientPCAction(state.actionFamily) && bodyMotion >= 0 && bodyMotion < len(headAction.Animations) {
@@ -1269,38 +944,22 @@ func selectHeadMotion(state spriteState, bodyMotion int, headAction res.ACTActio
 
 func isTransientPCAction(actionFamily int) bool {
 	switch actionFamily {
-	case spriteActionPickup, spriteActionPCReadyFight, spriteActionPCAttack1, spriteActionPCHurt, spriteActionPCDeath, spriteActionPCAttack2, spriteActionPCAttack3, spriteActionPCSkill:
+	case scene.SpriteActionPickup, spriteActionPCReadyFight, spriteActionPCAttack1, spriteActionPCHurt, spriteActionPCDeath, spriteActionPCAttack2, spriteActionPCAttack3, spriteActionPCSkill:
 		return true
 	default:
 		return false
 	}
 }
 
-func drawSpriteAnimation(target *render.Image, view *spriteView, anim res.ACTAnimation, anchorX, anchorY float64, posX, posY int32) bool {
-	return drawSpriteAnimationWithOptions(target, view, anim, anchorX, anchorY, posX, posY, false)
+func drawSpriteAnimation(target *render.Image, view *scene.SpriteView, anim res.ACTAnimation, anchorX, anchorY float64, posX, posY int32) bool {
+	return scene.DrawSpriteAnimationWithOptions(target, view, anim, anchorX, anchorY, posX, posY, false)
 }
 
-func drawSpriteAnimationWithOptions(target *render.Image, view *spriteView, anim res.ACTAnimation, anchorX, anchorY float64, posX, posY int32, ignoreLayerAngles bool) bool {
-	rendered := false
-	for _, layer := range anim.Layers {
-		if layer.Index < 0 {
-			continue
-		}
-		img, ok := spriteViewImage(view, layer.Index, layer.SPRType)
-		if !ok {
-			continue
-		}
-		drawSpriteLayerWithOptions(target, img, layer, anchorX+float64(posX), anchorY+float64(posY), ignoreLayerAngles)
-		rendered = true
-	}
-	return rendered
-}
-
-func drawSpriteLayerByValue(target *render.Image, view *spriteView, layer res.ACTLayer, centerX, centerY float64) bool {
+func drawSpriteLayerByValue(target *render.Image, view *scene.SpriteView, layer res.ACTLayer, centerX, centerY float64) bool {
 	if layer.Index < 0 {
 		return false
 	}
-	img, ok := spriteViewImage(view, layer.Index, layer.SPRType)
+	img, ok := scene.SpriteViewImage(view, layer.Index, layer.SPRType)
 	if !ok {
 		return false
 	}
@@ -1322,67 +981,11 @@ func attachmentDelta(baseAnim, attachedAnim res.ACTAnimation) (int32, int32) {
 	return base.X - attached.X, base.Y - attached.Y
 }
 
-func spriteViewImage(view *spriteView, index int32, sprType int32) (*render.Image, bool) {
-	key := spriteFrameKey{index: index, sprType: sprType}
-	if img, ok := view.images[key]; ok {
-		return img, true
-	}
-	frame, ok := view.spr.FrameImageWithPalette(int(index), int(sprType), view.palette)
-	if !ok {
-		return nil, false
-	}
-	img := render.NewImageFromStraightAlpha(frame)
-	view.images[key] = img
-	return img, true
-}
-
 func drawSpriteLayer(target *render.Image, img *render.Image, layer res.ACTLayer, centerX, centerY float64) {
-	drawSpriteLayerWithOptions(target, img, layer, centerX, centerY, false)
-}
-
-func drawSpriteLayerWithOptions(target *render.Image, img *render.Image, layer res.ACTLayer, centerX, centerY float64, ignoreLayerAngle bool) {
-	bounds := img.Bounds()
-	width := float64(bounds.Dx())
-	height := float64(bounds.Dy())
-	scaleX := float64(layer.ScaleX)
-	scaleY := float64(layer.ScaleY)
-	if scaleX == 0 {
-		scaleX = 1
-	}
-	if scaleY == 0 {
-		scaleY = 1
-	}
-	if layer.Mirror {
-		scaleX = -scaleX
-	}
-
-	var opts render.DrawImageOptions
-	opts.GeoM.Translate(-width/2, -height/2)
-	opts.GeoM.Scale(scaleX, scaleY)
-	if layer.Angle != 0 && !ignoreLayerAngle {
-		// HighPriest's RenderSprite rotates clockwise in screen coordinates.
-		opts.GeoM.Rotate(float64(layer.Angle) * math.Pi / 180)
-	}
-	layerCenterX, layerCenterY := spriteLayerCenter(centerX, centerY, layer)
-	opts.GeoM.Translate(layerCenterX, layerCenterY)
-	opts.Filter = spriteCompositionFilter()
-	opts.ColorScale.Scale(layer.Color[0], layer.Color[1], layer.Color[2], layer.Color[3])
-	target.DrawImage(img, &opts)
-}
-
-func spriteLayerCenter(centerX, centerY float64, layer res.ACTLayer) (float64, float64) {
-	return centerX + float64(layer.X), centerY + float64(layer.Y)
-}
-
-func normalizeDirectionIndex(direction int) int {
-	direction %= 8
-	if direction < 0 {
-		direction += 8
-	}
-	return direction
+	scene.DrawSpriteLayerWithOptions(target, img, layer, centerX, centerY, false)
 }
 
 func spriteDirectionFromWorldDirForCamera(direction int, cameraYaw float64) int {
 	yawSteps := int(math.Round(cameraYaw / 45))
-	return (4 - normalizeDirectionIndex(direction) + yawSteps) & 7
+	return (4 - scene.NormalizeDirectionIndex(direction) + yawSteps) & 7
 }

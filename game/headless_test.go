@@ -64,7 +64,7 @@ func TestHeadlessCombatKeepsStateWithoutVisuals(t *testing.T) {
 	if _, dead := mode.actorDeaths[300]; !dead {
 		t.Fatal("dead monster was not excluded from bot targets")
 	}
-	if len(mode.worldEffects) != 0 || len(mode.damageFloaters) != 0 || len(mode.speechBubbles) != 0 || len(mode.actorCastBars) != 0 {
+	if len(mode.effects().Active) != 0 || len(mode.damageFloaters) != 0 || len(mode.speechBubbles) != 0 || len(mode.actorCastBars) != 0 {
 		t.Fatal("headless combat retained visuals that require drawing to expire")
 	}
 	if mode.playerView != nil || len(mode.nonPCViews) != 0 || len(mode.nonPCViewMiss) != 0 || len(mode.mercenaryViews) != 0 || len(mode.mercenaryViewMiss) != 0 {
@@ -73,7 +73,7 @@ func TestHeadlessCombatKeepsStateWithoutVisuals(t *testing.T) {
 	if len(mode.gr2Models) != 0 || len(mode.gr2ModelMiss) != 0 {
 		t.Fatal("headless combat loaded or attempted to load actor models")
 	}
-	if len(mode.effectViews) != 0 || len(mode.effectViewMiss) != 0 || len(mode.strEffects) != 0 || len(mode.strEffectMiss) != 0 {
+	if len(mode.effects().EffectViews) != 0 || len(mode.effects().EffectViewMiss) != 0 || len(mode.effects().StrEffects) != 0 || len(mode.effects().StrEffectMiss) != 0 {
 		t.Fatal("headless combat loaded or attempted to load effect assets")
 	}
 	if len(mode.textures) != 0 || len(mode.textureMiss) != 0 {
@@ -110,7 +110,7 @@ func TestHeadlessSongSkillsStillSendChat(t *testing.T) {
 		mode.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SourceID: sess.AccountID, TargetID: sess.AccountID, SkillID: tc.skill, Result: 1})
 		readBotTestPackets(t, conn, network.BuildGlobalChatPacketForClientDate("Tester", tc.text, 20080910))
 	}
-	if len(mode.worldEffects) != 0 || len(mode.speechBubbles) != 0 {
+	if len(mode.effects().Active) != 0 || len(mode.speechBubbles) != 0 {
 		t.Fatal("song skills created headless visuals")
 	}
 }

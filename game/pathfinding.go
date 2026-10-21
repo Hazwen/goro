@@ -3,6 +3,7 @@ package game
 import (
 	"container/heap"
 
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -77,14 +78,18 @@ type pathNode struct {
 type pathHeap []*pathNode
 
 func (h pathHeap) Len() int { return len(h) }
+
 func (h pathHeap) Less(i, j int) bool {
 	if h[i].f == h[j].f {
 		return h[i].g > h[j].g
 	}
 	return h[i].f < h[j].f
 }
+
 func (h pathHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
-func (h *pathHeap) Push(x any)   { *h = append(*h, x.(*pathNode)) }
+
+func (h *pathHeap) Push(x any) { *h = append(*h, x.(*pathNode)) }
+
 func (h *pathHeap) Pop() any {
 	old := *h
 	n := len(old)
@@ -124,8 +129,8 @@ func pathStepCost(from, to pathPoint) int {
 }
 
 func pathHeuristic(from, to pathPoint) int {
-	dx := absInt(to.x - from.x)
-	dy := absInt(to.y - from.y)
+	dx := scene.AbsInt(to.x - from.x)
+	dy := scene.AbsInt(to.y - from.y)
 	if dx < dy {
 		return 14*dx + 10*(dy-dx)
 	}

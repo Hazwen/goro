@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -23,9 +25,9 @@ func TestHomunculusAssistQueuesNearestMonsterAttack(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, X: 10, Y: 10, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
-				400: {ID: 400, X: 25, Y: 25, HasObjectType: true, ObjectType: actorObjectTypeMob},
-				500: {ID: 500, X: 12, Y: 11, HasObjectType: true, ObjectType: actorObjectTypeMob},
+				300: {ID: 300, X: 10, Y: 10, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
+				400: {ID: 400, X: 25, Y: 25, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob},
+				500: {ID: 500, X: 12, Y: 11, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob},
 			},
 		},
 	}
@@ -49,8 +51,8 @@ func TestHomunculusStandByDoesNotQueueAggressiveAttack(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, X: 10, Y: 10, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
-				500: {ID: 500, X: 12, Y: 11, HasObjectType: true, ObjectType: actorObjectTypeMob},
+				300: {ID: 300, X: 10, Y: 10, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
+				500: {ID: 500, X: 12, Y: 11, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob},
 			},
 		},
 	}
@@ -81,7 +83,7 @@ func TestHomunculusParamChangeUpdatesSessionAndLife(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}
@@ -112,7 +114,7 @@ func TestHomunculusPropertyStoresDisplayLifeAndHunger(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, Name: "Vanilmirth2", HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, Name: "Vanilmirth2", HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}
@@ -157,7 +159,7 @@ func TestHomunculusActorEntryUsesKnownSessionName(t *testing.T) {
 		X:             10,
 		Y:             20,
 		HasObjectType: true,
-		ObjectType:    actorObjectTypeHomunculus,
+		ObjectType:    scene.ActorObjectTypeHomunculus,
 	})
 
 	if actor := ctx.World.Actors[300]; actor.Name != "Pipou" {
@@ -183,7 +185,7 @@ func TestHomunculusActorEntryDoesNotUseSessionNameForDifferentID(t *testing.T) {
 		X:             10,
 		Y:             20,
 		HasObjectType: true,
-		ObjectType:    actorObjectTypeHomunculus,
+		ObjectType:    scene.ActorObjectTypeHomunculus,
 	})
 
 	if actor := ctx.World.Actors[301]; actor.Name != "" {
@@ -202,7 +204,7 @@ func TestHomunculusStateChangeAppliesKnownSessionName(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, Name: "Vanilmirth2", HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, Name: "Vanilmirth2", HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}
@@ -230,7 +232,7 @@ func TestHomunculusStateChangeUpdatesDisplayHunger(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}
@@ -259,7 +261,7 @@ func TestHomunculusParamLevelUpAddsHoUpEffect(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, X: 12, Y: 34, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, X: 12, Y: 34, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}
@@ -267,10 +269,10 @@ func TestHomunculusParamLevelUpAddsHoUpEffect(t *testing.T) {
 	mode.applyHomunculusParamChange(ctx, network.HomunculusParamChange{Param: network.StatusBaseLevel, Value: 10})
 	mode.applyHomunculusParamChange(ctx, network.HomunculusParamChange{Param: network.StatusBaseLevel, Value: 10})
 
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.effects().Active) != 1 {
+		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.worldEffects[0]; effect.effectID != effectHoUp || effect.actorID != 300 {
+	if effect := mode.effects().Active[0]; effect.EffectID != effects.HoUp || effect.ActorID != 300 {
 		t.Fatalf("world effect = %+v", effect)
 	}
 }
@@ -280,17 +282,17 @@ func TestHomunculusNotifyEffect2AddsHoUpEffectWithoutSound(t *testing.T) {
 	ctx := client.Context{
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, X: 12, Y: 34, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, X: 12, Y: 34, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}
 
-	mode.applySpecialEffectNotify(ctx, network.SpecialEffectNotify{AID: 300, EffectID: effectHoUp})
+	mode.applySpecialEffectNotify(ctx, network.SpecialEffectNotify{AID: 300, EffectID: effects.HoUp})
 
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.effects().Active) != 1 {
+		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.worldEffects[0]; effect.effectID != effectHoUp || effect.actorID != 300 {
+	if effect := mode.effects().Active[0]; effect.EffectID != effects.HoUp || effect.ActorID != 300 {
 		t.Fatalf("world effect = %+v", effect)
 	}
 	if len(mode.scheduledSounds) != 0 {
@@ -310,15 +312,15 @@ func TestHomunculusParamInitialLevelDoesNotAddHoUpEffect(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, X: 12, Y: 34, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, X: 12, Y: 34, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}
 
 	mode.applyHomunculusParamChange(ctx, network.HomunculusParamChange{Param: network.StatusBaseLevel, Value: 10})
 
-	if len(mode.worldEffects) != 0 {
-		t.Fatalf("world effects = %+v, want none for initial level load", mode.worldEffects)
+	if len(mode.effects().Active) != 0 {
+		t.Fatalf("world effects = %+v, want none for initial level load", mode.effects().Active)
 	}
 }
 
@@ -340,7 +342,7 @@ func TestPendingHomunculusDeleteVanishClearsSession(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}
@@ -385,7 +387,7 @@ func TestHomunculusVanishWithoutDeleteKeepsSession(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				300: {ID: 300, HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
+				300: {ID: 300, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 			},
 		},
 	}

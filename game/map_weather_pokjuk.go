@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -46,11 +48,11 @@ type mapWeatherPokJukRocket struct {
 	textureIndex int
 }
 
-func mapWeatherFireworkCenter(world *worldstate.World, projection sceneProjection, now time.Time) (float64, float64) {
+func mapWeatherFireworkCenter(world *worldstate.World, projection scene.Projection, now time.Time) (float64, float64) {
 	if world == nil {
-		return projection.playerX, projection.playerY
+		return projection.PlayerX, projection.PlayerY
 	}
-	return actorRenderPosition(world.Player, now)
+	return scene.ActorRenderPosition(world.Player, now)
 }
 
 func (s *mapWeatherFireworkState) reset() {
@@ -103,7 +105,7 @@ func (s *mapWeatherFireworkState) spawn(index int, world *worldstate.World, cent
 	rocket.launchTime = launchTime
 	rocket.x = x
 	rocket.y = y
-	rocket.z = terrainHeightAt(world, x-0.5, y-0.5) + 1
+	rocket.z = scene.TerrainHeightAt(world, x-0.5, y-0.5) + 1
 	rocket.driftX = math.Cos(angle) * drift
 	rocket.driftY = math.Sin(angle) * drift
 	rocket.color = pokJukWeatherColors[colorIndex]
@@ -118,13 +120,13 @@ func (s *mapWeatherFireworkState) scheduleSounds(m *WorldMode, now time.Time) {
 	}
 }
 
-func (s *mapWeatherFireworkState) draw(screen *render.Frame, mode *WorldMode, ctx client.Context, projection sceneProjection, now time.Time) {
+func (s *mapWeatherFireworkState) draw(screen *render.Frame, mode *WorldMode, ctx client.Context, projection scene.Projection, now time.Time) {
 	textures := [3]*render.Image{
-		mode.effectFileTexture(ctx.Resources, "effect/pok1.tga"),
-		mode.effectFileTexture(ctx.Resources, "effect/pok2.tga"),
-		mode.effectFileTexture(ctx.Resources, "effect/pok3.tga"),
+		mode.effects().EffectFileTexture(ctx.Resources, "effect/pok1.tga"),
+		mode.effects().EffectFileTexture(ctx.Resources, "effect/pok2.tga"),
+		mode.effects().EffectFileTexture(ctx.Resources, "effect/pok3.tga"),
 	}
-	options := texturedEffectBillboardDrawOptions(true, true)
+	options := effects.TexturedEffectBillboardDrawOptions(true, true)
 	options.DisableFog = true
 	for i := range s.rockets {
 		rocket := s.rockets[i]
@@ -141,17 +143,17 @@ func (s *mapWeatherFireworkState) draw(screen *render.Frame, mode *WorldMode, ct
 	}
 }
 
-func (s *mapWeatherFireworkState) drawRisingRocket(screen *render.Frame, projection sceneProjection, textures [3]*render.Image, options *render.DrawTrianglesOptions, rocket mapWeatherPokJukRocket, elapsed time.Duration) {
-	progress := clampFloat(float64(elapsed)/float64(pokJukWeatherRiseDuration), 0, 1)
+func (s *mapWeatherFireworkState) drawRisingRocket(screen *render.Frame, projection scene.Projection, textures [3]*render.Image, options *render.DrawTrianglesOptions, rocket mapWeatherPokJukRocket, elapsed time.Duration) {
+	progress := scene.ClampFloat(float64(elapsed)/float64(pokJukWeatherRiseDuration), 0, 1)
 	x := rocket.x + rocket.driftX*progress*progress
 	y := rocket.y + rocket.driftY*progress*progress
 	z := rocket.z + pokJukWeatherRiseHeight*progress
 	texture := pokJukWeatherTexture(textures, rocket.textureIndex+int(elapsed/(100*time.Millisecond)))
-	alpha := clampFloat(progress*2, 0, 1)
+	alpha := scene.ClampFloat(progress*2, 0, 1)
 	tint := color.RGBA{R: 255, G: 255, B: 255, A: uint8(alpha * 255)}
 	drawPokJukParticle(screen, projection, texture, x, y, z, pokJukWeatherSize(8), 0, tint, options)
 	for trail := 1; trail <= pokJukWeatherTrailParticles; trail++ {
-		trailProgress := clampFloat(progress-float64(trail)*0.08, 0, 1)
+		trailProgress := scene.ClampFloat(progress-float64(trail)*0.08, 0, 1)
 		trailX := rocket.x + rocket.driftX*trailProgress*trailProgress
 		trailY := rocket.y + rocket.driftY*trailProgress*trailProgress
 		trailZ := rocket.z + pokJukWeatherRiseHeight*trailProgress
@@ -161,8 +163,8 @@ func (s *mapWeatherFireworkState) drawRisingRocket(screen *render.Frame, project
 	}
 }
 
-func (s *mapWeatherFireworkState) drawBurstRocket(screen *render.Frame, projection sceneProjection, textures [3]*render.Image, options *render.DrawTrianglesOptions, index int, rocket mapWeatherPokJukRocket, elapsed time.Duration) {
-	progress := clampFloat(float64(elapsed)/float64(pokJukWeatherBurstDuration), 0, 1)
+func (s *mapWeatherFireworkState) drawBurstRocket(screen *render.Frame, projection scene.Projection, textures [3]*render.Image, options *render.DrawTrianglesOptions, index int, rocket mapWeatherPokJukRocket, elapsed time.Duration) {
+	progress := scene.ClampFloat(float64(elapsed)/float64(pokJukWeatherBurstDuration), 0, 1)
 	centerX := rocket.x + rocket.driftX
 	centerY := rocket.y + rocket.driftY
 	centerZ := rocket.z + pokJukWeatherRiseHeight
@@ -184,11 +186,11 @@ func (s *mapWeatherFireworkState) drawBurstRocket(screen *render.Frame, projecti
 	}
 }
 
-func drawPokJukParticle(screen *render.Frame, projection sceneProjection, texture *render.Image, x, y, z, size, angle float64, tint color.RGBA, options *render.DrawTrianglesOptions) {
+func drawPokJukParticle(screen *render.Frame, projection scene.Projection, texture *render.Image, x, y, z, size, angle float64, tint color.RGBA, options *render.DrawTrianglesOptions) {
 	if texture == nil || tint.A == 0 {
 		return
 	}
-	drawTexturedEffectBillboardRotatedXYWithOptions(screen, projection, texture, x, y, z, size, size, angle, tint, options)
+	effects.DrawTexturedEffectBillboardRotatedXYWithOptions(screen, projection, texture, x, y, z, size, size, angle, tint, options)
 }
 
 func pokJukWeatherTexture(textures [3]*render.Image, index int) *render.Image {
@@ -207,7 +209,7 @@ func pokJukWeatherTexture(textures [3]*render.Image, index int) *render.Image {
 }
 
 func pokJukWeatherSize(value float64) float64 {
-	return value * effectPixelRatio
+	return value * scene.PixelRatio
 }
 
 func pokJukWeatherRocketLifetime() time.Duration {

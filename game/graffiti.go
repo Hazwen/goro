@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 )
@@ -28,7 +30,7 @@ func (m *WorldMode) applyGraffitiEntry(ctx client.Context, entry network.SkillUn
 		m.graffiti = make(map[uint32]*groundGraffiti)
 	}
 	// CGraffiSkill uses the viewer's facing when the writing first appears.
-	angle := degreesToRadians(float64(effectActorDirection(ctx, localSkillTarget(ctx), time.Now())*45 + 180))
+	angle := scene.DegreesToRadians(float64(effects.EffectActorDirection(ctx, scene.LocalSkillTarget(ctx), time.Now())*45 + 180))
 	m.graffiti[entry.ID] = &groundGraffiti{x: int(entry.X), y: int(entry.Y), angle: angle, message: entry.Message}
 }
 
@@ -83,14 +85,14 @@ func graffitiTexture(atlas image.Image, message string) *render.Image {
 	return render.NewImageFromImage(out)
 }
 
-func (m *WorldMode) drawGraffiti(screen *render.Frame, ctx client.Context, projection sceneProjection) {
+func (m *WorldMode) drawGraffiti(screen *render.Frame, ctx client.Context, projection scene.Projection) {
 	for _, writing := range m.graffiti {
-		if math.Abs(float64(writing.x)-projection.playerX) > rsmRenderRadius()*2 ||
-			math.Abs(float64(writing.y)-projection.playerY) > rsmRenderRadius()*2 {
+		if math.Abs(float64(writing.x)-projection.PlayerX) > rsmRenderRadius()*2 ||
+			math.Abs(float64(writing.y)-projection.PlayerY) > rsmRenderRadius()*2 {
 			continue
 		}
 		if writing.mesh == nil {
-			atlas := m.effectFileTexture(ctx.Resources, "effect/alpabet.bmp")
+			atlas := m.effects().EffectFileTexture(ctx.Resources, "effect/alpabet.bmp")
 			if atlas == nil {
 				continue
 			}
@@ -128,13 +130,13 @@ func graffitiMesh(ctx client.Context, writing *groundGraffiti, texture *render.I
 				} else {
 					height += float64(cell.Heights[2]) * (ty - tx)
 				}
-				uv := texturePoint{u: float32(1 - (dx*cos+dy*sin+9)/18), v: float32((-dx*sin + dy*cos + 9) / 18)}
-				vertices = append(vertices, texturedSurfaceVertex3D(modelPoint3{x: wx, y: height + .01, z: wy}, uv, color.RGBA{255, 255, 255, 255}, 512, 512))
+				uv := scene.UV{U: float32(1 - (dx*cos+dy*sin+9)/18), V: float32((-dx*sin + dy*cos + 9) / 18)}
+				vertices = append(vertices, scene.TexturedSurfaceVertex3D(scene.Point3{X: wx, Y: height + .01, Z: wy}, uv, color.RGBA{255, 255, 255, 255}, 512, 512))
 			}
 			indices = append(indices, base, base+1, base+2, base, base+2, base+3)
 		}
 	}
-	options := triangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
+	options := scene.TriangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
 	options.DepthBias = tileCursorDepthBias
 	return render.NewWorldMeshWithLightmap(vertices, indices, texture, nil, options)
 }

@@ -12,6 +12,8 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -102,13 +104,13 @@ func TestLevelOneTeleportQueuesRandomSelectionWithCast(t *testing.T) {
 	if mapName := string(packets[14:20]); mapName != "Random" {
 		t.Fatalf("selection map = %q, want Random", mapName)
 	}
-	if len(mode.worldEffects) != 0 {
-		t.Fatalf("world effects before server reply = %+v, want none", mode.worldEffects)
+	if len(mode.effects().Active) != 0 {
+		t.Fatalf("world effects before server reply = %+v, want none", mode.effects().Active)
 	}
 
 	mode.applySkillFailAck(ctx, network.SkillFailAck{SkillID: skill.ID, Cause: 1})
-	if len(mode.worldEffects) != 0 {
-		t.Fatalf("world effects after insufficient SP reply = %+v, want none", mode.worldEffects)
+	if len(mode.effects().Active) != 0 {
+		t.Fatalf("world effects after insufficient SP reply = %+v, want none", mode.effects().Active)
 	}
 	if messages := mode.ui.console.Messages(); len(messages) != 1 || messages[0].Text != "Not enough SP." {
 		t.Fatalf("console messages = %+v, want insufficient SP error", messages)
@@ -167,8 +169,8 @@ func TestTeleportWaitsForMapChange(t *testing.T) {
 			if mode.ui.teleportModal.IsOpen() {
 				t.Fatal("Teleport destination dialog remained open")
 			}
-			if len(mode.worldEffects) != 0 || len(mode.scheduledSounds) != 0 || mode.mapFade.phase != mapFadeNone {
-				t.Fatalf("Teleport played before map confirmation: effects=%+v sounds=%+v fade=%+v", mode.worldEffects, mode.scheduledSounds, mode.mapFade)
+			if len(mode.effects().Active) != 0 || len(mode.scheduledSounds) != 0 || mode.mapFade.phase != mapFadeNone {
+				t.Fatalf("Teleport played before map confirmation: effects=%+v sounds=%+v fade=%+v", mode.effects().Active, mode.scheduledSounds, mode.mapFade)
 			}
 
 			// Even after canceling, a later unrelated warp follows the same
@@ -177,7 +179,7 @@ func TestTeleportWaitsForMapChange(t *testing.T) {
 			if !stop || mode.mapFade.phase != mapFadeOut || !mode.mapFade.hasChange {
 				t.Fatalf("confirmed map change did not start the fade: stop=%t fade=%+v", stop, mode.mapFade)
 			}
-			if len(mode.worldEffects) != 0 || len(mode.scheduledSounds) != 0 {
+			if len(mode.effects().Active) != 0 || len(mode.scheduledSounds) != 0 {
 				t.Fatal("map transition fabricated a local Teleport effect or sound")
 			}
 		})
@@ -256,9 +258,9 @@ func TestTextGroundSkillClickOpensPrompt(t *testing.T) {
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	world.GAT = flatWalkableGAT(32, 32)
 	inputState := input.NewState()
-	projection := newSceneProjectionForTarget(1280, 720, cellCenter(10), cellCenter(20), 0)
-	point := projection.Project(cellCenter(12), cellCenter(20), 0)
-	inputState.SetMousePosition(int(math.Round(float64(point.x))), int(math.Round(float64(point.y))))
+	projection := testutil.Projection(1280, 720, scene.CellCenter(10), scene.CellCenter(20), 0)
+	point := projection.Project(scene.CellCenter(12), scene.CellCenter(20), 0)
+	inputState.SetMousePosition(int(math.Round(float64(point.X))), int(math.Round(float64(point.Y))))
 	inputState.SetMouseButton(input.MouseButtonLeft, true)
 	mode := &WorldMode{
 		pendingSkill: pendingSkillTarget{skill: session.Skill{ID: db.SkillHTTalkiebox, Name: "Talkie Box", Level: 1, Type: skillTargetPlace, Range: 9}},
@@ -293,14 +295,14 @@ func TestMercenaryTargetSkillChasesFromMercenaryPosition(t *testing.T) {
 		ID:            400,
 		X:             10,
 		Y:             20,
-		ObjectType:    actorObjectTypeMercenary,
+		ObjectType:    scene.ActorObjectTypeMercenary,
 		HasObjectType: true,
 	})
 	target := worldstate.Actor{
 		ID:            300,
 		X:             25,
 		Y:             20,
-		ObjectType:    actorObjectTypeMob,
+		ObjectType:    scene.ActorObjectTypeMob,
 		HasObjectType: true,
 	}
 	world.UpsertActor(target)
@@ -332,7 +334,7 @@ func TestHealApproachesZombieWithoutWalkingAwayOnOtherAxis(t *testing.T) {
 	world.Player = worldstate.Actor{ID: 200, Job: db.JobAcolyte, X: 20, Y: 20}
 	zombie := worldstate.Actor{
 		ID: 300, Job: 1015, X: 31, Y: 22,
-		ObjectType: actorObjectTypeMob, HasObjectType: true,
+		ObjectType: scene.ActorObjectTypeMob, HasObjectType: true,
 	}
 	world.UpsertActor(zombie)
 	ctx := client.Context{
@@ -376,7 +378,7 @@ func TestHealApproachesDiagonalZombiesWithinServerRange(t *testing.T) {
 			world.Player = worldstate.Actor{ID: 200, Job: db.JobAcolyte, X: 20, Y: 20}
 			zombie := worldstate.Actor{
 				ID: 300, Job: 1015, X: 20 + offset[0], Y: 20 + offset[1],
-				ObjectType: actorObjectTypeMob, HasObjectType: true,
+				ObjectType: scene.ActorObjectTypeMob, HasObjectType: true,
 			}
 			world.UpsertActor(zombie)
 			ctx := client.Context{
@@ -490,14 +492,14 @@ func TestMercenaryTargetSkillUsesRawServerRange(t *testing.T) {
 		ID:            400,
 		X:             10,
 		Y:             20,
-		ObjectType:    actorObjectTypeMercenary,
+		ObjectType:    scene.ActorObjectTypeMercenary,
 		HasObjectType: true,
 	})
 	target := worldstate.Actor{
 		ID:            300,
 		X:             20,
 		Y:             20,
-		ObjectType:    actorObjectTypeMob,
+		ObjectType:    scene.ActorObjectTypeMob,
 		HasObjectType: true,
 	}
 	world.UpsertActor(target)
@@ -529,14 +531,14 @@ func TestMercenaryPendingTargetSkillSchedulesFromMercenaryPosition(t *testing.T)
 		ID:            400,
 		X:             24,
 		Y:             20,
-		ObjectType:    actorObjectTypeMercenary,
+		ObjectType:    scene.ActorObjectTypeMercenary,
 		HasObjectType: true,
 	})
 	world.UpsertActor(worldstate.Actor{
 		ID:            300,
 		X:             25,
 		Y:             20,
-		ObjectType:    actorObjectTypeMob,
+		ObjectType:    scene.ActorObjectTypeMob,
 		HasObjectType: true,
 	})
 	skill := session.Skill{ID: db.SkillMsBash, Level: 1, Type: skillTargetEnemy, Range: 1}

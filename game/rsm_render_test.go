@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 )
@@ -38,11 +39,11 @@ func TestCalculateRSMBoundsSeparatesMainNodeFromModel(t *testing.T) {
 	}
 
 	bounds := calculateRSMBoundsForNodes(rsm, []int{0, 1})
-	if bounds.main.min.x != -1 || bounds.main.max.x != 1 {
-		t.Fatalf("main bounds x = %.1f..%.1f, want -1..1", bounds.main.min.x, bounds.main.max.x)
+	if bounds.main.min.X != -1 || bounds.main.max.X != 1 {
+		t.Fatalf("main bounds x = %.1f..%.1f, want -1..1", bounds.main.min.X, bounds.main.max.X)
 	}
-	if bounds.model.min.x != -1 || bounds.model.max.x != 102 {
-		t.Fatalf("model bounds x = %.1f..%.1f, want -1..102", bounds.model.min.x, bounds.model.max.x)
+	if bounds.model.min.X != -1 || bounds.model.max.X != 102 {
+		t.Fatalf("model bounds x = %.1f..%.1f, want -1..102", bounds.model.min.X, bounds.model.max.X)
 	}
 }
 
@@ -100,17 +101,17 @@ func TestRSMPlacementContextIncludesSelectedNodeAncestors(t *testing.T) {
 
 func TestRSMDrawOptionsLayerHorizontalSurfaces(t *testing.T) {
 	horizontal := modelWorldTriangle{
-		verts: [3]modelPoint3{
-			{x: 0, y: 0, z: 0},
-			{x: 1, y: 0, z: 0},
-			{x: 0, y: 0, z: 1},
+		verts: [3]scene.Point3{
+			{X: 0, Y: 0, Z: 0},
+			{X: 1, Y: 0, Z: 0},
+			{X: 0, Y: 0, Z: 1},
 		},
 	}
 	vertical := modelWorldTriangle{
-		verts: [3]modelPoint3{
-			{x: 0, y: 0, z: 0},
-			{x: 1, y: 0, z: 0},
-			{x: 0, y: 1, z: 0},
+		verts: [3]scene.Point3{
+			{X: 0, Y: 0, Z: 0},
+			{X: 1, Y: 0, Z: 0},
+			{X: 0, Y: 1, Z: 0},
 		},
 	}
 
@@ -140,17 +141,17 @@ func TestRSMDrawOptionsLayerHorizontalSurfaces(t *testing.T) {
 func TestRSMDrawOptionsForVerticesMatchesTriangleHelper(t *testing.T) {
 	triangles := []modelWorldTriangle{
 		{
-			verts: [3]modelPoint3{
-				{x: 0, y: 0, z: 0},
-				{x: 1, y: 0, z: 0},
-				{x: 0, y: 0, z: 1},
+			verts: [3]scene.Point3{
+				{X: 0, Y: 0, Z: 0},
+				{X: 1, Y: 0, Z: 0},
+				{X: 0, Y: 0, Z: 1},
 			},
 		},
 		{
-			verts: [3]modelPoint3{
-				{x: 0, y: 0, z: 0},
-				{x: 1, y: 0, z: 0},
-				{x: 0, y: 1, z: 0},
+			verts: [3]scene.Point3{
+				{X: 0, Y: 0, Z: 0},
+				{X: 1, Y: 0, Z: 0},
+				{X: 0, Y: 1, Z: 0},
 			},
 		},
 	}
@@ -217,9 +218,9 @@ func TestRSMInstanceMatrixUsesParsedRSWModelY(t *testing.T) {
 	}
 
 	matrix := buildRSMInstanceMatrix(rsm, placement, 110, 220, modelBounds{})
-	point := mat4TransformPoint(matrix, modelPoint3{})
-	if point.y != -7 {
-		t.Fatalf("instance y = %.1f, want -7", point.y)
+	point := mat4TransformPoint(matrix, scene.Point3{})
+	if point.Y != -7 {
+		t.Fatalf("instance y = %.1f, want -7", point.Y)
 	}
 }
 
@@ -228,26 +229,26 @@ func TestRSMInstanceMatrixMirrorsVerticalBasisRotations(t *testing.T) {
 	tests := []struct {
 		name      string
 		rotation  res.RSWVector3
-		point     modelPoint3
-		wantPoint modelPoint3
+		point     scene.Point3
+		wantPoint scene.Point3
 	}{
 		{
 			name:      "pitch",
 			rotation:  res.RSWVector3{X: 90},
-			point:     modelPoint3{y: 1},
-			wantPoint: modelPoint3{z: -1},
+			point:     scene.Point3{Y: 1},
+			wantPoint: scene.Point3{Z: -1},
 		},
 		{
 			name:      "yaw",
 			rotation:  res.RSWVector3{Y: 90},
-			point:     modelPoint3{x: 1},
-			wantPoint: modelPoint3{z: -1},
+			point:     scene.Point3{X: 1},
+			wantPoint: scene.Point3{Z: -1},
 		},
 		{
 			name:      "roll",
 			rotation:  res.RSWVector3{Z: 90},
-			point:     modelPoint3{x: 1},
-			wantPoint: modelPoint3{y: -1},
+			point:     scene.Point3{X: 1},
+			wantPoint: scene.Point3{Y: -1},
 		},
 	}
 
@@ -258,8 +259,8 @@ func TestRSMInstanceMatrixMirrorsVerticalBasisRotations(t *testing.T) {
 				Scale:    res.RSWVector3{X: 1, Y: 1, Z: 1},
 			}, 0, 0, modelBounds{})
 			got := mat4TransformPoint(matrix, tt.point)
-			if math.Abs(got.x-tt.wantPoint.x) > 0.0001 || math.Abs(got.y-tt.wantPoint.y) > 0.0001 || math.Abs(got.z-tt.wantPoint.z) > 0.0001 {
-				t.Fatalf("point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.x, got.y, got.z, tt.wantPoint.x, tt.wantPoint.y, tt.wantPoint.z)
+			if math.Abs(got.X-tt.wantPoint.X) > 0.0001 || math.Abs(got.Y-tt.wantPoint.Y) > 0.0001 || math.Abs(got.Z-tt.wantPoint.Z) > 0.0001 {
+				t.Fatalf("point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.X, got.Y, got.Z, tt.wantPoint.X, tt.wantPoint.Y, tt.wantPoint.Z)
 			}
 		})
 	}
@@ -267,14 +268,14 @@ func TestRSMInstanceMatrixMirrorsVerticalBasisRotations(t *testing.T) {
 
 func TestRSMFaceColorShadeNoneUsesDefaultModelNormal(t *testing.T) {
 	lighting := sceneLighting{
-		direction: modelPoint3{y: -1},
-		diffuse:   modelPoint3{x: 1, y: 1, z: 1},
-		env:       modelPoint3{x: 1, y: 1, z: 1},
+		direction: scene.Point3{Y: -1},
+		diffuse:   scene.Point3{X: 1, Y: 1, Z: 1},
+		env:       scene.Point3{X: 1, Y: 1, Z: 1},
 	}
-	triangleNormalWouldFaceAway := [3]modelPoint3{
+	triangleNormalWouldFaceAway := [3]scene.Point3{
 		{},
-		{x: 1},
-		{z: -1},
+		{X: 1},
+		{Z: -1},
 	}
 
 	got := rsmFaceColor(&res.RSM{ShadeType: 0}, "model.bmp",
@@ -381,7 +382,7 @@ func TestAnimatedRSMNodeMatricesRetainsOnlyLatestFramePerModel(t *testing.T) {
 	mode := &WorldMode{}
 
 	first := mode.animatedRSMNodeMatrices(rsm, 1)
-	first["cache-marker"] = mat4Identity()
+	first["cache-marker"] = scene.Mat4Identity()
 	if _, ok := mode.animatedRSMNodeMatrices(rsm, 1)["cache-marker"]; !ok {
 		t.Fatal("same animation frame did not reuse cached node matrices")
 	}
@@ -399,9 +400,9 @@ func TestAnimatedRSMNodeMatricesRetainsOnlyLatestFramePerModel(t *testing.T) {
 
 func TestRSMFaceColorUsesModelAlpha(t *testing.T) {
 	got := rsmFaceColor(&res.RSM{ShadeType: 0, Alpha: 0.5}, "model.bmp",
-		modelPoint3{x: 0, y: 0, z: 0},
-		modelPoint3{x: 1, y: 0, z: 0},
-		modelPoint3{x: 0, y: 0, z: 1},
+		scene.Point3{X: 0, Y: 0, Z: 0},
+		scene.Point3{X: 1, Y: 0, Z: 0},
+		scene.Point3{X: 0, Y: 0, Z: 1},
 		sceneLighting{})
 	if got.A < 126 || got.A > 129 {
 		t.Fatalf("alpha = %d, want about 128", got.A)
@@ -425,10 +426,10 @@ func TestBuildRSMNodeMatricesSamplesAnimatedPositionAndScale(t *testing.T) {
 	}}
 
 	matrix := buildRSMNodeMatrices(rsm, 5)["root"]
-	got := mat4TransformPoint(matrix, modelPoint3{x: 1})
-	want := modelPoint3{x: 7}
-	if math.Abs(got.x-want.x) > 0.0001 || math.Abs(got.y-want.y) > 0.0001 || math.Abs(got.z-want.z) > 0.0001 {
-		t.Fatalf("animated point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.x, got.y, got.z, want.x, want.y, want.z)
+	got := mat4TransformPoint(matrix, scene.Point3{X: 1})
+	want := scene.Point3{X: 7}
+	if math.Abs(got.X-want.X) > 0.0001 || math.Abs(got.Y-want.Y) > 0.0001 || math.Abs(got.Z-want.Z) > 0.0001 {
+		t.Fatalf("animated point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.X, got.Y, got.Z, want.X, want.Y, want.Z)
 	}
 }
 
@@ -446,10 +447,10 @@ func TestBuildRSMNodeMatricesSlerpsAnimatedRotation(t *testing.T) {
 	}}
 
 	matrix := buildRSMNodeMatrices(rsm, 5)["root"]
-	got := mat4TransformPoint(matrix, modelPoint3{x: 1})
-	want := modelPoint3{y: 1}
-	if math.Abs(got.x-want.x) > 0.0001 || math.Abs(got.y-want.y) > 0.0001 || math.Abs(got.z-want.z) > 0.0001 {
-		t.Fatalf("animated rotation point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.x, got.y, got.z, want.x, want.y, want.z)
+	got := mat4TransformPoint(matrix, scene.Point3{X: 1})
+	want := scene.Point3{Y: 1}
+	if math.Abs(got.X-want.X) > 0.0001 || math.Abs(got.Y-want.Y) > 0.0001 || math.Abs(got.Z-want.Z) > 0.0001 {
+		t.Fatalf("animated rotation point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.X, got.Y, got.Z, want.X, want.Y, want.Z)
 	}
 }
 

@@ -2,11 +2,12 @@ package game
 
 import (
 	"fmt"
-	"math/rand/v2"
+	rand "math/rand/v2"
 	"strings"
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -123,7 +124,7 @@ func (m *WorldMode) cancelPetCaptureFromInput(ctx client.Context) bool {
 	return true
 }
 
-func (m *WorldMode) handlePetCaptureClick(ctx client.Context, projection sceneProjection, now time.Time) bool {
+func (m *WorldMode) handlePetCaptureClick(ctx client.Context, projection scene.Projection, now time.Time) bool {
 	if !m.pendingPetCapture.active || ctx.Input == nil || !ctx.Input.MouseJustPressed(input.MouseButtonLeft) {
 		return false
 	}
@@ -445,7 +446,7 @@ func (m *WorldMode) startPetPerformance(ctx client.Context, id uint32, data uint
 		action = spriteActionNonPCSpecial
 	}
 	now := time.Now()
-	duration := m.actorActionDuration(ctx, actor, action, defaultAttackAnimationDuration)
+	duration := m.actorActionDuration(ctx, actor, action, scene.DefaultAttackAnimationDuration)
 	m.startActorAnimation(ctx, id, action, now, duration)
 }
 
@@ -505,7 +506,7 @@ func (m *WorldMode) sendPetCommand(ctx client.Context, command uint8) {
 	}
 }
 
-func clickedPetTarget(ctx client.Context, projection sceneProjection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time, petID uint32) (worldstate.Actor, bool) {
+func clickedPetTarget(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time, petID uint32) (worldstate.Actor, bool) {
 	if petID == 0 {
 		return worldstate.Actor{}, false
 	}

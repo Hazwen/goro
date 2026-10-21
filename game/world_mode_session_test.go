@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
@@ -462,12 +464,12 @@ func TestActorDisplayLabelsIncludeGuildNameOnSecondLine(t *testing.T) {
 		t.Fatalf("local labels = %#v, want Kivutar / Knights", labels)
 	}
 
-	labels = actorDisplayLabels(ctx, worldstate.Actor{ID: 300, Name: "Alice", GuildName: "Knights", HasObjectType: true, ObjectType: actorObjectTypePC}, false)
+	labels = actorDisplayLabels(ctx, worldstate.Actor{ID: 300, Name: "Alice", GuildName: "Knights", HasObjectType: true, ObjectType: scene.ActorObjectTypePC}, false)
 	if len(labels) != 2 || labels[0] != "Alice" || labels[1] != "Knights" {
 		t.Fatalf("actor labels = %#v, want Alice / Knights", labels)
 	}
 
-	labels = actorDisplayLabels(ctx, worldstate.Actor{Name: "Poring", GuildName: "Knights", HasObjectType: true, ObjectType: actorObjectTypeMob}, false)
+	labels = actorDisplayLabels(ctx, worldstate.Actor{Name: "Poring", GuildName: "Knights", HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}, false)
 	if len(labels) != 1 || labels[0] != "Poring" {
 		t.Fatalf("mob labels = %#v, want Poring only", labels)
 	}
@@ -639,8 +641,8 @@ func TestActorDisplayNameDoesNotLabelUnnamedPlayerJob(t *testing.T) {
 
 func TestHoverActorServerNameLookupIncludesCompanions(t *testing.T) {
 	for _, actor := range []worldstate.Actor{
-		{HasObjectType: true, ObjectType: actorObjectTypeHomunculus},
-		{HasObjectType: true, ObjectType: actorObjectTypeMercenary},
+		{HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
+		{HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary},
 	} {
 		if !shouldUseServerNameForHoverActor(actor) {
 			t.Fatalf("companion actor should request server name: %+v", actor)
@@ -653,7 +655,7 @@ func TestHoveredActorDisplayNameUsesServerNameForNPC(t *testing.T) {
 	mode := &WorldMode{}
 	actor := worldstate.Actor{
 		Job:           84,
-		ObjectType:    actorObjectTypeNPC,
+		ObjectType:    scene.ActorObjectTypeNPC,
 		HasObjectType: true,
 	}
 
@@ -671,7 +673,7 @@ func TestHoveredActorDisplayNameUsesServerNameForMonster(t *testing.T) {
 	mode := &WorldMode{}
 	actor := worldstate.Actor{
 		Job:           1002,
-		ObjectType:    actorObjectTypeMob,
+		ObjectType:    scene.ActorObjectTypeMob,
 		HasObjectType: true,
 	}
 
@@ -820,7 +822,7 @@ func TestFormatPickupConsoleMessageFallback(t *testing.T) {
 
 func TestActorDisplayNameDoesNotLabelWarpPortal(t *testing.T) {
 	ctx := client.Context{Resources: &res.Manager{}}
-	for _, job := range []int16{actorJobWarpPortal, actorJobWarpPortalActive, actorJobWarpPortalWaiting} {
+	for _, job := range []int16{scene.ActorJobWarpPortal, scene.ActorJobWarpPortalActive, scene.ActorJobWarpPortalWaiting} {
 		actor := worldstate.Actor{Job: job}
 
 		if got := actorDisplayName(ctx, actor, false); got != "" {
@@ -1136,10 +1138,10 @@ func TestUseItemAckAddsItemUseEffect(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 
 	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 501, AID: 2000000, Amount: 2, Result: 1})
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.effects().Active) != 1 {
+		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.worldEffects[0]; effect.actorID != 2000000 || effect.effectID != effectPotionRed || effect.x != 10 || effect.y != 20 {
+	if effect := mode.effects().Active[0]; effect.ActorID != 2000000 || effect.EffectID != effects.PotionRed || effect.X != 10 || effect.Y != 20 {
 		t.Fatalf("effect = %+v", effect)
 	}
 }
@@ -1152,10 +1154,10 @@ func TestUseItemAckYellowPotionSchedulesHealSound(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 
 	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 503, AID: 2000000, Amount: 2, Result: 1})
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.effects().Active) != 1 {
+		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.worldEffects[0]; effect.actorID != 2000000 || effect.effectID != effectPotionYellow || effect.x != 10 || effect.y != 20 {
+	if effect := mode.effects().Active[0]; effect.ActorID != 2000000 || effect.EffectID != effects.PotionYellow || effect.X != 10 || effect.Y != 20 {
 		t.Fatalf("effect = %+v", effect)
 	}
 	if len(mode.scheduledSounds) != 1 {
@@ -1178,10 +1180,10 @@ func TestUseItemAckStatFoodSchedulesHealSound(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 
 	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 12041, AID: 2000000, Amount: 2, Result: 1})
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.effects().Active) != 1 {
+		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.worldEffects[0]; effect.actorID != 2000000 || effect.effectID != effectStatFoodSTR || effect.x != 10 || effect.y != 20 {
+	if effect := mode.effects().Active[0]; effect.ActorID != 2000000 || effect.EffectID != effects.StatFoodSTR || effect.X != 10 || effect.Y != 20 {
 		t.Fatalf("effect = %+v", effect)
 	}
 	if len(mode.scheduledSounds) != 1 {
@@ -1202,17 +1204,17 @@ func TestMercenaryPotionItemEffectsTargetVisibleMercenary(t *testing.T) {
 		itemID   uint16
 		effectID int
 	}{
-		{"red", 12184, effectFood},
-		{"blue", 12185, effectFood},
-		{"concentration", 12241, effectItemFast},
-		{"awakening", 12242, effectItemFast2},
-		{"berserk", 12243, effectItemFast3},
+		{"red", 12184, effects.Food},
+		{"blue", 12185, effects.Food},
+		{"concentration", 12241, effects.ItemFast},
+		{"awakening", 12242, effects.ItemFast2},
+		{"berserk", 12243, effects.ItemFast3},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			world := worldstate.New()
 			world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-			world.UpsertActor(worldstate.Actor{ID: 400, X: 13, Y: 24, HasObjectType: true, ObjectType: actorObjectTypeMercenary})
+			world.UpsertActor(worldstate.Actor{ID: 400, X: 13, Y: 24, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary})
 			sessionState := &session.Session{
 				AccountID: 2000000,
 				Mercenary: session.Companion{
@@ -1225,10 +1227,10 @@ func TestMercenaryPotionItemEffectsTargetVisibleMercenary(t *testing.T) {
 
 			mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: tc.itemID, AID: 2000000, Amount: 2, Result: 1})
 
-			if len(mode.worldEffects) != 1 {
-				t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+			if len(mode.effects().Active) != 1 {
+				t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 			}
-			if effect := mode.worldEffects[0]; effect.actorID != 400 || effect.effectID != tc.effectID || effect.x != 13 || effect.y != 24 {
+			if effect := mode.effects().Active[0]; effect.ActorID != 400 || effect.EffectID != tc.effectID || effect.X != 13 || effect.Y != 24 {
 				t.Fatalf("effect = %+v", effect)
 			}
 		})
@@ -1244,10 +1246,10 @@ func TestMercenaryPotionItemEffectsFallbackToAckActorWithoutMercenary(t *testing
 
 	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 12184, AID: 2000000, Amount: 2, Result: 1})
 
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.effects().Active) != 1 {
+		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.worldEffects[0]; effect.actorID != 2000000 || effect.effectID != effectFood || effect.x != 10 || effect.y != 20 {
+	if effect := mode.effects().Active[0]; effect.ActorID != 2000000 || effect.EffectID != effects.Food || effect.X != 10 || effect.Y != 20 {
 		t.Fatalf("effect = %+v", effect)
 	}
 }
@@ -1255,7 +1257,7 @@ func TestMercenaryPotionItemEffectsFallbackToAckActorWithoutMercenary(t *testing
 func TestRemoteMercenaryPotionItemEffectKeepsAckActor(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.UpsertActor(worldstate.Actor{ID: 400, X: 13, Y: 24, HasObjectType: true, ObjectType: actorObjectTypeMercenary})
+	world.UpsertActor(worldstate.Actor{ID: 400, X: 13, Y: 24, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary})
 	world.UpsertActor(worldstate.Actor{ID: 1100, X: 30, Y: 40})
 	sessionState := &session.Session{
 		AccountID: 2000000,
@@ -1269,10 +1271,10 @@ func TestRemoteMercenaryPotionItemEffectKeepsAckActor(t *testing.T) {
 
 	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 12184, AID: 1100, Amount: 2, Result: 1})
 
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.effects().Active) != 1 {
+		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.worldEffects[0]; effect.actorID != 1100 || effect.effectID != effectFood || effect.x != 30 || effect.y != 40 {
+	if effect := mode.effects().Active[0]; effect.ActorID != 1100 || effect.EffectID != effects.Food || effect.X != 30 || effect.Y != 40 {
 		t.Fatalf("effect = %+v", effect)
 	}
 }
@@ -1280,8 +1282,8 @@ func TestRemoteMercenaryPotionItemEffectKeepsAckActor(t *testing.T) {
 func TestUseItemAckDispatchesAllMappedItemEffectArrays(t *testing.T) {
 	const itemID uint16 = 65000
 	itemEffectSpecs[itemID] = itemEffectSpec{
-		effectIDs:         []int{effectPotionRed, effectBlessing},
-		effectIDsOnCaster: []int{effectEndure},
+		effectIDs:         []int{effects.PotionRed, effects.Blessing},
+		effectIDsOnCaster: []int{effects.Endure},
 	}
 	defer delete(itemEffectSpecs, itemID)
 
@@ -1299,16 +1301,16 @@ func TestUseItemAckDispatchesAllMappedItemEffectArrays(t *testing.T) {
 		x        int
 		y        int
 	}{
-		{effectPotionRed, 1100, 12, 22},
-		{effectBlessing, 1100, 12, 22},
-		{effectEndure, 1100, 12, 22},
+		{effects.PotionRed, 1100, 12, 22},
+		{effects.Blessing, 1100, 12, 22},
+		{effects.Endure, 1100, 12, 22},
 	}
-	if len(mode.worldEffects) != len(want) {
-		t.Fatalf("world effects = %d, want %d: %+v", len(mode.worldEffects), len(want), mode.worldEffects)
+	if len(mode.effects().Active) != len(want) {
+		t.Fatalf("world effects = %d, want %d: %+v", len(mode.effects().Active), len(want), mode.effects().Active)
 	}
 	for i, wantEffect := range want {
-		got := mode.worldEffects[i]
-		if got.effectID != wantEffect.effectID || got.actorID != wantEffect.actorID || got.x != wantEffect.x || got.y != wantEffect.y {
+		got := mode.effects().Active[i]
+		if got.EffectID != wantEffect.effectID || got.ActorID != wantEffect.actorID || got.X != wantEffect.x || got.Y != wantEffect.y {
 			t.Fatalf("effect %d = %+v, want %+v", i, got, wantEffect)
 		}
 	}
@@ -1325,10 +1327,10 @@ func TestButterflyWingEffectIsPinnedAtUsePosition(t *testing.T) {
 	world.Player.X = 30
 	world.Player.Y = 40
 
-	if len(mode.worldEffects) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.worldEffects))
+	if len(mode.effects().Active) != 1 {
+		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.worldEffects[0]; effect.actorID != 0 || effect.effectID != effectTeleportation || effect.x != 10 || effect.y != 20 {
+	if effect := mode.effects().Active[0]; effect.ActorID != 0 || effect.EffectID != effects.Teleportation || effect.X != 10 || effect.Y != 20 {
 		t.Fatalf("effect = %+v", effect)
 	}
 }

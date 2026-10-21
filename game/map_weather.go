@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 )
 
@@ -42,26 +44,26 @@ func mapWeatherEffectIDForMap(name string) int {
 	}
 	switch name {
 	case "xmas.rsw":
-		return effectSnow
+		return effects.Snow
 	case "gef_fild07.rsw", "mjolnir_01.rsw":
-		return effectCloud
+		return effects.Cloud
 	case "yuno.rsw", "gonryun.rsw", "gon_dun02.rsw", "ra_temsky.rsw", "que_temsky.rsw",
 		"sch_gld.rsw", "bat_fild02.rsw", "bat_b01.rsw", "bat_b02.rsw":
-		return effectCloud2
+		return effects.Cloud2
 	case "valkyrie.rsw", "rwc01.rsw", "himinn.rsw",
 		"que_qsch01.rsw", "que_qsch02.rsw", "que_qsch03.rsw", "que_qsch04.rsw", "que_qsch05.rsw",
 		"que_qaru01.rsw", "que_qaru02.rsw", "que_qaru03.rsw", "que_qaru04.rsw", "que_qaru05.rsw":
-		return effectCloud3
+		return effects.Cloud3
 	case "airplane.rsw", "airplane_01.rsw":
-		return effectCloud5
+		return effects.Cloud5
 	case "einbroch.rsw":
-		return effectCloud4
+		return effects.Cloud4
 	case "thana_boss.rsw", "moc_fild22.rsw", "moc_fild22b.rsw":
-		return effectCloud6
+		return effects.Cloud6
 	case "6@tower.rsw":
-		return effectCloud7
+		return effects.Cloud7
 	case "5@tower.rsw":
-		return effectCloud8
+		return effects.Cloud8
 	default:
 		return 0
 	}
@@ -81,7 +83,7 @@ func normalizeMapNameForWeather(name string) string {
 	return name
 }
 
-func (m *WorldMode) drawMapWeatherEffects(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) {
+func (m *WorldMode) drawMapWeatherEffects(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
 	if screen == nil || ctx.World == nil || ctx.World.GND == nil {
 		return
 	}
@@ -105,37 +107,37 @@ func (m *WorldMode) drawMapWeatherEffects(screen *render.Frame, ctx client.Conte
 	}
 }
 
-func (m *WorldMode) drawLoopingMapWeatherEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effectID int, now time.Time) {
-	spec, ok := worldEffectSpecForID(effectID)
+func (m *WorldMode) drawLoopingMapWeatherEffect(screen *render.Frame, ctx client.Context, projection scene.Projection, effectID int, now time.Time) {
+	spec, ok := effects.Lookup(effectID)
 	if !ok {
 		return
 	}
-	starts := loopingMapWeatherEffectStart(effectID, spec.duration, now)
-	effect := worldEffect{
-		effectID: effectID,
-		actorID:  uint32(effectID),
-		starts:   starts,
-		expires:  now.Add(24 * time.Hour),
-		duration: spec.duration,
-		x:        int(math.Round(projection.playerX)),
-		y:        int(math.Round(projection.playerY)),
+	starts := loopingMapWeatherEffectStart(effectID, spec.Duration, now)
+	effect := effects.Instance{
+		EffectID: effectID,
+		ActorID:  uint32(effectID),
+		Starts:   starts,
+		Expires:  now.Add(24 * time.Hour),
+		Duration: spec.Duration,
+		X:        int(math.Round(projection.PlayerX)),
+		Y:        int(math.Round(projection.PlayerY)),
 	}
-	worldX := projection.playerX
-	worldY := projection.playerY
-	worldZ := terrainHeightAt(ctx.World, worldX-0.5, worldY-0.5) + 1
-	for componentIndex, component := range spec.components {
-		duration := m.worldEffectResolvedComponentDuration(ctx, spec, component)
+	worldX := projection.PlayerX
+	worldY := projection.PlayerY
+	worldZ := scene.TerrainHeightAt(ctx.World, worldX-0.5, worldY-0.5) + 1
+	for componentIndex, component := range spec.Components {
+		duration := m.effects().WorldEffectResolvedComponentDuration(ctx, spec, component)
 		if duration <= 0 {
-			duration = spec.duration
+			duration = spec.Duration
 		}
 		componentStarts := loopingMapWeatherEffectStart(effectID+componentIndex*17, duration, now)
-		effect.starts = componentStarts
-		progress := worldEffectComponentProgress(componentStarts, duration, now)
-		m.drawWorldEffectComponent(screen, ctx, projection, effect, component, componentIndex, worldX, worldY, worldZ, progress, duration, now)
+		effect.Starts = componentStarts
+		progress := effects.WorldEffectComponentProgress(componentStarts, duration, now)
+		m.effects().DrawWorldEffectComponent(screen, ctx, projection, effect, component, componentIndex, worldX, worldY, worldZ, progress, duration, now)
 	}
 }
 
-func (m *WorldMode) drawFireworksWeather(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) {
+func (m *WorldMode) drawFireworksWeather(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
 	key := normalizeMapNameForWeather(ctx.World.MapName)
 	centerX, centerY := mapWeatherFireworkCenter(ctx.World, projection, now)
 	m.mapWeatherPokJuk.ensure(key, ctx.World, centerX, centerY, now)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/session"
 	gameui "github.com/kivutar/goro/ui"
@@ -217,7 +218,7 @@ func (m *WorldMode) scriptSkill(ctx client.Context, id uint32, skillArg lua.LVal
 		skill.Level = requestedLevel
 	}
 	if isSelfTargetSkill(skill) {
-		if id != localSkillTarget(ctx) {
+		if id != scene.LocalSkillTarget(ctx) {
 			return false
 		}
 		if err := m.skills().Use(ctx, skill, "script"); err != nil {
@@ -226,7 +227,7 @@ func (m *WorldMode) scriptSkill(ctx client.Context, id uint32, skillArg lua.LVal
 		}
 		return true
 	}
-	actor, ok, _ := actorForCombatID(ctx, id)
+	actor, ok, _ := scene.ActorForCombatID(ctx, id)
 	_, dead := m.actorDeaths[id]
 	if !ok || dead || !actorCanBeSkillTargeted(ctx, skill, actor) {
 		glog.Debugf("script skill invalid target skill=%d target=%d", skill.ID, id)
@@ -353,7 +354,7 @@ func luaPlayerList(L *lua.LState, ctx client.Context, mode *WorldMode) *lua.LTab
 	playerX, playerY := currentPlayerCell(ctx, time.Now())
 	ids := make([]int, 0, len(ctx.World.Actors))
 	for id, actor := range ctx.World.Actors {
-		if actorRepresentsPlayer(actor) && !isLocalActor(ctx, actor.ID) {
+		if scene.ActorRepresentsPlayer(actor) && !scene.IsLocalActor(ctx, actor.ID) {
 			ids = append(ids, int(id))
 		}
 	}
@@ -389,7 +390,7 @@ func luaCompanionList(L *lua.LState, ctx client.Context, mode *WorldMode) *lua.L
 	playerX, playerY := currentPlayerCell(ctx, time.Now())
 	ids := make([]int, 0, 2)
 	for id, actor := range ctx.World.Actors {
-		if actor.HasObjectType && (actor.ObjectType == actorObjectTypeHomunculus || actor.ObjectType == actorObjectTypeMercenary) {
+		if actor.HasObjectType && (actor.ObjectType == scene.ActorObjectTypeHomunculus || actor.ObjectType == scene.ActorObjectTypeMercenary) {
 			ids = append(ids, int(id))
 		}
 	}
@@ -398,7 +399,7 @@ func luaCompanionList(L *lua.LState, ctx client.Context, mode *WorldMode) *lua.L
 		actor := ctx.World.Actors[uint32(id)]
 		row := luaActorTable(L, actor, playerX, playerY)
 		kind := "homunculus"
-		if actor.ObjectType == actorObjectTypeMercenary {
+		if actor.ObjectType == scene.ActorObjectTypeMercenary {
 			kind = "mercenary"
 		}
 		row.RawSetString("kind", lua.LString(kind))
@@ -436,10 +437,10 @@ func luaCompanionOwnedByPlayer(s *session.Session, actor worldstate.Actor) bool 
 	if s == nil {
 		return false
 	}
-	if actor.ObjectType == actorObjectTypeHomunculus {
+	if actor.ObjectType == scene.ActorObjectTypeHomunculus {
 		return actor.ID == s.Homunculus.ID
 	}
-	return actor.ObjectType == actorObjectTypeMercenary && actor.ID == s.Mercenary.ID
+	return actor.ObjectType == scene.ActorObjectTypeMercenary && actor.ID == s.Mercenary.ID
 }
 
 func luaPartyMember(s *session.Session, actorID uint32) *session.PartyMember {
@@ -504,7 +505,7 @@ func luaPlayerTable(L *lua.LState, ctx client.Context) *lua.LTable {
 	hp, maxHP := scriptHP(ctx)
 	sp, maxSP := scriptSP(ctx)
 	if ctx.Session != nil {
-		result.RawSetString("id", lua.LNumber(localSkillTarget(ctx)))
+		result.RawSetString("id", lua.LNumber(scene.LocalSkillTarget(ctx)))
 	}
 	result.RawSetString("x", lua.LNumber(x))
 	result.RawSetString("y", lua.LNumber(y))
@@ -513,7 +514,7 @@ func luaPlayerTable(L *lua.LState, ctx client.Context) *lua.LTable {
 	result.RawSetString("sp", lua.LNumber(sp))
 	result.RawSetString("max_sp", lua.LNumber(maxSP))
 	result.RawSetString("dead", lua.LBool(playerIsDead(ctx)))
-	result.RawSetString("moving", lua.LBool(ctx.World != nil && actorIsMovingAt(ctx.World.Player, now)))
+	result.RawSetString("moving", lua.LBool(ctx.World != nil && scene.ActorIsMovingAt(ctx.World.Player, now)))
 	return result
 }
 

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -72,7 +74,7 @@ type mapWeatherCloud struct {
 
 func weatherCloudParamsForEffect(effectID int) (mapWeatherCloudParams, bool) {
 	switch effectID {
-	case effectCloud, effectCloud2, effectCloud3, effectCloud5, effectCloud6, effectCloud7, effectCloud8:
+	case effects.Cloud, effects.Cloud2, effects.Cloud3, effects.Cloud5, effects.Cloud6, effects.Cloud7, effects.Cloud8:
 		params := mapWeatherCloudParams{
 			effectID:     effectID,
 			textureFiles: []string{"effect/cloud4.tga", "effect/cloud1.tga", "effect/cloud2.tga"},
@@ -97,40 +99,40 @@ func weatherCloudParamsForEffect(effectID int) (mapWeatherCloudParams, bool) {
 			useGround:    false,
 		}
 		switch effectID {
-		case effectCloud, effectCloud3, effectCloud6:
+		case effects.Cloud, effects.Cloud3, effects.Cloud6:
 			params.count = 160
 			params.offsetMin = 0
 			params.radius = 150 * weatherCloudClassicUnit
 			params.alphaMax = 160.0 / 255.0
 			params.fadeOut = 160 * time.Second / weatherCloudFrameRate
 			params.zOffset = -10 * weatherCloudClassicUnit
-			if effectID == effectCloud {
+			if effectID == effects.Cloud {
 				// Original mountain clouds sit at Y=-125..-115 and only
 				// gain opacity while the player is above Y=-152.
 				params.zOffset = 115 * weatherCloudClassicUnit
 				params.minPlayerZ = 152 * weatherCloudClassicUnit
-			} else if effectID == effectCloud6 {
+			} else if effectID == effects.Cloud6 {
 				params.count = 320
 				params.zOffset = -30 * weatherCloudClassicUnit
 				params.tint = color.RGBA{R: 94, A: 255}
 				params.driftSpeed = 0.035 * weatherCloudFrameRate * weatherCloudClassicUnit
 			}
-		case effectCloud5:
+		case effects.Cloud5:
 			// The original airship variant uses more clouds and a faster,
 			// consistently positive X drift to convey the ship's movement.
 			params.count = 320
 			params.forwardDriftSpeed = 0.20 * weatherCloudFrameRate * weatherCloudClassicUnit
-		case effectCloud7:
+		case effects.Cloud7:
 			params.count = 320
 			params.tint = color.RGBA{A: 255}
-		case effectCloud8:
+		case effects.Cloud8:
 			params.count = 320
 			params.tint = color.RGBA{R: 255, G: 180, B: 180, A: 255}
 		}
 		return params, true
-	case effectCloud4:
+	case effects.Cloud4:
 		return mapWeatherCloudParams{
-			effectID:     effectCloud4,
+			effectID:     effects.Cloud4,
 			textureFiles: []string{"effect/fog1.tga", "effect/fog2.tga", "effect/fog3.tga"},
 			tint:         color.RGBA{R: 252, G: 171, B: 143, A: 255},
 			alphaMax:     weatherCloudClassicAlphaMax,
@@ -157,7 +159,7 @@ func weatherCloudParamsForEffect(effectID int) (mapWeatherCloudParams, bool) {
 	}
 }
 
-func (m *WorldMode) drawMapWeatherCloudEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effectID int, now time.Time) {
+func (m *WorldMode) drawMapWeatherCloudEffect(screen *render.Frame, ctx client.Context, projection scene.Projection, effectID int, now time.Time) {
 	params, ok := weatherCloudParamsForEffect(effectID)
 	if !ok || ctx.World == nil {
 		return
@@ -166,7 +168,7 @@ func (m *WorldMode) drawMapWeatherCloudEffect(screen *render.Frame, ctx client.C
 	centerX, centerY := mapWeatherCloudCenter(ctx.World, projection, now)
 	m.mapWeatherCloud.ensure(key, params, ctx.World, centerX, centerY, now)
 	m.mapWeatherCloud.update(params, ctx.World, centerX, centerY, now)
-	options := texturedEffectBillboardDrawOptions(params.additive, params.overlay)
+	options := effects.TexturedEffectBillboardDrawOptions(params.additive, params.overlay)
 	options.DisableFog = params.disableFog
 	for index := range m.mapWeatherCloud.clouds {
 		cloud := &m.mapWeatherCloud.clouds[index]
@@ -174,14 +176,14 @@ func (m *WorldMode) drawMapWeatherCloudEffect(screen *render.Frame, ctx client.C
 		if alpha <= 0 {
 			continue
 		}
-		texture := m.effectFileTextureWithBlackKey(ctx.Resources, params.textureFiles[cloud.textureIndex%len(params.textureFiles)], params.blackKey)
+		texture := m.effects().EffectFileTextureWithBlackKey(ctx.Resources, params.textureFiles[cloud.textureIndex%len(params.textureFiles)], params.blackKey)
 		if texture == nil {
 			continue
 		}
 		size := cloud.size * (1 + 0.05*math.Sin(cloud.breath))
 		tint := params.tint
-		tint.A = uint8(clampFloat(alpha, 0, 1) * 255)
-		drawTexturedEffectBillboardRotatedXYWithOptions(screen, projection, texture, cloud.x, cloud.y, cloud.z, size, size, 0, tint, options)
+		tint.A = uint8(scene.ClampFloat(alpha, 0, 1) * 255)
+		effects.DrawTexturedEffectBillboardRotatedXYWithOptions(screen, projection, texture, cloud.x, cloud.y, cloud.z, size, size, 0, tint, options)
 	}
 	drawMapWeatherScreenHaze(screen, params.screenHaze)
 }
@@ -208,12 +210,12 @@ func drawMapWeatherScreenHaze(screen *render.Frame, tint color.RGBA) {
 	screen.DrawTrianglesOwned(vertices, []uint16{0, 1, 2, 2, 1, 3}, render.WhiteImage(), &render.DrawTrianglesOptions{Filter: render.FilterNearest, Address: render.AddressUnsafe})
 }
 
-func mapWeatherCloudCenter(world *worldstate.World, projection sceneProjection, now time.Time) (float64, float64) {
+func mapWeatherCloudCenter(world *worldstate.World, projection scene.Projection, now time.Time) (float64, float64) {
 	if world == nil {
-		return projection.playerX, projection.playerY
+		return projection.PlayerX, projection.PlayerY
 	}
-	playerX, playerY := actorRenderPosition(world.Player, now)
-	return cellCenter(playerX), cellCenter(playerY)
+	playerX, playerY := scene.ActorRenderPosition(world.Player, now)
+	return scene.CellCenter(playerX), scene.CellCenter(playerY)
 }
 
 func (s *mapWeatherCloudState) ensure(key string, params mapWeatherCloudParams, world *worldstate.World, centerX, centerY float64, now time.Time) {
@@ -261,7 +263,7 @@ func (s *mapWeatherCloudState) update(params mapWeatherCloudParams, world *world
 				cloud.alpha += params.alphaMax * float64(rampStep) / float64(params.ramp)
 			}
 			fadeStep := max(cloud.age-cloud.rotStart, 0) - max(previousAge-cloud.rotStart, 0)
-			cloud.alpha = clampFloat(cloud.alpha-params.alphaMax*float64(fadeStep)/float64(params.fadeOut), 0, params.alphaMax)
+			cloud.alpha = scene.ClampFloat(cloud.alpha-params.alphaMax*float64(fadeStep)/float64(params.fadeOut), 0, params.alphaMax)
 			recycle = cloud.age > cloud.rotStart && cloud.alpha == 0
 		}
 		if recycle {
@@ -291,7 +293,7 @@ func (s *mapWeatherCloudState) spawn(index int, params mapWeatherCloudParams, wo
 	ground := 0.0
 	zJitter := weatherCloudHash01(index, generation, 3) * params.zRand
 	if params.useGround {
-		ground = terrainHeightAtRenderPoint(world, cloud.x, cloud.y)
+		ground = scene.TerrainHeightAtRenderPoint(world, cloud.x, cloud.y)
 	}
 	cloud.z = ground + params.zOffset + zJitter
 	cloud.size = params.sizeBase + weatherCloudHash01(index, generation, 4)*params.sizeRand
@@ -324,7 +326,7 @@ func weatherCloudPlacementOffset(index, generation, distanceSalt, signSalt int, 
 }
 
 func weatherCloudPhaseRate(index, generation, salt int) float64 {
-	rate := degreesToRadians(weatherCloudFrameRate)
+	rate := scene.DegreesToRadians(weatherCloudFrameRate)
 	if weatherCloudHash01(index, generation, salt) < 0.5 {
 		return -rate
 	}
@@ -348,7 +350,7 @@ func mapWeatherCloudAlpha(cloud mapWeatherCloud, params mapWeatherCloudParams) f
 }
 
 func weatherCloudAltitudeAllowed(params mapWeatherCloudParams, world *worldstate.World, centerX, centerY float64) bool {
-	return params.minPlayerZ == 0 || terrainHeightAtRenderPoint(world, centerX, centerY) > params.minPlayerZ
+	return params.minPlayerZ == 0 || scene.TerrainHeightAtRenderPoint(world, centerX, centerY) > params.minPlayerZ
 }
 
 func weatherCloudHashSigned(index, generation, salt int) float64 {

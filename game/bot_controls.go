@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -46,7 +47,7 @@ func registerLuaControlsAPI(state *lua.LState, api *lua.LTable, bot *luaScript) 
 		"rotate_camera": func(L *lua.LState) int {
 			ctx := bot.ctx
 			yaw, pitch := float64(L.CheckNumber(1)), float64(L.CheckNumber(2))
-			if allowed() && !cameraRotationLockedForMap(ctx) && isFinite(yaw) && isFinite(pitch) {
+			if allowed() && !scene.CameraRotationLockedForMap(ctx) && scene.IsFinite(yaw) && scene.IsFinite(pitch) {
 				m.camera.Rotate(yaw)
 				m.camera.Tilt(pitch)
 			}
@@ -55,7 +56,7 @@ func registerLuaControlsAPI(state *lua.LState, api *lua.LTable, bot *luaScript) 
 		"zoom_camera": func(L *lua.LState) int {
 			ctx := bot.ctx
 			delta := float64(L.CheckNumber(1))
-			if allowed() && !cameraZoomLockedForMap(ctx) && isFinite(delta) {
+			if allowed() && !cameraZoomLockedForMap(ctx) && scene.IsFinite(delta) {
 				m.camera.ZoomByDelta(delta)
 			}
 			return 0
@@ -66,8 +67,8 @@ func registerLuaControlsAPI(state *lua.LState, api *lua.LTable, bot *luaScript) 
 				L.Push(lua.LNumber(0))
 				return 1
 			}
-			yaw := cameraYawForMap(ctx)
-			if !cameraRotationLockedForMap(ctx) {
+			yaw := scene.CameraYawForMap(ctx)
+			if !scene.CameraRotationLockedForMap(ctx) {
 				yaw += m.camera.yawOffset
 			}
 			L.Push(lua.LNumber(yaw))

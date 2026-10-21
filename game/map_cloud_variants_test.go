@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
@@ -18,14 +21,14 @@ import (
 // Automatic cloud assignments in the 2008-09-10 client, cross-checked against
 // classic-ro-client. Keep this explicit so missing or overbroad routing fails.
 var referenceCloudMaps = map[int][]string{
-	effectCloud:  {"gef_fild07", "mjolnir_01"},
-	effectCloud2: {"yuno", "gonryun", "gon_dun02", "ra_temsky", "que_temsky", "sch_gld", "bat_fild02", "bat_b01", "bat_b02"},
-	effectCloud3: {"valkyrie", "rwc01", "himinn", "que_qsch01", "que_qsch02", "que_qsch03", "que_qsch04", "que_qsch05", "que_qaru01", "que_qaru02", "que_qaru03", "que_qaru04", "que_qaru05"},
-	effectCloud4: {"einbroch"},
-	effectCloud5: {"airplane", "airplane_01"},
-	effectCloud6: {"thana_boss", "moc_fild22", "moc_fild22b"},
-	effectCloud7: {"6@tower"},
-	effectCloud8: {"5@tower"},
+	effects.Cloud:  {"gef_fild07", "mjolnir_01"},
+	effects.Cloud2: {"yuno", "gonryun", "gon_dun02", "ra_temsky", "que_temsky", "sch_gld", "bat_fild02", "bat_b01", "bat_b02"},
+	effects.Cloud3: {"valkyrie", "rwc01", "himinn", "que_qsch01", "que_qsch02", "que_qsch03", "que_qsch04", "que_qsch05", "que_qaru01", "que_qaru02", "que_qaru03", "que_qaru04", "que_qaru05"},
+	effects.Cloud4: {"einbroch"},
+	effects.Cloud5: {"airplane", "airplane_01"},
+	effects.Cloud6: {"thana_boss", "moc_fild22", "moc_fild22b"},
+	effects.Cloud7: {"6@tower"},
+	effects.Cloud8: {"5@tower"},
 }
 
 func TestAllOriginalMapCloudAssignments(t *testing.T) {
@@ -39,8 +42,8 @@ func TestAllOriginalMapCloudAssignments(t *testing.T) {
 		}
 	}
 	for name, want := range map[string]int{
-		"0005@tower.gat": effectCloud8, "DATA/0016@TOWER.RSW": effectCloud7,
-		"1235@tower": effectCloud8, "abc6@tower": effectCloud7,
+		"0005@tower.gat": effects.Cloud8, "DATA/0016@TOWER.RSW": effects.Cloud7,
+		"1235@tower": effects.Cloud8, "abc6@tower": effects.Cloud7,
 		"4@tower": 0, "0014@tower": 0, "15@tower": 0, "00005@tower": 0,
 		"0005@tower_extra": 0, "que_qsch06": 0, "que_qaru00": 0,
 		"gef_fild06": 0, "mjolnir_02": 0, "moc_fild21": 0,
@@ -58,11 +61,11 @@ func TestAdditionalCloudVariantsMatchOriginalPlacementAndColor(t *testing.T) {
 		zMin, zMax, offsetMin, offsetMax, alpha, drift float64
 		tint                                           color.RGBA
 	}{
-		{effectCloud, 160, 23, 25, 0, 30, 160.0 / 255, 0.6, color.RGBA{255, 255, 255, 255}},
-		{effectCloud3, 160, -2, 0, 0, 30, 160.0 / 255, 0.6, color.RGBA{255, 255, 255, 255}},
-		{effectCloud6, 320, -6, -4, 0, 30, 160.0 / 255, 0.42, color.RGBA{94, 0, 0, 255}},
-		{effectCloud7, 320, -10, -8, 5, 45, 240.0 / 255, 0.6, color.RGBA{0, 0, 0, 255}},
-		{effectCloud8, 320, -10, -8, 5, 45, 240.0 / 255, 0.6, color.RGBA{255, 180, 180, 255}},
+		{effects.Cloud, 160, 23, 25, 0, 30, 160.0 / 255, 0.6, color.RGBA{255, 255, 255, 255}},
+		{effects.Cloud3, 160, -2, 0, 0, 30, 160.0 / 255, 0.6, color.RGBA{255, 255, 255, 255}},
+		{effects.Cloud6, 320, -6, -4, 0, 30, 160.0 / 255, 0.42, color.RGBA{94, 0, 0, 255}},
+		{effects.Cloud7, 320, -10, -8, 5, 45, 240.0 / 255, 0.6, color.RGBA{0, 0, 0, 255}},
+		{effects.Cloud8, 320, -10, -8, 5, 45, 240.0 / 255, 0.6, color.RGBA{255, 180, 180, 255}},
 	}
 	world := &worldstate.World{GND: testGNDWithTopHeights(64, 64, func(_, _ int) [4]float32 {
 		return [4]float32{100, 100, 100, 100}
@@ -107,7 +110,7 @@ func cloudTestWorldAtOriginalHeight(t *testing.T, height float32) *worldstate.Wo
 }
 
 func TestMountainCloudAltitudeUsesGATUnitsAndCompletesFade(t *testing.T) {
-	params, _ := weatherCloudParamsForEffect(effectCloud)
+	params, _ := weatherCloudParamsForEffect(effects.Cloud)
 	for _, height := range []float32{-151.99, -152, -152.01} {
 		world := cloudTestWorldAtOriginalHeight(t, height)
 		now := time.Unix(100, 0)
@@ -154,7 +157,7 @@ func TestMountainCloudAltitudeUsesGATUnitsAndCompletesFade(t *testing.T) {
 }
 
 func TestEinbrochCloudsSpawnAboveTerrain(t *testing.T) {
-	params, _ := weatherCloudParamsForEffect(effectCloud4)
+	params, _ := weatherCloudParamsForEffect(effects.Cloud4)
 	world := &worldstate.World{GND: testGNDWithTopHeights(64, 64, func(_, _ int) [4]float32 { return [4]float32{10, 10, 10, 10} })}
 	state := mapWeatherCloudState{}
 	state.ensure("einbroch.rsw", params, world, 64, 64, time.Unix(100, 0))
@@ -166,7 +169,7 @@ func TestEinbrochCloudsSpawnAboveTerrain(t *testing.T) {
 }
 
 func TestAllCloudMapsRenderRealData(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	mode := &WorldMode{}
 	for effectID, names := range referenceCloudMaps {
 		for _, mapName := range names {
@@ -188,7 +191,7 @@ func TestAllCloudMapsRenderRealData(t *testing.T) {
 						continue
 					}
 					x, y := i%gat.Width, i/gat.Width
-					if z := terrainHeightAt(world, float64(x), float64(y)); z > best {
+					if z := scene.TerrainHeightAt(world, float64(x), float64(y)); z > best {
 						best = z
 						world.Player.X = x
 						world.Player.Y = y
@@ -198,7 +201,7 @@ func TestAllCloudMapsRenderRealData(t *testing.T) {
 					t.Fatal("no walkable cells")
 				}
 				ctx := client.Context{World: world, Resources: manager}
-				projection := newSceneProjectionForTarget(800, 600, float64(world.Player.X)+0.5, float64(world.Player.Y)+0.5, best)
+				projection := testutil.Projection(800, 600, float64(world.Player.X)+0.5, float64(world.Player.Y)+0.5, best)
 				frame := render.NewFrame(800, 600)
 				now := time.Unix(100, 0)
 				mode.drawMapWeatherEffects(frame, ctx, projection, now)

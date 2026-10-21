@@ -7,13 +7,16 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
 )
 
 func TestAirshipCloudsDriftForwardForBothPhaseSigns(t *testing.T) {
 	now := time.Unix(100, 0)
-	for _, effectID := range []int{effectCloud5, effectCloud2, effectCloud4} {
+	for _, effectID := range []int{effects.Cloud5, effects.Cloud2, effects.Cloud4} {
 		params, ok := weatherCloudParamsForEffect(effectID)
 		if !ok {
 			t.Fatalf("missing cloud profile %d", effectID)
@@ -25,10 +28,10 @@ func TestAirshipCloudsDriftForwardForBothPhaseSigns(t *testing.T) {
 			state.update(params, nil, 0, 0, now.Add(100*time.Millisecond))
 			wantX, wantY := sign*0.06, -0.06
 			switch effectID {
-			case effectCloud5:
+			case effects.Cloud5:
 				// Original Cloud(4): +0.20*abs(sin(x)) and 0.05*sin(y) per frame.
 				wantX = 0.24
-			case effectCloud4:
+			case effects.Cloud4:
 				wantX, wantY = sign*0.018, -0.018
 			}
 			if dx, dy := state.clouds[0].x-10, state.clouds[0].y-20; math.Abs(dx-wantX) > 1e-9 || math.Abs(dy-wantY) > 1e-9 {
@@ -39,7 +42,7 @@ func TestAirshipCloudsDriftForwardForBothPhaseSigns(t *testing.T) {
 }
 
 func TestAirshipCloudsUseClassicDensityAndPlacement(t *testing.T) {
-	params, ok := weatherCloudParamsForEffect(effectCloud5)
+	params, ok := weatherCloudParamsForEffect(effects.Cloud5)
 	if !ok {
 		t.Fatal("airship cloud profile missing")
 	}
@@ -60,7 +63,7 @@ func TestAirshipCloudsUseClassicDensityAndPlacement(t *testing.T) {
 }
 
 func TestAirshipCloudsRenderAndResetRealData(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	mode := &WorldMode{}
 	for _, mapName := range []string{"airplane", "airplane_01"} {
 		t.Run(mapName, func(t *testing.T) {
@@ -76,12 +79,12 @@ func TestAirshipCloudsRenderAndResetRealData(t *testing.T) {
 			world.MapName, world.GND, world.GAT = mapName, gnd, gat
 			world.Player = worldstate.Actor{X: 239, Y: 62}
 			ctx := client.Context{World: world, Resources: manager}
-			projection := newSceneProjectionForTarget(800, 600, 239.5, 62.5, terrainHeightAt(world, 239, 62))
+			projection := testutil.Projection(800, 600, 239.5, 62.5, scene.TerrainHeightAt(world, 239, 62))
 			frame := render.NewFrame(800, 600)
 			now := time.Unix(100, 0)
 			mode.drawMapWeatherEffects(frame, ctx, projection, now)
 			mode.drawMapWeatherEffects(frame, ctx, projection, now.Add(100*time.Millisecond))
-			if mode.mapWeatherCloud.effectID != effectCloud5 || mode.mapWeatherCloud.key != mapName+".rsw" {
+			if mode.mapWeatherCloud.effectID != effects.Cloud5 || mode.mapWeatherCloud.key != mapName+".rsw" {
 				t.Fatalf("wrong map cloud state: key=%s effect=%d", mode.mapWeatherCloud.key, mode.mapWeatherCloud.effectID)
 			}
 			commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")

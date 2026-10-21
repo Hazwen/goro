@@ -1,57 +1,59 @@
 package game
 
 import (
-	"github.com/kivutar/goro/client"
 	"math"
 	"time"
 
+	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 )
 
-func (m *WorldMode) drawRSWEffects(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) {
+func (m *WorldMode) drawRSWEffects(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
 	if screen == nil || ctx.World == nil || ctx.World.RSW == nil || ctx.World.GND == nil {
 		return
 	}
 	radius := rsmRenderRadius()
 	for index, effect := range ctx.World.RSW.Effects {
 		effectID := int(effect.ID)
-		spec, ok := worldEffectSpecForID(effectID)
+		spec, ok := effects.Lookup(effectID)
 		if !ok {
 			continue
 		}
 		worldX, worldY, worldZ := rswEffectWorldPosition(ctx.World.GND, effect)
-		if math.Abs(worldX-projection.playerX) > radius*2 || math.Abs(worldY-projection.playerY) > radius*2 {
+		if math.Abs(worldX-projection.PlayerX) > radius*2 || math.Abs(worldY-projection.PlayerY) > radius*2 {
 			continue
 		}
 		m.drawRSWEffect(screen, ctx, projection, spec, effectID, index, effect, worldX, worldY, worldZ, now)
 	}
 }
 
-func (m *WorldMode) drawRSWEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, spec worldEffectSpec, effectID int, index int, rswEffect res.RSWEffect, worldX, worldY, worldZ float64, now time.Time) {
-	effect := worldEffect{
-		effectID: effectID,
-		x:        int(math.Round(worldX)),
-		y:        int(math.Round(worldY)),
-		expires:  now.Add(24 * time.Hour),
-		duration: 24 * time.Hour,
+func (m *WorldMode) drawRSWEffect(screen *render.Frame, ctx client.Context, projection scene.Projection, spec effects.Spec, effectID int, index int, rswEffect res.RSWEffect, worldX, worldY, worldZ float64, now time.Time) {
+	effect := effects.Instance{
+		EffectID: effectID,
+		X:        int(math.Round(worldX)),
+		Y:        int(math.Round(worldY)),
+		Expires:  now.Add(24 * time.Hour),
+		Duration: 24 * time.Hour,
 	}
-	for componentIndex, component := range spec.components {
+	for componentIndex, component := range spec.Components {
 		component = mapEffectComponent(component)
-		duration := m.worldEffectResolvedComponentDuration(ctx, spec, component)
+		duration := m.effects().WorldEffectResolvedComponentDuration(ctx, spec, component)
 		if duration <= 0 {
 			duration = 600 * time.Millisecond
 		}
 		starts := loopingRSWEffectStart(rswEffect, index, duration, now)
-		effect.starts = starts
-		progress := worldEffectComponentProgress(starts, duration, now)
-		m.drawWorldEffectComponent(screen, ctx, projection, effect, component, componentIndex, worldX, worldY, worldZ, progress, duration, now)
+		effect.Starts = starts
+		progress := effects.WorldEffectComponentProgress(starts, duration, now)
+		m.effects().DrawWorldEffectComponent(screen, ctx, projection, effect, component, componentIndex, worldX, worldY, worldZ, progress, duration, now)
 	}
 }
 
-func mapEffectComponent(component worldEffectComponent) worldEffectComponent {
-	if component.kind == effectComponent3D && component.spriteFile != "" {
-		component.worldSizedSprite = true
+func mapEffectComponent(component effects.Component) effects.Component {
+	if component.Kind == effects.Component3D && component.SpriteFile != "" {
+		component.WorldSizedSprite = true
 	}
 	return component
 }

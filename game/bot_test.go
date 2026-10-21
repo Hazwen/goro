@@ -13,6 +13,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -81,10 +82,10 @@ end
 	}
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: sess.CharID, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 12, Y: 21, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Alice", X: 9, Y: 22, Job: db.JobAcolyte, ObjectType: actorObjectTypePC, HasObjectType: true}
-	world.Actors[302] = worldstate.Actor{ID: 302, Name: "Lif", X: 11, Y: 20, ObjectType: actorObjectTypeHomunculus, HasObjectType: true}
-	world.Actors[303] = worldstate.Actor{ID: 303, Name: "David", X: 10, Y: 22, ObjectType: actorObjectTypeMercenary, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 12, Y: 21, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Alice", X: 9, Y: 22, Job: db.JobAcolyte, ObjectType: scene.ActorObjectTypePC, HasObjectType: true}
+	world.Actors[302] = worldstate.Actor{ID: 302, Name: "Lif", X: 11, Y: 20, ObjectType: scene.ActorObjectTypeHomunculus, HasObjectType: true}
+	world.Actors[303] = worldstate.Actor{ID: 303, Name: "David", X: 10, Y: 22, ObjectType: scene.ActorObjectTypeMercenary, HasObjectType: true}
 	world.Items[400] = worldstate.FloorItem{ID: 400, ItemID: 501, X: 11, Y: 20, Amount: 2, Identified: true}
 
 	mode := &WorldMode{}
@@ -492,9 +493,9 @@ func TestLuaBotHeldFightsNearbyEnemiesInDistanceOrder(t *testing.T) {
 	world := worldstate.New()
 	world.GAT = flatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 12, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Drops", X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	world.Actors[302] = worldstate.Actor{ID: 302, Name: "Lunatic", X: 30, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 12, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Drops", X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	world.Actors[302] = worldstate.Actor{ID: 302, Name: "Lunatic", X: 30, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	bot, err := newLuaScript(
 		client.Context{Input: inputState, Network: networkClient, World: world},
 		&WorldMode{},
@@ -618,7 +619,7 @@ end
 	sess.CharID = 200
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: sess.CharID, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, X: 12, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, X: 12, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	mode := &WorldMode{pendingSkill: pendingSkillTarget{
 		skill:    session.Skill{ID: db.SkillACDouble, Name: "Double Strafe", Type: skillTargetEnemy, Level: 3, Range: 9},
 		maxLevel: 10,
@@ -683,10 +684,10 @@ func TestWASDLuaCyclesAndUsesPendingSkillTargets(t *testing.T) {
 	sess.CharID = 200
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: sess.CharID, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, X: 12, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	world.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	world.Actors[302] = worldstate.Actor{ID: 302, X: 10, Y: 21, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	world.Actors[400] = worldstate.Actor{ID: 400, X: 10, Y: 19, ObjectType: actorObjectTypePC, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, X: 12, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	world.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	world.Actors[302] = worldstate.Actor{ID: 302, X: 10, Y: 21, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	world.Actors[400] = worldstate.Actor{ID: 400, X: 10, Y: 19, ObjectType: scene.ActorObjectTypePC, HasObjectType: true}
 	skill := session.Skill{ID: db.SkillACDouble, Type: skillTargetEnemy, Level: 3, Range: 9}
 	mode := &WorldMode{
 		pendingSkill: pendingSkillTarget{skill: skill, maxLevel: 10},
@@ -785,8 +786,8 @@ func TestWASDLuaCyclesFriendlySkillTargets(t *testing.T) {
 	sess.CharID = 200
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: sess.CharID, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Alice", X: 11, Y: 20, ObjectType: actorObjectTypePC, HasObjectType: true}
-	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Lif", X: 12, Y: 20, ObjectType: actorObjectTypeHomunculus, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Alice", X: 11, Y: 20, ObjectType: scene.ActorObjectTypePC, HasObjectType: true}
+	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Lif", X: 12, Y: 20, ObjectType: scene.ActorObjectTypeHomunculus, HasObjectType: true}
 	mode := &WorldMode{pendingSkill: pendingSkillTarget{
 		skill: session.Skill{ID: db.SkillALHeal, Type: skillTargetFriend, Level: 7, Range: 9},
 	}}
@@ -837,7 +838,7 @@ func TestWASDHealReverseCycleThenConfirm(t *testing.T) {
 			ctx.Session.NoShift = tc.noShift
 			ctx.World = worldstate.New()
 			ctx.World.Player = worldstate.Actor{ID: 200, X: 10, Y: 20}
-			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, HasObjectType: true, ObjectType: actorObjectTypeMob}
+			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 			mode := NewWorldMode()
 			skill := session.Skill{ID: db.SkillALHeal, Type: skillTargetFriend, Level: 3, Range: 9}
 			mode.pendingSkill = pendingSkillTarget{skill: skill}
@@ -957,10 +958,8 @@ func TestExampleLuaBotUsesPotionRestsAndResumes(t *testing.T) {
 	if err := bot.tick(); err != nil {
 		t.Fatal(err)
 	}
-	wantRest := make([]byte, 0)
-	wantRest = append(wantRest, network.BuildActionRequestPacketForClientDate(sess.AccountID, network.ActionSitDown, 20080910)...)
-	wantRest = append(wantRest, network.BuildGlobalChatPacketForClientDate("Kivutar", "I'm tired. Resting for a moment.", 20080910)...)
-	readBotTestPackets(t, serverConn, wantRest)
+	readLegacyBotTestActionPacket(t, serverConn, sess.AccountID, network.ActionSitDown)
+	readBotTestPackets(t, serverConn, network.BuildGlobalChatPacketForClientDate("Kivutar", "I'm tired. Resting for a moment.", 20080910))
 	if !world.Player.Sitting {
 		t.Fatal("bot did not enter the resting state")
 	}
@@ -969,10 +968,8 @@ func TestExampleLuaBotUsesPotionRestsAndResumes(t *testing.T) {
 	if err := bot.tick(); err != nil {
 		t.Fatal(err)
 	}
-	wantResume := make([]byte, 0)
-	wantResume = append(wantResume, network.BuildActionRequestPacketForClientDate(sess.AccountID, network.ActionStandUp, 20080910)...)
-	wantResume = append(wantResume, network.BuildGlobalChatPacketForClientDate("Kivutar", "Ready to go again.", 20080910)...)
-	readBotTestPackets(t, serverConn, wantResume)
+	readLegacyBotTestActionPacket(t, serverConn, sess.AccountID, network.ActionStandUp)
+	readBotTestPackets(t, serverConn, network.BuildGlobalChatPacketForClientDate("Kivutar", "Ready to go again.", 20080910))
 	if world.Player.Sitting {
 		t.Fatal("bot did not leave the resting state")
 	}
@@ -1020,7 +1017,7 @@ end
 	world := worldstate.New()
 	world.GAT = flatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: sess.CharID, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 30, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 30, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 
 	mode := &WorldMode{}
 	bot, err := newLuaScript(client.Context{Session: sess, World: world}, mode, path)
@@ -1111,7 +1108,7 @@ end
 		X:             12,
 		Y:             21,
 		Job:           db.JobAcolyte,
-		ObjectType:    actorObjectTypePC,
+		ObjectType:    scene.ActorObjectTypePC,
 		HasObjectType: true,
 	}
 
@@ -1156,8 +1153,8 @@ end
 	}
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: sess.AccountID, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Lif", X: 11, Y: 20, ObjectType: actorObjectTypeHomunculus, HasObjectType: true}
-	world.Actors[301] = worldstate.Actor{ID: 301, Name: "David", X: 12, Y: 20, ObjectType: actorObjectTypeMercenary, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Lif", X: 11, Y: 20, ObjectType: scene.ActorObjectTypeHomunculus, HasObjectType: true}
+	world.Actors[301] = worldstate.Actor{ID: 301, Name: "David", X: 12, Y: 20, ObjectType: scene.ActorObjectTypeMercenary, HasObjectType: true}
 
 	bot, err := newLuaScript(client.Context{Session: sess, Network: networkClient, World: world}, &WorldMode{}, path)
 	if err != nil {
@@ -1201,9 +1198,9 @@ end
 	}
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: sess.AccountID, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
-	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Alice", X: 11, Y: 21, Job: db.JobAcolyte, ObjectType: actorObjectTypePC, HasObjectType: true}
-	world.Actors[302] = worldstate.Actor{ID: 302, Name: "Lif", X: 10, Y: 21, ObjectType: actorObjectTypeHomunculus, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Alice", X: 11, Y: 21, Job: db.JobAcolyte, ObjectType: scene.ActorObjectTypePC, HasObjectType: true}
+	world.Actors[302] = worldstate.Actor{ID: 302, Name: "Lif", X: 10, Y: 21, ObjectType: scene.ActorObjectTypeHomunculus, HasObjectType: true}
 
 	bot, err := newLuaScript(client.Context{Session: sess, World: world}, &WorldMode{}, path)
 	if err != nil {
@@ -1232,7 +1229,7 @@ func TestLuaBotDoesNotExposeDyingEnemies(t *testing.T) {
 	sess.CharID = 2000000
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: sess.CharID, X: 10, Y: 20}
-	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 12, Y: 21, ObjectType: actorObjectTypeMob, HasObjectType: true}
+	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 12, Y: 21, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 
 	enemies := luaEnemyList(lua.NewState(), client.Context{Session: sess, World: world}, map[uint32]time.Time{
 		300: time.Now().Add(time.Second),

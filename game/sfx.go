@@ -8,6 +8,8 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
@@ -61,15 +63,15 @@ func (m *WorldMode) scheduleSoundVolumeAtPosition(at time.Time, volume float64, 
 	m.scheduleSoundOptions(scheduledSound{at: at, volume: volume, positioned: true, hasPosition: true, x: x, y: y}, paths...)
 }
 
-func (m *WorldMode) scheduleSoundAtWorldEffect(at time.Time, effect worldEffect, paths ...string) {
+func (m *WorldMode) scheduleSoundAtWorldEffect(at time.Time, effect effects.Instance, paths ...string) {
 	sound := scheduledSound{
 		at:          at,
 		volume:      1,
 		positioned:  true,
-		actorID:     effect.actorID,
+		actorID:     effect.ActorID,
 		hasPosition: true,
-		x:           float64(effect.x),
-		y:           float64(effect.y),
+		x:           float64(effect.X),
+		y:           float64(effect.Y),
 	}
 	m.scheduleSoundOptions(sound, paths...)
 }
@@ -134,7 +136,7 @@ func (m *WorldMode) processMapSounds(ctx client.Context, now time.Time) {
 	if ctx.World == nil || ctx.World.RSW == nil || ctx.World.GND == nil || len(ctx.World.RSW.Sounds) == 0 {
 		return
 	}
-	playerX, playerY := actorRenderPosition(ctx.World.Player, now)
+	playerX, playerY := scene.ActorRenderPosition(ctx.World.Player, now)
 	width := float64(ctx.World.GND.Width)
 	height := float64(ctx.World.GND.Height)
 	if m.mapSoundNext == nil {
@@ -179,7 +181,7 @@ func (m *WorldMode) processNonPCMotionSound(ctx client.Context, actor worldstate
 		return
 	}
 	view := m.nonPCSpriteView(ctx, actor)
-	if view == nil || view.act == nil {
+	if view == nil || view.Act == nil {
 		return
 	}
 	state := m.nonPCSpriteState(actor, now)
@@ -187,11 +189,11 @@ func (m *WorldMode) processNonPCMotionSound(ctx client.Context, actor worldstate
 	case spriteActionNonPCAttack, spriteActionNonPCHurt:
 		return
 	}
-	_, action, ok := resolveSpriteAction(view.act, state.actionFamily, state.direction)
+	_, action, ok := resolveSpriteAction(view.Act, state.actionFamily, state.direction)
 	if !ok || len(action.Animations) == 0 {
 		return
 	}
-	motion := bodyMotionForState(action, state, view.started, now)
+	motion := bodyMotionForState(action, state, view.Started, now)
 	if motion < 0 || motion >= len(action.Animations) {
 		return
 	}
@@ -207,7 +209,7 @@ func (m *WorldMode) processNonPCMotionSound(ctx client.Context, actor worldstate
 	if soundIndex < 0 {
 		return
 	}
-	if sound := actionSoundName(view.act, action, motion); sound != "" {
+	if sound := actionSoundName(view.Act, action, motion); sound != "" {
 		m.scheduleSoundAtActor(now, actor.ID, sound)
 	}
 }
@@ -216,8 +218,8 @@ func actorWithinSoundRange(ctx client.Context, actor worldstate.Actor, now time.
 	if ctx.World == nil {
 		return false
 	}
-	actorX, actorY := actorRenderPosition(actor, now)
-	playerX, playerY := actorRenderPosition(ctx.World.Player, now)
+	actorX, actorY := scene.ActorRenderPosition(actor, now)
+	playerX, playerY := scene.ActorRenderPosition(ctx.World.Player, now)
 	const soundRangeCells = 25
 	return math.Hypot(actorX-playerX, actorY-playerY) <= soundRangeCells
 }
@@ -258,11 +260,11 @@ func scheduledSoundPosition(ctx client.Context, sound scheduledSound, now time.T
 	}
 	if sound.actorID != 0 {
 		if actor, ok := ctx.World.Actors[sound.actorID]; ok {
-			x, y := actorRenderPosition(actor, now)
+			x, y := scene.ActorRenderPosition(actor, now)
 			return x, y, true
 		}
-		if isLocalActor(ctx, sound.actorID) {
-			x, y := actorRenderPosition(ctx.World.Player, now)
+		if scene.IsLocalActor(ctx, sound.actorID) {
+			x, y := scene.ActorRenderPosition(ctx.World.Player, now)
 			return x, y, true
 		}
 		if sound.hasPosition {
@@ -280,16 +282,16 @@ func spatialSoundGain(ctx client.Context, sourceX, sourceY float64, now time.Tim
 	if ctx.World == nil {
 		return 1
 	}
-	listenerX, listenerY := actorRenderPosition(ctx.World.Player, now)
+	listenerX, listenerY := scene.ActorRenderPosition(ctx.World.Player, now)
 	return referenceSpatialSoundGain(listenerX, listenerY, sourceX, sourceY)
 }
 
 func referenceSpatialSoundGain(listenerX, listenerY, sourceX, sourceY float64) float64 {
 	dist := math.Hypot(sourceX-listenerX, sourceY-listenerY)
-	if !isFinite(dist) {
+	if !scene.IsFinite(dist) {
 		return 1
 	}
-	dist = clampFloat(dist, referenceSoundMinDistanceCells, referenceSoundMaxDistanceCells)
+	dist = scene.ClampFloat(dist, referenceSoundMinDistanceCells, referenceSoundMaxDistanceCells)
 	return referenceSoundMinDistanceCells / dist
 }
 

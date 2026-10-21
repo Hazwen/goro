@@ -8,6 +8,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -79,7 +80,7 @@ func TestSkillPacketsDoNotReplayCompletedCasterWalk(t *testing.T) {
 					Moving: true, Speed: 150, MoveStartTick: 1000, HasMoveStartTick: true,
 				}, now.Add(-30*time.Second))
 				before := w.Actors[300]
-				if x, y := actorRenderPosition(before, now); x != 30 || y != 20 {
+				if x, y := scene.ActorRenderPosition(before, now); x != 30 || y != 20 {
 					t.Fatalf("setup: caster at %v,%v, want completed walk at 30,20", x, y)
 				}
 				packet := network.Packet{ID: 0x011A, Data: make([]byte, 15)}
@@ -105,7 +106,7 @@ func TestSkillPacketsDoNotReplayCompletedCasterWalk(t *testing.T) {
 				mode := NewWorldMode()
 				mode.handleNetworkPacket(ctx, packet, now)
 				actor := w.Actors[300]
-				if x, y := actorRenderPosition(actor, time.Now()); x != 30 || y != 20 {
+				if x, y := scene.ActorRenderPosition(actor, time.Now()); x != 30 || y != 20 {
 					t.Fatalf("skill teleported caster to %v,%v; want 30,20", x, y)
 				}
 				if actor.Dir != directionFromDelta(30, 20, 34, 20, before.Dir) {

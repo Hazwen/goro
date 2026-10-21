@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -17,7 +19,7 @@ const (
 )
 
 func specialNPCVisualForActor(actor worldstate.Actor) specialNPCVisual {
-	if int(actor.Job) == actorJobClearNPC {
+	if int(actor.Job) == scene.ActorJobClearNPC {
 		switch normalizeSpecialNPCActorName(actor.Name) {
 		case "BOBBING TORCH", "WET FIREWOOD":
 			return specialNPCVisualTorch
@@ -39,54 +41,54 @@ func actorJobHasSpecialNoShadow(job int) bool {
 		return true
 	}
 	switch job {
-	case actorJobClearNPC:
+	case scene.ActorJobClearNPC:
 		return true
 	default:
 		return false
 	}
 }
 
-func (m *WorldMode) drawSpecialNPCVisual(screen *render.Frame, ctx client.Context, projection sceneProjection, entry sceneActorDrawEntry, visual specialNPCVisual, now time.Time) bool {
+func (m *WorldMode) drawSpecialNPCVisual(screen *render.Frame, ctx client.Context, projection scene.Projection, entry scene.ActorDrawEntry, visual specialNPCVisual, now time.Time) bool {
 	switch visual {
 	case specialNPCVisualTorch:
-		m.drawPersistentWorldEffectAt(screen, ctx, projection, effectTorch, entry, now)
+		m.drawPersistentWorldEffectAt(screen, ctx, projection, effects.Torch, entry, now)
 		return true
 	default:
 		return false
 	}
 }
 
-func (m *WorldMode) drawPersistentWorldEffectAt(screen *render.Frame, ctx client.Context, projection sceneProjection, effectID int, entry sceneActorDrawEntry, now time.Time) {
-	spec, ok := worldEffectSpecForID(effectID)
+func (m *WorldMode) drawPersistentWorldEffectAt(screen *render.Frame, ctx client.Context, projection scene.Projection, effectID int, entry scene.ActorDrawEntry, now time.Time) {
+	spec, ok := effects.Lookup(effectID)
 	if !ok {
 		return
 	}
 	effect := persistentWorldEffectForActorEntry(effectID, entry, now)
-	for index, component := range spec.components {
+	for index, component := range spec.Components {
 		component = mapEffectComponent(component)
-		duration := worldEffectComponentDuration(spec, component)
-		if component.duration > 0 {
-			duration = component.duration
+		duration := effects.WorldEffectComponentDuration(spec, component)
+		if component.Duration > 0 {
+			duration = component.Duration
 		}
 		if duration <= 0 {
 			duration = 600 * time.Millisecond
 		}
 		elapsed := now.Sub(time.Unix(0, 0))
 		componentStart := now.Add(-(elapsed % duration))
-		effect.starts = componentStart
-		progress := worldEffectComponentProgress(componentStart, duration, now)
-		m.drawWorldEffectComponent(screen, ctx, projection, effect, component, index, entry.worldX, entry.worldY, entry.worldZ+0.07, progress, duration, now)
+		effect.Starts = componentStart
+		progress := effects.WorldEffectComponentProgress(componentStart, duration, now)
+		m.effects().DrawWorldEffectComponent(screen, ctx, projection, effect, component, index, entry.WorldX, entry.WorldY, entry.WorldZ+0.07, progress, duration, now)
 	}
 }
 
-func persistentWorldEffectForActorEntry(effectID int, entry sceneActorDrawEntry, now time.Time) worldEffect {
-	return worldEffect{
-		effectID: effectID,
-		actorID:  entry.actor.ID,
-		x:        int(entry.actor.X),
-		y:        int(entry.actor.Y),
-		starts:   now,
-		expires:  now.Add(24 * time.Hour),
-		duration: 24 * time.Hour,
+func persistentWorldEffectForActorEntry(effectID int, entry scene.ActorDrawEntry, now time.Time) effects.Instance {
+	return effects.Instance{
+		EffectID: effectID,
+		ActorID:  entry.Actor.ID,
+		X:        int(entry.Actor.X),
+		Y:        int(entry.Actor.Y),
+		Starts:   now,
+		Expires:  now.Add(24 * time.Hour),
+		Duration: 24 * time.Hour,
 	}
 }

@@ -2,13 +2,14 @@ package game
 
 import (
 	"fmt"
-	"github.com/kivutar/goro/glog"
-	"github.com/kivutar/goro/input"
 	"math"
 	"time"
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/glog"
+	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
@@ -83,12 +84,12 @@ func skillUseMaxLevel(skill session.Skill) int {
 	if maxLevel := knownSkillMaxLevel(skill); maxLevel > 0 {
 		return maxLevel
 	}
-	return maxInt(1, skill.Level)
+	return scene.MaxInt(1, skill.Level)
 }
 
 func skillUseLevel(skill session.Skill) uint16 {
 	skill = normalizeSessionSkillLevelCap(skill)
-	return uint16(maxInt(1, skill.Level))
+	return uint16(scene.MaxInt(1, skill.Level))
 }
 
 func sessionSkillFromNetwork(skill network.SkillInfo) session.Skill {
@@ -111,16 +112,6 @@ func sessionSkillFromNetworkWithResources(manager *res.Manager, skill network.Sk
 		}
 	}
 	return normalizeSessionSkillLevelCap(out)
-}
-
-func localSkillTarget(ctx client.Context) uint32 {
-	if ctx.Session == nil {
-		return 0
-	}
-	if ctx.Session.AccountID != 0 {
-		return ctx.Session.AccountID
-	}
-	return ctx.Session.CharID
 }
 
 func isGroundTargetSkill(skill session.Skill) bool {
@@ -165,7 +156,7 @@ func skillCasterForSkill(ctx client.Context, skill session.Skill) (skillCaster, 
 		}
 		id := ctx.Session.Homunculus.ID
 		if id == 0 {
-			id = findCompanionActorID(ctx, actorObjectTypeHomunculus)
+			id = findCompanionActorID(ctx, scene.ActorObjectTypeHomunculus)
 		}
 		actor, ok := companionActorByID(ctx, id)
 		if !ok {
@@ -178,7 +169,7 @@ func skillCasterForSkill(ctx client.Context, skill session.Skill) (skillCaster, 
 		}
 		id := ctx.Session.Mercenary.ID
 		if id == 0 {
-			id = findCompanionActorID(ctx, actorObjectTypeMercenary)
+			id = findCompanionActorID(ctx, scene.ActorObjectTypeMercenary)
 		}
 		actor, ok := companionActorByID(ctx, id)
 		if !ok {
@@ -188,7 +179,7 @@ func skillCasterForSkill(ctx client.Context, skill session.Skill) (skillCaster, 
 	default:
 		actor := ctx.World.Player
 		if actor.ID == 0 {
-			actor.ID = localSkillTarget(ctx)
+			actor.ID = scene.LocalSkillTarget(ctx)
 		}
 		return skillCaster{kind: kind, id: actor.ID, actor: actor}, true
 	}
@@ -196,7 +187,7 @@ func skillCasterForSkill(ctx client.Context, skill session.Skill) (skillCaster, 
 
 func skillCasterCell(caster skillCaster, now time.Time) (int, int) {
 	if caster.kind == skillCasterPlayer {
-		x, y := actorRenderPosition(caster.actor, now)
+		x, y := scene.ActorRenderPosition(caster.actor, now)
 		return int(math.Round(x)), int(math.Round(y))
 	}
 	return companionActorRenderCell(caster.actor, now)
@@ -207,7 +198,7 @@ func skillTargetRangeForCaster(caster skillCaster, skill session.Skill) int {
 		if skill.Range > 0 {
 			return skill.Range
 		}
-		level := maxInt(1, skill.Level)
+		level := scene.MaxInt(1, skill.Level)
 		if attackRange, ok := db.SkillAttackRange(skill.ID, level); ok {
 			return attackRange
 		}
@@ -238,6 +229,7 @@ const (
 )
 
 const skillChangeCart = 154
+
 const skillGroundTextMaxBytes = 79
 
 func (c skillController) Use(ctx client.Context, skill session.Skill, source string) error {
@@ -258,7 +250,7 @@ func (c skillController) Use(ctx client.Context, skill session.Skill, source str
 		if c.mode == nil {
 			return fmt.Errorf("missing world mode")
 		}
-		target := localSkillTarget(ctx)
+		target := scene.LocalSkillTarget(ctx)
 		if target == 0 {
 			return fmt.Errorf("missing skill target")
 		}
@@ -273,7 +265,7 @@ func (c skillController) Use(ctx client.Context, skill session.Skill, source str
 		return nil
 	}
 	if isSelfTargetSkill(skill) {
-		target := localSkillTarget(ctx)
+		target := scene.LocalSkillTarget(ctx)
 		if target == 0 {
 			return fmt.Errorf("missing skill target")
 		}
@@ -284,7 +276,7 @@ func (c skillController) Use(ctx client.Context, skill session.Skill, source str
 		glog.Debugf("%s skill target pending skill=%d level=%d range=%d", source, skill.ID, skill.Level, skill.Range)
 		return nil
 	}
-	target := localSkillTarget(ctx)
+	target := scene.LocalSkillTarget(ctx)
 	if target == 0 {
 		return fmt.Errorf("missing skill target")
 	}
@@ -417,7 +409,7 @@ func (c skillController) AdjustPendingLevelFromWheel(ctx client.Context) bool {
 	} else {
 		level -= step
 	}
-	level = clampInt(level, 1, maxLevel)
+	level = scene.ClampInt(level, 1, maxLevel)
 	ctx.Input.WheelY = 0
 	if level == pending.skill.Level {
 		return true
@@ -428,7 +420,7 @@ func (c skillController) AdjustPendingLevelFromWheel(ctx client.Context) bool {
 	return true
 }
 
-func (c skillController) HandleClick(ctx client.Context, projection sceneProjection, now time.Time) {
+func (c skillController) HandleClick(ctx client.Context, projection scene.Projection, now time.Time) {
 	skill := c.mode.pendingSkill.skill
 	if skill.ID == 0 {
 		return
@@ -545,7 +537,7 @@ func (c skillController) targetCell(ctx client.Context, pending pendingSkillTarg
 		return unit.x, unit.y, ok
 	}
 	actor, ok := ctx.World.Actors[pending.targetID]
-	if !ok || actorHasStealth(actor) {
+	if !ok || scene.ActorHasStealth(actor) {
 		return 0, 0, false
 	}
 	x, y := actorCurrentCell(actor, now)
@@ -686,7 +678,7 @@ func (c skillController) UpdatePendingTarget(ctx client.Context, source string, 
 	}
 	c.mode.pendingSkill = pending
 	if logOutOfRange {
-		glog.Debugf("%s pending skill scheduled skill=%d caster=%s caster_id=%d target=%d delay_ms=%d", source, pending.skill.ID, skillCasterKindName(caster.kind), caster.id, pending.targetID, maxInt(0, int(pending.readyAt.Sub(now).Milliseconds())))
+		glog.Debugf("%s pending skill scheduled skill=%d caster=%s caster_id=%d target=%d delay_ms=%d", source, pending.skill.ID, skillCasterKindName(caster.kind), caster.id, pending.targetID, scene.MaxInt(0, int(pending.readyAt.Sub(now).Milliseconds())))
 	}
 }
 
@@ -749,7 +741,7 @@ func skillTargetOverrideActive(ctx client.Context) bool {
 func targetSkillRange(skill session.Skill) int {
 	// robr approaches player skill targets within a circle of server range + 1.
 	// This fits rAthena's truncated client distance without using square corners.
-	return maxInt(1, skill.Range+1)
+	return scene.MaxInt(1, skill.Range+1)
 }
 
 func targetSkillWithinRangeCells(sourceX, sourceY, targetX, targetY, skillRange int) bool {

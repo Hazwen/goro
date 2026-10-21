@@ -2,12 +2,13 @@ package game
 
 import (
 	"fmt"
-	"github.com/kivutar/goro/glog"
-	"github.com/kivutar/goro/input"
 	"image"
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/glog"
+	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/session"
@@ -287,20 +288,20 @@ func (m *LoginMode) drawCharacterPreview(screen characterPreviewTarget, ctx clie
 		return
 	}
 	billboard, ok := humanoidBillboardForState(view, spriteState{
-		actionFamily: spriteActionIdle,
+		actionFamily: scene.SpriteActionIdle,
 		direction:    charSelectPreviewDirection,
 		started:      time.Now(),
 		loopIdle:     true,
 	}, time.Now())
-	if !ok || billboard == nil || billboard.image == nil {
+	if !ok || billboard == nil || billboard.Image == nil {
 		return
 	}
 	var opts render.DrawImageOptions
 	scale := charSelectPreviewScale * playerBodyScaleForJob(character.Job)
 	opts.GeoM.Scale(scale, scale)
-	opts.GeoM.Translate(float64(centerX)-billboard.anchorX*scale, float64(feetY)-billboard.anchorY*scale)
-	opts.Filter = spriteDrawFilter()
-	screen.DrawImage(billboard.image, &opts)
+	opts.GeoM.Translate(float64(centerX)-billboard.AnchorX*scale, float64(feetY)-billboard.AnchorY*scale)
+	opts.Filter = scene.SpriteDrawFilter()
+	screen.DrawImage(billboard.Image, &opts)
 }
 
 func (m *LoginMode) characterPreviewImage(ctx client.Context, character session.Character) image.Image {

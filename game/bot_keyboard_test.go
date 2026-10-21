@@ -7,6 +7,7 @@ import (
 
 	"github.com/gogpu/gpucontext"
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	worldstate "github.com/kivutar/goro/world"
@@ -69,7 +70,7 @@ func TestWASDControlsBeforeChatPreparation(t *testing.T) {
 				ctx.World.GAT = flatWalkableGAT(64, 64)
 				ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 				ctx.World.Items[400] = worldstate.FloorItem{ID: 400, ItemID: 501, X: 11, Y: 20}
-				ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+				ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 				mode := NewWorldMode()
 				loadKeyboardTestBot(t, ctx, mode)
 				if !prepareKeyboardTestText(mode, ctx, tc.code, tc.text) || mode.ui.console.Active() {
@@ -169,7 +170,7 @@ func TestWASDModifiersSuspendHeldControls(t *testing.T) {
 				ctx.World = worldstate.New()
 				ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 				ctx.World.Items[400] = worldstate.FloorItem{ID: 400, ItemID: 501, X: 11, Y: 20}
-				ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: actorObjectTypeMob, HasObjectType: true}
+				ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 				mode := NewWorldMode()
 				loadKeyboardTestBot(t, ctx, mode)
 				// Observe Lua's action requests without involving the network or

@@ -5,6 +5,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -27,7 +28,7 @@ func TestApplyMercenaryParamChangeUpdatesRobrowserStatusFields(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				400: {ID: 400, HasObjectType: true, ObjectType: actorObjectTypeMercenary},
+				400: {ID: 400, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary},
 			},
 		},
 	}
@@ -68,7 +69,7 @@ func TestMercenaryPropertyStoresDisplayLife(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				400: {ID: 400, HasObjectType: true, ObjectType: actorObjectTypeMercenary},
+				400: {ID: 400, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary},
 			},
 		},
 	}
@@ -112,7 +113,7 @@ func TestMercenaryLifeForDisplayUsesCachedParamChanges(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				400: {ID: 400, HasObjectType: true, ObjectType: actorObjectTypeMercenary},
+				400: {ID: 400, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary},
 			},
 		},
 	}
@@ -147,7 +148,7 @@ func TestPendingMercenaryDeleteVanishClearsSession(t *testing.T) {
 		Session: sess,
 		World: &worldstate.World{
 			Actors: map[uint32]worldstate.Actor{
-				400: {ID: 400, HasObjectType: true, ObjectType: actorObjectTypeMercenary},
+				400: {ID: 400, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary},
 			},
 		},
 	}
@@ -180,10 +181,10 @@ func TestPendingMercenaryDeleteVanishClearsSession(t *testing.T) {
 }
 
 func TestMercenaryActionFamiliesUseGuildWeaponActions(t *testing.T) {
-	archer := worldstate.Actor{Job: 6017, HasObjectType: true, ObjectType: actorObjectTypeMercenary}
-	lancer := worldstate.Actor{Job: 6027, HasObjectType: true, ObjectType: actorObjectTypeMercenary}
-	sword := worldstate.Actor{Job: 6037, HasObjectType: true, ObjectType: actorObjectTypeMercenary}
-	mob := worldstate.Actor{Job: 1002, HasObjectType: true, ObjectType: actorObjectTypeMob}
+	archer := worldstate.Actor{Job: 6017, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
+	lancer := worldstate.Actor{Job: 6027, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
+	sword := worldstate.Actor{Job: 6037, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
+	mob := worldstate.Actor{Job: 1002, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 
 	if got := attackActionFamilyForActorWithResources(nil, archer); got != spriteActionPCAttack2 {
 		t.Fatalf("archer mercenary attack action = %d, want %d", got, spriteActionPCAttack2)
@@ -215,8 +216,8 @@ func TestMercenaryActionFamiliesUseGuildWeaponActions(t *testing.T) {
 }
 
 func TestMercenarySpriteKeyDerivesSexFromMercenaryResource(t *testing.T) {
-	archer := worldstate.Actor{Job: 6017, Sex: 1, HasObjectType: true, ObjectType: actorObjectTypeMercenary}
-	sword := worldstate.Actor{Job: 6037, Sex: 0, HasObjectType: true, ObjectType: actorObjectTypeMercenary}
+	archer := worldstate.Actor{Job: 6017, Sex: 1, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
+	sword := worldstate.Actor{Job: 6037, Sex: 0, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
 
 	if got := mercenarySpriteKeyForActor(archer).sex; got != 0 {
 		t.Fatalf("archer mercenary sex = %d, want female resource sex 0", got)
@@ -238,14 +239,14 @@ func TestMercenarySpriteKeyUsesGuildDefaultWeapon(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			actor := worldstate.Actor{Job: tc.job, HasObjectType: true, ObjectType: actorObjectTypeMercenary}
+			actor := worldstate.Actor{Job: tc.job, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
 			if got := mercenarySpriteKeyForActor(actor).weapon; got != tc.want {
 				t.Fatalf("default weapon = %d, want %d", got, tc.want)
 			}
 		})
 	}
 
-	actor := worldstate.Actor{Job: 6037, Weapon: 7, HasObjectType: true, ObjectType: actorObjectTypeMercenary}
+	actor := worldstate.Actor{Job: 6037, Weapon: 7, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
 	if got := mercenarySpriteKeyForActor(actor).weapon; got != 7 {
 		t.Fatalf("explicit weapon = %d, want 7", got)
 	}

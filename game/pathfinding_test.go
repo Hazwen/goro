@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -96,7 +97,7 @@ func TestRemoteMoveUpdateUsesServerMoveStartTick(t *testing.T) {
 	if got, want := actor.MoveStarted, now.Add(-time.Second); !got.Equal(want) {
 		t.Fatalf("move started = %s, want %s", got, want)
 	}
-	x, y := actorRenderPosition(actor, now)
+	x, y := scene.ActorRenderPosition(actor, now)
 	if x < 1.9 || x > 2.1 || y != 0 {
 		t.Fatalf("render position = %.2f,%.2f, want around 2,0", x, y)
 	}

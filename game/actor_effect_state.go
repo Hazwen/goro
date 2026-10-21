@@ -5,6 +5,8 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/network"
 )
 
@@ -14,8 +16,8 @@ type actorEffectStateEffect struct {
 }
 
 var actorEffectStateEffects = []actorEffectStateEffect{
-	{bit: db.EffectStateSight, effectID: effectSight},
-	{bit: db.EffectStateRuwach, effectID: effectRuwach},
+	{bit: db.EffectStateSight, effectID: effects.Sight},
+	{bit: db.EffectStateRuwach, effectID: effects.Ruwach},
 }
 
 func (m *WorldMode) applyActorEffectStateEffects(ctx client.Context, actorID uint32, oldState, newState uint32) {
@@ -23,14 +25,14 @@ func (m *WorldMode) applyActorEffectStateEffects(ctx client.Context, actorID uin
 		return
 	}
 	for _, stateEffect := range actorEffectStateEffects {
-		if stateEffect.effectID == effectSight {
-			m.setActorStateEffect(ctx, actorID, effectSight, newState&stateEffect.bit != 0)
+		if stateEffect.effectID == effects.Sight {
+			m.setActorStateEffect(ctx, actorID, effects.Sight, newState&stateEffect.bit != 0)
 			continue
 		}
 		if newState&stateEffect.bit != 0 {
-			m.addWorldEffectIfMissing(ctx, stateEffect.effectID, actorID)
+			m.effects().AddIfMissing(ctx, stateEffect.effectID, actorID)
 		} else if oldState&stateEffect.bit != 0 {
-			m.removeWorldEffect(stateEffect.effectID, actorID)
+			m.effects().Remove(stateEffect.effectID, actorID)
 		}
 	}
 }
@@ -44,7 +46,7 @@ func (m *WorldMode) syncCurrentActorEffectStateEffects(ctx client.Context) {
 	}
 	if ctx.Session != nil {
 		if status, ok := ctx.Session.Statuses.Active[db.StatusLkconcentration]; ok && (!status.HasDuration || time.Now().Before(status.ExpiresAt)) {
-			m.setActorStateEffect(ctx, localSkillTarget(ctx), effectLKConcentration, true)
+			m.setActorStateEffect(ctx, scene.LocalSkillTarget(ctx), effects.LKConcentration, true)
 		}
 		for _, id := range []uint16{db.StatusRgCconfineM, db.StatusRgCconfineS} {
 			if status, ok := ctx.Session.Statuses.Active[id]; ok {
@@ -68,33 +70,33 @@ func (m *WorldMode) syncCurrentActorEffectStateEffects(ctx client.Context) {
 
 func (m *WorldMode) removeActorEffectStateEffects(actorID uint32) {
 	for _, stateEffect := range actorEffectStateEffects {
-		m.removeWorldEffect(stateEffect.effectID, actorID)
+		m.effects().Remove(stateEffect.effectID, actorID)
 	}
-	m.removeWorldEffect(effectNPCStop2, actorID)
-	m.removeWorldEffect(effectGumgang, actorID)
-	m.removeWorldEffect(effectDoubleGumgang, actorID)
-	m.removeWorldEffect(effectRedLightBody, actorID)
-	m.removeWorldEffect(effectSteelBody, actorID)
-	m.removeWorldEffect(effectAssumptio, actorID)
-	m.removeWorldEffect(effectRedBody, actorID)
-	m.removeWorldEffect(effectMoonlit, actorID)
-	m.removeWorldEffect(effectPinkBody, actorID)
-	m.removeMarionetteLinks(actorID)
-	m.removeWorldEffect(effectLKConcentration, actorID)
-	m.removeWorldEffect(effectLightBlade, actorID)
-	m.removeWorldEffect(effectAsuraBody, actorID)
-	m.removeWorldEffect(effectAsuraBodyMonster, actorID)
-	m.removeWorldEffect(effectBabyBody, actorID)
-	m.removeWorldEffect(effectBabyBodyBack, actorID)
-	m.removeWorldEffect(effectChookgi, actorID)
-	m.removeWorldEffect(effectChookgi2, actorID)
-	m.removeWorldEffect(effectChookgi3, actorID)
+	m.effects().Remove(effects.NPCStop2, actorID)
+	m.effects().Remove(effects.Gumgang, actorID)
+	m.effects().Remove(effects.DoubleGumgang, actorID)
+	m.effects().Remove(effects.RedLightBody, actorID)
+	m.effects().Remove(effects.SteelBody, actorID)
+	m.effects().Remove(effects.Assumptio, actorID)
+	m.effects().Remove(effects.RedBody, actorID)
+	m.effects().Remove(effects.Moonlit, actorID)
+	m.effects().Remove(effects.PinkBody, actorID)
+	m.effects().RemoveMarionetteLinks(actorID)
+	m.effects().Remove(effects.LKConcentration, actorID)
+	m.effects().Remove(effects.LightBlade, actorID)
+	m.effects().Remove(effects.AsuraBody, actorID)
+	m.effects().Remove(effects.AsuraBodyMonster, actorID)
+	m.effects().Remove(effects.BabyBody, actorID)
+	m.effects().Remove(effects.BabyBodyBack, actorID)
+	m.effects().Remove(effects.Chookgi, actorID)
+	m.effects().Remove(effects.Chookgi2, actorID)
+	m.effects().Remove(effects.Chookgi3, actorID)
 }
 
 // Sphere counts are authoritative server state, not a side effect of casting
 // Call Spirits: spheres can also be spent, absorbed, or expire.
 func applySpiritSphereCount(ctx client.Context, update network.SpiritSphereCount) bool {
-	actor, ok, local := actorForCombatID(ctx, update.ActorID)
+	actor, ok, local := scene.ActorForCombatID(ctx, update.ActorID)
 	if !ok {
 		return false
 	}
@@ -138,8 +140,8 @@ func (m *WorldMode) applySoulLinkerMonsterSkill(ctx client.Context, notify netwo
 	default:
 		return
 	}
-	actor, ok, local := actorForCombatID(ctx, notify.TargetID)
-	if !ok || local || !isMonsterLikeHoverActor(actor) {
+	actor, ok, local := scene.ActorForCombatID(ctx, notify.TargetID)
+	if !ok || local || !scene.IsMonsterLikeHoverActor(actor) {
 		return
 	}
 	// Monsters need not receive status icons. The successful skill starts the
@@ -151,65 +153,65 @@ func (m *WorldMode) applySoulLinkerMonsterSkill(ctx client.Context, notify netwo
 }
 
 func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
-	if isLocalActor(ctx, actorID) {
-		actorID = localSkillTarget(ctx)
+	if scene.IsLocalActor(ctx, actorID) {
+		actorID = scene.LocalSkillTarget(ctx)
 	}
-	actor, ok, _ := actorForCombatID(ctx, actorID)
+	actor, ok, _ := scene.ActorForCombatID(ctx, actorID)
 	if !ok {
 		return
 	}
-	visible := !actorHasStealth(actor)
-	m.setActorStateEffect(ctx, actorID, effectDoubleGumgang, visible && actor.Opt3State&db.Opt3Warm != 0)
-	m.setActorStateEffect(ctx, actorID, effectRedLightBody, visible && actor.Opt3State&db.Opt3Warm != 0)
-	m.setActorStateEffect(ctx, actorID, effectAsuraBody, visible && actor.Opt3State&db.Opt3Soullink != 0)
-	if actor.HasState && isMonsterLikeHoverActor(actor) {
+	visible := !scene.ActorHasStealth(actor)
+	m.setActorStateEffect(ctx, actorID, effects.DoubleGumgang, visible && actor.Opt3State&db.Opt3Warm != 0)
+	m.setActorStateEffect(ctx, actorID, effects.RedLightBody, visible && actor.Opt3State&db.Opt3Warm != 0)
+	m.setActorStateEffect(ctx, actorID, effects.AsuraBody, visible && actor.Opt3State&db.Opt3Soullink != 0)
+	if actor.HasState && scene.IsMonsterLikeHoverActor(actor) {
 		shrinking := actor.Opt3State&db.Opt3Overthrust != 0
 		if shrinking && visible {
-			m.removeWorldEffect(effectBabyBodyBack, actorID)
-			m.setActorStateEffect(ctx, actorID, effectBabyBody, true)
+			m.effects().Remove(effects.BabyBodyBack, actorID)
+			m.setActorStateEffect(ctx, actorID, effects.BabyBody, true)
 		} else {
-			for _, effect := range m.worldEffects {
-				if effect.effectID == effectBabyBody && effect.actorID == actorID && effect.persistent {
-					m.removeWorldEffect(effectBabyBody, actorID)
+			for _, effect := range m.effects().Active {
+				if effect.EffectID == effects.BabyBody && effect.ActorID == actorID && effect.Persistent {
+					m.effects().Remove(effects.BabyBody, actorID)
 					if visible && !shrinking {
-						m.addWorldEffect(ctx, effectBabyBodyBack, actorID)
+						m.effects().Add(ctx, effects.BabyBodyBack, actorID)
 					}
 					break
 				}
 			}
 		}
 	}
-	if actor.HasState && isMonsterLikeHoverActor(actor) && actor.Opt3State&db.Opt3Energycoat == 0 {
-		m.removeWorldEffect(effectAsuraBodyMonster, actorID)
+	if actor.HasState && scene.IsMonsterLikeHoverActor(actor) && actor.Opt3State&db.Opt3Energycoat == 0 {
+		m.effects().Remove(effects.AsuraBodyMonster, actorID)
 	}
-	m.setActorStateEffect(ctx, actorID, effectGumgang, visible && actor.Opt3State&db.Opt3Explosionspirits != 0)
-	m.setActorStateEffect(ctx, actorID, effectSteelBody, visible && actor.Opt3State&db.Opt3Steelbody != 0)
-	m.setActorStateEffect(ctx, actorID, effectAssumptio, visible && actor.Opt3State&db.Opt3Assumptio != 0)
-	m.setActorStateEffect(ctx, actorID, effectRedBody, visible && actor.Opt3State&db.Opt3Berserk != 0)
-	m.setActorStateEffect(ctx, actorID, effectLightBlade, visible && actor.Opt3State&db.Opt3Lightblade != 0)
-	m.setActorStateEffect(ctx, actorID, effectMoonlit, visible && actor.Opt3State&db.Opt3Moonlit != 0)
-	m.setActorStateEffect(ctx, actorID, effectPinkBody, visible && actor.Opt3State&db.Opt3Marionette != 0)
+	m.setActorStateEffect(ctx, actorID, effects.Gumgang, visible && actor.Opt3State&db.Opt3Explosionspirits != 0)
+	m.setActorStateEffect(ctx, actorID, effects.SteelBody, visible && actor.Opt3State&db.Opt3Steelbody != 0)
+	m.setActorStateEffect(ctx, actorID, effects.Assumptio, visible && actor.Opt3State&db.Opt3Assumptio != 0)
+	m.setActorStateEffect(ctx, actorID, effects.RedBody, visible && actor.Opt3State&db.Opt3Berserk != 0)
+	m.setActorStateEffect(ctx, actorID, effects.LightBlade, visible && actor.Opt3State&db.Opt3Lightblade != 0)
+	m.setActorStateEffect(ctx, actorID, effects.Moonlit, visible && actor.Opt3State&db.Opt3Moonlit != 0)
+	m.setActorStateEffect(ctx, actorID, effects.PinkBody, visible && actor.Opt3State&db.Opt3Marionette != 0)
 	if !visible || actor.HasState && actor.Opt3State&db.Opt3Marionette == 0 {
-		m.removeMarionetteLinks(actorID)
+		m.effects().RemoveMarionetteLinks(actorID)
 	}
-	sphereEffect := effectChookgi
+	sphereEffect := effects.Chookgi
 	switch actor.Job {
 	case db.JobMonkB:
-		sphereEffect = effectChookgi2
+		sphereEffect = effects.Chookgi2
 	case db.JobGunslinger, db.JobGunslingerB:
-		sphereEffect = effectChookgi3
+		sphereEffect = effects.Chookgi3
 	}
-	if sphereEffect == effectChookgi3 && visible && actor.SpiritSpheres > 0 {
-		for i := range m.worldEffects {
-			effect := &m.worldEffects[i]
-			if effect.effectID == effectChookgi3 && effect.actorID == actorID && effect.hitCount != min(int(actor.SpiritSpheres), 10) {
-				effect.hitCount = min(int(actor.SpiritSpheres), 10)
-				effect.starts = time.Now()
-				effect.gunslingerCoins = newGunslingerCoins(*effect)
+	if sphereEffect == effects.Chookgi3 && visible && actor.SpiritSpheres > 0 {
+		for i := range m.effects().Active {
+			effect := &m.effects().Active[i]
+			if effect.EffectID == effects.Chookgi3 && effect.ActorID == actorID && effect.HitCount != min(int(actor.SpiritSpheres), 10) {
+				effect.HitCount = min(int(actor.SpiritSpheres), 10)
+				effect.Starts = time.Now()
+				effect.GunslingerCoins = effects.NewGunslingerCoins(*effect)
 			}
 		}
 	}
-	for _, id := range [...]int{effectChookgi, effectChookgi2, effectChookgi3} {
+	for _, id := range [...]int{effects.Chookgi, effects.Chookgi2, effects.Chookgi3} {
 		m.setActorStateEffect(ctx, actorID, id, visible && actor.SpiritSpheres > 0 && id == sphereEffect)
 	}
 }
@@ -218,16 +220,16 @@ func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
 // persistent=true with a deadline; a zero deadline means explicitly removed.
 func (m *WorldMode) setActorStateEffect(ctx client.Context, actorID uint32, effectID int, active bool) {
 	if !active {
-		m.removeWorldEffect(effectID, actorID)
+		m.effects().Remove(effectID, actorID)
 		return
 	}
-	m.addWorldEffectIfMissing(ctx, effectID, actorID)
+	m.effects().AddIfMissing(ctx, effectID, actorID)
 	now := time.Now()
-	for i := range m.worldEffects {
-		effect := &m.worldEffects[i]
-		if effect.effectID == effectID && effect.actorID == actorID && !effect.expired(now) {
-			effect.persistent = true
-			effect.expires = time.Time{}
+	for i := range m.effects().Active {
+		effect := &m.effects().Active[i]
+		if effect.EffectID == effectID && effect.ActorID == actorID && !effect.Expired(now) {
+			effect.Persistent = true
+			effect.Expires = time.Time{}
 		}
 	}
 }

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/kivutar/goro/config"
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/res"
 )
 
@@ -25,13 +27,13 @@ func TestSceneFogFromMapUsesReferenceClientScaleAndFullStrength(t *testing.T) {
 	}
 
 	fog := sceneFogFromMap(manager, "prontera", config.FogConfig{Enabled: true})
-	if !fog.enabled {
+	if !fog.Enabled {
 		t.Fatal("expected fog")
 	}
-	if fog.near != 120 || fog.far != 360 {
-		t.Fatalf("unexpected scaled distances: near=%v far=%v", fog.near, fog.far)
+	if fog.Near != 120 || fog.Far != 360 {
+		t.Fatalf("unexpected scaled distances: near=%v far=%v", fog.Near, fog.Far)
 	}
-	projection := newSceneProjectionForTarget(800, 600, 10.5, 20.5, 0)
+	projection := testutil.Projection(800, 600, 10.5, 20.5, 0)
 	if got := projection.RenderCameraWithFog(fog).Fog.Strength; got != 1 {
 		t.Fatalf("fog strength = %.2f, want full reference-client strength", got)
 	}
@@ -52,29 +54,29 @@ func TestSceneFogFromMapUsesEinbrochWeatherTint(t *testing.T) {
 	}
 
 	fog := sceneFogFromMap(manager, "einbroch.rsw", config.FogConfig{Enabled: true})
-	if !fog.enabled {
+	if !fog.Enabled {
 		t.Fatal("expected fog")
 	}
-	if fog.color != (color.RGBA{R: 252, G: 171, B: 143, A: 255}) {
-		t.Fatalf("einbroch fog color = %#v, want EF_CLOUD4 tint", fog.color)
+	if fog.Color != (color.RGBA{R: 252, G: 171, B: 143, A: 255}) {
+		t.Fatalf("einbroch fog color = %#v, want EF_CLOUD4 tint", fog.Color)
 	}
 }
 
 func TestSceneFogMixColorSmoothstepsToFogColor(t *testing.T) {
-	fog := sceneFog{
-		enabled: true,
-		near:    10,
-		far:     20,
-		color:   color.RGBA{R: 200, G: 100, B: 50, A: 255},
+	fog := scene.SceneFog{
+		Enabled: true,
+		Near:    10,
+		Far:     20,
+		Color:   color.RGBA{R: 200, G: 100, B: 50, A: 255},
 	}
 	base := color.RGBA{R: 100, G: 100, B: 100, A: 180}
-	if got := fog.mixColor(base, 5); got != base {
+	if got := fog.MixColor(base, 5); got != base {
 		t.Fatalf("near color changed: %#v", got)
 	}
-	if got := fog.mixColor(base, 20); got != (color.RGBA{R: 200, G: 100, B: 50, A: 180}) {
+	if got := fog.MixColor(base, 20); got != (color.RGBA{R: 200, G: 100, B: 50, A: 180}) {
 		t.Fatalf("far color mismatch: %#v", got)
 	}
-	if got := fog.mixColor(base, 15); got != (color.RGBA{R: 150, G: 100, B: 75, A: 180}) {
+	if got := fog.MixColor(base, 15); got != (color.RGBA{R: 150, G: 100, B: 75, A: 180}) {
 		t.Fatalf("mid color mismatch: %#v", got)
 	}
 }

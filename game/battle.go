@@ -10,6 +10,8 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -50,24 +52,6 @@ const (
 	damageFloaterCombo
 )
 
-func actionAnimationDuration(action res.ACTAction, fallback time.Duration) time.Duration {
-	if len(action.Animations) == 0 {
-		return fallback
-	}
-	delayMS := float64(action.DelayMS)
-	if delayMS <= 0 {
-		delayMS = 150
-	}
-	duration := time.Duration(delayMS * float64(time.Millisecond) * float64(len(action.Animations)))
-	if duration <= 0 {
-		return fallback
-	}
-	if duration > maxCombatAnimationDuration {
-		return maxCombatAnimationDuration
-	}
-	return duration
-}
-
 func combatMotionDelayFromAction(action res.ACTAction, duration time.Duration, motion int) time.Duration {
 	if duration <= 0 {
 		return 0
@@ -88,7 +72,7 @@ func firstActionSoundMotion(action res.ACTAction) int {
 }
 
 func (m *WorldMode) humanoidSpriteViewForActor(ctx client.Context, actor world.Actor) *humanoidSpriteView {
-	if isLocalActor(ctx, actor.ID) {
+	if scene.IsLocalActor(ctx, actor.ID) {
 		return m.playerView
 	}
 	if actorIsMercenary(actor) {
@@ -117,17 +101,17 @@ func (m *WorldMode) nonPCResolvedAction(ctx client.Context, actor world.Actor, a
 	if view == nil {
 		return res.ACTAction{}, false
 	}
-	_, action, ok := resolveSpriteAction(view.act, actionFamily, actor.Dir)
+	_, action, ok := resolveSpriteAction(view.Act, actionFamily, actor.Dir)
 	return action, ok
 }
 
 func (m *WorldMode) actorResolvedAction(ctx client.Context, actor world.Actor, actionFamily int) (res.ACTAction, bool) {
-	if res.HasPlayerJobToken(actorVisualJob(actor)) || actorIsMercenary(actor) {
+	if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || actorIsMercenary(actor) {
 		view := m.humanoidSpriteViewForActor(ctx, actor)
 		if view == nil || view.body == nil {
 			return res.ACTAction{}, false
 		}
-		_, action, ok := resolveSpriteAction(view.body.act, actionFamily, actor.Dir)
+		_, action, ok := resolveSpriteAction(view.body.Act, actionFamily, actor.Dir)
 		return action, ok
 	}
 	return m.nonPCResolvedAction(ctx, actor, actionFamily)
@@ -149,16 +133,16 @@ func (m *WorldMode) nonPCActionACT(ctx client.Context, actor world.Actor) *res.A
 	if view == nil {
 		return nil
 	}
-	return view.act
+	return view.Act
 }
 
 func (m *WorldMode) actorActionACT(ctx client.Context, actor world.Actor) *res.ACT {
-	if res.HasPlayerJobToken(actorVisualJob(actor)) || actorIsMercenary(actor) {
+	if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || actorIsMercenary(actor) {
 		view := m.humanoidSpriteViewForActor(ctx, actor)
 		if view == nil || view.body == nil {
 			return nil
 		}
-		return view.body.act
+		return view.body.Act
 	}
 	return m.nonPCActionACT(ctx, actor)
 }
@@ -174,7 +158,7 @@ func (m *WorldMode) actorActionDuration(ctx client.Context, actor world.Actor, a
 		}
 	}
 	if action, ok := m.actorResolvedAction(ctx, actor, actionFamily); ok {
-		return actionAnimationDuration(action, fallback)
+		return scene.ActionAnimationDuration(action, fallback)
 	}
 	return fallback
 }
@@ -223,23 +207,13 @@ type actorCastBar struct {
 
 const attackRetryInterval = 1200 * time.Millisecond
 
-const (
-	defaultAttackAnimationDuration  = 600 * time.Millisecond
-	defaultHitAnimationDuration     = 250 * time.Millisecond
-	defaultDeathAnimationDuration   = 900 * time.Millisecond
-	maxCombatAnimationDuration      = 5 * time.Second
-	nonPCDeathFadeDuration          = 5 * time.Second
-	multiHitDelay                   = 200 * time.Millisecond
-	referenceBowArrowFlightDuration = 8 * 24 * time.Millisecond
-)
-
 func combatDuration(speed int32, fallback time.Duration) time.Duration {
 	if speed <= 0 {
 		return fallback
 	}
 	duration := time.Duration(speed) * time.Millisecond
-	if duration > maxCombatAnimationDuration {
-		return maxCombatAnimationDuration
+	if duration > scene.MaxCombatAnimationDuration {
+		return scene.MaxCombatAnimationDuration
 	}
 	return duration
 }
@@ -252,7 +226,7 @@ func maxDuration(a, b time.Duration) time.Duration {
 }
 
 func (m *WorldMode) requestAttack(ctx client.Context, actor world.Actor, source string) {
-	if !localStealthAllowsSkill(ctx, 0) || actorHasStealth(actor) {
+	if !localStealthAllowsSkill(ctx, 0) || scene.ActorHasStealth(actor) {
 		m.cancelAttackIntent()
 		return
 	}
@@ -373,7 +347,7 @@ func (m *WorldMode) updatePendingAttack(ctx client.Context, source string, logOu
 		m.pendingAttack.readyAt = readyAt
 	}
 	if logOutOfRange {
-		glog.Debugf("%s pending attack scheduled target=%d delay_ms=%d", source, actor.ID, maxInt(0, int(m.pendingAttack.readyAt.Sub(now).Milliseconds())))
+		glog.Debugf("%s pending attack scheduled target=%d delay_ms=%d", source, actor.ID, scene.MaxInt(0, int(m.pendingAttack.readyAt.Sub(now).Milliseconds())))
 	}
 }
 
@@ -421,7 +395,7 @@ func (m *WorldMode) processLockedAttack(ctx client.Context) {
 		return
 	}
 	now := time.Now()
-	if actorIsMovingAt(ctx.World.Player, now) {
+	if scene.ActorIsMovingAt(ctx.World.Player, now) {
 		return
 	}
 	actor, ok := ctx.World.Actors[m.lockedAttackID]
@@ -464,7 +438,7 @@ func normalAttackLockActive(ctx client.Context) bool {
 
 func pendingAttackReadyAt(player world.Actor, now time.Time) time.Time {
 	readyAt := now.Add(60 * time.Millisecond)
-	if actorIsMovingAt(player, now) && player.MoveDuration > 0 {
+	if scene.ActorIsMovingAt(player, now) && player.MoveDuration > 0 {
 		walkReadyAt := player.MoveStarted.Add(player.MoveDuration).Add(60 * time.Millisecond)
 		if walkReadyAt.After(readyAt) {
 			readyAt = walkReadyAt
@@ -474,7 +448,7 @@ func pendingAttackReadyAt(player world.Actor, now time.Time) time.Time {
 }
 
 func (m *WorldMode) sendAttackAction(ctx client.Context, actor world.Actor, source string) {
-	if !localStealthAllowsSkill(ctx, 0) || actorHasStealth(actor) {
+	if !localStealthAllowsSkill(ctx, 0) || scene.ActorHasStealth(actor) {
 		m.cancelAttackIntent()
 		return
 	}
@@ -499,8 +473,8 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		m.applyActorSitStandActionNotify(ctx, action)
 		return
 	}
-	source, sourceOK, sourceLocal := actorForCombatID(ctx, action.SourceID)
-	target, targetOK, targetLocal := actorForCombatID(ctx, action.TargetID)
+	source, sourceOK, sourceLocal := scene.ActorForCombatID(ctx, action.SourceID)
+	target, targetOK, targetLocal := scene.ActorForCombatID(ctx, action.TargetID)
 	splash := skillSplashAction(action)
 	if action.SkillID > 0 && !splash {
 		m.applySkillNameBubble(ctx, action.SourceID, action.SkillID, now)
@@ -510,7 +484,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		m.faceCombatSource(ctx, source, sourceLocal, target)
 		source.Dir = directionFromDelta(source.X, source.Y, target.X, target.Y, source.Dir)
 	}
-	attackDuration := combatDuration(action.SourceSpeed, defaultAttackAnimationDuration)
+	attackDuration := combatDuration(action.SourceSpeed, scene.DefaultAttackAnimationDuration)
 	attackFamily := spriteActionNonPCAttack
 	if sourceOK {
 		attackFamily = skillActionFamilyForActorWithResources(ctx.Resources, source, action.SkillID)
@@ -525,7 +499,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	referenceArrowFlightAttack := instrumentArrowAttack || normalPlayerBowAttack || doubleStrafeBowAttack || showerBowAttack || phantasmicBowAttack || sharpShootingBowAttack
 	if sourceOK && !splash {
 		if anim, ok := m.actorAnimation(action.SourceID, now); ok && anim.autoCounter && action.SkillID == 0 {
-			m.addWorldEffectAt(ctx, effectAutoCounter, action.SourceID, now)
+			m.effects().AddAt(ctx, effects.AutoCounter, action.SourceID, now)
 		}
 		if action.SkillID > 0 {
 			spec := skillAction(action.SkillID)
@@ -571,8 +545,8 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		// The reference client reveals the arrow at the ACT "atk" marker, then
 		// gives it eight 24 ms ticks to reach the target before applying the hit.
 		projectileAt = releaseAt
-		projectileDuration = referenceBowArrowFlightDuration
-		hitAt = releaseAt.Add(referenceBowArrowFlightDuration)
+		projectileDuration = scene.ReferenceBowArrowFlightDuration
+		hitAt = releaseAt.Add(scene.ReferenceBowArrowFlightDuration)
 	}
 	if sourceOK {
 		m.startArrowVulcanHits(ctx, action, hitAt)
@@ -597,7 +571,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 			m.clearActorCastBar(ctx, action.TargetID)
 			m.addNormalAttackHitEffect(ctx, action, target, targetOK, hitAt)
 			if actionHasHitReaction(action) && skillTargetUsesHitReaction(action, sourceLocal, targetLocal) {
-				hurtDuration := combatDuration(action.TargetSpeed, defaultHitAnimationDuration)
+				hurtDuration := combatDuration(action.TargetSpeed, scene.DefaultHitAnimationDuration)
 				m.startCombatAnimationWithNext(ctx, action.TargetID, hurtActionFamilyForActor(target), hitAt, hurtDuration, postHurtAnimation(target, hitAt.Add(hurtDuration)))
 			}
 			hitSoundCount := 1
@@ -606,7 +580,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 			}
 			hitSounds := combatHitSFXCandidates(action, source, sourceOK, target, targetOK)
 			for i := 0; i < hitSoundCount; i++ {
-				m.scheduleSoundAtActor(hitAt.Add(multiHitDelay*time.Duration(i)), action.TargetID, hitSounds...)
+				m.scheduleSoundAtActor(hitAt.Add(scene.MultiHitDelay*time.Duration(i)), action.TargetID, hitSounds...)
 			}
 		}
 		if action.SkillID > 0 {
@@ -619,7 +593,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	x, y := ctx.World.Player.X, ctx.World.Player.Y
 	if targetOK {
 		x, y = target.X, target.Y
-	} else if isLocalActor(ctx, action.TargetID) {
+	} else if scene.IsLocalActor(ctx, action.TargetID) {
 		x, y = ctx.World.Player.X, ctx.World.Player.Y
 	}
 	m.addActionDamageFloaters(ctx, action, target, targetOK, targetLocal, sourceLocal, x, y, hitAt)
@@ -631,7 +605,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 func (m *WorldMode) applyActorActionAIState(ctx client.Context, action network.ActorActionNotify, now time.Time) {
 	if action.SourceID != 0 {
 		motion := aiMotionAttack
-		expires := now.Add(combatDuration(action.SourceSpeed, defaultAttackAnimationDuration))
+		expires := now.Add(combatDuration(action.SourceSpeed, scene.DefaultAttackAnimationDuration))
 		if action.Action == network.ActorActionPickupItem || action.Action == network.ActionSitDown || action.Action == network.ActionStandUp {
 			motion = aiMotionStand
 			expires = time.Time{}
@@ -684,10 +658,10 @@ func (m *WorldMode) addSkillBeginEffect(ctx client.Context, action network.Actor
 	}
 	for _, effectID := range skillBeginEffectIDs(action.SkillID) {
 		actorID := action.SourceID
-		if effectDetachesLocalActor(effectID) && isLocalActor(ctx, actorID) {
+		if effects.EffectDetachesLocalActor(effectID) && scene.IsLocalActor(ctx, actorID) {
 			actorID = 0
 		}
-		if m.addWorldEffectAt(ctx, effectID, actorID, starts) {
+		if m.effects().AddAt(ctx, effectID, actorID, starts) {
 			glog.Debugf("skill begin effect skill=%d src=%d target=%d effect=%d", action.SkillID, action.SourceID, action.TargetID, effectID)
 		}
 	}
@@ -701,7 +675,7 @@ func (m *WorldMode) addNormalAttackBeforeHitEffect(ctx client.Context, action ne
 	if !ok {
 		return
 	}
-	if m.addWorldEffectBetweenAtDuration(ctx, effectID, action.TargetID, action.SourceID, starts, duration) {
+	if m.effects().AddBetweenDuration(ctx, effectID, action.TargetID, action.SourceID, starts, duration) {
 		glog.Debugf("normal attack before-hit effect src=%d target=%d effect=%d", action.SourceID, action.TargetID, effectID)
 	}
 }
@@ -712,13 +686,13 @@ func (m *WorldMode) addNormalAttackHitEffect(ctx client.Context, action network.
 	}
 	count := actionVisualHitCount(action)
 	for i := 0; i < count; i++ {
-		effectStarts := starts.Add(multiHitDelay * time.Duration(i))
-		if m.addWorldEffectAt(ctx, effectHit1, action.TargetID, effectStarts) {
-			glog.Debugf("normal hit effect src=%d target=%d effect=%d hit=%d/%d", action.SourceID, action.TargetID, effectHit1, i+1, count)
+		effectStarts := starts.Add(scene.MultiHitDelay * time.Duration(i))
+		if m.effects().AddAt(ctx, effects.Hit1, action.TargetID, effectStarts) {
+			glog.Debugf("normal hit effect src=%d target=%d effect=%d hit=%d/%d", action.SourceID, action.TargetID, effects.Hit1, i+1, count)
 		}
 		if actionUsesReferenceCriticalHitEffect(action) {
-			if m.addWorldEffectAt(ctx, effectBashHit, action.TargetID, effectStarts) {
-				glog.Debugf("critical hit effect src=%d target=%d effect=%d hit=%d/%d", action.SourceID, action.TargetID, effectBashHit, i+1, count)
+			if m.effects().AddAt(ctx, effects.BashHit, action.TargetID, effectStarts) {
+				glog.Debugf("critical hit effect src=%d target=%d effect=%d hit=%d/%d", action.SourceID, action.TargetID, effects.BashHit, i+1, count)
 			}
 		}
 	}
@@ -733,7 +707,7 @@ func actorUsesReferenceNormalHitEffect(actor world.Actor) bool {
 		return false
 	}
 	switch actor.ObjectType {
-	case actorObjectTypeMob, actorObjectTypeNPCABR, actorObjectTypeNPCBionic:
+	case scene.ActorObjectTypeMob, scene.ActorObjectTypeNPCABR, scene.ActorObjectTypeNPCBionic:
 		return true
 	default:
 		return false
@@ -749,7 +723,7 @@ func actorUsesBow(manager *res.Manager, actor world.Actor) bool {
 
 func normalAttackBeforeHitEffectID(manager *res.Manager, actor world.Actor) (int, bool) {
 	if res.HasPlayerJobToken(int(actor.Job)) && actorUsesBow(manager, actor) {
-		return effectArrowShot, true
+		return effects.ArrowShot, true
 	}
 	return normalAttackProjectileEffectIDForName(db.MonsterAttackProjectile[int(actor.Job)])
 }
@@ -757,7 +731,7 @@ func normalAttackBeforeHitEffectID(manager *res.Manager, actor world.Actor) (int
 func normalAttackProjectileEffectIDForName(name string) (int, bool) {
 	switch name {
 	case "ef_arrow_projectile":
-		return effectArrowShot, true
+		return effects.ArrowShot, true
 	default:
 		return 0, false
 	}
@@ -768,24 +742,24 @@ func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActio
 		return
 	}
 	if action.SkillID == db.SkillASCBreaker {
-		if _, sourceOK, _ := actorForCombatID(ctx, action.SourceID); sourceOK {
-			if _, targetOK, _ := actorForCombatID(ctx, action.TargetID); targetOK {
-				m.addWorldEffectBetweenAt(ctx, effectSoulBreaker, action.SourceID, action.TargetID, actionAt)
+		if _, sourceOK, _ := scene.ActorForCombatID(ctx, action.SourceID); sourceOK {
+			if _, targetOK, _ := scene.ActorForCombatID(ctx, action.TargetID); targetOK {
+				m.effects().AddBetween(ctx, effects.SoulBreaker, action.SourceID, action.TargetID, actionAt)
 			}
 		}
 		return
 	}
 	if action.SkillID == db.SkillACShower {
-		if target, ok, _ := actorForCombatID(ctx, action.TargetID); ok {
-			x, y := actorRenderPosition(target, actionAt)
-			m.addArrowShower(ctx, action.SourceID, x, y, false, actionAt)
+		if target, ok, _ := scene.ActorForCombatID(ctx, action.TargetID); ok {
+			x, y := scene.ActorRenderPosition(target, actionAt)
+			m.effects().AddArrowShower(ctx, action.SourceID, x, y, false, actionAt)
 		}
 		return
 	}
 	if action.SkillID == db.SkillASSplasher {
 		// ZC_NOTIFY_SKILL's level -1 marks the server's delayed explosion.
 		if action.SkillLevel == 0xffff {
-			m.addWorldEffectBetweenAt(ctx, effectVenomSplasher, action.TargetID, action.SourceID, actionAt)
+			m.effects().AddBetween(ctx, effects.VenomSplasher, action.TargetID, action.SourceID, actionAt)
 		}
 		return
 	}
@@ -793,13 +767,13 @@ func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActio
 		if action.Action != network.ActorActionSkill {
 			return
 		}
-		if _, ok, _ := actorForCombatID(ctx, action.SourceID); !ok {
+		if _, ok, _ := scene.ActorForCombatID(ctx, action.SourceID); !ok {
 			return
 		}
 		// The preamble and primary hit share a caster and server tick. Damage
 		// cannot identify the preamble: WoE and Hallucination can rewrite it.
-		for _, effect := range m.worldEffects {
-			if effect.effectID == effectGrimtooth && effect.actorID == action.SourceID && effect.serverTick == action.ServerTick {
+		for _, effect := range m.effects().Active {
+			if effect.EffectID == effects.Grimtooth && effect.ActorID == action.SourceID && effect.ServerTick == action.ServerTick {
 				return
 			}
 		}
@@ -813,18 +787,18 @@ func (m *WorldMode) addSkillEffect(ctx client.Context, action network.ActorActio
 		m.scheduleSoundAtActor(actionAt, action.SourceID, sound)
 	}
 	for _, effectID := range spec.effectIDs {
-		if m.addWorldEffectBetweenAt(ctx, effectID, action.TargetID, action.SourceID, starts) {
-			m.worldEffects[len(m.worldEffects)-1].serverTick = action.ServerTick
-			if effectID == effectTanji {
+		if m.effects().AddBetween(ctx, effectID, action.TargetID, action.SourceID, starts) {
+			m.effects().Active[len(m.effects().Active)-1].ServerTick = action.ServerTick
+			if effectID == effects.Tanji {
 				// LaunchSkillSpecialEffect receives the hit count (spheres used).
-				count := minInt(5, actionVisualHitCount(action))
-				m.worldEffects[len(m.worldEffects)-1].size = math.Sqrt2 * (2 + 0.4*float64(count)) / 5
+				count := scene.MinInt(5, actionVisualHitCount(action))
+				m.effects().Active[len(m.effects().Active)-1].Size = math.Sqrt2 * (2 + 0.4*float64(count)) / 5
 			}
 			glog.Debugf("skill effect skill=%d src=%d target=%d effect=%d", action.SkillID, action.SourceID, action.TargetID, effectID)
 		}
 	}
 	for _, effectID := range spec.effectIDsOnCaster {
-		if m.addWorldEffectAt(ctx, effectID, action.SourceID, starts) {
+		if m.effects().AddAt(ctx, effectID, action.SourceID, starts) {
 			glog.Debugf("skill caster effect skill=%d src=%d target=%d effect=%d", action.SkillID, action.SourceID, action.TargetID, effectID)
 		}
 	}
@@ -847,14 +821,14 @@ func (m *WorldMode) addSkillBeforeHitEffect(ctx client.Context, action network.A
 		count = 1
 	}
 	for i := 0; i < count; i++ {
-		effectStarts := starts.Add(multiHitDelay * time.Duration(i))
+		effectStarts := starts.Add(scene.MultiHitDelay * time.Duration(i))
 		for _, effectID := range effectIDs {
-			if m.addWorldEffectBetweenAt(ctx, effectID, action.TargetID, action.SourceID, effectStarts) {
+			if m.effects().AddBetween(ctx, effectID, action.TargetID, action.SourceID, effectStarts) {
 				glog.Debugf("skill before-hit effect skill=%d src=%d target=%d effect=%d hit=%d/%d", action.SkillID, action.SourceID, action.TargetID, effectID, i+1, count)
 			}
 		}
 		for _, effectID := range selfEffectIDs {
-			if m.addWorldEffectAt(ctx, effectID, action.SourceID, effectStarts) {
+			if m.effects().AddAt(ctx, effectID, action.SourceID, effectStarts) {
 				glog.Debugf("skill before-hit self effect skill=%d src=%d target=%d effect=%d hit=%d/%d", action.SkillID, action.SourceID, action.TargetID, effectID, i+1, count)
 			}
 		}
@@ -866,12 +840,12 @@ func (m *WorldMode) addSkillBeforeHitEffectOnce(ctx client.Context, action netwo
 		return
 	}
 	for _, effectID := range skillBeforeHitEffectIDs(action.SkillID) {
-		if m.addWorldEffectBetweenAtDuration(ctx, effectID, action.TargetID, action.SourceID, starts, duration) {
+		if m.effects().AddBetweenDuration(ctx, effectID, action.TargetID, action.SourceID, starts, duration) {
 			glog.Debugf("skill before-hit effect skill=%d src=%d target=%d effect=%d", action.SkillID, action.SourceID, action.TargetID, effectID)
 		}
 	}
 	for _, effectID := range skillBeforeHitEffectSelfIDs(action.SkillID) {
-		if m.addWorldEffectBetweenAtDuration(ctx, effectID, action.SourceID, 0, starts, duration) {
+		if m.effects().AddBetweenDuration(ctx, effectID, action.SourceID, 0, starts, duration) {
 			glog.Debugf("skill before-hit self effect skill=%d src=%d target=%d effect=%d", action.SkillID, action.SourceID, action.TargetID, effectID)
 		}
 	}
@@ -893,26 +867,26 @@ func (m *WorldMode) addSkillHitEffect(ctx client.Context, action network.ActorAc
 		count = 1
 	}
 	for i := 0; i < count; i++ {
-		effectStarts := starts.Add(multiHitDelay * time.Duration(i))
+		effectStarts := starts.Add(scene.MultiHitDelay * time.Duration(i))
 		for secondary, effectID := range effectIDs {
 			if i > 0 && secondary > 0 && action.SkillID >= db.SkillWZFirepillar && action.SkillID <= db.SkillWZQuagmire {
 				continue
 			}
-			if (effectID == effectBowlingBash || effectID == effectBlitzBeat) && i > 0 {
+			if (effectID == effects.BowlingBash || effectID == effects.BlitzBeat) && i > 0 {
 				continue
 			}
-			if i > 0 && effectID == effectBashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillSNSharpshooting || action.SkillID == db.SkillCGArrowvulcan || action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish || action.SkillID == db.SkillChTigerfist || action.SkillID == db.SkillChChaincrush) {
+			if i > 0 && effectID == effects.BashHit && (action.SkillID == db.SkillACDouble || action.SkillID == db.SkillSNSharpshooting || action.SkillID == db.SkillCGArrowvulcan || action.SkillID == db.SkillHTPhantasmic || action.SkillID == db.SkillHTPower || action.SkillID == db.SkillMOFingeroffensive || action.SkillID == db.SkillMOCombofinish || action.SkillID == db.SkillChTigerfist || action.SkillID == db.SkillChChaincrush) {
 				continue
 			}
-			if i > 0 && (action.SkillID == db.SkillMGNapalmbeat || action.SkillID == db.SkillMGSoulstrike || action.SkillID == db.SkillMGFireball || action.SkillID == db.SkillMGFrostdiver) && (effectID == effectBashHit || effectID == effectFrostDiverHit) {
+			if i > 0 && (action.SkillID == db.SkillMGNapalmbeat || action.SkillID == db.SkillMGSoulstrike || action.SkillID == db.SkillMGFireball || action.SkillID == db.SkillMGFrostdiver) && (effectID == effects.BashHit || effectID == effects.FrostDiverHit) {
 				continue
 			}
-			if m.addWorldEffectAt(ctx, effectID, action.TargetID, effectStarts) {
+			if m.effects().AddAt(ctx, effectID, action.TargetID, effectStarts) {
 				glog.Debugf("skill hit effect skill=%d src=%d target=%d effect=%d hit=%d/%d", action.SkillID, action.SourceID, action.TargetID, effectID, i+1, count)
 			}
 		}
 		for _, effectID := range casterEffectIDs {
-			if m.addWorldEffectAt(ctx, effectID, action.SourceID, effectStarts) {
+			if m.effects().AddAt(ctx, effectID, action.SourceID, effectStarts) {
 				glog.Debugf("skill hit caster effect skill=%d src=%d target=%d effect=%d hit=%d/%d", action.SkillID, action.SourceID, action.TargetID, effectID, i+1, count)
 			}
 		}
@@ -923,7 +897,7 @@ func actionVisualHitCount(action network.ActorActionNotify) int {
 	if action.HitCount == 0 {
 		return 1
 	}
-	return maxInt(1, int(action.HitCount))
+	return scene.MaxInt(1, int(action.HitCount))
 }
 
 func (m *WorldMode) addActionDamageFloaters(ctx client.Context, action network.ActorActionNotify, target world.Actor, targetOK, targetLocal, sourceLocal bool, x, y int, hitAt time.Time) {
@@ -946,7 +920,7 @@ func (m *WorldMode) addActionDamageFloaters(ctx client.Context, action network.A
 	values := actionDamageFloaterValues(action, count)
 	combo := actionShowsComboDamageFloaters(action, target, targetOK, targetLocal)
 	for i := 0; i < count; i++ {
-		starts := hitAt.Add(multiHitDelay * time.Duration(i))
+		starts := hitAt.Add(scene.MultiHitDelay * time.Duration(i))
 		m.addDamageFloater(action.TargetID, x, y, strconv.Itoa(values[i]), floaterColor, kind, starts)
 		if combo {
 			m.addComboDamageFloater(action.TargetID, x, y, actionComboDamageFloaterValue(action, count, i), starts, i+1 == count)
@@ -1052,13 +1026,13 @@ func actionShowsComboDamageFloaters(action network.ActorActionNotify, target wor
 
 func actorIsPlayerObject(actor world.Actor) bool {
 	if actor.HasObjectType {
-		return actor.ObjectType == actorObjectTypePC
+		return actor.ObjectType == scene.ActorObjectTypePC
 	}
 	return res.HasPlayerJobToken(int(actor.Job))
 }
 
 func (m *WorldMode) applyActorPickupActionNotify(ctx client.Context, action network.ActorActionNotify, now time.Time) {
-	source, sourceOK, sourceLocal := actorForCombatID(ctx, action.SourceID)
+	source, sourceOK, sourceLocal := scene.ActorForCombatID(ctx, action.SourceID)
 	if !sourceOK {
 		return
 	}
@@ -1077,7 +1051,7 @@ func (m *WorldMode) applyActorPickupActionNotify(ctx client.Context, action netw
 			}
 		}
 	}
-	m.startCombatAnimation(ctx, action.SourceID, spriteActionPickup, now, pickupAnimationDuration)
+	m.startCombatAnimation(ctx, action.SourceID, scene.SpriteActionPickup, now, pickupAnimationDuration)
 }
 
 func (m *WorldMode) applyActorSitStandActionNotify(ctx client.Context, action network.ActorActionNotify) {
@@ -1089,7 +1063,7 @@ func (m *WorldMode) applyActorSitStandActionNotify(ctx client.Context, action ne
 		return
 	}
 	sitting := action.Action == network.ActionSitDown
-	if isLocalActor(ctx, id) {
+	if scene.IsLocalActor(ctx, id) {
 		ctx.World.Player.Sitting = sitting
 		if sitting {
 			ctx.World.Player.Moving = false
@@ -1134,31 +1108,6 @@ func (m *WorldMode) applyActorHPUpdate(update network.ActorHPUpdate) {
 		maxHP: update.MaxHP,
 	}
 	glog.Debugf("actor hp id=%d hp=%d max_hp=%d tiny=%t", update.ID, hp, update.MaxHP, update.Tiny)
-}
-
-func actorForCombatID(ctx client.Context, id uint32) (world.Actor, bool, bool) {
-	if ctx.World == nil || id == 0 {
-		return world.Actor{}, false, false
-	}
-	if isLocalActor(ctx, id) {
-		actor := ctx.World.Player
-		character := ctx.Session.SelectedCharacter()
-		actor.ID = id
-		actor.Job = character.Job
-		actor.Head = character.Hair
-		actor.Weapon = character.Weapon
-		actor.Shield = character.Shield
-		actor.HeadTop = character.HeadTop
-		actor.HeadMid = character.HeadMid
-		actor.HeadLow = character.HeadLow
-		actor.Sex = ctx.Session.Sex
-		actor.Level = ctx.Session.Progress.BaseLevel
-		actor.HasLevel = actor.Level > 0
-		actor.Appearance = true
-		return actor, true, true
-	}
-	actor, ok := ctx.World.Actors[id]
-	return actor, ok, false
 }
 
 func (m *WorldMode) faceCombatSource(ctx client.Context, source world.Actor, sourceLocal bool, target world.Actor) {
@@ -1229,14 +1178,14 @@ func (m *WorldMode) setActorAction(ctx client.Context, id uint32, anim actorAnim
 }
 
 func actorActionResetsWalk(anim actorAnimation) bool {
-	return !anim.keepMovement && anim.actionFamily != spriteActionWalk
+	return !anim.keepMovement && anim.actionFamily != scene.SpriteActionWalk
 }
 
 func (m *WorldMode) actorActionShouldResumeWalk(ctx client.Context, id uint32, anim actorAnimation) bool {
 	if anim.actionFamily != spriteActionPCHurt && anim.actionFamily != spriteActionNonPCHurt {
 		return false
 	}
-	return isLocalActor(ctx, id) && m.hasCombatFocus()
+	return scene.IsLocalActor(ctx, id) && m.hasCombatFocus()
 }
 
 func (m *WorldMode) hasCombatFocus() bool {
@@ -1294,7 +1243,7 @@ func (m *WorldMode) actorActionAnimationIsDeath(ctx client.Context, id uint32, a
 	if anim.actionFamily != spriteActionNonPCDeath {
 		return false
 	}
-	actor, ok, local := actorForCombatID(ctx, id)
+	actor, ok, local := scene.ActorForCombatID(ctx, id)
 	if !ok {
 		return true
 	}
@@ -1303,7 +1252,7 @@ func (m *WorldMode) actorActionAnimationIsDeath(ctx client.Context, id uint32, a
 
 func (m *WorldMode) startCombatAnimation(ctx client.Context, id uint32, actionFamily int, started time.Time, duration time.Duration) {
 	m.startActorAnimation(ctx, id, actionFamily, started, duration)
-	if ctx.Session == nil || !isLocalActor(ctx, id) {
+	if ctx.Session == nil || !scene.IsLocalActor(ctx, id) {
 		return
 	}
 	m.startActorAnimation(ctx, ctx.Session.AccountID, actionFamily, started, duration)
@@ -1317,7 +1266,7 @@ func (m *WorldMode) startCombatAnimationWithTiming(ctx client.Context, id uint32
 
 func (m *WorldMode) startCombatAnimationWithNext(ctx client.Context, id uint32, actionFamily int, started time.Time, duration time.Duration, next *actorAnimation) {
 	m.startActorAnimationWithNext(ctx, id, actionFamily, started, duration, next)
-	if ctx.Session == nil || !isLocalActor(ctx, id) {
+	if ctx.Session == nil || !scene.IsLocalActor(ctx, id) {
 		return
 	}
 	m.startActorAnimationWithNext(ctx, ctx.Session.AccountID, actionFamily, started, duration, next)
@@ -1331,7 +1280,7 @@ func (m *WorldMode) startCombatAnimationWithTimingAndNext(ctx client.Context, id
 
 func (m *WorldMode) setCombatActorAction(ctx client.Context, id uint32, anim actorAnimation) {
 	m.setActorAction(ctx, id, anim)
-	if ctx.Session == nil || !isLocalActor(ctx, id) {
+	if ctx.Session == nil || !scene.IsLocalActor(ctx, id) {
 		return
 	}
 	m.setActorAction(ctx, ctx.Session.AccountID, anim)
@@ -1356,7 +1305,7 @@ func timedCombatAnimation(frameDelay time.Duration, actionFamily int, started ti
 
 func (m *WorldMode) startHeldCombatAnimation(ctx client.Context, id uint32, actionFamily int, started time.Time, duration time.Duration) {
 	m.startHeldActorAnimation(ctx, id, actionFamily, started, duration)
-	if ctx.Session == nil || !isLocalActor(ctx, id) {
+	if ctx.Session == nil || !scene.IsLocalActor(ctx, id) {
 		return
 	}
 	m.startHeldActorAnimation(ctx, ctx.Session.AccountID, actionFamily, started, duration)
@@ -1414,7 +1363,7 @@ func (m *WorldMode) actorAnimation(id uint32, now time.Time) (actorAnimation, bo
 		return actorAnimation{}, false
 	}
 	if anim.duration <= 0 {
-		anim.duration = defaultAttackAnimationDuration
+		anim.duration = scene.DefaultAttackAnimationDuration
 	}
 	if now.Before(anim.started) {
 		return actorAnimation{}, false
@@ -1445,7 +1394,7 @@ func attackActionFamilyForActorWithResources(manager *res.Manager, actor world.A
 	if actorIsMercenary(actor) {
 		return mercenaryAttackActionFamily(int(actor.Job), actor.Sex, int(actor.Weapon))
 	}
-	job := actorVisualJob(actor)
+	job := scene.ActorVisualJob(actor)
 	if res.HasPlayerJobToken(job) {
 		weapon, _ := res.NormalizePlayerWeaponShield(int(actor.Weapon), int(actor.Shield))
 		viewID := res.PlayerWeaponViewID(manager, weapon)
@@ -1482,20 +1431,20 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 		return spriteActionPCAttack3
 	}
 	if skillID == db.SkillTFPickstone {
-		return spriteActionPickup
+		return scene.SpriteActionPickup
 	}
 	if skillID == db.SkillALBlessing || skillID == db.SkillMOSteelbody || skillID == db.SkillMOExplosionspirits || skillID == db.SkillKNChargeatk || skillID == db.SkillPRRedemptio || skillID == db.SkillBaPangvoice {
-		return spriteActionIdle
+		return scene.SpriteActionIdle
 	}
 	switch skillID {
 	case db.SkillAMPotionpitcher, db.SkillAMAcidterror, db.SkillAMCpWeapon, db.SkillAMCpShield, db.SkillAMCpArmor, db.SkillAMCpHelm, db.SkillAMCannibalize, db.SkillAMCallhomun, db.SkillAMRest, db.SkillAMResurrecthomun:
-		return spriteActionIdle
+		return scene.SpriteActionIdle
 	case db.SkillAMBerserkpitcher, db.SkillCRSlimpitcher, db.SkillCRAciddemonstration:
 		return spriteActionPCAttack1
 	case db.SkillCRFullprotection, db.SkillSTChasewalk, db.SkillSTPreserve:
-		return spriteActionIdle
+		return scene.SpriteActionIdle
 	case db.SkillTKSevenwind, db.SkillTKMission:
-		return spriteActionIdle
+		return scene.SpriteActionIdle
 	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3, db.SkillChSoulcollect, db.SkillMOCallspirits, db.SkillMOKitranslation:
 		return spriteActionPCSkill
 	}
@@ -1547,7 +1496,7 @@ func actionDealsDamage(action network.ActorActionNotify) bool {
 }
 
 func (m *WorldMode) applyAttackFailureForDistance(ctx client.Context, failure network.AttackFailureForDistance) {
-	attackRange := maxInt(1, failure.AttackRange)
+	attackRange := scene.MaxInt(1, failure.AttackRange)
 	if ctx.Session != nil {
 		ctx.Session.AttackRange = attackRange
 	}
@@ -1653,8 +1602,8 @@ func damageFloaterDuration(kind damageFloaterKind) time.Duration {
 
 func damageFloaterComboTransientDuration() time.Duration {
 	const robrowserComboTransient = 450 * time.Millisecond
-	if multiHitDelay < robrowserComboTransient {
-		return multiHitDelay
+	if scene.MultiHitDelay < robrowserComboTransient {
+		return scene.MultiHitDelay
 	}
 	return robrowserComboTransient
 }
@@ -1662,28 +1611,28 @@ func damageFloaterComboTransientDuration() time.Duration {
 func currentNormalAttackRange(ctx client.Context) int {
 	attackRange := 1
 	if ctx.Session != nil {
-		attackRange = maxInt(attackRange, ctx.Session.AttackRange)
-		attackRange = maxInt(attackRange, normalAttackRangeFromEquippedItems(ctx.Session, ctx.Resources))
+		attackRange = scene.MaxInt(attackRange, ctx.Session.AttackRange)
+		attackRange = scene.MaxInt(attackRange, normalAttackRangeFromEquippedItems(ctx.Session, ctx.Resources))
 	}
-	return maxInt(1, attackRange)
+	return scene.MaxInt(1, attackRange)
 }
 
 func attackTargetWithinRange(playerX, playerY, targetX, targetY, attackRange int) bool {
-	return maxInt(absInt(playerX-targetX), absInt(playerY-targetY)) <= maxInt(1, attackRange)
+	return scene.MaxInt(scene.AbsInt(playerX-targetX), scene.AbsInt(playerY-targetY)) <= scene.MaxInt(1, attackRange)
 }
 
 func normalAttackTargetWithinRange(playerX, playerY, targetX, targetY, attackRange int) bool {
-	attackRange = maxInt(1, attackRange)
+	attackRange = scene.MaxInt(1, attackRange)
 	if attackRange <= 1 {
 		return attackTargetWithinRange(playerX, playerY, targetX, targetY, attackRange)
 	}
-	dx := absInt(playerX - targetX)
-	dy := absInt(playerY - targetY)
+	dx := scene.AbsInt(playerX - targetX)
+	dy := scene.AbsInt(playerY - targetY)
 	return dx*dx+dy*dy <= attackRange*attackRange
 }
 
 func normalAttackApproachCellFromTarget(ctx client.Context, sourceX, sourceY, targetX, targetY int, attackRange int) (int, int, bool) {
-	attackRange = maxInt(1, attackRange)
+	attackRange = scene.MaxInt(1, attackRange)
 	if attackRange > 1 {
 		if x, y, ok := rangedAttackApproachCellFromTargetMatching(ctx, sourceX, sourceY, targetX, targetY, attackRange, normalAttackTargetWithinRange); ok {
 			return x, y, true
@@ -1693,7 +1642,7 @@ func normalAttackApproachCellFromTarget(ctx client.Context, sourceX, sourceY, ta
 }
 
 func attackApproachCellFromTarget(ctx client.Context, sourceX, sourceY, targetX, targetY int, attackRange int) (int, int, bool) {
-	attackRange = maxInt(1, attackRange)
+	attackRange = scene.MaxInt(1, attackRange)
 	if attackRange > 1 {
 		if x, y, ok := rangedAttackApproachCellFromTarget(ctx, sourceX, sourceY, targetX, targetY, attackRange); ok {
 			return x, y, true
@@ -1738,7 +1687,7 @@ func rangedAttackApproachCellFromTargetMatching(ctx client.Context, sourceX, sou
 	if ctx.World == nil {
 		return 0, 0, false
 	}
-	attackRange = maxInt(1, attackRange)
+	attackRange = scene.MaxInt(1, attackRange)
 	source := pathPoint{x: sourceX, y: sourceY}
 	type candidate struct {
 		x        int
@@ -1748,7 +1697,7 @@ func rangedAttackApproachCellFromTargetMatching(ctx client.Context, sourceX, sou
 	candidates := make([]candidate, 0, (attackRange*2+1)*(attackRange*2+1))
 	for dy := -attackRange; dy <= attackRange; dy++ {
 		for dx := -attackRange; dx <= attackRange; dx++ {
-			ringDistance := maxInt(absInt(dx), absInt(dy))
+			ringDistance := scene.MaxInt(scene.AbsInt(dx), scene.AbsInt(dy))
 			if ringDistance == 0 || ringDistance > attackRange {
 				continue
 			}
@@ -1816,7 +1765,7 @@ func walkTargetReachable(ctx client.Context, sourceX, sourceY, targetX, targetY 
 	return ok
 }
 
-func (m *WorldMode) drawDamageFloaters(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) {
+func (m *WorldMode) drawDamageFloaters(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
 	if len(m.damageFloaters) == 0 {
 		return
 	}
@@ -1834,17 +1783,17 @@ func (m *WorldMode) drawDamageFloaters(screen *render.Frame, ctx client.Context,
 		}
 		x, y := float64(floater.x), float64(floater.y)
 		if actor, ok := ctx.World.Actors[floater.actorID]; ok {
-			x, y = actorRenderPosition(actor, now)
-		} else if isLocalActor(ctx, floater.actorID) {
-			x, y = actorRenderPosition(ctx.World.Player, now)
+			x, y = scene.ActorRenderPosition(actor, now)
+		} else if scene.IsLocalActor(ctx, floater.actorID) {
+			x, y = scene.ActorRenderPosition(ctx.World.Player, now)
 		}
 		progress := damageFloaterProgress(floater, now)
 		dx, dy, zLift, scale, alpha := damageFloaterPlacement(floater.kind, progress)
 		floaterColor := damageFloaterColor(floater.kind, floater.color)
-		terrainZ := terrainHeightAt(ctx.World, x, y)
-		worldX := cellCenter(x) + dx
-		worldY := cellCenter(y) + dy
-		screenScale := actorBillboardScreenScale(projection, worldX, worldY, terrainZ)
+		terrainZ := scene.TerrainHeightAt(ctx.World, x, y)
+		worldX := scene.CellCenter(x) + dx
+		worldY := scene.CellCenter(y) + dy
+		screenScale := scene.ActorBillboardScreenScale(projection, worldX, worldY, terrainZ)
 		if floater.kind == damageFloaterMiss {
 			if billboard, ok := m.damageMessageBillboard(ctx, 0, 0); ok {
 				drawSpriteBillboardTintAlphaOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift, screenScale*scale, alpha, 1, floaterColor)
@@ -1861,22 +1810,22 @@ func (m *WorldMode) drawDamageFloaters(screen *render.Frame, ctx client.Context,
 			continue
 		}
 		point := projection.Project(worldX, worldY, terrainZ+zLift)
-		render.DrawBitmapTextAtColor(screen, floater.text, int(point.x)-8, int(point.y)-40, withAlpha(floaterColor, alpha))
+		render.DrawBitmapTextAtColor(screen, floater.text, int(point.X)-8, int(point.Y)-40, scene.WithAlpha(floaterColor, alpha))
 	}
 	m.damageFloaters = active
 }
 
 func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
-	actor, ok, local := actorForCombatID(ctx, id)
+	actor, ok, local := scene.ActorForCombatID(ctx, id)
 	if !ok {
 		if !local {
-			m.removeLevel99AuraEffects(id)
+			m.effects().RemoveLevel99AuraEffects(id)
 			ctx.World.RemoveActor(id)
 		}
 		return
 	}
 	now := time.Now()
-	deathX, deathY := actorRenderPosition(actor, now)
+	deathX, deathY := scene.ActorRenderPosition(actor, now)
 	actor.X = int(math.Round(deathX))
 	actor.Y = int(math.Round(deathY))
 	actor.Moving = false
@@ -1917,11 +1866,11 @@ func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
 		upsertActor(ctx, actor)
 	}
 	actionFamily := deathActionFamilyForActor(actor)
-	deathDuration := m.actorActionDuration(ctx, actor, actionFamily, defaultDeathAnimationDuration)
-	persistent := !local && actorRepresentsPlayer(actor)
+	deathDuration := m.actorActionDuration(ctx, actor, actionFamily, scene.DefaultDeathAnimationDuration)
+	persistent := !local && scene.ActorRepresentsPlayer(actor)
 	visibleDuration := deathDuration
 	if !local && !persistent {
-		visibleDuration = maxDuration(deathDuration, nonPCDeathFadeDuration)
+		visibleDuration = maxDuration(deathDuration, scene.NonPCDeathFadeDuration)
 	}
 	if local || persistent {
 		m.startHeldCombatAnimation(ctx, id, actionFamily, now, deathDuration)
@@ -1948,8 +1897,8 @@ func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
 			}
 		}
 	}
-	if !local && actor.HasObjectType && actor.ObjectType != actorObjectTypePC {
-		m.removeLevel99AuraEffects(id)
+	if !local && actor.HasObjectType && actor.ObjectType != scene.ActorObjectTypePC {
+		m.effects().RemoveLevel99AuraEffects(id)
 	}
 	glog.Debugf("actor death id=%d job=%d local=%t persistent=%t action=%d death_ms=%d remove_ms=%d", id, actor.Job, local, persistent, actionFamily, deathDuration.Milliseconds(), visibleDuration.Milliseconds())
 }
@@ -1958,7 +1907,7 @@ func (m *WorldMode) applyActorResurrection(ctx client.Context, resurrection netw
 	if resurrection.ID == 0 {
 		return
 	}
-	if isLocalActor(ctx, resurrection.ID) {
+	if scene.IsLocalActor(ctx, resurrection.ID) {
 		m.clearLocalDeathState(ctx)
 	} else {
 		m.clearActorDeath(resurrection.ID)
@@ -2031,18 +1980,18 @@ func (m *WorldMode) actorVanishAlpha(id uint32, now time.Time) float64 {
 	return alpha
 }
 
-func (m *WorldMode) drawAttackFocusMarker(screen *render.Frame, ctx client.Context, now time.Time, entries []sceneActorDrawEntry) {
+func (m *WorldMode) drawAttackFocusMarker(screen *render.Frame, ctx client.Context, now time.Time, entries []scene.ActorDrawEntry) {
 	m.drawActorFocusMarker(screen, ctx, now, entries, m.attackFocusID, &m.attackFocusStart, false)
 }
 
-func (m *WorldMode) drawScriptHighlightMarker(screen *render.Frame, ctx client.Context, now time.Time, entries []sceneActorDrawEntry) {
+func (m *WorldMode) drawScriptHighlightMarker(screen *render.Frame, ctx client.Context, now time.Time, entries []scene.ActorDrawEntry) {
 	if actorIDsMatch(ctx, m.scriptHighlight.id, m.attackFocusID) {
 		return
 	}
 	m.drawActorFocusMarker(screen, ctx, now, entries, m.scriptHighlight.id, &m.scriptHighlight.started, true)
 }
 
-func (m *WorldMode) drawActorFocusMarker(screen *render.Frame, ctx client.Context, now time.Time, entries []sceneActorDrawEntry, targetID uint32, started *time.Time, matchLocalAlias bool) {
+func (m *WorldMode) drawActorFocusMarker(screen *render.Frame, ctx client.Context, now time.Time, entries []scene.ActorDrawEntry, targetID uint32, started *time.Time, matchLocalAlias bool) {
 	if targetID == 0 || started == nil || screen == nil {
 		return
 	}
@@ -2056,14 +2005,14 @@ func (m *WorldMode) drawActorFocusMarker(screen *render.Frame, ctx client.Contex
 		return
 	}
 	for _, entry := range entries {
-		if entry.actor.ID != targetID && !(matchLocalAlias && entry.isPlayer && isLocalActor(ctx, targetID)) {
+		if entry.Actor.ID != targetID && !(matchLocalAlias && entry.IsPlayer && scene.IsLocalActor(ctx, targetID)) {
 			continue
 		}
-		x, y := actorPickBoundsCenter(entry.screenX, entry.screenY, entry.scale)
+		x, y := actorPickBoundsCenter(entry.ScreenX, entry.ScreenY, entry.Scale)
 		var opts render.DrawImageOptions
-		opts.GeoM.Translate(math.Round(x-frame.anchorX), math.Round(y-frame.anchorY))
-		opts.Filter = spriteDrawFilter()
-		screen.DrawImage(frame.image, &opts)
+		opts.GeoM.Translate(math.Round(x-frame.AnchorX), math.Round(y-frame.AnchorY))
+		opts.Filter = scene.SpriteDrawFilter()
+		screen.DrawImage(frame.Image, &opts)
 		return
 	}
 }
@@ -2072,7 +2021,7 @@ func actorIDsMatch(ctx client.Context, a, b uint32) bool {
 	if a == 0 || b == 0 {
 		return false
 	}
-	return a == b || (isLocalActor(ctx, a) && isLocalActor(ctx, b))
+	return a == b || (scene.IsLocalActor(ctx, a) && scene.IsLocalActor(ctx, b))
 }
 
 func (m *WorldMode) clearScriptHighlight() {
@@ -2135,15 +2084,15 @@ func actorOverlayBarFillWidth(ratio float64) float64 {
 	return math.Round((actorOverlayBarWidth - 2) * ratio)
 }
 
-func (m *WorldMode) drawActorLifeBar(screen *render.Frame, ctx client.Context, entry sceneActorDrawEntry) {
-	life, ok := m.actorLifeForDisplay(ctx, entry.actor)
+func (m *WorldMode) drawActorLifeBar(screen *render.Frame, ctx client.Context, entry scene.ActorDrawEntry) {
+	life, ok := m.actorLifeForDisplay(ctx, entry.Actor)
 	if !ok {
 		return
 	}
 	ratio := actorLifeRatio(life.hp, life.maxHP)
 	height := actorLifeBarHeight(life)
-	x := actorOverlayBarX(entry.screenX)
-	y := actorOverlayBarY(actorLifeBarY(entry.screenY, entry.scale))
+	x := actorOverlayBarX(entry.ScreenX)
+	y := actorOverlayBarY(actorLifeBarY(entry.ScreenY, entry.Scale))
 	fillWidth := actorOverlayBarFillWidth(ratio)
 	fill := color.RGBA{R: 255, G: 0, B: 231, A: 255}
 	if life.player || life.friendly {
@@ -2193,24 +2142,24 @@ func actorLifeRatio(value, maxValue int) float64 {
 	return ratio
 }
 
-func (m *WorldMode) drawActorCastBar(screen *render.Frame, entry sceneActorDrawEntry, now time.Time) {
-	if entry.actor.ID == 0 {
+func (m *WorldMode) drawActorCastBar(screen *render.Frame, entry scene.ActorDrawEntry, now time.Time) {
+	if entry.Actor.ID == 0 {
 		return
 	}
-	bar, ok := m.serverProgressBar(entry.isPlayer, now)
+	bar, ok := m.serverProgressBar(entry.IsPlayer, now)
 	if !ok && m.actorCastBars != nil {
-		bar, ok = m.actorCastBars[entry.actor.ID]
+		bar, ok = m.actorCastBars[entry.Actor.ID]
 	}
 	if !ok {
 		return
 	}
 	ratio, active := actorCastBarProgress(bar, now)
 	if !active {
-		delete(m.actorCastBars, entry.actor.ID)
+		delete(m.actorCastBars, entry.Actor.ID)
 		return
 	}
-	x := actorOverlayBarX(entry.screenX)
-	y := actorOverlayBarY(actorCastBarY(entry.screenY, entry.scale))
+	x := actorOverlayBarX(entry.ScreenX)
+	y := actorOverlayBarY(actorCastBarY(entry.ScreenY, entry.Scale))
 	fillWidth := actorOverlayBarFillWidth(ratio)
 	render.DrawRect(screen, x, y, actorOverlayBarWidth, actorOverlayBarHeight, color.RGBA{R: 16, G: 24, B: 156, A: 255})
 	render.DrawRect(screen, x+1, y+1, actorOverlayBarWidth-2, actorOverlayBarHeight-2, color.RGBA{R: 66, G: 66, B: 66, A: 255})
@@ -2230,7 +2179,7 @@ func (m *WorldMode) actorLifeForDisplay(ctx client.Context, actor world.Actor) (
 	if specialNPCVisualForActor(actor) != specialNPCVisualNone {
 		return actorLife{}, false
 	}
-	if isLocalActor(ctx, actor.ID) {
+	if scene.IsLocalActor(ctx, actor.ID) {
 		return localPlayerLifeForDisplay(ctx)
 	}
 	if life, ok := partyMemberLifeForDisplay(ctx, actor); ok {
@@ -2260,7 +2209,7 @@ func (m *WorldMode) homunculusLifeForDisplay(ctx client.Context, actor world.Act
 		if actor.ID != hom.ID {
 			return actorLife{}, false
 		}
-	} else if !actor.HasObjectType || actor.ObjectType != actorObjectTypeHomunculus {
+	} else if !actor.HasObjectType || actor.ObjectType != scene.ActorObjectTypeHomunculus {
 		return actorLife{}, false
 	}
 
@@ -2320,7 +2269,7 @@ func (m *WorldMode) mercenaryLifeForDisplay(ctx client.Context, actor world.Acto
 		if actor.ID != merc.ID {
 			return actorLife{}, false
 		}
-	} else if !actor.HasObjectType || actor.ObjectType != actorObjectTypeMercenary {
+	} else if !actor.HasObjectType || actor.ObjectType != scene.ActorObjectTypeMercenary {
 		return actorLife{}, false
 	}
 

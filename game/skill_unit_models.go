@@ -6,6 +6,8 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -107,13 +109,13 @@ func (m *WorldMode) applyUsedTrapLookChange(ctx client.Context, look network.Act
 	if !ok {
 		return false
 	}
-	m.removeSkillUnitEffects(look.ID)
+	m.effects().RemoveUnit(look.ID)
 	if look.Value == 141 {
-		unit.triggerEffectID = effectFirePillarBomb
+		unit.triggerEffectID = effects.FirePillarBomb
 	}
 	if unit.triggerEffectID > 0 {
 		now := time.Now()
-		if m.addWorldEffectAtCellLifetime(ctx, unit.triggerEffectID, 0, unit.x, unit.y, now, 0, false) {
+		if m.effects().AddCellLifetime(ctx, unit.triggerEffectID, 0, unit.x, unit.y, now, 0, false) {
 			glog.Debugf("skill unit trap triggered id=%d unit=%d cell=%d,%d effect=%d", look.ID, unit.unitID, unit.x, unit.y, unit.triggerEffectID)
 		}
 	}
@@ -167,7 +169,7 @@ func (m *WorldMode) skillUnitModelCell(id uint32) (int, int, bool) {
 	return 0, 0, false
 }
 
-func (m *WorldMode) clickedSkillTarget(ctx client.Context, projection sceneProjection, skill session.Skill, mouseX, mouseY int, now time.Time) (worldstate.Actor, bool) {
+func (m *WorldMode) clickedSkillTarget(ctx client.Context, projection scene.Projection, skill session.Skill, mouseX, mouseY int, now time.Time) (worldstate.Actor, bool) {
 	if ctx.World == nil {
 		return worldstate.Actor{}, false
 	}
@@ -178,11 +180,11 @@ func (m *WorldMode) clickedSkillTarget(ctx client.Context, projection sceneProje
 	bestDistance := math.Inf(1)
 	for id, unit := range m.skillUnitModels {
 		x, y := float64(unit.x), float64(unit.y)
-		point, ok := projection.projectPoint(cellCenter(x), cellCenter(y), terrainHeightAt(ctx.World, x, y))
+		point, ok := projection.ProjectPoint(scene.CellCenter(x), scene.CellCenter(y), scene.TerrainHeightAt(ctx.World, x, y))
 		if !ok {
 			continue
 		}
-		dx, dy := float64(point.x)-float64(mouseX), float64(point.y)-float64(mouseY)
+		dx, dy := float64(point.X)-float64(mouseX), float64(point.Y)-float64(mouseY)
 		distance := dx*dx + dy*dy
 		if distance <= 20*20 && (distance < bestDistance || distance == bestDistance && id < best.ID) {
 			best, bestDistance = worldstate.Actor{ID: id, X: unit.x, Y: unit.y}, distance
@@ -205,15 +207,15 @@ func (m *WorldMode) applyTrapModelLookChange(look network.ActorLookChange) bool 
 	return true
 }
 
-func (m *WorldMode) drawSkillUnitRSMModels(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) {
+func (m *WorldMode) drawSkillUnitRSMModels(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
 	if screen == nil || ctx.World == nil || ctx.World.GND == nil || ctx.Resources == nil || len(m.skillUnitModels) == 0 {
 		return
 	}
 	radius := rsmRenderRadius() * 2
 	for id, unit := range m.skillUnitModels {
-		worldX := cellCenter(float64(unit.x))
-		worldY := cellCenter(float64(unit.y))
-		if math.Abs(worldX-projection.playerX) > radius || math.Abs(worldY-projection.playerY) > radius {
+		worldX := scene.CellCenter(float64(unit.x))
+		worldY := scene.CellCenter(float64(unit.y))
+		if math.Abs(worldX-projection.PlayerX) > radius || math.Abs(worldY-projection.PlayerY) > radius {
 			continue
 		}
 		rsm := m.runtimeRSMModel(ctx.Resources, unit.modelPath)
@@ -260,8 +262,8 @@ func (m *WorldMode) runtimeSkillUnitFallbackRSMModel(manager *res.Manager, unit 
 }
 
 func skillUnitRSMPlacement(world *worldstate.World, id uint32, unit skillUnitModel) visibleRSMPlacement {
-	baseX := cellCenter(float64(unit.x))
-	baseY := cellCenter(float64(unit.y))
+	baseX := scene.CellCenter(float64(unit.x))
+	baseY := scene.CellCenter(float64(unit.y))
 	scale := unit.scale
 	if scale == 0 {
 		scale = 1
@@ -272,7 +274,7 @@ func skillUnitRSMPlacement(world *worldstate.World, id uint32, unit skillUnitMod
 			Name:     "skill_unit",
 			Filename: unit.modelPath,
 			Position: res.RSWVector3{
-				Y: float32(terrainHeightAt(world, float64(unit.x), float64(unit.y))),
+				Y: float32(scene.TerrainHeightAt(world, float64(unit.x), float64(unit.y))),
 			},
 			Scale: res.RSWVector3{X: float32(scale), Y: float32(scale), Z: float32(scale)},
 		},

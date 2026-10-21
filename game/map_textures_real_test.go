@@ -5,12 +5,13 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
 )
 
 func TestMapTexturePreparationRealData(t *testing.T) {
-	resources := realDataManager(t)
+	resources := testutil.RealDataManager(t)
 	for _, name := range []string{"prontera", "payon", "payon_in01", "yuno", "airplane", "geffen", "prt_fild08"} {
 		t.Run(name, func(t *testing.T) {
 			start := time.Now()

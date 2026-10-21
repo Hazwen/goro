@@ -2,18 +2,14 @@ package game
 
 import (
 	"github.com/kivutar/goro/client"
-	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
 )
 
-func actorVisualJob(actor worldstate.Actor) int {
-	return visualJobForEffectState(int(actor.Job), actor.EffectState)
-}
-
 func actorWithVisualJob(actor worldstate.Actor) worldstate.Actor {
-	actor.Job = int16(actorVisualJob(actor))
+	actor.Job = int16(scene.ActorVisualJob(actor))
 	return actor
 }
 
@@ -22,34 +18,8 @@ func characterWithVisualJob(character session.Character) session.Character {
 }
 
 func characterWithVisualJobForEffectState(character session.Character, effectState uint32) session.Character {
-	character.Job = int16(visualJobForEffectState(int(character.Job), effectState))
+	character.Job = int16(scene.VisualJobForEffectState(int(character.Job), effectState))
 	return character
-}
-
-func visualJobForEffectState(job int, effectState uint32) int {
-	if effectState&db.EffectStateWedding != 0 {
-		return db.JobMarried
-	}
-	if effectState&db.EffectStateRiding != 0 {
-		if mounted, ok := db.MountJob(job); ok {
-			return mounted
-		}
-	}
-	switch job {
-	case db.JobStar2:
-		job = db.JobStar
-	case db.JobStar2B:
-		job = db.JobStarB
-	}
-	if effectState&db.EffectStateFlying != 0 {
-		switch job {
-		case db.JobStar:
-			return db.JobStar2
-		case db.JobStarB:
-			return db.JobStar2B
-		}
-	}
-	return job
 }
 
 func localPlayerVisualCharacter(ctx client.Context) session.Character {

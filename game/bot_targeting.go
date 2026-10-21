@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	worldstate "github.com/kivutar/goro/world"
 	lua "github.com/yuin/gopher-lua"
@@ -32,12 +33,12 @@ func luaSkillTargets(L *lua.LState, ctx client.Context, mode *WorldMode, ignoreS
 		}
 		result.Append(luaActorTable(L, actor, x, y))
 	}
-	if actor, ok, _ := actorForCombatID(ctx, localSkillTarget(ctx)); ok && !playerIsDead(ctx) {
+	if actor, ok, _ := scene.ActorForCombatID(ctx, scene.LocalSkillTarget(ctx)); ok && !playerIsDead(ctx) {
 		actor.X, actor.Y = x, y
 		appendTarget(actor)
 	}
 	for _, actor := range ctx.World.Actors {
-		if !isLocalActor(ctx, actor.ID) {
+		if !scene.IsLocalActor(ctx, actor.ID) {
 			appendTarget(actor)
 		}
 	}
@@ -52,7 +53,7 @@ func (m *WorldMode) scriptUsePendingSkill(ctx client.Context, id uint32) bool {
 	if pending.skill.ID == 0 || pending.targetID != 0 || isGroundTargetSkill(pending.skill) || isSelfTargetSkill(pending.skill) {
 		return false
 	}
-	actor, ok, _ := actorForCombatID(ctx, id)
+	actor, ok, _ := scene.ActorForCombatID(ctx, id)
 	_, dead := m.actorDeaths[id]
 	if !ok || dead || !actorCanBeSkillTargeted(ctx, pending.skill, actor) {
 		return false
@@ -72,9 +73,9 @@ func (m *WorldMode) scriptHighlightActor(ctx client.Context, id uint32) bool {
 		m.clearScriptHighlight()
 		return true
 	}
-	actor, ok, _ := actorForCombatID(ctx, id)
+	actor, ok, _ := scene.ActorForCombatID(ctx, id)
 	_, dead := m.actorDeaths[id]
-	if !ok || dead || isWarpActor(actor) || actor.Job == actorJobHiddenWarpNPC {
+	if !ok || dead || isWarpActor(actor) || actor.Job == scene.ActorJobHiddenWarpNPC {
 		return false
 	}
 	if m.scriptHighlight.id != id {

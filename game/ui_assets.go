@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
@@ -75,7 +76,7 @@ func (m *WorldMode) drawItemInfoIllustration(screen previewRenderTarget, manager
 			var opts render.DrawImageOptions
 			opts.GeoM.Scale(scale, scale)
 			opts.GeoM.Translate(float64(x)+(float64(width)-dstW)/2, float64(y)+(float64(height)-dstH)/2)
-			opts.Filter = spriteDrawFilter()
+			opts.Filter = scene.SpriteDrawFilter()
 			screen.DrawImage(image, &opts)
 			return
 		}
@@ -116,21 +117,21 @@ func (m *WorldMode) drawEquipmentPreviewForCharacter(screen previewRenderTarget,
 
 func (m *WorldMode) drawHumanoidPreview(screen previewRenderTarget, view *humanoidSpriteView, x, y, width, height int) {
 	state := spriteState{
-		actionFamily: spriteActionIdle,
+		actionFamily: scene.SpriteActionIdle,
 		direction:    4,
 	}
 	billboard, ok := humanoidBillboardForState(view, state, time.Now())
-	if !ok || billboard == nil || billboard.image == nil {
+	if !ok || billboard == nil || billboard.Image == nil {
 		return
 	}
 	drawBillboardPreview(screen, billboard, x, y, width, height)
 }
 
-func drawBillboardPreview(screen previewRenderTarget, billboard *spriteBillboard, x, y, width, height int) {
-	if screen == nil || billboard == nil || billboard.image == nil || width <= 0 || height <= 0 {
+func drawBillboardPreview(screen previewRenderTarget, billboard *scene.Billboard, x, y, width, height int) {
+	if screen == nil || billboard == nil || billboard.Image == nil || width <= 0 || height <= 0 {
 		return
 	}
-	bounds := visibleImageBounds(billboard.image)
+	bounds := visibleImageBounds(billboard.Image)
 	if bounds.Empty() {
 		return
 	}
@@ -152,7 +153,7 @@ func drawBillboardPreview(screen previewRenderTarget, billboard *spriteBillboard
 		{DstX: float32(dstX), DstY: float32(dstY + dstH), SrcX: float32(bounds.Min.X), SrcY: float32(bounds.Max.Y), ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
 		{DstX: float32(dstX + dstW), DstY: float32(dstY + dstH), SrcX: float32(bounds.Max.X), SrcY: float32(bounds.Max.Y), ColorR: 1, ColorG: 1, ColorB: 1, ColorA: 1},
 	}
-	screen.DrawTrianglesOwned(vertices, quadIndices012213, billboard.image, &render.DrawTrianglesOptions{Filter: spriteDrawFilter(), Address: render.AddressClampToZero})
+	screen.DrawTrianglesOwned(vertices, scene.QuadIndices012213, billboard.Image, &render.DrawTrianglesOptions{Filter: scene.SpriteDrawFilter(), Address: render.AddressClampToZero})
 }
 
 func (m *WorldMode) monsterInfoPreviewImage(ctx client.Context, class uint16, width, height int) image.Image {
@@ -169,11 +170,11 @@ func (m *WorldMode) monsterInfoPreviewImage(ctx client.Context, class uint16, wi
 	actor := worldstate.Actor{
 		Job:           int16(class),
 		HasObjectType: true,
-		ObjectType:    actorObjectTypeMob,
+		ObjectType:    scene.ActorObjectTypeMob,
 	}
 	view := m.nonPCSpriteView(ctx, actor)
 	state := spriteState{
-		actionFamily:   spriteActionIdle,
+		actionFamily:   scene.SpriteActionIdle,
 		direction:      4,
 		fixedMotion:    0,
 		hasFixedMotion: true,

@@ -1,8 +1,6 @@
 package game
 
 import (
-	"github.com/kivutar/goro/glog"
-	"github.com/kivutar/goro/input"
 	"image"
 	"image/color"
 	"math"
@@ -10,6 +8,9 @@ import (
 
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/glog"
+	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/session"
 	"github.com/kivutar/goro/world"
@@ -38,7 +39,7 @@ type cursorActionInfo struct {
 }
 
 type roCursorState struct {
-	view      *spriteView
+	view      *scene.SpriteView
 	viewMiss  bool
 	fallback  *render.Image
 	action    int
@@ -58,7 +59,7 @@ var cursorActionInfos = map[int]cursorActionInfo{
 	cursorActionNoWalk:  {drawX: 13, drawY: 25, delayMult: 1.0},
 }
 
-func (m *WorldMode) drawROCursor(screen *render.Frame, ctx client.Context, projection sceneProjection, now time.Time) {
+func (m *WorldMode) drawROCursor(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
 	if ctx.Input == nil {
 		return
 	}
@@ -130,30 +131,30 @@ func (s *roCursorState) draw(screen *render.Frame, ctx client.Context, action in
 		return
 	}
 	var opts render.DrawImageOptions
-	opts.GeoM.Translate(float64(ctx.Input.MouseX)-frame.anchorX-magnetX, float64(ctx.Input.MouseY)-frame.anchorY-magnetY)
-	opts.Filter = spriteDrawFilter()
-	screen.DrawImage(frame.image, &opts)
+	opts.GeoM.Translate(float64(ctx.Input.MouseX)-frame.AnchorX-magnetX, float64(ctx.Input.MouseY)-frame.AnchorY-magnetY)
+	opts.Filter = scene.SpriteDrawFilter()
+	screen.DrawImage(frame.Image, &opts)
 }
 
-func (s *roCursorState) frame(action int, info cursorActionInfo, now time.Time) (*spriteBillboard, bool) {
+func (s *roCursorState) frame(action int, info cursorActionInfo, now time.Time) (*scene.Billboard, bool) {
 	return s.frameAt(action, info, s.started, now)
 }
 
-func (s *roCursorState) frameAt(action int, info cursorActionInfo, start, now time.Time) (*spriteBillboard, bool) {
-	if s == nil || s.view == nil || s.viewMiss || s.view.act == nil {
+func (s *roCursorState) frameAt(action int, info cursorActionInfo, start, now time.Time) (*scene.Billboard, bool) {
+	if s == nil || s.view == nil || s.viewMiss || s.view.Act == nil {
 		return nil, false
 	}
-	if action < 0 || action >= len(s.view.act.Actions) || len(s.view.act.Actions[action].Animations) == 0 {
+	if action < 0 || action >= len(s.view.Act.Actions) || len(s.view.Act.Actions[action].Animations) == 0 {
 		action = cursorActionDefault
 		info = cursorInfo(action)
 	}
-	actionDef := s.view.act.Actions[action]
+	actionDef := s.view.Act.Actions[action]
 	delay := float64(actionDef.DelayMS) * info.delayMult
-	motion := spriteMotionIndexWithDelay(actionDef, start, now, true, delay)
+	motion := scene.SpriteMotionIndexWithDelay(actionDef, start, now, true, delay)
 	return cursorFrameBillboard(s.view, action, motion, info.drawX, info.drawY)
 }
 
-func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection sceneProjection, now time.Time) int {
+func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Projection, now time.Time) int {
 	mouseX, mouseY := ctx.Input.MouseX, ctx.Input.MouseY
 	if m.petSlotMachine.active {
 		return cursorActionClick
@@ -213,7 +214,7 @@ func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection sceneProj
 	return cursorActionDefault
 }
 
-func (m *WorldMode) cursorMagnetOffset(ctx client.Context, projection sceneProjection, action int, now time.Time) (float64, float64) {
+func (m *WorldMode) cursorMagnetOffset(ctx client.Context, projection scene.Projection, action int, now time.Time) (float64, float64) {
 	if ctx.Input == nil {
 		return 0, 0
 	}
@@ -282,10 +283,10 @@ func (m *WorldMode) drawPendingTargetBanner(screen *render.Frame, ctx client.Con
 	width, height := screen.Bounds().Dx(), screen.Bounds().Dy()
 	// HighPriest places the skill name at 46/480 of the viewport height.
 	y := float64(46 * height / 480)
-	render.DrawUITextBanner(screen, name, float64(width)/2, y, float64(minInt(520, width)), color.RGBA{R: 50, G: 255, B: 50, A: 255}, 12, false)
+	render.DrawUITextBanner(screen, name, float64(width)/2, y, float64(scene.MinInt(520, width)), color.RGBA{R: 50, G: 255, B: 50, A: 255}, 12, false)
 }
 
-func (m *WorldMode) cursorActorMagnetOffset(ctx client.Context, projection sceneProjection, actor world.Actor, now time.Time) (float64, float64) {
+func (m *WorldMode) cursorActorMagnetOffset(ctx client.Context, projection scene.Projection, actor world.Actor, now time.Time) (float64, float64) {
 	targetX, targetY, scale, ok := m.cursorActorMagnetTarget(ctx, projection, actor, now)
 	if !ok || !pointInCursorSnapDistance(float64(ctx.Input.MouseX), float64(ctx.Input.MouseY), targetX, targetY, actorCursorSnapRadius(scale)) {
 		return 0, 0
@@ -293,7 +294,7 @@ func (m *WorldMode) cursorActorMagnetOffset(ctx client.Context, projection scene
 	return float64(ctx.Input.MouseX) - targetX, float64(ctx.Input.MouseY) - targetY
 }
 
-func (m *WorldMode) cursorActorSnapEligible(ctx client.Context, projection sceneProjection, actor world.Actor, now time.Time) bool {
+func (m *WorldMode) cursorActorSnapEligible(ctx client.Context, projection scene.Projection, actor world.Actor, now time.Time) bool {
 	if ctx.Input == nil {
 		return false
 	}
@@ -301,25 +302,25 @@ func (m *WorldMode) cursorActorSnapEligible(ctx client.Context, projection scene
 	return ok && pointInCursorSnapDistance(float64(ctx.Input.MouseX), float64(ctx.Input.MouseY), targetX, targetY, actorCursorSnapRadius(scale))
 }
 
-func (m *WorldMode) cursorActorMagnetTarget(ctx client.Context, projection sceneProjection, actor world.Actor, now time.Time) (float64, float64, float64, bool) {
+func (m *WorldMode) cursorActorMagnetTarget(ctx client.Context, projection scene.Projection, actor world.Actor, now time.Time) (float64, float64, float64, bool) {
 	if ctx.Input == nil || ctx.World == nil {
 		return 0, 0, 0, false
 	}
-	actorX, actorY := actorRenderPosition(actor, now)
-	terrainZ := terrainHeightAt(ctx.World, actorX, actorY)
-	point := projection.Project(cellCenter(actorX), cellCenter(actorY), terrainZ)
-	scale := actorBillboardScreenScale(projection, cellCenter(actorX), cellCenter(actorY), terrainZ)
+	actorX, actorY := scene.ActorRenderPosition(actor, now)
+	terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
+	point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 	if _, ok := m.skillUnitModels[actor.ID]; ok {
-		return float64(point.x), float64(point.y), scale, true
+		return float64(point.X), float64(point.Y), scale, true
 	}
 	if targetX, targetY, ok := m.cursorActorSpriteCenter(ctx, projection, actor, point, scale, now); ok {
 		return targetX, targetY, scale, true
 	}
-	targetX, targetY := actorPickBoundsCenter(float64(point.x), float64(point.y), scale)
+	targetX, targetY := actorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
 	return targetX, targetY, scale, true
 }
 
-func cursorGroundItemSnapEligible(ctx client.Context, projection sceneProjection, item world.FloorItem, now time.Time) bool {
+func cursorGroundItemSnapEligible(ctx client.Context, projection scene.Projection, item world.FloorItem, now time.Time) bool {
 	if ctx.Input == nil {
 		return false
 	}
@@ -327,15 +328,15 @@ func cursorGroundItemSnapEligible(ctx client.Context, projection sceneProjection
 	return ok && pointInCursorSnapDistance(float64(ctx.Input.MouseX), float64(ctx.Input.MouseY), targetX, targetY, groundItemCursorSnapRadius(scale))
 }
 
-func cursorGroundItemMagnetTarget(ctx client.Context, projection sceneProjection, item world.FloorItem, now time.Time) (float64, float64, float64, bool) {
+func cursorGroundItemMagnetTarget(ctx client.Context, projection scene.Projection, item world.FloorItem, now time.Time) (float64, float64, float64, bool) {
 	if ctx.World == nil {
 		return 0, 0, 0, false
 	}
 	x, y := floorItemWorldPosition(item)
 	z := floorItemRenderHeight(ctx.World, item, now)
-	point := projection.Project(cellCenter(x), cellCenter(y), z)
-	scale := actorBillboardScreenScale(projection, cellCenter(x), cellCenter(y), z) * 0.42
-	targetX, targetY := groundItemPickBoundsCenter(float64(point.x), float64(point.y), scale)
+	point := projection.Project(scene.CellCenter(x), scene.CellCenter(y), z)
+	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(x), scene.CellCenter(y), z) * 0.42
+	targetX, targetY := groundItemPickBoundsCenter(float64(point.X), float64(point.Y), scale)
 	return targetX, targetY, scale, true
 }
 
@@ -348,7 +349,7 @@ func pointInCursorSnapDistance(mouseX, mouseY, centerX, centerY, radius float64)
 func actorCursorSnapRadius(scale float64) float64 {
 	scale = normalizePickScale(scale)
 	halfWidth := 44 * scale * cursorSnapTriggerScale
-	halfHeight := (float64(humanoidBillboardAnchorY) + 20) / 2 * scale * cursorSnapTriggerScale
+	halfHeight := (float64(scene.HumanoidBillboardAnchorY) + 20) / 2 * scale * cursorSnapTriggerScale
 	return math.Hypot(halfWidth, halfHeight)
 }
 
@@ -359,13 +360,13 @@ func groundItemCursorSnapRadius(scale float64) float64 {
 	return math.Hypot(halfWidth, halfHeight)
 }
 
-func (m *WorldMode) cursorActorSpriteCenter(ctx client.Context, projection sceneProjection, actor world.Actor, point screenPoint, scale float64, now time.Time) (float64, float64, bool) {
+func (m *WorldMode) cursorActorSpriteCenter(ctx client.Context, projection scene.Projection, actor world.Actor, point scene.Point2, scale float64, now time.Time) (float64, float64, bool) {
 	view := m.nonPCSpriteView(ctx, actor)
 	if view == nil {
 		return 0, 0, false
 	}
 	state := m.nonPCSpriteState(actor, now)
-	state.cameraYaw = projection.cameraYaw
+	state.cameraYaw = projection.CameraYaw
 	billboard, ok := singleSpriteBillboardForState(view, state, now)
 	if !ok {
 		return 0, 0, false
@@ -373,17 +374,17 @@ func (m *WorldMode) cursorActorSpriteCenter(ctx client.Context, projection scene
 	return spriteBillboardScreenCenter(billboard, point, scale)
 }
 
-func spriteBillboardScreenCenter(billboard *spriteBillboard, point screenPoint, scale float64) (float64, float64, bool) {
-	if billboard == nil || billboard.image == nil {
+func spriteBillboardScreenCenter(billboard *scene.Billboard, point scene.Point2, scale float64) (float64, float64, bool) {
+	if billboard == nil || billboard.Image == nil {
 		return 0, 0, false
 	}
-	bounds := billboard.image.Bounds()
+	bounds := billboard.Image.Bounds()
 	if bounds.Empty() {
 		return 0, 0, false
 	}
 	scale = normalizePickScale(scale)
-	x := float64(point.x) + (float64(bounds.Dx())/2-billboard.anchorX)*scale
-	y := float64(point.y) + (float64(bounds.Dy())/2-billboard.anchorY)*scale
+	x := float64(point.X) + (float64(bounds.Dx())/2-billboard.AnchorX)*scale
+	y := float64(point.Y) + (float64(bounds.Dy())/2-billboard.AnchorY)*scale
 	return x, y, true
 }
 
@@ -427,7 +428,7 @@ func (m *WorldMode) mapPointerBlocked(ctx client.Context) bool {
 	return m.petSlotMachine.active || m.npcCutinPointerBlocked(ctx) || uiPointerBlocked(ctx)
 }
 
-func hoveredCursorActor(ctx client.Context, projection sceneProjection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (world.Actor, bool) {
+func hoveredCursorActor(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (world.Actor, bool) {
 	if ctx.World == nil {
 		return world.Actor{}, false
 	}
@@ -437,21 +438,21 @@ func hoveredCursorActor(ctx client.Context, projection sceneProjection, mouseX, 
 		if _, dead := deadActors[actor.ID]; dead {
 			continue
 		}
-		if actorHasStealth(actor) || isLocalActor(ctx, actor.ID) || actor.ID == 0 {
+		if scene.ActorHasStealth(actor) || scene.IsLocalActor(ctx, actor.ID) || actor.ID == 0 {
 			continue
 		}
-		if actor.Job == actorJobClearNPC || actor.Job == actorJobHiddenWarpNPC {
+		if actor.Job == scene.ActorJobClearNPC || actor.Job == scene.ActorJobHiddenWarpNPC {
 			continue
 		}
-		actorX, actorY := actorRenderPosition(actor, now)
-		terrainZ := terrainHeightAt(ctx.World, actorX, actorY)
-		point := projection.Project(cellCenter(actorX), cellCenter(actorY), terrainZ)
-		scale := actorBillboardScreenScale(projection, cellCenter(actorX), cellCenter(actorY), terrainZ)
-		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.x), float64(point.y), scale) {
+		actorX, actorY := scene.ActorRenderPosition(actor, now)
+		terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
+		point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+		scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
+		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
 			continue
 		}
-		dx := float64(point.x) - float64(mouseX)
-		dy := float64(point.y) - float64(mouseY)
+		dx := float64(point.X) - float64(mouseX)
+		dy := float64(point.Y) - float64(mouseY)
 		distance := dx*dx + dy*dy
 		if distance < bestDistance {
 			bestDistance = distance
@@ -462,11 +463,11 @@ func hoveredCursorActor(ctx client.Context, projection sceneProjection, mouseX, 
 }
 
 func cursorActorCanTalk(actor world.Actor) bool {
-	if actor.ID == 0 || !actor.HasObjectType || actor.Job == actorJobHiddenWarpNPC {
+	if actor.ID == 0 || !actor.HasObjectType || actor.Job == scene.ActorJobHiddenWarpNPC {
 		return false
 	}
 	switch actor.ObjectType {
-	case actorObjectTypeNPC, actorObjectTypeNPC2:
+	case scene.ActorObjectTypeNPC, scene.ActorObjectTypeNPC2:
 		return !isWarpActor(actor)
 	default:
 		return false
@@ -527,6 +528,6 @@ func drawFallbackROCursor(screen *render.Frame, img *render.Image, mouseX, mouse
 	}
 	var opts render.DrawImageOptions
 	opts.GeoM.Translate(float64(mouseX), float64(mouseY))
-	opts.Filter = spriteDrawFilter()
+	opts.Filter = scene.SpriteDrawFilter()
 	screen.DrawImage(img, &opts)
 }

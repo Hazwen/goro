@@ -10,6 +10,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -307,7 +308,7 @@ func TestCompanionAIReloadsWhenCustomToggleChanges(t *testing.T) {
 	sessionState := session.New()
 	sessionState.Homunculus = session.Companion{ID: 300, Active: true}
 	world := worldstate.New()
-	world.Actors[300] = worldstate.Actor{ID: 300, HasObjectType: true, ObjectType: actorObjectTypeHomunculus}
+	world.Actors[300] = worldstate.Actor{ID: 300, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus}
 	ctx := client.Context{Resources: manager, Session: sessionState, World: world}
 	mode := NewWorldMode()
 
@@ -371,8 +372,8 @@ end
 		AttackRange: 7,
 	}
 	world := worldstate.New()
-	world.Actors[300] = worldstate.Actor{ID: 300, X: 10, Y: 20, Job: 6001, HasObjectType: true, ObjectType: actorObjectTypeHomunculus, AttackRange: 7}
-	world.Actors[400] = worldstate.Actor{ID: 400, X: 11, Y: 20, Job: 1002, HasObjectType: true, ObjectType: actorObjectTypeMob}
+	world.Actors[300] = worldstate.Actor{ID: 300, X: 10, Y: 20, Job: 6001, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus, AttackRange: 7}
+	world.Actors[400] = worldstate.Actor{ID: 400, X: 11, Y: 20, Job: 1002, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 	ctx := client.Context{Resources: manager, Session: sess, World: world, Started: time.Now()}
 	mode := NewWorldMode()
 	mode.actorLife = make(map[uint32]actorLife)
@@ -431,7 +432,7 @@ func TestCompanionActorPositionTruncatesMovingCellsLikeRobrowser(t *testing.T) {
 		MoveStarted:   now.Add(-600 * time.Millisecond),
 		MoveDuration:  4 * time.Second,
 		HasObjectType: true,
-		ObjectType:    actorObjectTypeHomunculus,
+		ObjectType:    scene.ActorObjectTypeHomunculus,
 	}
 	ctx := client.Context{Session: sess, World: world}
 
@@ -455,7 +456,7 @@ func TestCompanionSkillRangeFallsBackToRobrowserSkillInfo(t *testing.T) {
 		Y:             20,
 		AttackRange:   1,
 		HasObjectType: true,
-		ObjectType:    actorObjectTypeHomunculus,
+		ObjectType:    scene.ActorObjectTypeHomunculus,
 	}
 	ctx := client.Context{Session: sess, World: world}
 	mode := NewWorldMode()
@@ -475,7 +476,7 @@ func TestCompanionSkillRangePrefersServerSkillInfo(t *testing.T) {
 		},
 	}
 	world := worldstate.New()
-	world.Actors[300] = worldstate.Actor{ID: 300, AttackRange: 1, HasObjectType: true, ObjectType: actorObjectTypeHomunculus}
+	world.Actors[300] = worldstate.Actor{ID: 300, AttackRange: 1, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus}
 	ctx := client.Context{Session: sess, World: world}
 	mode := NewWorldMode()
 
@@ -598,7 +599,7 @@ func TestCompanionActorMotionReturnsStandAfterWalkExpires(t *testing.T) {
 		AIMotion:      aiMotionMove,
 		HasAIMotion:   true,
 		HasObjectType: true,
-		ObjectType:    actorObjectTypeHomunculus,
+		ObjectType:    scene.ActorObjectTypeHomunculus,
 	}
 	ctx := client.Context{World: world}
 	mode := NewWorldMode()
@@ -625,7 +626,7 @@ func TestCompanionActorMotionReturnsStandAfterActionExpires(t *testing.T) {
 		HasAIMotion:     true,
 		AIMotionExpires: time.Now().Add(-time.Millisecond),
 		HasObjectType:   true,
-		ObjectType:      actorObjectTypeHomunculus,
+		ObjectType:      scene.ActorObjectTypeHomunculus,
 	}
 	ctx := client.Context{World: world}
 	mode := NewWorldMode()

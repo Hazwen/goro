@@ -4,6 +4,7 @@ import (
 	"image/color"
 	"time"
 
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 )
@@ -88,12 +89,12 @@ func (m *WorldMode) mapFadeAlpha(now time.Time) uint8 {
 		if m.mapFade.started.IsZero() {
 			return 0
 		}
-		return clampColor(255 * clampUnit(float64(now.Sub(m.mapFade.started))/float64(mapFadeOutDuration)))
+		return scene.ClampColor(255 * clampUnit(float64(now.Sub(m.mapFade.started))/float64(mapFadeOutDuration)))
 	case mapFadeIn:
 		if m.mapFade.started.IsZero() {
 			return 0
 		}
-		return clampColor(255 * (1 - clampUnit(float64(now.Sub(m.mapFade.started))/float64(mapFadeInDuration))))
+		return scene.ClampColor(255 * (1 - clampUnit(float64(now.Sub(m.mapFade.started))/float64(mapFadeInDuration))))
 	default:
 		return 0
 	}

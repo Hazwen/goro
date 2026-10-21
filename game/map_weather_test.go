@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -23,14 +25,14 @@ func TestMapWeatherForComodoMatchesReferenceWeatherTable(t *testing.T) {
 
 func TestMapWeatherEffectIDForReferenceWeatherTable(t *testing.T) {
 	tests := map[string]int{
-		"xmas":                 effectSnow,
-		"xmas.gat":             effectSnow,
-		"data\\yuno.gat":       effectCloud2,
-		"einbroch":             effectCloud4,
-		"airplane":             effectCloud5,
-		"airplane.rsw":         effectCloud5,
-		"airplane_01.gat":      effectCloud5,
-		"DATA/AIRPLANE_01.RSW": effectCloud5,
+		"xmas":                 effects.Snow,
+		"xmas.gat":             effects.Snow,
+		"data\\yuno.gat":       effects.Cloud2,
+		"einbroch":             effects.Cloud4,
+		"airplane":             effects.Cloud5,
+		"airplane.rsw":         effects.Cloud5,
+		"airplane_01.gat":      effects.Cloud5,
+		"DATA/AIRPLANE_01.RSW": effects.Cloud5,
 	}
 	for name, want := range tests {
 		if got := mapWeatherEffectIDForMap(name); got != want {
@@ -47,27 +49,27 @@ func TestMapWeatherEffectIDForReferenceWeatherTable(t *testing.T) {
 
 func TestMapWeatherReferenceEffectsHaveSpecs(t *testing.T) {
 	for _, effectID := range []int{
-		effectRain,
-		effectSnow,
-		effectSakura,
-		effectMaple,
-		effectCloud,
-		effectCloud2,
-		effectCloud3,
-		effectCloud4,
-		effectCloud5,
-		effectCloud6,
-		effectCloud7,
-		effectCloud8,
+		effects.Rain,
+		effects.Snow,
+		effects.Sakura,
+		effects.Maple,
+		effects.Cloud,
+		effects.Cloud2,
+		effects.Cloud3,
+		effects.Cloud4,
+		effects.Cloud5,
+		effects.Cloud6,
+		effects.Cloud7,
+		effects.Cloud8,
 	} {
-		if _, ok := worldEffectSpecForID(effectID); !ok {
+		if _, ok := effects.Lookup(effectID); !ok {
 			t.Fatalf("missing weather effect spec %d", effectID)
 		}
 	}
 }
 
 func TestYunoCloudWeatherParamsMatchClassicProfile(t *testing.T) {
-	params, ok := weatherCloudParamsForEffect(effectCloud2)
+	params, ok := weatherCloudParamsForEffect(effects.Cloud2)
 	if !ok {
 		t.Fatal("EF_CLOUD2 weather cloud params missing")
 	}
@@ -92,21 +94,21 @@ func TestYunoCloudWeatherParamsMatchClassicProfile(t *testing.T) {
 }
 
 func TestEinbrochCloudWeatherSpecUsesClassicResources(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectCloud4)
-	if !ok || len(spec.components) != 1 {
+	spec, ok := effects.Lookup(effects.Cloud4)
+	if !ok || len(spec.Components) != 1 {
 		t.Fatalf("EF_CLOUD4 spec = %+v ok=%t", spec, ok)
 	}
-	component := spec.components[0]
-	if component.kind != effectComponent3D || len(component.textureFiles) != 3 || component.textureFiles[0] != "effect/fog1.tga" || component.textureFiles[2] != "effect/fog3.tga" {
+	component := spec.Components[0]
+	if component.Kind != effects.Component3D || len(component.TextureFiles) != 3 || component.TextureFiles[0] != "effect/fog1.tga" || component.TextureFiles[2] != "effect/fog3.tga" {
 		t.Fatalf("EF_CLOUD4 textures = %+v", component)
 	}
-	if component.color != (color.RGBA{R: 252, G: 171, B: 143, A: 255}) || component.alphaMax != 170.0/255.0 {
+	if component.Color != (color.RGBA{R: 252, G: 171, B: 143, A: 255}) || component.AlphaMax != 170.0/255.0 {
 		t.Fatalf("EF_CLOUD4 tint/alpha = %+v", component)
 	}
 }
 
 func TestEinbrochCloudWeatherParamsMatchClassicProfile(t *testing.T) {
-	params, ok := weatherCloudParamsForEffect(effectCloud4)
+	params, ok := weatherCloudParamsForEffect(effects.Cloud4)
 	if !ok {
 		t.Fatal("EF_CLOUD4 weather cloud params missing")
 	}
@@ -137,7 +139,7 @@ func TestEinbrochCloudWeatherParamsMatchClassicProfile(t *testing.T) {
 }
 
 func TestYunoCloudWeatherSpawnsInOuterSkyRing(t *testing.T) {
-	params, _ := weatherCloudParamsForEffect(effectCloud2)
+	params, _ := weatherCloudParamsForEffect(effects.Cloud2)
 	state := mapWeatherCloudState{}
 	now := time.Unix(10, 0)
 	const centerX = 37.5
@@ -161,7 +163,7 @@ func TestYunoCloudWeatherSpawnsInOuterSkyRing(t *testing.T) {
 }
 
 func TestMapWeatherCloudKeepsExistingParticlesWhenCenterMoves(t *testing.T) {
-	params, _ := weatherCloudParamsForEffect(effectCloud4)
+	params, _ := weatherCloudParamsForEffect(effects.Cloud4)
 	state := mapWeatherCloudState{}
 	now := time.Unix(10, 0)
 	state.ensure("einbroch.rsw", params, nil, 37.5, 98.5, now)
@@ -176,25 +178,25 @@ func TestMapWeatherCloudKeepsExistingParticlesWhenCenterMoves(t *testing.T) {
 }
 
 func TestPokJukWeatherEffectSpecUsesAdditiveParticles(t *testing.T) {
-	spec, ok := worldEffectSpecForID(effectPokJuk)
+	spec, ok := effects.Lookup(effects.PokJuk)
 	if !ok {
 		t.Fatal("pokjuk effect spec missing")
 	}
-	if spec.duration != 4*time.Second || len(spec.components) != 4 {
+	if spec.Duration != 4*time.Second || len(spec.Components) != 4 {
 		t.Fatalf("pokjuk spec = %+v", spec)
 	}
-	launch := spec.components[0]
-	if launch.kind != effectComponent3D || launch.textureFile != "effect/pok3.tga" || !launch.blendAdditive {
+	launch := spec.Components[0]
+	if launch.Kind != effects.Component3D || launch.TextureFile != "effect/pok3.tga" || !launch.BlendAdditive {
 		t.Fatalf("pokjuk launch = %+v", launch)
 	}
-	if launch.posZ != 0 || launch.posZEnd != 8 {
-		t.Fatalf("pokjuk launch z = %.1f..%.1f", launch.posZ, launch.posZEnd)
+	if launch.PosZ != 0 || launch.PosZEnd != 8 {
+		t.Fatalf("pokjuk launch z = %.1f..%.1f", launch.PosZ, launch.PosZEnd)
 	}
-	for i, component := range spec.components[1:] {
-		if component.kind != effectComponent3D || component.textureFile != "effect/pok3.tga" || !component.blendAdditive {
+	for i, component := range spec.Components[1:] {
+		if component.Kind != effects.Component3D || component.TextureFile != "effect/pok3.tga" || !component.BlendAdditive {
 			t.Fatalf("pokjuk burst component %d = %+v", i+1, component)
 		}
-		if component.duplicate == 0 || component.posXEndRand <= 0 || component.posYEndRand <= 0 || component.posZEndRand <= 0 {
+		if component.Duplicate == 0 || component.PosXEndRand <= 0 || component.PosYEndRand <= 0 || component.PosZEndRand <= 0 {
 			t.Fatalf("pokjuk burst spread %d = %+v", i+1, component)
 		}
 	}
@@ -298,7 +300,7 @@ func TestPokJukWeatherResetsWithMapKey(t *testing.T) {
 func TestPokJukWeatherCenterUsesPlayerPosition(t *testing.T) {
 	now := time.Unix(10, 0)
 	world := &worldstate.World{Player: worldstate.Actor{X: 12, Y: 34}}
-	projection := sceneProjection{playerX: 1000, playerY: 2000}
+	projection := scene.Projection{PlayerX: 1000, PlayerY: 2000}
 	x, y := mapWeatherFireworkCenter(world, projection, now)
 	if x != 12 || y != 34 {
 		t.Fatalf("firework center = %.2f,%.2f, want player position", x, y)

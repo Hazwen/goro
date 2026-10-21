@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 )
@@ -21,27 +23,27 @@ func TestNormalizeDirectionIndex(t *testing.T) {
 		-9: 7,
 	}
 	for input, want := range cases {
-		if got := normalizeDirectionIndex(input); got != want {
+		if got := scene.NormalizeDirectionIndex(input); got != want {
 			t.Fatalf("normalizeDirectionIndex(%d) = %d, want %d", input, got, want)
 		}
 	}
 }
 
 func TestSpriteDrawFilterUsesLinearSampling(t *testing.T) {
-	if got := spriteDrawFilter(); got != render.FilterLinear {
+	if got := scene.SpriteDrawFilter(); got != render.FilterLinear {
 		t.Fatalf("sprite draw filter = %v, want linear", got)
 	}
 }
 
 func TestSpriteCompositionFilterKeepsSourcePixelsCrisp(t *testing.T) {
-	if got := spriteCompositionFilter(); got != render.FilterNearest {
+	if got := scene.SpriteCompositionFilter(); got != render.FilterNearest {
 		t.Fatalf("sprite composition filter = %v, want nearest", got)
 	}
 }
 
 func TestSpriteViewImagePreservesStraightAlphaRGBAFrame(t *testing.T) {
-	view := &spriteView{
-		spr: &res.SPR{
+	view := &scene.SpriteView{
+		Spr: &res.SPR{
 			RGBAIndex: 0,
 			Frames: []res.SPRFrame{{
 				Type:   res.SPRFrameRGBA,
@@ -50,10 +52,10 @@ func TestSpriteViewImagePreservesStraightAlphaRGBAFrame(t *testing.T) {
 				Data:   []byte{64, 200, 240, 255},
 			}},
 		},
-		images: make(map[spriteFrameKey]*render.Image),
+		Images: make(map[scene.SpriteFrameKey]*render.Image),
 	}
 
-	img, ok := spriteViewImage(view, 0, res.SPRFrameRGBA)
+	img, ok := scene.SpriteViewImage(view, 0, res.SPRFrameRGBA)
 	if !ok {
 		t.Fatal("spriteViewImage failed")
 	}
@@ -65,17 +67,17 @@ func TestSpriteViewImagePreservesStraightAlphaRGBAFrame(t *testing.T) {
 }
 
 func TestActorSpriteWorldZLiftsSpritesAboveTerrain(t *testing.T) {
-	if got := actorSpriteWorldZ(12.5); math.Abs(got-12.7) > 1e-9 {
+	if got := scene.ActorSpriteWorldZ(12.5); math.Abs(got-12.7) > 1e-9 {
 		t.Fatalf("actor sprite world z = %.3f, want 12.700", got)
 	}
 }
 
 func TestActorShadowDepthBiasUsesTinyGroundDecalNudge(t *testing.T) {
-	if actorShadowDepthBias != groundDecalDepthBias {
-		t.Fatalf("actor shadow depth bias = %.10f, want shared ground decal bias %.10f", actorShadowDepthBias, groundDecalDepthBias)
+	if scene.ActorShadowDepthBias != scene.GroundDecalDepthBias {
+		t.Fatalf("actor shadow depth bias = %.10f, want shared ground decal bias %.10f", scene.ActorShadowDepthBias, scene.GroundDecalDepthBias)
 	}
-	if actorShadowDepthBias >= 0.001 {
-		t.Fatalf("actor shadow depth bias = %.10f, want smaller than old overdraw-prone bias", actorShadowDepthBias)
+	if scene.ActorShadowDepthBias >= 0.001 {
+		t.Fatalf("actor shadow depth bias = %.10f, want smaller than old overdraw-prone bias", scene.ActorShadowDepthBias)
 	}
 }
 
@@ -125,7 +127,7 @@ func TestSpriteDirectionFromWorldDirAccountsForCameraYaw(t *testing.T) {
 func TestResolveSpriteActionPrefersFamilyAndDirection(t *testing.T) {
 	act := &res.ACT{Actions: make([]res.ACTAction, 16)}
 	act.Actions[11] = res.ACTAction{Animations: []res.ACTAnimation{{}}, DelayMS: 100}
-	index, _, ok := resolveSpriteAction(act, spriteActionWalk, 3)
+	index, _, ok := resolveSpriteAction(act, scene.SpriteActionWalk, 3)
 	if !ok {
 		t.Fatal("expected action")
 	}
@@ -137,7 +139,7 @@ func TestResolveSpriteActionPrefersFamilyAndDirection(t *testing.T) {
 func TestResolveSpriteActionFallsBackToFamilyBase(t *testing.T) {
 	act := &res.ACT{Actions: make([]res.ACTAction, 16)}
 	act.Actions[8] = res.ACTAction{Animations: []res.ACTAnimation{{}}, DelayMS: 100}
-	index, _, ok := resolveSpriteAction(act, spriteActionWalk, 4)
+	index, _, ok := resolveSpriteAction(act, scene.SpriteActionWalk, 4)
 	if !ok {
 		t.Fatal("expected action")
 	}
@@ -151,7 +153,7 @@ func TestResolveSpriteActionUsesDirectionForEightActionSprites(t *testing.T) {
 	for i := range act.Actions {
 		act.Actions[i] = res.ACTAction{Animations: []res.ACTAnimation{{}}, DelayMS: 100}
 	}
-	index, _, ok := resolveSpriteAction(act, spriteActionWalk, 5)
+	index, _, ok := resolveSpriteAction(act, scene.SpriteActionWalk, 5)
 	if !ok {
 		t.Fatal("expected action")
 	}
@@ -208,7 +210,7 @@ func TestGR2ResourcesDoNotUseSpriteFallbacks(t *testing.T) {
 
 func TestNoSpriteNPCJobsDoNotLoadFallbackSprite(t *testing.T) {
 	manager := &res.Manager{}
-	for _, job := range []int{actorJobWarpPortal, actorJobWarpPortalActive, actorJobWarpPortalWaiting, actorJobHiddenNPC, actorJobHiddenWarpNPC, actorJobClearNPC} {
+	for _, job := range []int{scene.ActorJobWarpPortal, scene.ActorJobWarpPortalActive, scene.ActorJobWarpPortalWaiting, scene.ActorJobHiddenNPC, scene.ActorJobHiddenWarpNPC, scene.ActorJobClearNPC} {
 		if view, status := loadNonPCSpriteView(manager, job, "nonpc"); view != nil || !strings.HasSuffix(status, " no-sprite") {
 			t.Fatalf("job %d attempted to load a sprite: %s", job, status)
 		}
@@ -216,19 +218,19 @@ func TestNoSpriteNPCJobsDoNotLoadFallbackSprite(t *testing.T) {
 }
 
 func TestPoringDeathActionRealData(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	view, status := loadNonPCSpriteView(manager, 1002, "poring")
 	if view == nil {
 		t.Fatalf("Poring sprite failed: %s", status)
 	}
-	if len(view.act.Actions) < 40 {
-		t.Fatalf("Poring ACT was not upgraded: actions=%d status=%s", len(view.act.Actions), status)
+	if len(view.Act.Actions) < 40 {
+		t.Fatalf("Poring ACT was not upgraded: actions=%d status=%s", len(view.Act.Actions), status)
 	}
-	index, action, ok := resolveSpriteAction(view.act, spriteActionNonPCDeath, 0)
+	index, action, ok := resolveSpriteAction(view.Act, spriteActionNonPCDeath, 0)
 	if !ok {
 		t.Fatalf("Poring death action missing: %s", status)
 	}
-	t.Logf("Poring death action index=%d frames=%d delay=%.1f source=%s status=%s", index, len(action.Animations), action.DelayMS, view.actSource, status)
+	t.Logf("Poring death action index=%d frames=%d delay=%.1f source=%s status=%s", index, len(action.Animations), action.DelayMS, view.ActSource, status)
 	if index != spriteActionNonPCDeath*8 {
 		t.Fatalf("Poring death action index=%d, want %d", index, spriteActionNonPCDeath*8)
 	}
@@ -268,7 +270,7 @@ func TestHumanoidIdleUsesFirstBodyMotion(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	got := bodyMotionForState(action, spriteState{actionFamily: spriteActionIdle}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
+	got := bodyMotionForState(action, spriteState{actionFamily: scene.SpriteActionIdle}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
 	if got != 0 {
 		t.Fatalf("idle body motion = %d, want 0", got)
 	}
@@ -279,7 +281,7 @@ func TestNonPCIdleBodyMotionAnimates(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	got := bodyMotionForState(action, spriteState{actionFamily: spriteActionIdle, loopIdle: true}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
+	got := bodyMotionForState(action, spriteState{actionFamily: scene.SpriteActionIdle, loopIdle: true}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
 	if got != 2 {
 		t.Fatalf("nonpc idle body motion = %d, want 2", got)
 	}
@@ -290,7 +292,7 @@ func TestHumanoidWalkBodyMotionAnimates(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	got := bodyMotionForState(action, spriteState{actionFamily: spriteActionWalk}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
+	got := bodyMotionForState(action, spriteState{actionFamily: scene.SpriteActionWalk}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
 	if got != 2 {
 		t.Fatalf("walk body motion = %d, want 2", got)
 	}
@@ -302,7 +304,7 @@ func TestHumanoidWalkBodyMotionScalesWithMoveSpeed(t *testing.T) {
 		DelayMS:    150,
 	}
 	started := time.Unix(0, 0)
-	state := spriteState{actionFamily: spriteActionWalk, moveSpeedMS: 400}
+	state := spriteState{actionFamily: scene.SpriteActionWalk, moveSpeedMS: 400}
 	if got := bodyMotionForState(action, state, started, started.Add(399*time.Millisecond)); got != 0 {
 		t.Fatalf("walk body motion before slow step = %d, want 0", got)
 	}
@@ -317,7 +319,7 @@ func TestWalkBodyMotionUsesDistancePhase(t *testing.T) {
 		DelayMS:    150,
 	}
 	started := time.Unix(0, 0)
-	state := spriteState{actionFamily: spriteActionWalk, moveSpeedMS: 400, walkDistance: 1}
+	state := spriteState{actionFamily: scene.SpriteActionWalk, moveSpeedMS: 400, walkDistance: 1}
 	if got := bodyMotionForState(action, state, started, started.Add(399*time.Millisecond)); got != 1 {
 		t.Fatalf("walk body motion = %d, want distance-driven 1", got)
 	}
@@ -325,7 +327,7 @@ func TestWalkBodyMotionUsesDistancePhase(t *testing.T) {
 
 func TestWalkingSpriteStateIgnoresReadyFightAnimation(t *testing.T) {
 	state := spriteState{
-		actionFamily: spriteActionWalk,
+		actionFamily: scene.SpriteActionWalk,
 		moving:       true,
 		loop:         true,
 	}
@@ -333,7 +335,7 @@ func TestWalkingSpriteStateIgnoresReadyFightAnimation(t *testing.T) {
 	if applyActorAnimationToSpriteState(&state, actorAnimation{actionFamily: spriteActionPCReadyFight, loop: true}, true) {
 		t.Fatal("ready fight should not override walking state")
 	}
-	if state.actionFamily != spriteActionWalk || !state.moving {
+	if state.actionFamily != scene.SpriteActionWalk || !state.moving {
 		t.Fatalf("state = %+v, want still walking", state)
 	}
 
@@ -344,7 +346,7 @@ func TestWalkingSpriteStateIgnoresReadyFightAnimation(t *testing.T) {
 		t.Fatalf("death state = %+v", state)
 	}
 
-	nonPC := spriteState{actionFamily: spriteActionWalk, moving: true, loop: true}
+	nonPC := spriteState{actionFamily: scene.SpriteActionWalk, moving: true, loop: true}
 	if !applyActorAnimationToSpriteState(&nonPC, actorAnimation{actionFamily: spriteActionNonPCDeath}, false) {
 		t.Fatal("non-pc death should override walking state")
 	}
@@ -388,10 +390,10 @@ func TestHumanoidIdleHeadMotionDoesNotCycle(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	if got := selectHeadMotion(spriteState{actionFamily: spriteActionIdle}, 2, action); got != 0 {
+	if got := selectHeadMotion(spriteState{actionFamily: scene.SpriteActionIdle}, 2, action); got != 0 {
 		t.Fatalf("idle head motion = %d, want 0", got)
 	}
-	if got := selectHeadMotion(spriteState{actionFamily: spriteActionIdle, headDir: 2, headTurn: true}, 0, action); got != 2 {
+	if got := selectHeadMotion(spriteState{actionFamily: scene.SpriteActionIdle, headDir: 2, headTurn: true}, 0, action); got != 2 {
 		t.Fatalf("idle turned head motion = %d, want 2", got)
 	}
 }
@@ -401,7 +403,7 @@ func TestHumanoidWalkHeadMotionFollowsBodyMotion(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	if got := selectHeadMotion(spriteState{actionFamily: spriteActionWalk}, 2, action); got != 2 {
+	if got := selectHeadMotion(spriteState{actionFamily: scene.SpriteActionWalk}, 2, action); got != 2 {
 		t.Fatalf("walk head motion = %d, want 2", got)
 	}
 }
@@ -454,7 +456,7 @@ func TestPlayerRenderLayerOrderRestoresMissingHeadLayer(t *testing.T) {
 }
 
 func TestSpriteLayerCenterTreatsPositiveYAsScreenDown(t *testing.T) {
-	_, y := spriteLayerCenter(5, 5, res.ACTLayer{Y: 3})
+	_, y := scene.SpriteLayerCenter(5, 5, res.ACTLayer{Y: 3})
 	if y != 8 {
 		t.Fatalf("layer center Y = %.1f, want 8.0", y)
 	}
@@ -465,7 +467,7 @@ func TestSpriteLayerAngleMatchesHighPriest(t *testing.T) {
 	source.RGBA().SetRGBA(1, 0, color.RGBA{R: 255, A: 255})
 	target := render.NewImage(21, 21)
 
-	drawSpriteLayerWithOptions(target, source, res.ACTLayer{
+	scene.DrawSpriteLayerWithOptions(target, source, res.ACTLayer{
 		ScaleX: 1,
 		ScaleY: 1,
 		Angle:  90,
@@ -484,19 +486,19 @@ func TestSpriteLayerAngleMatchesHighPriest(t *testing.T) {
 func TestSingleSpriteBillboardPreservesRotatedLayers(t *testing.T) {
 	source := render.NewImage(4, 40)
 	source.Fill(color.White)
-	view := &spriteView{
-		spr:    &res.SPR{Frames: []res.SPRFrame{{Width: 4, Height: 40}}},
-		images: map[spriteFrameKey]*render.Image{{}: source},
+	view := &scene.SpriteView{
+		Spr:    &res.SPR{Frames: []res.SPRFrame{{Width: 4, Height: 40}}},
+		Images: map[scene.SpriteFrameKey]*render.Image{{}: source},
 	}
 	anim := res.ACTAnimation{Layers: []res.ACTLayer{{
 		X: 21, Y: 8, ScaleX: 1, ScaleY: 1, Angle: 90, Color: [4]float32{1, 1, 1, 1},
 	}}}
 	for _, ignore := range []bool{false, true} {
-		billboard, ok := composeSingleSpriteBillboardWithOptions(view, anim, ignore)
+		billboard, ok := scene.ComposeSingleSpriteBillboardWithOptions(view, anim, ignore)
 		if !ok {
 			t.Fatal("could not compose rotated sprite")
 		}
-		minX, minY, maxX, maxY, opaque := billboardOpaqueBounds(billboard.image)
+		minX, minY, maxX, maxY, opaque := billboardOpaqueBounds(billboard.Image)
 		wantW, wantH := 40, 4
 		if ignore {
 			wantW, wantH = 4, 40
@@ -511,29 +513,29 @@ func TestDebugPlayerSpriteBillboard(t *testing.T) {
 	if os.Getenv("GORO_DEBUG_PLAYER_SPRITE") != "1" {
 		t.Skip("set GORO_DEBUG_PLAYER_SPRITE=1")
 	}
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	for _, sex := range []byte{0, 1} {
 		view, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{head: 1, sex: sex}, "debug player")
 		if view == nil {
 			t.Logf("sex=%d load failed: %s", sex, status)
 			continue
 		}
-		billboard, ok := humanoidBillboardForState(view, spriteState{actionFamily: spriteActionIdle, direction: 0}, time.Now())
+		billboard, ok := humanoidBillboardForState(view, spriteState{actionFamily: scene.SpriteActionIdle, direction: 0}, time.Now())
 		if !ok {
 			t.Logf("sex=%d billboard failed: %s", sex, status)
 			continue
 		}
-		bodyIndex, bodyAction, ok := resolveSpriteAction(view.body.act, spriteActionIdle, 0)
+		bodyIndex, bodyAction, ok := resolveSpriteAction(view.body.Act, scene.SpriteActionIdle, 0)
 		if !ok {
 			t.Fatalf("sex=%d missing body action", sex)
 		}
-		minX, minY, maxX, maxY := spriteAnimationBounds(view.body, bodyAction.Animations[0], humanoidBillboardAnchorX, humanoidBillboardAnchorY, 0, 0)
-		t.Logf("sex=%d %s action=%d bounds=(%.1f,%.1f)-(%.1f,%.1f) anchor=(%.0f,%.0f) image=%dx%d", sex, status, bodyIndex, minX, minY, maxX, maxY, billboard.anchorX, billboard.anchorY, humanoidBillboardWidth, humanoidBillboardHeight)
+		minX, minY, maxX, maxY := spriteAnimationBounds(view.body, bodyAction.Animations[0], scene.HumanoidBillboardAnchorX, scene.HumanoidBillboardAnchorY, 0, 0)
+		t.Logf("sex=%d %s action=%d bounds=(%.1f,%.1f)-(%.1f,%.1f) anchor=(%.0f,%.0f) image=%dx%d", sex, status, bodyIndex, minX, minY, maxX, maxY, billboard.AnchorX, billboard.AnchorY, scene.HumanoidBillboardWidth, scene.HumanoidBillboardHeight)
 	}
 }
 
 func TestPlayerSpriteCompositionIncludesHeadWithWeapon(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	view, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{
 		job:    0,
 		head:   1,
@@ -543,7 +545,7 @@ func TestPlayerSpriteCompositionIncludesHeadWithWeapon(t *testing.T) {
 	if view == nil {
 		t.Skipf("debug player unavailable: %s", status)
 	}
-	bodyActionIndex, bodyAction, ok := resolveSpriteAction(view.body.act, spriteActionIdle, 0)
+	bodyActionIndex, bodyAction, ok := resolveSpriteAction(view.body.Act, scene.SpriteActionIdle, 0)
 	if !ok {
 		t.Fatalf("body action missing: %s", status)
 	}
@@ -552,7 +554,7 @@ func TestPlayerSpriteCompositionIncludesHeadWithWeapon(t *testing.T) {
 		t.Fatalf("render order omits head layer: order=%v status=%s", order, status)
 	}
 	bodyAnim := bodyAction.Animations[0]
-	headAnim, ok := actionAnimation(view.head.act, bodyActionIndex, 0)
+	headAnim, ok := actionAnimation(view.head.Act, bodyActionIndex, 0)
 	if !ok {
 		t.Fatalf("head action missing: %s", status)
 	}
@@ -573,15 +575,15 @@ func TestPlayerSpriteCompositionIncludesHeadWithWeapon(t *testing.T) {
 		pointX, pointY = view.imf.Point(drawLayer, bodyActionIndex, 0)
 	}
 	layer := headAnim.Layers[drawLayer]
-	minX, minY, maxX, maxY := spriteLayerBounds(view.head, layer, humanoidBillboardAnchorX+float64(pointX+dx), humanoidBillboardAnchorY+float64(pointY+dy))
-	if minY > humanoidBillboardAnchorY-35 {
+	minX, minY, maxX, maxY := spriteLayerBounds(view.head, layer, scene.HumanoidBillboardAnchorX+float64(pointX+dx), scene.HumanoidBillboardAnchorY+float64(pointY+dy))
+	if minY > scene.HumanoidBillboardAnchorY-35 {
 		t.Fatalf("head bounds too low: bounds=(%.1f,%.1f)-(%.1f,%.1f) point=(%d,%d) attach=(%d,%d) layer=%+v status=%s", minX, minY, maxX, maxY, pointX, pointY, dx, dy, layer, status)
 	}
 	t.Logf("head bounds=(%.1f,%.1f)-(%.1f,%.1f) point=(%d,%d) attach=(%d,%d) layer=%+v", minX, minY, maxX, maxY, pointX, pointY, dx, dy, layer)
 }
 
 func TestMercenaryHumanoidSpriteCompositionRealWhenConfigured(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	cases := []struct {
 		name   string
 		job    int
@@ -603,7 +605,7 @@ func TestMercenaryHumanoidSpriteCompositionRealWhenConfigured(t *testing.T) {
 				t.Fatalf("mercenary view body=%t head=%t status=%s", view.body != nil, view.head != nil, status)
 			}
 			for _, action := range []int{tc.attack, spriteActionPCHurt, tc.death} {
-				if _, _, ok := resolveSpriteAction(view.body.act, action, 0); !ok {
+				if _, _, ok := resolveSpriteAction(view.body.Act, action, 0); !ok {
 					t.Fatalf("missing body action=%d status=%s", action, status)
 				}
 			}
@@ -618,7 +620,7 @@ func TestMercenaryHumanoidSpriteCompositionRealWhenConfigured(t *testing.T) {
 }
 
 func TestMercenaryAttackBillboardDoesNotClipRealWhenConfigured(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	for _, tc := range []struct {
 		name string
 		job  int
@@ -635,7 +637,7 @@ func TestMercenaryAttackBillboardDoesNotClipRealWhenConfigured(t *testing.T) {
 			}
 			actionFamily := mercenaryAttackActionFamily(tc.job, tc.sex, 0)
 			renderDirection := spriteDirectionFromWorldDirForCamera(0, 0)
-			_, action, ok := resolveSpriteAction(view.body.act, actionFamily, renderDirection)
+			_, action, ok := resolveSpriteAction(view.body.Act, actionFamily, renderDirection)
 			if !ok {
 				t.Fatalf("mercenary attack action missing: %s", status)
 			}
@@ -649,13 +651,13 @@ func TestMercenaryAttackBillboardDoesNotClipRealWhenConfigured(t *testing.T) {
 				if !ok {
 					t.Fatalf("attack motion %d billboard unavailable: %s", motion, status)
 				}
-				minX, minY, maxX, maxY, opaque := billboardOpaqueBounds(billboard.image)
+				minX, minY, maxX, maxY, opaque := billboardOpaqueBounds(billboard.Image)
 				if !opaque {
 					t.Fatalf("attack motion %d drew no opaque pixels: %s", motion, status)
 				}
-				bounds := billboard.image.Bounds()
+				bounds := billboard.Image.Bounds()
 				if minX <= 0 || minY <= 0 || maxX >= bounds.Dx()-1 || maxY >= bounds.Dy()-1 {
-					t.Fatalf("attack motion %d touches billboard edge opaque=(%d,%d)-(%d,%d) image=%dx%d anchor=(%.0f,%.0f) status=%s", motion, minX, minY, maxX, maxY, bounds.Dx(), bounds.Dy(), billboard.anchorX, billboard.anchorY, status)
+					t.Fatalf("attack motion %d touches billboard edge opaque=(%d,%d)-(%d,%d) image=%dx%d anchor=(%.0f,%.0f) status=%s", motion, minX, minY, maxX, maxY, bounds.Dx(), bounds.Dy(), billboard.AnchorX, billboard.AnchorY, status)
 				}
 			}
 		})
@@ -663,7 +665,7 @@ func TestMercenaryAttackBillboardDoesNotClipRealWhenConfigured(t *testing.T) {
 }
 
 func TestMercenaryAttackBillboardIncludesDefaultWeaponRealWhenConfigured(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	for _, tc := range []struct {
 		name string
 		job  int
@@ -683,14 +685,14 @@ func TestMercenaryAttackBillboardIncludesDefaultWeaponRealWhenConfigured(t *test
 			}
 			actionFamily := mercenaryAttackActionFamily(tc.job, tc.sex, 0)
 			renderDirection := spriteDirectionFromWorldDirForCamera(0, 0)
-			bodyActionIndex, action, ok := resolveSpriteAction(view.body.act, actionFamily, renderDirection)
+			bodyActionIndex, action, ok := resolveSpriteAction(view.body.Act, actionFamily, renderDirection)
 			if !ok {
 				t.Fatalf("mercenary attack action missing: %s", status)
 			}
 			withoutWeaponView := *view
 			withoutWeaponView.weapon = nil
 			withoutWeaponView.weaponLight = nil
-			withoutWeaponView.billboards = make(map[humanoidBillboardKey]*spriteBillboard)
+			withoutWeaponView.billboards = make(map[humanoidBillboardKey]*scene.Billboard)
 			changed := false
 			expectedVisible := false
 			for motion := range action.Animations {
@@ -711,7 +713,7 @@ func TestMercenaryAttackBillboardIncludesDefaultWeaponRealWhenConfigured(t *test
 				if overlayMotionHasVisibleLayer(view.weapon, view.body, bodyActionIndex, motion) || overlayMotionHasVisibleLayer(view.weaponLight, view.body, bodyActionIndex, motion) {
 					expectedVisible = true
 				}
-				if imageRGBAFingerprint(withWeapon.image) != imageRGBAFingerprint(withoutWeapon.image) {
+				if imageRGBAFingerprint(withWeapon.Image) != imageRGBAFingerprint(withoutWeapon.Image) {
 					changed = true
 					break
 				}
@@ -728,7 +730,7 @@ func TestMercenaryAttackBillboardIncludesDefaultWeaponRealWhenConfigured(t *test
 }
 
 func TestMercenaryUsesDedicatedWeaponOverlayRealWhenConfigured(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	for _, tc := range []struct {
 		name       string
 		job        int
@@ -745,7 +747,7 @@ func TestMercenaryUsesDedicatedWeaponOverlayRealWhenConfigured(t *testing.T) {
 			if view == nil {
 				t.Skipf("mercenary sprite unavailable: %s", status)
 			}
-			if view.weapon == nil || !strings.Contains(view.weapon.source, tc.weaponPath) {
+			if view.weapon == nil || !strings.Contains(view.weapon.Source, tc.weaponPath) {
 				t.Fatalf("weapon source = %q, want dedicated mercenary path %q status=%s", spriteSource(view.weapon), tc.weaponPath, status)
 			}
 			if tc.lightPath == "" {
@@ -754,7 +756,7 @@ func TestMercenaryUsesDedicatedWeaponOverlayRealWhenConfigured(t *testing.T) {
 				}
 				return
 			}
-			if view.weaponLight == nil || !strings.Contains(view.weaponLight.source, tc.lightPath) {
+			if view.weaponLight == nil || !strings.Contains(view.weaponLight.Source, tc.lightPath) {
 				t.Fatalf("weapon light source = %q, want dedicated mercenary path %q status=%s", spriteSource(view.weaponLight), tc.lightPath, status)
 			}
 		})
@@ -762,8 +764,8 @@ func TestMercenaryUsesDedicatedWeaponOverlayRealWhenConfigured(t *testing.T) {
 }
 
 func TestComposeSingleSpriteBillboardUsesAnimationBounds(t *testing.T) {
-	view := &spriteView{
-		spr: &res.SPR{
+	view := &scene.SpriteView{
+		Spr: &res.SPR{
 			RGBAIndex: 0,
 			Frames: []res.SPRFrame{{
 				Type:   res.SPRFrameRGBA,
@@ -772,9 +774,9 @@ func TestComposeSingleSpriteBillboardUsesAnimationBounds(t *testing.T) {
 				Data:   solidRGBAFrame(20, 60),
 			}},
 		},
-		act:        &res.ACT{},
-		images:     make(map[spriteFrameKey]*render.Image),
-		billboards: make(map[singleSpriteBillboardKey]*spriteBillboard),
+		Act:        &res.ACT{},
+		Images:     make(map[scene.SpriteFrameKey]*render.Image),
+		Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
 	anim := res.ACTAnimation{Layers: []res.ACTLayer{{
 		Index:   0,
@@ -786,21 +788,21 @@ func TestComposeSingleSpriteBillboardUsesAnimationBounds(t *testing.T) {
 		Color:   [4]float32{1, 1, 1, 1},
 	}}}
 
-	billboard, ok := composeSingleSpriteBillboard(view, anim)
+	billboard, ok := scene.ComposeSingleSpriteBillboard(view, anim)
 	if !ok {
 		t.Fatal("expected single sprite billboard")
 	}
-	if billboard.image.Bounds().Dx() != 28 || billboard.image.Bounds().Dy() != 68 {
-		t.Fatalf("billboard size = %dx%d, want 28x68", billboard.image.Bounds().Dx(), billboard.image.Bounds().Dy())
+	if billboard.Image.Bounds().Dx() != 28 || billboard.Image.Bounds().Dy() != 68 {
+		t.Fatalf("billboard size = %dx%d, want 28x68", billboard.Image.Bounds().Dx(), billboard.Image.Bounds().Dy())
 	}
-	if billboard.anchorX != 11 || billboard.anchorY != 54 {
-		t.Fatalf("billboard anchor = %.1f, %.1f, want 11, 54", billboard.anchorX, billboard.anchorY)
+	if billboard.AnchorX != 11 || billboard.AnchorY != 54 {
+		t.Fatalf("billboard anchor = %.1f, %.1f, want 11, 54", billboard.AnchorX, billboard.AnchorY)
 	}
 }
 
 func TestCursorFrameBillboardUsesCompositionAnchorAsHotspot(t *testing.T) {
-	view := &spriteView{
-		spr: &res.SPR{
+	view := &scene.SpriteView{
+		Spr: &res.SPR{
 			RGBAIndex: 0,
 			Frames: []res.SPRFrame{{
 				Type:   res.SPRFrameRGBA,
@@ -809,7 +811,7 @@ func TestCursorFrameBillboardUsesCompositionAnchorAsHotspot(t *testing.T) {
 				Data:   solidRGBAFrame(18, 24),
 			}},
 		},
-		act: &res.ACT{Actions: []res.ACTAction{{
+		Act: &res.ACT{Actions: []res.ACTAction{{
 			Animations: []res.ACTAnimation{{Layers: []res.ACTLayer{{
 				Index:   0,
 				SPRType: res.SPRFrameRGBA,
@@ -820,28 +822,28 @@ func TestCursorFrameBillboardUsesCompositionAnchorAsHotspot(t *testing.T) {
 				Color:   [4]float32{1, 1, 1, 1},
 			}}}},
 		}}},
-		images:     make(map[spriteFrameKey]*render.Image),
-		billboards: make(map[singleSpriteBillboardKey]*spriteBillboard),
+		Images:     make(map[scene.SpriteFrameKey]*render.Image),
+		Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
 
 	billboard, ok := cursorFrameBillboard(view, 0, 0, 20, 24)
 	if !ok {
 		t.Fatal("expected cursor billboard")
 	}
-	if got, want := billboard.image.Bounds().Dx(), 26; got != want {
+	if got, want := billboard.Image.Bounds().Dx(), 26; got != want {
 		t.Fatalf("cursor width = %d, want %d", got, want)
 	}
-	if got, want := billboard.image.Bounds().Dy(), 32; got != want {
+	if got, want := billboard.Image.Bounds().Dy(), 32; got != want {
 		t.Fatalf("cursor height = %d, want %d", got, want)
 	}
-	if billboard.anchorX != 4 || billboard.anchorY != 4 {
-		t.Fatalf("cursor anchor = %.1f, %.1f, want 4, 4", billboard.anchorX, billboard.anchorY)
+	if billboard.AnchorX != 4 || billboard.AnchorY != 4 {
+		t.Fatalf("cursor anchor = %.1f, %.1f, want 4, 4", billboard.AnchorX, billboard.AnchorY)
 	}
 }
 
 func TestCursorFrameBillboardDoesNotClipTallTargetCursor(t *testing.T) {
-	view := &spriteView{
-		spr: &res.SPR{
+	view := &scene.SpriteView{
+		Spr: &res.SPR{
 			RGBAIndex: 0,
 			Frames: []res.SPRFrame{{
 				Type:   res.SPRFrameRGBA,
@@ -850,7 +852,7 @@ func TestCursorFrameBillboardDoesNotClipTallTargetCursor(t *testing.T) {
 				Data:   solidRGBAFrame(32, 64),
 			}},
 		},
-		act: &res.ACT{Actions: []res.ACTAction{{
+		Act: &res.ACT{Actions: []res.ACTAction{{
 			Animations: []res.ACTAnimation{{Layers: []res.ACTLayer{{
 				Index:   0,
 				SPRType: res.SPRFrameRGBA,
@@ -861,18 +863,18 @@ func TestCursorFrameBillboardDoesNotClipTallTargetCursor(t *testing.T) {
 				Color:   [4]float32{1, 1, 1, 1},
 			}}}},
 		}}},
-		images:     make(map[spriteFrameKey]*render.Image),
-		billboards: make(map[singleSpriteBillboardKey]*spriteBillboard),
+		Images:     make(map[scene.SpriteFrameKey]*render.Image),
+		Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
 
 	billboard, ok := cursorFrameBillboard(view, 0, 0, 20, 50)
 	if !ok {
 		t.Fatal("expected cursor billboard")
 	}
-	if got, want := billboard.image.Bounds().Dy(), 72; got != want {
+	if got, want := billboard.Image.Bounds().Dy(), 72; got != want {
 		t.Fatalf("cursor height = %d, want %d", got, want)
 	}
-	if got, want := billboard.anchorY, 4.0; got != want {
+	if got, want := billboard.AnchorY, 4.0; got != want {
 		t.Fatalf("cursor anchorY = %.1f, want %.1f", got, want)
 	}
 }
@@ -943,30 +945,30 @@ func imageRGBAFingerprint(img *render.Image) uint64 {
 	return out
 }
 
-func overlayMotionHasVisibleLayer(overlay *spriteView, body *spriteView, actionIndex, bodyMotion int) bool {
-	if overlay == nil || overlay.act == nil || body == nil || body.act == nil || len(overlay.act.Actions) == 0 {
+func overlayMotionHasVisibleLayer(overlay *scene.SpriteView, body *scene.SpriteView, actionIndex, bodyMotion int) bool {
+	if overlay == nil || overlay.Act == nil || body == nil || body.Act == nil || len(overlay.Act.Actions) == 0 {
 		return false
 	}
-	resolvedActionIndex := actionIndex % len(overlay.act.Actions)
+	resolvedActionIndex := actionIndex % len(overlay.Act.Actions)
 	if resolvedActionIndex < 0 {
-		resolvedActionIndex += len(overlay.act.Actions)
+		resolvedActionIndex += len(overlay.Act.Actions)
 	}
-	motionIndex := resolveOverlayMotionIndex(overlay.act, body.act, resolvedActionIndex, bodyMotion)
-	anim, ok := actionAnimation(overlay.act, resolvedActionIndex, motionIndex)
+	motionIndex := resolveOverlayMotionIndex(overlay.Act, body.Act, resolvedActionIndex, bodyMotion)
+	anim, ok := actionAnimation(overlay.Act, resolvedActionIndex, motionIndex)
 	if !ok {
-		anim, ok = actionAnimation(overlay.act, resolvedActionIndex, 0)
+		anim, ok = actionAnimation(overlay.Act, resolvedActionIndex, 0)
 	}
 	return ok && visibleACTLayerIndex(anim) >= 0
 }
 
-func spriteSource(view *spriteView) string {
+func spriteSource(view *scene.SpriteView) string {
 	if view == nil {
 		return ""
 	}
-	return view.source
+	return view.Source
 }
 
-func spriteAnimationBounds(view *spriteView, anim res.ACTAnimation, anchorX, anchorY float64, posX, posY int32) (float64, float64, float64, float64) {
+func spriteAnimationBounds(view *scene.SpriteView, anim res.ACTAnimation, anchorX, anchorY float64, posX, posY int32) (float64, float64, float64, float64) {
 	minX, minY := math.Inf(1), math.Inf(1)
 	maxX, maxY := math.Inf(-1), math.Inf(-1)
 	for _, layer := range anim.Layers {
@@ -975,12 +977,12 @@ func spriteAnimationBounds(view *spriteView, anim res.ACTAnimation, anchorX, anc
 		}
 		frameIndex := int(layer.Index)
 		if layer.SPRType == res.SPRFrameRGBA {
-			frameIndex += view.spr.RGBAIndex
+			frameIndex += view.Spr.RGBAIndex
 		}
-		if frameIndex < 0 || frameIndex >= len(view.spr.Frames) {
+		if frameIndex < 0 || frameIndex >= len(view.Spr.Frames) {
 			continue
 		}
-		frame := view.spr.Frames[frameIndex]
+		frame := view.Spr.Frames[frameIndex]
 		cx := anchorX + float64(posX) + float64(layer.X)
 		cy := anchorY + float64(posY) + float64(layer.Y)
 		w := float64(frame.Width)
@@ -993,16 +995,16 @@ func spriteAnimationBounds(view *spriteView, anim res.ACTAnimation, anchorX, anc
 	return minX, minY, maxX, maxY
 }
 
-func spriteLayerBounds(view *spriteView, layer res.ACTLayer, centerX, centerY float64) (float64, float64, float64, float64) {
+func spriteLayerBounds(view *scene.SpriteView, layer res.ACTLayer, centerX, centerY float64) (float64, float64, float64, float64) {
 	frameIndex := int(layer.Index)
 	if layer.SPRType == res.SPRFrameRGBA {
-		frameIndex += view.spr.RGBAIndex
+		frameIndex += view.Spr.RGBAIndex
 	}
-	if frameIndex < 0 || frameIndex >= len(view.spr.Frames) {
+	if frameIndex < 0 || frameIndex >= len(view.Spr.Frames) {
 		return math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
 	}
-	width := float64(view.spr.Frames[frameIndex].Width)
-	height := float64(view.spr.Frames[frameIndex].Height)
+	width := float64(view.Spr.Frames[frameIndex].Width)
+	height := float64(view.Spr.Frames[frameIndex].Height)
 	scaleX := math.Abs(float64(layer.ScaleX))
 	scaleY := math.Abs(float64(layer.ScaleY))
 	if scaleX == 0 {
@@ -1011,7 +1013,7 @@ func spriteLayerBounds(view *spriteView, layer res.ACTLayer, centerX, centerY fl
 	if scaleY == 0 {
 		scaleY = 1
 	}
-	layerCenterX, layerCenterY := spriteLayerCenter(centerX, centerY, layer)
+	layerCenterX, layerCenterY := scene.SpriteLayerCenter(centerX, centerY, layer)
 	halfW := width * scaleX / 2
 	halfH := height * scaleY / 2
 	return layerCenterX - halfW, layerCenterY - halfH, layerCenterX + halfW, layerCenterY + halfH

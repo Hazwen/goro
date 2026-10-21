@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 )
@@ -108,7 +109,7 @@ func actorSpeechBubbleBottomY(baseY, scale float64) float64 {
 	return actorSpriteTopY(baseY, scale) - actorSpeechBubbleGap
 }
 
-func (m *WorldMode) drawSpeechBubbles(screen *render.Frame, ctx client.Context, projection sceneProjection, entries []sceneActorDrawEntry, now time.Time) {
+func (m *WorldMode) drawSpeechBubbles(screen *render.Frame, ctx client.Context, projection scene.Projection, entries []scene.ActorDrawEntry, now time.Time) {
 	if len(m.speechBubbles) == 0 {
 		return
 	}
@@ -117,8 +118,8 @@ func (m *WorldMode) drawSpeechBubbles(screen *render.Frame, ctx client.Context, 
 			delete(m.speechBubbles, id)
 		} else if bubble.ground != nil {
 			x, y := float64(bubble.ground[0]), float64(bubble.ground[1])
-			if p, ok := projection.projectPoint(cellCenter(x), cellCenter(y), terrainHeightAt(ctx.World, x, y)); ok {
-				render.DrawUISpeechBubble(screen, bubble.text, float64(p.x), float64(p.y)-actorSpeechBubbleGap, speechBubbleMaxWidth)
+			if p, ok := projection.ProjectPoint(scene.CellCenter(x), scene.CellCenter(y), scene.TerrainHeightAt(ctx.World, x, y)); ok {
+				render.DrawUISpeechBubble(screen, bubble.text, float64(p.X), float64(p.Y)-actorSpeechBubbleGap, speechBubbleMaxWidth)
 			}
 		}
 	}
@@ -126,11 +127,11 @@ func (m *WorldMode) drawSpeechBubbles(screen *render.Frame, ctx client.Context, 
 		return
 	}
 	for _, entry := range entries {
-		bubble, ok := m.speechBubbles[entry.actor.ID]
+		bubble, ok := m.speechBubbles[entry.Actor.ID]
 		if !ok || strings.TrimSpace(bubble.text) == "" {
 			continue
 		}
-		bottomY := actorSpeechBubbleBottomY(entry.screenY, entry.scale)
-		render.DrawUISpeechBubble(screen, bubble.text, entry.screenX, bottomY, speechBubbleMaxWidth)
+		bottomY := actorSpeechBubbleBottomY(entry.ScreenY, entry.Scale)
+		render.DrawUISpeechBubble(screen, bubble.text, entry.ScreenX, bottomY, speechBubbleMaxWidth)
 	}
 }

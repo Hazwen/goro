@@ -5,6 +5,8 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -22,10 +24,10 @@ func (m *WorldMode) applyStatusEffectChange(ctx client.Context, change network.S
 	if actorID := applyActorOpt3StateStatus(ctx, change); actorID != 0 {
 		m.syncActorSpiritEffects(ctx, actorID)
 		if change.StatusID == db.StatusLkconcentration {
-			if isLocalActor(ctx, actorID) {
-				actorID = localSkillTarget(ctx)
+			if scene.IsLocalActor(ctx, actorID) {
+				actorID = scene.LocalSkillTarget(ctx)
 			}
-			m.setActorStateEffect(ctx, actorID, effectLKConcentration, change.Active)
+			m.setActorStateEffect(ctx, actorID, effects.LKConcentration, change.Active)
 		}
 	}
 	m.applyTrickDeadStatus(ctx, change)
@@ -33,17 +35,17 @@ func (m *WorldMode) applyStatusEffectChange(ctx client.Context, change network.S
 	m.applyCloseConfineStatus(ctx, change)
 	if change.StatusID == db.StatusWzSightblaster {
 		id := change.ActorID
-		if id == 0 || isLocalActor(ctx, id) {
-			id = localSkillTarget(ctx)
+		if id == 0 || scene.IsLocalActor(ctx, id) {
+			id = scene.LocalSkillTarget(ctx)
 		}
-		m.setActorStateEffect(ctx, id, effectSightBlaster, change.Active)
+		m.setActorStateEffect(ctx, id, effects.SightBlaster, change.Active)
 	}
 	if change.StatusID == db.StatusSmaReady && change.Active {
 		id := change.ActorID
 		if id == 0 {
-			id = localSkillTarget(ctx)
+			id = scene.LocalSkillTarget(ctx)
 		}
-		m.addWorldEffect(ctx, effectSmaReady, id)
+		m.effects().Add(ctx, effects.SmaReady, id)
 	}
 	m.applyTaekwonNightStatus(ctx, change)
 	if !applyLocalStatusEffectChange(ctx.Session, change, time.Now()) {
@@ -99,9 +101,9 @@ func (m *WorldMode) applyTaekwonNightStatus(ctx client.Context, change network.S
 	}
 	id := change.ActorID
 	if id == 0 {
-		id = localSkillTarget(ctx)
+		id = scene.LocalSkillTarget(ctx)
 	}
-	if id == 0 || !isLocalActor(ctx, id) || m.taekwonNight == change.Active {
+	if id == 0 || !scene.IsLocalActor(ctx, id) || m.taekwonNight == change.Active {
 		return
 	}
 	m.taekwonNight = change.Active
@@ -117,26 +119,26 @@ func (m *WorldMode) applyTaekwonStatus(ctx client.Context, change network.Status
 	}
 	id := change.ActorID
 	if id == 0 {
-		id = localSkillTarget(ctx)
+		id = scene.LocalSkillTarget(ctx)
 	}
 	if id == 0 {
 		return
 	}
-	if isLocalActor(ctx, id) {
-		id = localSkillTarget(ctx)
+	if scene.IsLocalActor(ctx, id) {
+		id = scene.LocalSkillTarget(ctx)
 	}
 	now := time.Now()
 	switch change.StatusID {
 	case db.StatusRun:
-		if m.hasActiveWorldEffect(effectRun, id, now) {
-			m.addWorldEffectAt(ctx, effectStopRun, id, now)
+		if m.effects().HasActive(effects.Run, id, now) {
+			m.effects().AddAt(ctx, effects.StopRun, id, now)
 		}
-		m.removeWorldEffect(effectRun, id)
+		m.effects().Remove(effects.Run, id)
 		return
 	case db.StatusTing:
 		m.scheduleSoundAtActor(now, id, "effect\\T_벽튕김.wav")
-		m.addWorldEffectAt(ctx, effectQuakeBody, id, now)
-		m.removeWorldEffect(effectRun, id)
+		m.effects().AddAt(ctx, effects.QuakeBody, id, now)
+		m.effects().Remove(effects.Run, id)
 		return
 	}
 }
@@ -148,12 +150,12 @@ func applyActorOpt3StateStatus(ctx client.Context, change network.StatusEffectCh
 	}
 	id := change.ActorID
 	if id == 0 {
-		id = localSkillTarget(ctx)
+		id = scene.LocalSkillTarget(ctx)
 	}
 	if id == 0 {
 		return 0
 	}
-	actor, ok, local := actorForCombatID(ctx, id)
+	actor, ok, local := scene.ActorForCombatID(ctx, id)
 	if !ok {
 		return 0
 	}
@@ -186,20 +188,20 @@ func (m *WorldMode) applyTrickDeadStatus(ctx client.Context, change network.Stat
 	}
 	id := change.ActorID
 	if id == 0 {
-		id = localSkillTarget(ctx)
+		id = scene.LocalSkillTarget(ctx)
 	}
-	actor, ok, _ := actorForCombatID(ctx, id)
+	actor, ok, _ := scene.ActorForCombatID(ctx, id)
 	if !ok {
 		return
 	}
 	now := time.Now()
 	if change.Active {
 		actionFamily := deathActionFamilyForActor(actor)
-		m.setTrickDeadStatusAction(ctx, id, actionFamily, now, m.actorActionDuration(ctx, actor, actionFamily, defaultDeathAnimationDuration), true)
+		m.setTrickDeadStatusAction(ctx, id, actionFamily, now, m.actorActionDuration(ctx, actor, actionFamily, scene.DefaultDeathAnimationDuration), true)
 		glog.Debugf("trick dead active actor=%d", id)
 		return
 	}
-	m.setTrickDeadStatusAction(ctx, id, spriteActionIdle, now, defaultAttackAnimationDuration, false)
+	m.setTrickDeadStatusAction(ctx, id, scene.SpriteActionIdle, now, scene.DefaultAttackAnimationDuration, false)
 	glog.Debugf("trick dead inactive actor=%d", id)
 }
 

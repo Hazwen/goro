@@ -10,6 +10,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -26,8 +27,8 @@ func TestTaekwonFamilySkillEffectsMatchRobrowser(t *testing.T) {
 		expectEffectIDs(t, "spirit link", skillEffectIDs(skillID), 424, 503)
 	}
 	expectEffectIDs(t, "SG_FUSION", skillEffectIDs(db.SkillSGFusion))
-	expectEffectIDs(t, "SG_FUSION success", skillSuccessEffectSelfIDs(db.SkillSGFusion), effectQuake)
-	expectEffectIDs(t, "SL_SKA", skillEffectIDs(db.SkillSLSka), effectSteelBody, effectGumgang2, effectQuake)
+	expectEffectIDs(t, "SG_FUSION success", skillSuccessEffectSelfIDs(db.SkillSGFusion), effects.Quake)
+	expectEffectIDs(t, "SL_SKA", skillEffectIDs(db.SkillSLSka), effects.SteelBody, effects.Gumgang2, effects.Quake)
 }
 
 func TestStarWarmAndSoulLinkStatusTints(t *testing.T) {
@@ -59,7 +60,7 @@ func TestSoulLinkAndEskeToggleLocalNightLighting(t *testing.T) {
 		t.Fatalf("night state=%t gnd=%p rsm=%v", mode.taekwonNight, mode.gndMeshCache, mode.rsmMeshCache)
 	}
 	lighting := mode.sceneLighting(nil)
-	if lighting.diffuse.x != 0.5 || lighting.diffuse.y != 0.5 || lighting.diffuse.z != 1 || lighting.env.x != 0.5 || lighting.env.y != 0.5 || lighting.env.z != 1 {
+	if lighting.diffuse.X != 0.5 || lighting.diffuse.Y != 0.5 || lighting.diffuse.Z != 1 || lighting.env.X != 0.5 || lighting.env.Y != 0.5 || lighting.env.Z != 1 {
 		t.Fatalf("night lighting = %+v", lighting)
 	}
 
@@ -68,7 +69,7 @@ func TestSoulLinkAndEskeToggleLocalNightLighting(t *testing.T) {
 		t.Fatal("inactive Eske did not restore day lighting")
 	}
 	lighting = mode.sceneLighting(nil)
-	if lighting.diffuse.x != 1 || lighting.diffuse.y != 1 || lighting.diffuse.z != 1 {
+	if lighting.diffuse.X != 1 || lighting.diffuse.Y != 1 || lighting.diffuse.Z != 1 {
 		t.Fatalf("restored lighting = %+v", lighting)
 	}
 }

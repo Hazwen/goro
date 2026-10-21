@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kivutar/goro/game/internal/testutil"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 )
@@ -25,46 +27,46 @@ func TestSharedSpriteResourcesKeepViewStateAndPalettesIndependent(t *testing.T) 
 		}
 	}
 	manager := &res.Manager{Root: root}
-	load := func(palettes []string) *spriteView {
+	load := func(palettes []string) *scene.SpriteView {
 		t.Helper()
-		view, status := loadSpriteView(manager, []string{"body.act"}, []string{"body.spr"}, palettes, "test")
+		view, status := scene.LoadSpriteView(manager, []string{"body.act"}, []string{"body.spr"}, palettes, "test")
 		if view == nil {
 			t.Fatal(status)
 		}
 		return view
 	}
 	first := load(nil)
-	first.started = time.Unix(100, 0)
-	first.billboards[singleSpriteBillboardKey{}] = &spriteBillboard{}
-	first.images[spriteFrameKey{index: 100}] = render.NewImage(1, 1)
+	first.Started = time.Unix(100, 0)
+	first.Billboards[scene.SpriteBillboardKey{}] = &scene.Billboard{}
+	first.Images[scene.SpriteFrameKey{Index: 100}] = render.NewImage(1, 1)
 	second := load([]string{"green.pal"})
-	if first == second || first.spr != second.spr || first.act != second.act {
+	if first == second || first.Spr != second.Spr || first.Act != second.Act {
 		t.Fatal("views did not share just their parsed resources")
 	}
-	if first.started == second.started || len(second.billboards) != 0 || len(second.images) != 0 {
+	if first.Started == second.Started || len(second.Billboards) != 0 || len(second.Images) != 0 {
 		t.Fatal("animation or rendering state leaked between views")
 	}
-	for view, want := range map[*spriteView]color.RGBA{
+	for view, want := range map[*scene.SpriteView]color.RGBA{
 		first: {R: 255, A: 255}, second: {G: 255, A: 255},
 	} {
-		img, ok := spriteViewImage(view, 0, res.SPRFramePalette)
+		img, ok := scene.SpriteViewImage(view, 0, res.SPRFramePalette)
 		if !ok || img.RGBA().RGBAAt(0, 0) != want || img.RGBA().RGBAAt(1, 0) != (color.RGBA{}) {
-			t.Fatalf("wrong color or transparency for palette %q", view.paletteSource)
+			t.Fatalf("wrong color or transparency for palette %q", view.PaletteSource)
 		}
 	}
 	// A fresh view, as created after a map change, still gets the same CPU
 	// resources and default palette, without retaining the old view's images.
 	third := load(nil)
-	if third.spr != first.spr || third.act != first.act || third.palette != nil || len(third.images) != 0 {
+	if third.Spr != first.Spr || third.Act != first.Act || third.Palette != nil || len(third.Images) != 0 {
 		t.Fatal("fresh view did not reuse the unmodified resources")
 	}
-	if fourth := load([]string{"green.pal"}); fourth.palette != second.palette {
+	if fourth := load([]string{"green.pal"}); fourth.Palette != second.Palette {
 		t.Fatal("palette override not shared")
 	}
 }
 
 func TestHumanoidViewsShareResourcesRealData(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	first, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{job: 4, head: 1, sex: 1}, "first")
 	if first == nil {
 		t.Fatal(status)
@@ -73,27 +75,27 @@ func TestHumanoidViewsShareResourcesRealData(t *testing.T) {
 	if second == nil {
 		t.Fatal(status)
 	}
-	if first.body == second.body || first.body.spr != second.body.spr || first.body.act != second.body.act || first.imf != second.imf {
+	if first.body == second.body || first.body.Spr != second.body.Spr || first.body.Act != second.body.Act || first.imf != second.imf {
 		t.Fatal("different appearances did not share their common resources")
 	}
-	if first.head == nil || second.head == nil || first.head.spr == second.head.spr {
+	if first.head == nil || second.head == nil || first.head.Spr == second.head.Spr {
 		t.Fatal("different heads lost their own resources")
 	}
 	for _, view := range []*humanoidSpriteView{first, second} {
-		if _, ok := humanoidBillboardForState(view, spriteState{actionFamily: spriteActionIdle, direction: 0}, time.Now()); !ok {
+		if _, ok := humanoidBillboardForState(view, spriteState{actionFamily: scene.SpriteActionIdle, direction: 0}, time.Now()); !ok {
 			t.Fatal("shared resources could not render")
 		}
 	}
 }
 
 func TestMonsterViewsShareUpgradedResourcesRealData(t *testing.T) {
-	manager := realDataManager(t)
+	manager := testutil.RealDataManager(t)
 	first, status := loadNonPCSpriteView(manager, 1002, "poring")
-	if first == nil || len(first.act.Actions) < 40 {
+	if first == nil || len(first.Act.Actions) < 40 {
 		t.Fatalf("richer monster resource missing: %s", status)
 	}
 	second, status := loadNonPCSpriteView(manager, 1002, "poring again")
-	if second == nil || first == second || first.act != second.act || first.spr != second.spr {
+	if second == nil || first == second || first.Act != second.Act || first.Spr != second.Spr {
 		t.Fatalf("upgraded monster resources not shared: %s", status)
 	}
 }

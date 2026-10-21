@@ -7,6 +7,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	gameui "github.com/kivutar/goro/ui"
@@ -66,7 +67,7 @@ func (m *WorldMode) senseActor(ctx client.Context, class uint16, now time.Time) 
 	}
 	request := m.senseRequest
 	if request.targetID != 0 && now.Sub(request.requestedAt) <= senseResponseTimeout {
-		if actor, ok := ctx.World.Actors[request.targetID]; ok && uint16(actor.Job) == class && isMonsterLikeHoverActor(actor) {
+		if actor, ok := ctx.World.Actors[request.targetID]; ok && uint16(actor.Job) == class && scene.IsMonsterLikeHoverActor(actor) {
 			m.senseRequest = senseRequest{}
 			if actor.ID == 0 {
 				actor.ID = request.targetID

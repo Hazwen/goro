@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -205,26 +206,26 @@ func (m *LoginMode) characterCreatePreviewImage(ctx client.Context) image.Image 
 		return m.create.previewImage
 	}
 	billboard, ok := humanoidBillboardForState(view, spriteState{
-		actionFamily: spriteActionIdle,
+		actionFamily: scene.SpriteActionIdle,
 		direction:    m.create.direction,
 		started:      time.Now(),
 		loopIdle:     true,
 	}, time.Now())
-	if !ok || billboard == nil || billboard.image == nil {
+	if !ok || billboard == nil || billboard.Image == nil {
 		m.create.previewImage = img.RGBA()
 		m.create.previewImageKey = key
 		return m.create.previewImage
 	}
 	const scale = 1.08
-	bounds := billboard.image.Bounds()
+	bounds := billboard.Image.Bounds()
 	var opts render.DrawImageOptions
 	opts.GeoM.Scale(scale, scale)
 	opts.GeoM.Translate(
 		float64(previewW)/2-float64(bounds.Dx())*scale/2,
 		float64(previewH)/2-float64(bounds.Dy())*scale/2,
 	)
-	opts.Filter = spriteDrawFilter()
-	img.DrawImage(billboard.image, &opts)
+	opts.Filter = scene.SpriteDrawFilter()
+	img.DrawImage(billboard.Image, &opts)
 	m.create.previewImage = img.RGBA()
 	m.create.previewImageKey = key
 	return m.create.previewImage

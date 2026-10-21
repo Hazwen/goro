@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 )
@@ -83,7 +84,7 @@ func (b *retainedMeshBuilder) flush() {
 	b.indices = nil
 }
 
-func (m *WorldMode) drawGNDMeshes(screen *render.Frame, manager *res.Manager, gnd *res.GND, rsw *res.RSW, projection sceneProjection) {
+func (m *WorldMode) drawGNDMeshes(screen *render.Frame, manager *res.Manager, gnd *res.GND, rsw *res.RSW, projection scene.Projection) {
 	if gnd == nil {
 		return
 	}
@@ -110,8 +111,8 @@ func (m *WorldMode) drawGNDMeshes(screen *render.Frame, manager *res.Manager, gn
 			if !ok {
 				x0 := chunkX * gndRetainedChunkSize
 				y0 := chunkY * gndRetainedChunkSize
-				x1 := minInt(gnd.Width-1, x0+gndRetainedChunkSize-1)
-				y1 := minInt(gnd.Height-1, y0+gndRetainedChunkSize-1)
+				x1 := scene.MinInt(gnd.Width-1, x0+gndRetainedChunkSize-1)
+				y1 := scene.MinInt(gnd.Height-1, y0+gndRetainedChunkSize-1)
 				meshes = m.buildGNDMeshChunk(manager, gnd, rsw, cache.lightmapAtlas, x0, x1, y0, y1)
 				cache.chunks[key] = meshes
 			}
@@ -126,10 +127,10 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 	if gnd == nil {
 		return nil
 	}
-	startX = maxInt(0, startX)
-	startY = maxInt(0, startY)
-	endX = minInt(gnd.Width-1, endX)
-	endY = minInt(gnd.Height-1, endY)
+	startX = scene.MaxInt(0, startX)
+	startY = scene.MaxInt(0, startY)
+	endX = scene.MinInt(gnd.Width-1, endX)
+	endY = scene.MinInt(gnd.Height-1, endY)
 	if startX > endX || startY > endY {
 		return nil
 	}
@@ -152,7 +153,7 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 		}
 		return builder
 	}
-	addTextured := func(texture *render.Image, verts [4]modelPoint3, uvs [4]texturePoint, indices []uint16, tints [4]color.RGBA, options *render.DrawTrianglesOptions) {
+	addTextured := func(texture *render.Image, verts [4]scene.Point3, uvs [4]scene.UV, indices []uint16, tints [4]color.RGBA, options *render.DrawTrianglesOptions) {
 		builder := builderFor(texture, nil, options)
 		if builder == nil {
 			return
@@ -160,13 +161,13 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 		bounds := texture.Bounds()
 		w, h := float32(bounds.Dx()), float32(bounds.Dy())
 		builder.addQuad([4]render.Vertex3D{
-			texturedSurfaceVertex3D(verts[0], uvs[0], tints[0], w, h),
-			texturedSurfaceVertex3D(verts[1], uvs[1], tints[1], w, h),
-			texturedSurfaceVertex3D(verts[2], uvs[2], tints[2], w, h),
-			texturedSurfaceVertex3D(verts[3], uvs[3], tints[3], w, h),
+			scene.TexturedSurfaceVertex3D(verts[0], uvs[0], tints[0], w, h),
+			scene.TexturedSurfaceVertex3D(verts[1], uvs[1], tints[1], w, h),
+			scene.TexturedSurfaceVertex3D(verts[2], uvs[2], tints[2], w, h),
+			scene.TexturedSurfaceVertex3D(verts[3], uvs[3], tints[3], w, h),
 		}, indices)
 	}
-	addColored := func(verts [4]modelPoint3, indices []uint16, tints [4]color.RGBA, options *render.DrawTrianglesOptions) {
+	addColored := func(verts [4]scene.Point3, indices []uint16, tints [4]color.RGBA, options *render.DrawTrianglesOptions) {
 		builder := builderFor(m.whitePixel, nil, options)
 		if builder == nil {
 			return
@@ -178,9 +179,9 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 			coloredSurfaceVertex3D(verts[3], 0, 1, tints[3]),
 		}, indices)
 	}
-	addLightmapped := func(texture *render.Image, verts [4]modelPoint3, uvs [4]texturePoint, baseTints [4]color.RGBA, lightmapID int, lightmap res.GNDLightmap, lightScales [4]modelPoint3) {
+	addLightmapped := func(texture *render.Image, verts [4]scene.Point3, uvs [4]scene.UV, baseTints [4]color.RGBA, lightmapID int, lightmap res.GNDLightmap, lightScales [4]scene.Point3) {
 		if texture == nil || lightmapAtlas.image == nil {
-			addTextured(texture, verts, uvs, quadIndices012023, scaleSurfaceVertexTints(baseTints, lightScales), groundTextureDrawOptions())
+			addTextured(texture, verts, uvs, scene.QuadIndices012023, scaleSurfaceVertexTints(baseTints, lightScales), groundTextureDrawOptions())
 			return
 		}
 		textureBounds := texture.Bounds()
@@ -197,14 +198,14 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 			base := baseTints[i]
 			lightScale := lightScales[i]
 			tint := color.RGBA{
-				R: clampColor(float64(base.R) * lightScale.x),
-				G: clampColor(float64(base.G) * lightScale.y),
-				B: clampColor(float64(base.B) * lightScale.z),
+				R: scene.ClampColor(float64(base.R) * lightScale.X),
+				G: scene.ClampColor(float64(base.G) * lightScale.Y),
+				B: scene.ClampColor(float64(base.B) * lightScale.Z),
 				A: base.A,
 			}
 			vertices[i] = lightmappedSurfaceVertex3D(verts[i], uvs[i], lightUVs[i], tint, textureWidth, textureHeight)
 		}
-		builder.addQuad(vertices, quadIndices012023)
+		builder.addQuad(vertices, scene.QuadIndices012023)
 	}
 
 	for y := startY; y <= endY; y++ {
@@ -216,11 +217,11 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 			if cell.Top >= 0 {
 				if surface, ok := gnd.Surface(cell.Top); ok {
 					vertexOrder := [4]int{0, 1, 3, 2}
-					verts := [4]modelPoint3{
-						{x: float64(x) * 2, y: float64(cell.Heights[0]), z: float64(y) * 2},
-						{x: float64(x+1) * 2, y: float64(cell.Heights[1]), z: float64(y) * 2},
-						{x: float64(x+1) * 2, y: float64(cell.Heights[3]), z: float64(y+1) * 2},
-						{x: float64(x) * 2, y: float64(cell.Heights[2]), z: float64(y+1) * 2},
+					verts := [4]scene.Point3{
+						{X: float64(x) * 2, Y: float64(cell.Heights[0]), Z: float64(y) * 2},
+						{X: float64(x+1) * 2, Y: float64(cell.Heights[1]), Z: float64(y) * 2},
+						{X: float64(x+1) * 2, Y: float64(cell.Heights[3]), Z: float64(y+1) * 2},
+						{X: float64(x) * 2, Y: float64(cell.Heights[2]), Z: float64(y+1) * 2},
 					}
 					uvs := surfaceUVs(surface, vertexOrder)
 					baseTints := topGNDSurfaceBaseTints(gnd, x, y, surface.Color)
@@ -229,10 +230,10 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 						if lightmap, ok := gnd.Lightmap(surface.LightmapID); ok {
 							addLightmapped(texture, verts, uvs, baseTints, surface.LightmapID, lightmap, vertexLightScales(lighting, normals))
 						} else {
-							addTextured(texture, verts, uvs, quadIndices012023, surfaceVertexTints(baseTints, cell.Heights, normals, lighting), groundTextureDrawOptions())
+							addTextured(texture, verts, uvs, scene.QuadIndices012023, surfaceVertexTints(baseTints, cell.Heights, normals, lighting), groundTextureDrawOptions())
 						}
 					} else {
-						addColored(verts, quadIndices012023, groundSurfaceVertexColors(gndTextureName(gnd, surface.TextureID), surface.Color, cell.Heights, normals, lighting), worldOpaqueTriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
+						addColored(verts, scene.QuadIndices012023, groundSurfaceVertexColors(gndTextureName(gnd, surface.TextureID), surface.Color, cell.Heights, normals, lighting), worldOpaqueTriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
 					}
 				}
 			}
@@ -241,14 +242,14 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 				surface, surfaceOK := gnd.Surface(cell.Front)
 				if neighborOK && surfaceOK {
 					vertexOrder := [4]int{0, 1, 3, 2}
-					verts := [4]modelPoint3{
-						{x: float64(x) * 2, y: float64(cell.Heights[2]), z: float64(y+1) * 2},
-						{x: float64(x+1) * 2, y: float64(cell.Heights[3]), z: float64(y+1) * 2},
-						{x: float64(x+1) * 2, y: float64(neighbor.Heights[1]), z: float64(y+1) * 2},
-						{x: float64(x) * 2, y: float64(neighbor.Heights[0]), z: float64(y+1) * 2},
+					verts := [4]scene.Point3{
+						{X: float64(x) * 2, Y: float64(cell.Heights[2]), Z: float64(y+1) * 2},
+						{X: float64(x+1) * 2, Y: float64(cell.Heights[3]), Z: float64(y+1) * 2},
+						{X: float64(x+1) * 2, Y: float64(neighbor.Heights[1]), Z: float64(y+1) * 2},
+						{X: float64(x) * 2, Y: float64(neighbor.Heights[0]), Z: float64(y+1) * 2},
 					}
 					heights := [4]float32{cell.Heights[2], cell.Heights[3], neighbor.Heights[1], neighbor.Heights[0]}
-					normals := uniformGNDNormals(modelPoint3{z: 1})
+					normals := uniformGNDNormals(scene.Point3{Z: 1})
 					addGNDRetainedSurface(m, manager, gnd, surface, vertexOrder, verts, heights, normals, lighting, addTextured, addColored)
 				}
 			}
@@ -257,14 +258,14 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 				surface, surfaceOK := gnd.Surface(cell.Right)
 				if neighborOK && surfaceOK {
 					vertexOrder := [4]int{0, 1, 3, 2}
-					verts := [4]modelPoint3{
-						{x: float64(x+1) * 2, y: float64(cell.Heights[3]), z: float64(y+1) * 2},
-						{x: float64(x+1) * 2, y: float64(cell.Heights[1]), z: float64(y) * 2},
-						{x: float64(x+1) * 2, y: float64(neighbor.Heights[0]), z: float64(y) * 2},
-						{x: float64(x+1) * 2, y: float64(neighbor.Heights[2]), z: float64(y+1) * 2},
+					verts := [4]scene.Point3{
+						{X: float64(x+1) * 2, Y: float64(cell.Heights[3]), Z: float64(y+1) * 2},
+						{X: float64(x+1) * 2, Y: float64(cell.Heights[1]), Z: float64(y) * 2},
+						{X: float64(x+1) * 2, Y: float64(neighbor.Heights[0]), Z: float64(y) * 2},
+						{X: float64(x+1) * 2, Y: float64(neighbor.Heights[2]), Z: float64(y+1) * 2},
 					}
 					heights := [4]float32{cell.Heights[3], cell.Heights[1], neighbor.Heights[0], neighbor.Heights[2]}
-					normals := uniformGNDNormals(modelPoint3{x: 1})
+					normals := uniformGNDNormals(scene.Point3{X: 1})
 					addGNDRetainedSurface(m, manager, gnd, surface, vertexOrder, verts, heights, normals, lighting, addTextured, addColored)
 				}
 			}
@@ -316,17 +317,17 @@ func buildGNDLightmapAtlas(gnd *res.GND) gndLightmapAtlas {
 	}
 }
 
-func (a gndLightmapAtlas) uvs(index int) [4]texturePoint {
+func (a gndLightmapAtlas) uvs(index int) [4]scene.UV {
 	if a.image == nil || a.perRow <= 0 || index < 0 {
-		return [4]texturePoint{}
+		return [4]scene.UV{}
 	}
 	baseX := float32((index % a.perRow) * 8)
 	baseY := float32((index / a.perRow) * 8)
-	return [4]texturePoint{
-		{u: baseX + 1, v: baseY + 1},
-		{u: baseX + 7, v: baseY + 1},
-		{u: baseX + 7, v: baseY + 7},
-		{u: baseX + 1, v: baseY + 7},
+	return [4]scene.UV{
+		{U: baseX + 1, V: baseY + 1},
+		{U: baseX + 7, V: baseY + 1},
+		{U: baseX + 7, V: baseY + 7},
+		{U: baseX + 1, V: baseY + 7},
 	}
 }
 
@@ -341,20 +342,20 @@ func nextPowerOfTwoInt(value int) int {
 	return out
 }
 
-func lightmappedSurfaceVertex3D(point modelPoint3, uv texturePoint, lightUV texturePoint, tint color.RGBA, textureWidth, textureHeight float32) render.Vertex3D {
-	vertex := texturedSurfaceVertex3D(point, uv, tint, textureWidth, textureHeight)
-	vertex.LightSrcX = lightUV.u
-	vertex.LightSrcY = lightUV.v
+func lightmappedSurfaceVertex3D(point scene.Point3, uv scene.UV, lightUV scene.UV, tint color.RGBA, textureWidth, textureHeight float32) render.Vertex3D {
+	vertex := scene.TexturedSurfaceVertex3D(point, uv, tint, textureWidth, textureHeight)
+	vertex.LightSrcX = lightUV.U
+	vertex.LightSrcY = lightUV.V
 	return vertex
 }
 
-func addGNDRetainedSurface(m *WorldMode, manager *res.Manager, gnd *res.GND, surface res.GNDSurface, vertexOrder [4]int, verts [4]modelPoint3, heights [4]float32, normals [4]modelPoint3, lighting sceneLighting, addTextured func(*render.Image, [4]modelPoint3, [4]texturePoint, []uint16, [4]color.RGBA, *render.DrawTrianglesOptions), addColored func([4]modelPoint3, []uint16, [4]color.RGBA, *render.DrawTrianglesOptions)) {
+func addGNDRetainedSurface(m *WorldMode, manager *res.Manager, gnd *res.GND, surface res.GNDSurface, vertexOrder [4]int, verts [4]scene.Point3, heights [4]float32, normals [4]scene.Point3, lighting sceneLighting, addTextured func(*render.Image, [4]scene.Point3, [4]scene.UV, []uint16, [4]color.RGBA, *render.DrawTrianglesOptions), addColored func([4]scene.Point3, []uint16, [4]color.RGBA, *render.DrawTrianglesOptions)) {
 	baseTints := uniformGNDSurfaceBaseTints(surface.Color)
 	uvs := surfaceUVs(surface, vertexOrder)
 	textureName := gndTextureName(gnd, surface.TextureID)
 	if texture := m.groundTexture(manager, textureName); texture != nil {
-		addTextured(texture, verts, uvs, quadIndices012023, surfaceVertexTints(baseTints, heights, normals, lighting), groundTextureDrawOptions())
+		addTextured(texture, verts, uvs, scene.QuadIndices012023, surfaceVertexTints(baseTints, heights, normals, lighting), groundTextureDrawOptions())
 		return
 	}
-	addColored(verts, quadIndices012023, groundSurfaceVertexColors(textureName, surface.Color, heights, normals, lighting), worldOpaqueTriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
+	addColored(verts, scene.QuadIndices012023, groundSurfaceVertexColors(textureName, surface.Color, heights, normals, lighting), worldOpaqueTriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
 }

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -34,7 +35,7 @@ func TestGraffitiBitmapAlphabet(t *testing.T) {
 }
 
 func TestGraffitiLifetimeAndRetainedTerrainMesh(t *testing.T) {
-	ctx := rogueSkillContext()
+	ctx := testutil.RogueSkillContext()
 	ctx.World.GND = &res.GND{Width: 20, Height: 20, Cells: make([]res.GNDCell, 400)}
 	for i := range ctx.World.GND.Cells {
 		ctx.World.GND.Cells[i].Heights = [4]float32{3, 3, 3, 3}
@@ -44,7 +45,7 @@ func TestGraffitiLifetimeAndRetainedTerrainMesh(t *testing.T) {
 	}}
 	entry := network.SkillUnitEntry{ID: 900, CreatorID: 2000000, X: 20, Y: 20, UnitID: 176, Visible: true, HasMessage: true, Message: "Hello"}
 	m.applySkillUnitEntry(ctx, entry)
-	projection := newSceneProjectionForTarget(800, 600, 20, 20, 0)
+	projection := testutil.Projection(800, 600, 20, 20, 0)
 	frame := render.NewFrame(800, 600)
 	m.drawGraffiti(frame, ctx, projection)
 	writing := m.graffiti[900]
@@ -82,7 +83,7 @@ func TestGraffitiLifetimeAndRetainedTerrainMesh(t *testing.T) {
 }
 
 func TestGraffitiReleasesImages(t *testing.T) {
-	ctx := rogueSkillContext()
+	ctx := testutil.RogueSkillContext()
 	ctx.World.GND = &res.GND{Width: 1, Height: 1, Cells: []res.GNDCell{{}}}
 	for _, event := range []string{"replacement", "removal", "hidden", "ordinary unit", "map change", "leave"} {
 		t.Run(event, func(t *testing.T) {
@@ -91,7 +92,7 @@ func TestGraffitiReleasesImages(t *testing.T) {
 			}}
 			entry := network.SkillUnitEntry{ID: 900, Visible: true, HasMessage: true, Message: "Hello"}
 			m.applySkillUnitEntry(ctx, entry)
-			m.drawGraffiti(render.NewFrame(800, 600), ctx, newSceneProjectionForTarget(800, 600, 0, 0, 0))
+			m.drawGraffiti(render.NewFrame(800, 600), ctx, testutil.Projection(800, 600, 0, 0, 0))
 			pixels := reflect.ValueOf(m.graffiti[900].mesh).Elem().FieldByName("texture").Elem().FieldByName("pix")
 			if pixels.IsNil() {
 				t.Fatal("writing has no pixels before removal")
@@ -131,7 +132,7 @@ func TestGraffitiFollowsGroundTriangles(t *testing.T) {
 		{"lowered diagonal", [4]float32{0, 4, 4, 0}, [3][3]float64{{0, 2, 4}, {2, 0, 2}, {4, 2, 0}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := rogueSkillContext()
+			ctx := testutil.RogueSkillContext()
 			ctx.World.GND = &res.GND{Width: 1, Height: 1, Cells: []res.GNDCell{{Heights: tc.heights}}}
 			texture := render.NewImage(512, 512)
 			writing := &groundGraffiti{x: 9, y: 9}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	gameui "github.com/kivutar/goro/ui"
@@ -324,11 +325,11 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if position, ok, err := network.ParseActorSetPosition(pkt); err != nil {
 		glog.Errorf("parse actor set position 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		if isLocalActor(ctx, position.ID) {
+		if scene.IsLocalActor(ctx, position.ID) {
 			glog.Debugf("local position fix id=%d x=%d y=%d", position.ID, position.X, position.Y)
 		}
 		applyActorSetPosition(ctx, position)
-		if isLocalActor(ctx, position.ID) {
+		if scene.IsLocalActor(ctx, position.ID) {
 			m.continuePendingAttack(ctx, "position fix")
 			m.continuePendingPickup(ctx, "position fix")
 			m.skills().ContinuePendingTarget(ctx, "position fix")
@@ -338,7 +339,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if position, ok, err := network.ParseActorJumpPosition(pkt); err != nil {
 		glog.Errorf("parse actor jump position 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		if isLocalActor(ctx, position.ID) {
+		if scene.IsLocalActor(ctx, position.ID) {
 			glog.Debugf("local jump position id=%d x=%d y=%d", position.ID, position.X, position.Y)
 		}
 		applyActorJumpPosition(ctx, position)
@@ -1159,14 +1160,14 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	} else if ok {
 		if applyNPCShowEffectUpdate(ctx, update) {
 			m.syncActorSpiritEffects(ctx, update.ActorID)
-			m.syncActorEntryLevel99Aura(ctx, update.ActorID)
+			m.effects().SyncActorEntryLevel99Aura(ctx, update.ActorID)
 		}
 		return nil, false
 	}
 	if devotion, ok, err := network.ParseActorDevotion(pkt); err != nil {
 		glog.Errorf("parse devotion list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyActorDevotion(ctx, devotion)
+		m.effects().ApplyActorDevotion(ctx, devotion)
 		return nil, false
 	}
 	if bladeStop, ok, err := network.ParseActorBladeStop(pkt); err != nil {

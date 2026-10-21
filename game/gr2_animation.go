@@ -4,22 +4,23 @@ import (
 	"math"
 	"time"
 
+	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
 )
 
 type gr2BindTransform struct {
-	position   modelPoint3
+	position   scene.Point3
 	rotation   [4]float32
-	scaleShear mat4
+	scaleShear scene.Mat4
 }
 
 type gr2SkeletonPose struct {
 	names         []string
 	parents       []int32
 	bind          []gr2BindTransform
-	inverseWorld  []mat4
-	rootPlacement mat4
+	inverseWorld  []scene.Mat4
+	rootPlacement scene.Mat4
 }
 
 type gr2AnimationTrack struct {
@@ -47,7 +48,7 @@ func gr2SkeletonPoseFromModel(file *res.GR2File, modelIndex int) (*gr2SkeletonPo
 		names:         make([]string, 0, len(skeleton.Bones)),
 		parents:       make([]int32, 0, len(skeleton.Bones)),
 		bind:          make([]gr2BindTransform, 0, len(skeleton.Bones)),
-		inverseWorld:  make([]mat4, 0, len(skeleton.Bones)),
+		inverseWorld:  make([]scene.Mat4, 0, len(skeleton.Bones)),
 		rootPlacement: gr2TransformMatrix(model.InitialPlacement),
 	}
 	for _, bone := range skeleton.Bones {
@@ -67,7 +68,7 @@ func gr2BindTransformFromTransform(transform res.GR2Transform) gr2BindTransform 
 	}
 }
 
-func gr2TransformMatrix(transform res.GR2Transform) mat4 {
+func gr2TransformMatrix(transform res.GR2Transform) scene.Mat4 {
 	bind := gr2BindTransformFromTransform(transform)
 	return gr2LocalMatrix(bind.position, bind.rotation, bind.scaleShear)
 }
@@ -79,33 +80,33 @@ func (p *gr2SkeletonPose) boneCount() int {
 	return len(p.parents)
 }
 
-func (p *gr2SkeletonPose) bindPalette() []mat4 {
+func (p *gr2SkeletonPose) bindPalette() []scene.Mat4 {
 	if p == nil {
 		return nil
 	}
-	local := make([]mat4, len(p.bind))
+	local := make([]scene.Mat4, len(p.bind))
 	for i, bind := range p.bind {
 		local[i] = gr2LocalMatrix(bind.position, bind.rotation, bind.scaleShear)
 	}
 	return p.palette(local)
 }
 
-func (p *gr2SkeletonPose) palette(local []mat4) []mat4 {
+func (p *gr2SkeletonPose) palette(local []scene.Mat4) []scene.Mat4 {
 	if p == nil {
 		return nil
 	}
-	world := make([]mat4, len(p.parents))
+	world := make([]scene.Mat4, len(p.parents))
 	for i := range p.parents {
 		parent := p.parents[i]
 		if parent >= 0 && int(parent) < i {
-			world[i] = mat4Multiply(world[parent], local[i])
+			world[i] = scene.Mat4Multiply(world[parent], local[i])
 		} else {
-			world[i] = mat4Multiply(p.rootPlacement, local[i])
+			world[i] = scene.Mat4Multiply(p.rootPlacement, local[i])
 		}
 	}
-	palette := make([]mat4, len(world))
+	palette := make([]scene.Mat4, len(world))
 	for i := range world {
-		palette[i] = mat4Multiply(world[i], p.inverseWorld[i])
+		palette[i] = scene.Mat4Multiply(world[i], p.inverseWorld[i])
 	}
 	return palette
 }
@@ -142,11 +143,11 @@ func gr2AnimationClipFromFile(file *res.GR2File, animIndex int) *gr2AnimationCli
 	return clip
 }
 
-func (c *gr2AnimationClip) skinningPalette(pose *gr2SkeletonPose, t float64) []mat4 {
+func (c *gr2AnimationClip) skinningPalette(pose *gr2SkeletonPose, t float64) []scene.Mat4 {
 	if c == nil || pose == nil {
 		return nil
 	}
-	local := make([]mat4, pose.boneCount())
+	local := make([]scene.Mat4, pose.boneCount())
 	for i := range local {
 		bind := pose.bind[i]
 		track, ok := c.tracks[pose.names[i]]
@@ -165,7 +166,7 @@ func (c *gr2AnimationClip) skinningPalette(pose *gr2SkeletonPose, t float64) []m
 
 func gr2ActionForSpriteState(state spriteState) res.GR2Action {
 	switch state.actionFamily {
-	case spriteActionWalk:
+	case scene.SpriteActionWalk:
 		return res.GR2ActionMove
 	case spriteActionNonPCAttack, spriteActionPCAttack1, spriteActionPCAttack2, spriteActionPCAttack3, spriteActionPCSkill:
 		return res.GR2ActionAttack
@@ -183,7 +184,7 @@ func gr2ActionForActionFamily(actionFamily int) (res.GR2Action, bool) {
 	return action, action != res.GR2ActionStand
 }
 
-func (v *gr2ModelView) paletteForActor(actor worldstate.Actor, state spriteState, now time.Time) []mat4 {
+func (v *gr2ModelView) paletteForActor(actor worldstate.Actor, state spriteState, now time.Time) []scene.Mat4 {
 	if v == nil || v.pose == nil {
 		return nil
 	}
@@ -212,7 +213,7 @@ func (v *gr2ModelView) clip(action res.GR2Action) *gr2AnimationClip {
 	return v.clips[action]
 }
 
-func (v *gr2ModelView) skinningPalette(action res.GR2Action, elapsed float64) []mat4 {
+func (v *gr2ModelView) skinningPalette(action res.GR2Action, elapsed float64) []scene.Mat4 {
 	if v == nil || v.pose == nil {
 		return nil
 	}
@@ -250,16 +251,16 @@ func (v *gr2ModelView) actionDuration(action res.GR2Action) time.Duration {
 	return 0
 }
 
-func gr2SkinnedPoint(vertex res.GR2ModelVertex, palette []mat4) modelPoint3 {
-	base := modelPoint3{
-		x: float64(vertex.Position[0]),
-		y: float64(vertex.Position[1]),
-		z: float64(vertex.Position[2]),
+func gr2SkinnedPoint(vertex res.GR2ModelVertex, palette []scene.Mat4) scene.Point3 {
+	base := scene.Point3{
+		X: float64(vertex.Position[0]),
+		Y: float64(vertex.Position[1]),
+		Z: float64(vertex.Position[2]),
 	}
 	if len(palette) == 0 {
 		return base
 	}
-	var out modelPoint3
+	var out scene.Point3
 	applied := false
 	for i, rawWeight := range vertex.BoneWeights {
 		if rawWeight == 0 {
@@ -271,7 +272,7 @@ func gr2SkinnedPoint(vertex res.GR2ModelVertex, palette []mat4) modelPoint3 {
 		}
 		weight := float64(rawWeight) / 255
 		point := mat4TransformPoint(palette[boneIndex], base)
-		out = add3(out, mul3(point, weight))
+		out = scene.Add3(out, scene.Mul3(point, weight))
 		applied = true
 	}
 	if !applied {
@@ -280,16 +281,16 @@ func gr2SkinnedPoint(vertex res.GR2ModelVertex, palette []mat4) modelPoint3 {
 	return out
 }
 
-func gr2SkinnedNormal(vertex res.GR2ModelVertex, palette []mat4) modelPoint3 {
-	base := modelPoint3{
-		x: float64(vertex.Normal[0]),
-		y: float64(vertex.Normal[1]),
-		z: float64(vertex.Normal[2]),
+func gr2SkinnedNormal(vertex res.GR2ModelVertex, palette []scene.Mat4) scene.Point3 {
+	base := scene.Point3{
+		X: float64(vertex.Normal[0]),
+		Y: float64(vertex.Normal[1]),
+		Z: float64(vertex.Normal[2]),
 	}
 	if len(palette) == 0 {
 		return base
 	}
-	var out modelPoint3
+	var out scene.Point3
 	applied := false
 	for i, rawWeight := range vertex.BoneWeights {
 		if rawWeight == 0 {
@@ -301,7 +302,7 @@ func gr2SkinnedNormal(vertex res.GR2ModelVertex, palette []mat4) modelPoint3 {
 		}
 		weight := float64(rawWeight) / 255
 		normal := mat4TransformVector(palette[boneIndex], base)
-		out = add3(out, mul3(normal, weight))
+		out = scene.Add3(out, scene.Mul3(normal, weight))
 		applied = true
 	}
 	if !applied {
@@ -310,20 +311,20 @@ func gr2SkinnedNormal(vertex res.GR2ModelVertex, palette []mat4) modelPoint3 {
 	return out
 }
 
-func gr2LocalMatrix(position modelPoint3, rotation [4]float32, scaleShear mat4) mat4 {
-	matrix := mat4Identity()
+func gr2LocalMatrix(position scene.Point3, rotation [4]float32, scaleShear scene.Mat4) scene.Mat4 {
+	matrix := scene.Mat4Identity()
 	matrix = mat4Translate(matrix, position)
 	matrix = mat4RotateQuat(matrix, rotation)
-	matrix = mat4Multiply(matrix, scaleShear)
+	matrix = scene.Mat4Multiply(matrix, scaleShear)
 	return matrix
 }
 
-func gr2Position(position [3]float32) modelPoint3 {
-	return modelPoint3{x: float64(position[0]), y: float64(position[1]), z: float64(position[2])}
+func gr2Position(position [3]float32) scene.Point3 {
+	return scene.Point3{X: float64(position[0]), Y: float64(position[1]), Z: float64(position[2])}
 }
 
-func gr2Mat4FromRowMajorMat3(values [9]float32) mat4 {
-	out := mat4Identity()
+func gr2Mat4FromRowMajorMat3(values [9]float32) scene.Mat4 {
+	out := scene.Mat4Identity()
 	out[0] = float64(values[0])
 	out[1] = float64(values[3])
 	out[2] = float64(values[6])
@@ -336,9 +337,9 @@ func gr2Mat4FromRowMajorMat3(values [9]float32) mat4 {
 	return out
 }
 
-func gr2Mat4FromColumnsOrIdentity(values [16]float32) mat4 {
+func gr2Mat4FromColumnsOrIdentity(values [16]float32) scene.Mat4 {
 	zero := true
-	var out mat4
+	var out scene.Mat4
 	for i, value := range values {
 		if value != 0 {
 			zero = false
@@ -346,17 +347,17 @@ func gr2Mat4FromColumnsOrIdentity(values [16]float32) mat4 {
 		out[i] = float64(value)
 	}
 	if zero {
-		return mat4Identity()
+		return scene.Mat4Identity()
 	}
 	return out
 }
 
-func gr2EvalVec3(curve res.GR2Curve, t float64, fallback modelPoint3) modelPoint3 {
+func gr2EvalVec3(curve res.GR2Curve, t float64, fallback scene.Point3) scene.Point3 {
 	values, ok := gr2EvalScalars(curve, 3, t)
 	if !ok {
 		return fallback
 	}
-	return modelPoint3{x: values[0], y: values[1], z: values[2]}
+	return scene.Point3{X: values[0], Y: values[1], Z: values[2]}
 }
 
 func gr2EvalQuat(curve res.GR2Curve, t float64, fallback [4]float32) [4]float32 {
@@ -376,7 +377,7 @@ func gr2EvalQuat(curve res.GR2Curve, t float64, fallback [4]float32) [4]float32 
 	}
 }
 
-func gr2EvalMat3(curve res.GR2Curve, t float64, fallback mat4) mat4 {
+func gr2EvalMat3(curve res.GR2Curve, t float64, fallback scene.Mat4) scene.Mat4 {
 	values, ok := gr2EvalScalars(curve, 9, t)
 	if !ok {
 		return fallback
@@ -411,13 +412,13 @@ func gr2Deboor2(knots, controls []float32, dim int, t float64) ([]float64, bool)
 	for span < len(knots) && float64(knots[span]) <= t {
 		span++
 	}
-	span = clampInt(span, 2, len(knots)-1)
+	span = scene.ClampInt(span, 2, len(knots)-1)
 	knot := func(i int) float64 {
-		i = clampInt(i, 0, len(knots)-1)
+		i = scene.ClampInt(i, 0, len(knots)-1)
 		return float64(knots[i])
 	}
 	control := func(point, d int) float64 {
-		point = clampInt(point, 0, pointCount-1)
+		point = scene.ClampInt(point, 0, pointCount-1)
 		return float64(controls[point*dim+d])
 	}
 	ka := knot(span - 2)
