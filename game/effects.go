@@ -452,6 +452,7 @@ const (
 	effectMochi            = effectResistPotion
 	effectRamadan          = 492
 	effectEDP              = 493
+	effectFullStrip        = 495
 	effectPreserve         = 496
 	effectSlim             = 497
 	effectSlim2            = 498
@@ -1727,7 +1728,8 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectEnergyDrain2 {
 		initSoulDrain(ctx, &effect)
 	}
-	if effectID == effectEnergyDrain3 {
+	if effectID == effectEnergyDrain3 || effectID == effectFullStrip || effectID == effectPreserve || effectID == db.SkillEffectChaseWalkSmoke {
+		effect.actorDirection = effectActorDirection(ctx, actorID, starts)
 		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
 		effect.hasActorTransform = true
 	}
@@ -2045,6 +2047,13 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell
 	}
 	switch skillID {
+	case db.SkillSTChasewalk:
+		m.addWorldEffectAt(ctx, effectCastSpin, sourceID, starts)
+		return
+	case db.SkillSTPreserve:
+		effectID = effectBeginSpell7
+	case db.SkillSTRejectsword, db.SkillSTFullstrip:
+		effectID = effectBashBegin
 	case db.SkillASCBreaker, db.SkillASCMeteorassault:
 		effectID = effectBeginSpell7
 	case db.SkillASCEdp, db.SkillASCCdp:
@@ -2901,6 +2910,8 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncPriestGround
 	case "Agility":
 		return effectFuncAgility
+	case "FullStrip":
+		return effectFuncFullStrip
 	case "Guard":
 		return effectFuncGuard
 	case "GospelCross":
@@ -3087,6 +3098,9 @@ func (m *WorldMode) drawWorldEffects(screen *render.Frame, ctx client.Context, p
 		}
 		active = append(active, effect)
 		anchor := effectWorldAnchor(ctx, effect, now)
+		if effect.effectID == db.SkillEffectChaseWalkSmoke {
+			anchor = effect.actorOrigin
+		}
 		for index, component := range spec.components {
 			if component.renderBefore != beforeEntities {
 				continue

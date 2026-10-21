@@ -3816,6 +3816,7 @@ const (
 	SkillEffectBottomServiceGround    = 11032
 	SkillEffectGunslingerCoinSound    = 11033
 	SkillEffectSteelBodyRing          = 11034
+	SkillEffectChaseWalkSmoke         = 11035
 )
 
 var SkillEffects = map[uint16]SkillEffectSpec{
@@ -4105,8 +4106,8 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillWSCreatenugget:             {},
 	SkillWSCartboost:                {SuccessEffectIDsSelf: []int{effectCartBoost}},
 	SkillWSSystemcreate:             {},
-	SkillSTChasewalk:                {BeginCastEffectIDs: []int{effectCastSpin}},
-	SkillSTRejectsword:              {EffectIDs: []int{effectRejectSword}},
+	SkillSTChasewalk:                {SuccessEffectIDsSelf: []int{SkillEffectChaseWalkSmoke}},
+	SkillSTRejectsword:              {SuccessEffectIDsSelf: []int{effectRejectSword}, BeginCastEffectIDs: []int{effectBashBegin}},
 	SkillCGArrowvulcan:              {EffectTiming: SkillEffectAtActionStart, EffectIDs: []int{effectTripleAttack3}, BeforeHitEffectIDs: []int{SkillEffectArrowShot}, HitEffectIDs: []int{effectHit1, effectBashHit}},
 	SkillCGMoonlit:                  {SFX: []string{"effect\\달빛.wav"}},
 	SkillCGMarionette:               {}, // The two actors share a status-owned link.
@@ -4164,8 +4165,8 @@ var SkillEffects = map[uint16]SkillEffectSpec{
 	SkillSLSwoo:                     {SFX: []string{"effect\\t_등록.wav"}, EffectIDs: []int{effectM07, effectBabyBody}},
 	SkillSLSke:                      {EffectIDs: []int{effectAsuraBodyMonster}},
 	SkillSLSka:                      {SFX: []string{"effect\\t_방어형.wav"}, EffectIDs: []int{effectSteelBody, effectGumgang2, SkillEffectQuake}},
-	SkillSTPreserve:                 {EffectIDs: []int{effectPreserve}, BeginCastEffectIDs: []int{SkillEffectSharpShootingCast}},
-	SkillSTFullstrip:                {SuccessEffectIDs: []int{495}},
+	SkillSTPreserve:                 {SuccessEffectIDsSelf: []int{effectPreserve}, BeginCastEffectIDs: []int{effectBashBegin}},
+	SkillSTFullstrip:                {SuccessEffectIDs: []int{effectFullStrip}, BeginCastEffectIDs: []int{effectBashBegin}},
 	SkillCRAlchemy:                  {},
 	SkillCRSynthesispotion:          {},
 	SkillCRSlimpitcher:              {},
@@ -4417,7 +4418,6 @@ var SkillActions = map[uint16]SkillActionKind{
 	SkillNVBasic:              SkillActionNone,
 	SkillNVTrickdead:          SkillActionNone,
 	SkillTFBacksliding:        SkillActionNone,
-	SkillSTChasewalk:          SkillActionIdle,
 	SkillMOCallspirits:        SkillActionIdle,
 	SkillMOKitranslation:      SkillActionIdle,
 	SkillChSoulcollect:        SkillActionIdle,

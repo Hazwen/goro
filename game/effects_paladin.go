@@ -255,7 +255,12 @@ func (m *WorldMode) drawGuardEffect(screen *render.Frame, ctx client.Context, _ 
 		return
 	}
 	origin := effectWorldAnchor(ctx, effect, now)
+	radiusBase := 7.8
 	facing := degreesToRadians(float64(90 + 45*effectActorDirection(ctx, effect.actorID, now)))
+	if effect.effectID == effectPreserve {
+		radiusBase = 10
+		facing = degreesToRadians(float64(90 + 45*effect.actorDirection + 10*(n-1)))
+	}
 	for layer := 0; layer < 3; layer++ {
 		path := component.textureFile
 		if layer == 2 {
@@ -266,7 +271,7 @@ func (m *WorldMode) drawGuardEffect(screen *render.Frame, ctx client.Context, _ 
 			continue
 		}
 		vertices, indices := []render.Vertex3D{}, []uint16{}
-		radius, centerHeight := 7.8+.2*float64(layer), 7.8
+		radius, centerHeight := radiusBase+.2*float64(layer), radiusBase
 		if layer == 0 {
 			centerHeight += 2
 		}

@@ -1490,7 +1490,7 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 		return spriteActionIdle
 	case db.SkillAMBerserkpitcher, db.SkillCRSlimpitcher, db.SkillCRAciddemonstration:
 		return spriteActionPCAttack1
-	case db.SkillCRFullprotection:
+	case db.SkillCRFullprotection, db.SkillSTChasewalk, db.SkillSTPreserve:
 		return spriteActionIdle
 	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3:
 		return spriteActionPCSkill

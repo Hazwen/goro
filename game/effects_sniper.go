@@ -114,21 +114,3 @@ func sniperBodyFlashActive(effectID int, frame int) bool {
 	}
 	return false
 }
-
-func (m *WorldMode) falconAssaultDirection(ctx client.Context, actorID uint32, direction int, now time.Time) int {
-	for _, effect := range m.worldEffects {
-		if effect.effectID != effectFalconAssault || now.Before(effect.starts) || effect.expired(now) {
-			continue
-		}
-		if effect.actorID != actorID && !(isLocalActor(ctx, actorID) && isLocalActor(ctx, effect.actorID)) {
-			continue
-		}
-		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
-		if frame < 30 || frame > 54 {
-			continue
-		}
-		turn := float64(frame-29) * 30
-		direction = (direction + int(math.Floor((turn+22.5)/45))) % 8
-	}
-	return direction
-}

@@ -450,6 +450,7 @@ const (
 	effectMochi            = effectResistPotion
 	effectRamadan          = 492
 	effectEDP              = 493
+	effectFullStrip        = 495
 	effectPreserve         = 496
 	effectSlim             = 497
 	effectSlim2            = 498
@@ -2773,6 +2774,8 @@ func einbrochWeatherCloudEffectSpec() EffectSpec {
 // original-client behavior. Leave effects unsupported until their reference
 // behavior is understood rather than guessing local visuals.
 var EffectSpecs = map[int]EffectSpec{
+	SkillEffectChaseWalkSmoke: {Components: []EffectComponent{{Kind: EffectComponentSPR, SpriteFile: "smoke", SpriteDelay: 5 * EffectFrameDuration / 6, WorldSizedSprite: true}}},
+
 	effectShieldBoomerang3: shieldChainEffectSpec(),
 	effectShrink:           shrinkEffectSpec(),
 
@@ -3936,8 +3939,9 @@ var EffectSpecs = map[int]EffectSpec{
 	effectMochi:             strEffectSpecAttached("찹쌀떡", "", false),
 	effectRamadan:           strEffectSpecAttached("ramadan", "", false),
 	effectEDP:               enchantDeadlyPoisonEffectSpec(),
-	effectPreserve:          soundOnlyEffectSpec("effect\\black_maximize_power_sword_bic.wav"),
-	effectCastSpin:          funcEffectSpec("CastSpin", 500*time.Millisecond, true),
+	effectFullStrip:         fullStripEffectSpec(),
+	effectPreserve:          preserveEffectSpec(),
+	effectCastSpin:          {Duration: 100 * EffectFrameDuration, SFX: []string{"effect\\EF_BeginSpell.wav"}},
 	effectChookgi2:          spiritSphereEffectSpec(),
 	effectMemorize:          memorizeEffectSpec(),
 	effectDoubleCastBody:    funcEffectSpec("EffectBodyColor", 120*EffectFrameDuration, true),

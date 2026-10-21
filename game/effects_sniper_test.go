@@ -131,7 +131,7 @@ func TestSniperBodyFlashAndRotation(t *testing.T) {
 	m := &WorldMode{}
 	m.addWorldEffectAt(ctx, effectFalconAssault, 2000000, start)
 	for _, tc := range []struct{ frame, direction int }{{29, 0}, {30, 1}, {31, 1}, {32, 2}, {41, 0}, {54, 1}, {55, 0}} {
-		if d := m.falconAssaultDirection(ctx, 100, 0, start.Add(time.Duration(tc.frame)*db.EffectFrameDuration)); d != tc.direction {
+		if d := m.skillEffectDirection(ctx, 100, 0, start.Add(time.Duration(tc.frame)*db.EffectFrameDuration)); d != tc.direction {
 			t.Fatalf("frame %d: direction %d, want %d (including local account/character alias)", tc.frame, d, tc.direction)
 		}
 	}

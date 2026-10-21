@@ -128,7 +128,7 @@ Where they disagree, verify the actual Sakexe binary before choosing behaviour.
 - [x] High Wizard — all six skills audited; Soul Drain, Amplification, Magic Crasher, Napalm Vulcan, Ganbantein, and Gravitation reviewed twice and validated with client assets.
 - [x] Professor — all eight skills audited; particle trails, linking/body effects, ground units, casting, and sound timing reviewed twice and validated with client assets.
 - [x] Assassin Cross — all five skills audited; slashes, poison particles, packet ownership, casting, poses, and sounds reviewed twice and validated with client assets.
-- [ ] Stalker
+- [x] Stalker — all four skills audited; casting spin/smoke, body flashes, Preserve, and Full Strip reviewed twice and validated with client assets.
 - [ ] Champion
 - [ ] Taekwon
 - [ ] Star Gladiator
@@ -314,6 +314,25 @@ the poison status. Advanced Katar Mastery is passive. Both reviews, full tests
 with client assets, and a normal build passed. No live visual comparison was
 performed; the procedural geometry still benefits from playtesting.
 
+Stalker reference checks: dhxj and HighPriest agree on the four skill
+notifications, particle primitives, and body flashes. The actual 2008 Sakexe's
+release table (`0x6847c0`) and casting table (`0x685050`) confirm Chase Walk's
+standing spin followed by the skill pose, Preserve's standing purple cast,
+and the ordinary casting/release poses for Reject Sword and Full Strip.
+Chase Walk plays the native smoke ACT once at 1.2 frames per tick, fixed at
+the release position on both activation and deactivation. Its casting spin
+uses the native acceleration and stops on release/interruption without
+changing authoritative facing. Reject Sword and Preserve belong to the caster;
+the former adds its alternating grey expanded body, while the latter reuses
+the Guard mesh with its larger radius, rotating initial orientation, white
+flash, and native sound. Full Strip emits sixteen shields and sixteen swords
+around the victim, with randomized delays, additive red tint, native travel
+speed, and four sounds. These are successful no-damage notifications; damage
+packets do not replay the buff/strip effects. rAthena owns the stealth toggle,
+reflect triggers, strip result, and status lifetime. Both reviews, full tests
+with OldRO assets, and a normal build passed. No live visual comparison was
+performed; the new procedural effects still benefit from playtesting.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -322,8 +341,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `712`.
-- Catalog size relative to all numeric constants: about `62.1%`.
+- Goro effect catalog entries: `714`.
+- Catalog size relative to all numeric constants: about `62.2%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.

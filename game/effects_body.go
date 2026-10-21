@@ -59,6 +59,25 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		}
 		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 		switch effect.effectID {
+		case effectRejectSword:
+			if frame < 30 {
+				doubleBody = doubleBody || billboard.layerGroup == 0
+				shade := uint8(100)
+				if frame%6 >= 3 {
+					shade = 250
+				}
+				tint.R, tint.G, tint.B = shade, shade, shade
+			}
+		case effectPreserve:
+			if frame >= 10 && frame < 31 {
+				tint.R, tint.G, tint.B = 255, 255, 255
+				if frame%2 == 0 {
+					tint.R, tint.G, tint.B = 250, 250, 250
+					if billboard.layerGroup == 0 {
+						blend = render.BlendLighter
+					}
+				}
+			}
 		case effectSoulBreaker, effectSoulBreaker2, effectEDP:
 			end := 10
 			if effect.effectID == effectEDP {
@@ -308,4 +327,35 @@ func drawBodyExpansion(screen *render.Frame, cmd render.WorldBillboardCommand, b
 	cmd.Options.Blend = blend
 	cmd.ColorR, cmd.ColorG, cmd.ColorB, cmd.ColorA = float32(tint.R)/255, float32(tint.G)/255, float32(tint.B)/255, float32(alpha)
 	screen.DrawWorldBillboard(cmd)
+}
+
+func (m *WorldMode) skillEffectDirection(ctx client.Context, actorID uint32, direction int, now time.Time) int {
+	for _, effect := range m.worldEffects {
+		if (effect.effectID != effectFalconAssault && effect.effectID != effectCastSpin) || now.Before(effect.starts) || effect.expired(now) {
+			continue
+		}
+		if effect.actorID != actorID && !(isLocalActor(ctx, actorID) && isLocalActor(ctx, effect.actorID)) {
+			continue
+		}
+		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
+		turn := 0.0
+		switch effect.effectID {
+		case effectFalconAssault:
+			if frame < 30 || frame > 54 {
+				continue
+			}
+			turn = float64(frame-29) * 30
+		case effectCastSpin:
+			anim, ok := m.actorAnims[effect.actorID]
+			if frame >= 100 || !ok || anim.actionFamily != spriteActionIdle || !anim.started.Equal(effect.starts) || now.Sub(anim.started) >= anim.duration {
+				continue
+			}
+			ticks := frame + 1
+			turn = float64(12*min(ticks, 16) + 18*clampInt(ticks-16, 0, 15) + 24*clampInt(ticks-31, 0, 10) + 48*max(0, ticks-41))
+		default:
+			continue
+		}
+		direction = (direction + int(math.Floor((turn+22.5)/45))) % 8
+	}
+	return direction
 }

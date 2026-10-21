@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 712 {
-		t.Fatalf("implemented effects = %d, want 712", coverage.Implemented)
+	if coverage.Implemented != 714 {
+		t.Fatalf("implemented effects = %d, want 714", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 117.29 || coverage.ActivePercent > 117.30 {
-		t.Fatalf("active coverage = %.3f, want about 117.30", coverage.ActivePercent)
+	if coverage.ActivePercent < 117.62 || coverage.ActivePercent > 117.63 {
+		t.Fatalf("active coverage = %.3f, want about 117.63", coverage.ActivePercent)
 	}
 }
 
@@ -1956,7 +1956,6 @@ func TestRobrowserSimpleEffectsFourFiftyToFiveHundredMatchTableRows(t *testing.T
 	}{
 		{"EF_AGIUP", effectNPCPowerUp, "effect\\mon_폭기.wav"},
 		{"EF_JUMPKICK", effectJumpKick, "effect\\t_날라차기.wav"},
-		{"EF_GUARD2", effectPreserve, "effect\\black_maximize_power_sword_bic.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
@@ -2097,15 +2096,6 @@ func TestRobrowserSimpleEffectsFiveHundredToFiveFiftyMatchTableRows(t *testing.T
 }
 
 func TestRobrowserFuncEffectsFiveHundredToFiveFiftyMatchTableRows(t *testing.T) {
-	spin, ok := worldEffectSpecForID(effectCastSpin)
-	if !ok || spin.duration != 500*time.Millisecond || len(spin.components) != 1 {
-		t.Fatalf("EF_CASTSPIN spec = %+v ok=%t", spin, ok)
-	}
-	spinComponent := spin.components[0]
-	if spinComponent.kind != effectComponentFUNC || spinComponent.funcName != "CastSpin" || spinComponent.funcAdapter != effectFuncUnknown || !spinComponent.attachedEntity {
-		t.Fatalf("EF_CASTSPIN component = %+v, want attached unsupported CastSpin FUNC", spinComponent)
-	}
-
 	chookgi, ok := worldEffectSpecForID(effectChookgi2)
 	if !ok || chookgi.duration != 5*time.Minute || len(chookgi.components) != 1 {
 		t.Fatalf("EF_CHOOKGI2 spec = %+v ok=%t", chookgi, ok)

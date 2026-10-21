@@ -80,6 +80,7 @@ const (
 	effectFuncProvidence
 	effectFuncDevotionLink
 	effectFuncGuard
+	effectFuncFullStrip
 	effectFuncGospelCross
 	effectFuncSpiralPierce
 	effectFuncAgility
@@ -177,6 +178,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawAgilityEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncSpiralPierce:
 		m.drawSpiralPierceEffect(screen, ctx, component, effect, now)
+	case effectFuncFullStrip:
+		m.drawFullStrip(screen, ctx, projection, component, effect, now)
 	case effectFuncGuard:
 		m.drawGuardEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncGospelCross:
