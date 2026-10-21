@@ -205,13 +205,13 @@ func (m *WorldMode) applyTrickDeadStatus(ctx client.Context, change network.Stat
 }
 
 func (m *WorldMode) setTrickDeadStatusAction(ctx client.Context, id uint32, actionFamily int, started time.Time, duration time.Duration, holdFinal bool) {
-	m.setCombatActorAction(ctx, id, actorAnimation{
-		actionFamily: actionFamily,
-		started:      started,
-		duration:     duration,
-		play:         true,
-		hasPlay:      true,
-		holdFinal:    holdFinal,
+	m.setCombatActorAction(ctx, id, scene.ActorAnimation{
+		ActionFamily: actionFamily,
+		Started:      started,
+		Duration:     duration,
+		Play:         true,
+		HasPlay:      true,
+		HoldFinal:    holdFinal,
 	})
 }
 

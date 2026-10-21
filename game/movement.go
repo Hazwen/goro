@@ -72,7 +72,7 @@ func (m *WorldMode) updateHeldWalk(ctx client.Context, pointerBlocked bool, now 
 		m.nextHeldWalkAt = time.Time{}
 		return false
 	}
-	if ctx.Input.MouseJustPressed(input.MouseButtonLeft) || m.pendingSkill.skill.ID != 0 || m.pendingPetCapture.active || shouldUseTurnOnlyGroundClick(ctx) {
+	if ctx.Input.MouseJustPressed(input.MouseButtonLeft) || m.skillSystem.Pending.Skill.ID != 0 || m.pendingPetCapture.active || shouldUseTurnOnlyGroundClick(ctx) {
 		return false
 	}
 	if !m.walkReady(now) || (!m.nextHeldWalkAt.IsZero() && now.Before(m.nextHeldWalkAt)) {
@@ -141,7 +141,7 @@ func warpWalkTarget(ctx client.Context, actor worldstate.Actor, now time.Time) (
 }
 
 func (m *WorldMode) requestWalk(ctx client.Context, targetX, targetY int, source string) bool {
-	if playerIsDead(ctx) {
+	if scene.PlayerIsDead(ctx) {
 		return false
 	}
 	if ctx.PlayerHasEffectState(db.EffectStateHide) && learnedSkillLevel(ctx.Session, db.SkillRGTunneldrive) == 0 {
@@ -169,7 +169,7 @@ func (m *WorldMode) requestWalk(ctx client.Context, targetX, targetY int, source
 // that path bends around an obstacle.
 func (m *WorldMode) requestWalkStop(ctx client.Context, source string) bool {
 	now := time.Now()
-	if playerIsDead(ctx) || ctx.World == nil || ctx.Network == nil {
+	if scene.PlayerIsDead(ctx) || ctx.World == nil || ctx.Network == nil {
 		return false
 	}
 	player := ctx.World.Player

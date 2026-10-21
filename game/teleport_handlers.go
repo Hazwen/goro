@@ -2,8 +2,8 @@ package game
 
 import (
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/glog"
-
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 	gameui "github.com/kivutar/goro/ui"
@@ -14,7 +14,7 @@ func (m *WorldMode) applyWarpPointList(ctx client.Context, list network.WarpPoin
 		glog.Debugf("warp point list ignored skill=%d maps=%v", list.SkillID, list.MapNames)
 		return
 	}
-	skill, ok := skillByID(ctx.Session, list.SkillID)
+	skill, ok := skills.SkillByID(ctx.Session, list.SkillID)
 	if !ok {
 		skill = session.Skill{ID: list.SkillID, Level: 1}
 		if len(list.MapNames) > 1 {

@@ -7,6 +7,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -28,7 +29,7 @@ func TestPvPMapAllowsPlayerAttackAndEnemySkillTargets(t *testing.T) {
 	if !actorCanBeAttackClicked(ctx, actor) {
 		t.Fatal("player was not attackable on a PvP map")
 	}
-	if !actorCanBeSkillTargeted(ctx, session.Skill{ID: 13, Type: skillTargetEnemy}, actor) {
+	if !actorCanBeSkillTargeted(ctx, session.Skill{ID: 13, Type: skills.SkillTargetEnemy}, actor) {
 		t.Fatal("player was not an enemy-skill target on a PvP map")
 	}
 
@@ -36,7 +37,7 @@ func TestPvPMapAllowsPlayerAttackAndEnemySkillTargets(t *testing.T) {
 	if actorCanBeAttackClicked(ctx, actor) {
 		t.Fatal("player remained attackable outside PvP")
 	}
-	if actorCanBeSkillTargeted(ctx, session.Skill{ID: 13, Type: skillTargetEnemy}, actor) {
+	if actorCanBeSkillTargeted(ctx, session.Skill{ID: 13, Type: skills.SkillTargetEnemy}, actor) {
 		t.Fatal("player remained an enemy-skill target outside PvP")
 	}
 }
@@ -53,7 +54,7 @@ func TestPvPTargetsLegacyPlayerEntryWithoutObjectType(t *testing.T) {
 	if !actorCanBeAttackClicked(ctx, legacyPlayer) {
 		t.Fatal("legacy player entry without object type was not attackable on a PvP map")
 	}
-	if !actorCanBeSkillTargeted(ctx, session.Skill{ID: 13, Type: skillTargetEnemy}, legacyPlayer) {
+	if !actorCanBeSkillTargeted(ctx, session.Skill{ID: 13, Type: skills.SkillTargetEnemy}, legacyPlayer) {
 		t.Fatal("legacy player entry without object type was not an enemy-skill target on a PvP map")
 	}
 
@@ -85,11 +86,11 @@ func TestWoETargetingUsesGuildRelationship(t *testing.T) {
 	mate := worldstate.Actor{ID: 302, GuildID: 10, ObjectType: scene.ActorObjectTypePC, HasObjectType: true}
 
 	for _, actor := range []worldstate.Actor{enemy, guildless} {
-		if !actorCanBeAttackClicked(ctx, actor) || !actorCanBeSkillTargeted(ctx, session.Skill{Type: skillTargetEnemy}, actor) {
+		if !actorCanBeAttackClicked(ctx, actor) || !actorCanBeSkillTargeted(ctx, session.Skill{Type: skills.SkillTargetEnemy}, actor) {
 			t.Fatalf("WoE enemy was not targetable: %+v", actor)
 		}
 	}
-	if actorCanBeAttackClicked(ctx, mate) || actorCanBeSkillTargeted(ctx, session.Skill{Type: skillTargetEnemy}, mate) {
+	if actorCanBeAttackClicked(ctx, mate) || actorCanBeSkillTargeted(ctx, session.Skill{Type: skills.SkillTargetEnemy}, mate) {
 		t.Fatal("guild member was targetable as a WoE enemy")
 	}
 }
@@ -119,13 +120,13 @@ func TestWoETargetingIncludesEnemyCompanions(t *testing.T) {
 			guildmate := worldstate.Actor{ID: tc.enemyID + 100, GuildID: 10, ObjectType: tc.objectType, HasObjectType: true}
 			own := worldstate.Actor{ID: tc.ownID, GuildID: 20, ObjectType: tc.objectType, HasObjectType: true}
 
-			if !actorCanBeAttackClicked(ctx, enemy) || !actorCanBeSkillTargeted(ctx, session.Skill{Type: skillTargetEnemy}, enemy) {
+			if !actorCanBeAttackClicked(ctx, enemy) || !actorCanBeSkillTargeted(ctx, session.Skill{Type: skills.SkillTargetEnemy}, enemy) {
 				t.Fatalf("enemy %s was not targetable in WoE", tc.name)
 			}
-			if actorCanBeAttackClicked(ctx, guildmate) || actorCanBeSkillTargeted(ctx, session.Skill{Type: skillTargetEnemy}, guildmate) {
+			if actorCanBeAttackClicked(ctx, guildmate) || actorCanBeSkillTargeted(ctx, session.Skill{Type: skills.SkillTargetEnemy}, guildmate) {
 				t.Fatalf("guild member's %s was targetable in WoE", tc.name)
 			}
-			if actorCanBeAttackClicked(ctx, own) || actorCanBeSkillTargeted(ctx, session.Skill{Type: skillTargetEnemy}, own) {
+			if actorCanBeAttackClicked(ctx, own) || actorCanBeSkillTargeted(ctx, session.Skill{Type: skills.SkillTargetEnemy}, own) {
 				t.Fatalf("local %s was targetable in WoE", tc.name)
 			}
 		})

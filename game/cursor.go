@@ -6,9 +6,12 @@ import (
 	"math"
 	"time"
 
+	"github.com/kivutar/goro/game/npc"
+
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -70,7 +73,7 @@ func (m *WorldMode) drawROCursor(screen *render.Frame, ctx client.Context, proje
 	state := m.cursorState()
 	state.draw(screen, ctx, action, now, magnetX, magnetY)
 	m.storeCursorState(state)
-	m.drawPendingSkillCursorLevel(screen, ctx, m.pendingSkill.skill, magnetX, magnetY)
+	m.skills().DrawPendingSkillCursorLevel(screen, ctx, m.skillSystem.Pending.Skill, magnetX, magnetY)
 }
 
 func (m *WorldMode) cursorState() *roCursorState {
@@ -160,7 +163,7 @@ func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Pro
 	if m.petSlotMachine.active {
 		return cursorActionClick
 	}
-	if m.npcCutinPointerBlocked(ctx) {
+	if m.npc().CutinPointerBlocked(ctx) {
 		return cursorActionDefault
 	}
 	if action, ok := uiCursorAction(ctx); ok {
@@ -169,8 +172,8 @@ func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Pro
 	if ctx.Input.MousePressed(input.MouseButtonRight) {
 		return cursorActionRotate
 	}
-	if m.pendingSkill.skill.ID != 0 {
-		actor, ok := m.clickedSkillTarget(ctx, projection, m.pendingSkill.skill, mouseX, mouseY, now)
+	if m.skillSystem.Pending.Skill.ID != 0 {
+		actor, ok := m.skills().ClickedSkillTarget(ctx, projection, m.skillSystem.Pending.Skill, mouseX, mouseY, now)
 		if ok && (!cursorSnapTargets(ctx) || m.cursorActorSnapEligible(ctx, projection, actor, now)) {
 			return cursorActionTarget2
 		}
@@ -194,13 +197,13 @@ func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Pro
 	}
 	if actor, ok := hoveredCursorActor(ctx, projection, mouseX, mouseY, now, m.actorDeaths); ok {
 		switch {
-		case isWarpActor(actor):
+		case npc.IsWarpActor(actor):
 			return cursorActionWarp
 		case actorCanBeAttackClicked(ctx, actor):
 			if !cursorSnapTargets(ctx) || m.cursorActorSnapEligible(ctx, projection, actor, now) {
 				return cursorActionAttack
 			}
-		case cursorActorCanTalk(actor):
+		case npc.CanTalk(actor):
 			return cursorActionTalk
 		}
 	}
@@ -250,7 +253,7 @@ func (m *WorldMode) cursorMagnetOffset(ctx client.Context, projection scene.Proj
 		if !ok {
 			return 0, 0
 		}
-		actor, ok := m.clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now)
+		actor, ok := m.skills().ClickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now)
 		if !ok {
 			return 0, 0
 		}
@@ -261,8 +264,8 @@ func (m *WorldMode) cursorMagnetOffset(ctx client.Context, projection scene.Proj
 }
 
 func (m *WorldMode) pendingTargetCursorSkill() (session.Skill, bool) {
-	if m.pendingSkill.skill.ID != 0 {
-		return m.pendingSkill.skill, true
+	if m.skillSystem.Pending.Skill.ID != 0 {
+		return m.skillSystem.Pending.Skill, true
 	}
 	if m.pendingPetCapture.active {
 		return petCaptureTargetSkill(), true
@@ -275,7 +278,7 @@ func (m *WorldMode) drawPendingTargetBanner(screen *render.Frame, ctx client.Con
 	if !ok {
 		return
 	}
-	name := skillLabel(skill)
+	name := skills.SkillLabel(skill)
 	if ctx.Resources != nil && skill.ID != petCaptureSkillID {
 		if displayName, ok := ctx.Resources.SkillDisplayName(int(skill.ID)); ok {
 			name = displayName
@@ -311,7 +314,7 @@ func (m *WorldMode) cursorActorMagnetTarget(ctx client.Context, projection scene
 	terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
 	point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
-	if _, ok := m.skillUnitModels[actor.ID]; ok {
+	if _, ok := m.skillSystem.Units[actor.ID]; ok {
 		return float64(point.X), float64(point.Y), scale, true
 	}
 	if targetX, targetY, ok := m.cursorActorSpriteCenter(ctx, projection, actor, point, scale, now); ok {
@@ -426,7 +429,7 @@ func uiPointerBlocked(ctx client.Context) bool {
 func (m *WorldMode) mapPointerBlocked(ctx client.Context) bool {
 	// The pet slot machine and NPC cut-ins are drawn outside the gogpu UI
 	// manager, so include them explicitly when gating map interactions.
-	return m.petSlotMachine.active || m.npcCutinPointerBlocked(ctx) || uiPointerBlocked(ctx)
+	return m.petSlotMachine.active || m.npc().CutinPointerBlocked(ctx) || uiPointerBlocked(ctx)
 }
 
 func hoveredCursorActor(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (world.Actor, bool) {
@@ -461,18 +464,6 @@ func hoveredCursorActor(ctx client.Context, projection scene.Projection, mouseX,
 		}
 	}
 	return best, bestDistance < math.Inf(1)
-}
-
-func cursorActorCanTalk(actor world.Actor) bool {
-	if actor.ID == 0 || !actor.HasObjectType || actor.Job == scene.ActorJobHiddenWarpNPC {
-		return false
-	}
-	switch actor.ObjectType {
-	case scene.ActorObjectTypeNPC, scene.ActorObjectTypeNPC2:
-		return !isWarpActor(actor)
-	default:
-		return false
-	}
 }
 
 func cursorInfo(action int) cursorActionInfo {

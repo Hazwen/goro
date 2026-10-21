@@ -49,8 +49,8 @@ func TestActorShadowSuppressionUsesActorActions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			now := time.Now()
-			mode := &WorldMode{actorAnims: map[uint32]actorAnimation{
-				tc.actor.ID: {actionFamily: tc.action, started: now, loop: true},
+			mode := &WorldMode{actorAnims: map[uint32]scene.ActorAnimation{
+				tc.actor.ID: {ActionFamily: tc.action, Started: now, Loop: true},
 			}}
 			if got := mode.actorShadowSuppressed(tc.actor, now); got != tc.suppressed {
 				t.Fatalf("shadow suppressed = %t, want %t", got, tc.suppressed)
@@ -62,12 +62,12 @@ func TestActorShadowSuppressionUsesActorActions(t *testing.T) {
 func TestActorShadowRemainsAfterMaceSwing(t *testing.T) {
 	now := time.Now()
 	player := worldstate.Actor{ID: 200, Job: db.JobAcolyte, Weapon: db.WeaponMace}
-	mode := &WorldMode{actorAnims: map[uint32]actorAnimation{
+	mode := &WorldMode{actorAnims: map[uint32]scene.ActorAnimation{
 		player.ID: {
-			actionFamily: attackActionFamilyForActorWithResources(nil, player),
-			started:      now,
-			duration:     time.Second,
-			next:         readyFightAnimation(now.Add(time.Second)),
+			ActionFamily: sprites.AttackActionFamily(nil, player),
+			Started:      now,
+			Duration:     time.Second,
+			Next:         readyFightAnimation(now.Add(time.Second)),
 		},
 	}}
 	for _, elapsed := range []time.Duration{0, time.Second, 2 * time.Second} {

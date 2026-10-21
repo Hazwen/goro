@@ -9,6 +9,8 @@ import (
 	"github.com/kivutar/goro/client"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
+	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -94,14 +96,14 @@ func petCaptureTargetSkill() session.Skill {
 	return session.Skill{
 		ID:    petCaptureSkillID,
 		Name:  "Capture Monster",
-		Type:  skillTargetPet,
+		Type:  skills.SkillTargetPet,
 		Range: 9,
 	}
 }
 
 func (m *WorldMode) startPetCapture(ctx client.Context) {
-	m.pendingSkill = pendingSkillTarget{}
-	m.pendingSkillText = pendingSkillTextTarget{}
+	m.skillSystem.Pending = skills.PendingTarget{}
+	m.skillSystem.PendingText = skills.PendingTextTarget{}
 	m.pendingPetCapture = petCaptureState{active: true, started: time.Now()}
 	m.ui.console.AddSystemMessage("Select a monster to capture.")
 	glog.Debugf("pet capture target pending")
@@ -275,7 +277,7 @@ func (m *WorldMode) applyPetTalk(ctx client.Context, id uint32, text string, now
 	}
 	chat := network.ChatMessage{GID: id, Text: fmt.Sprintf("%s : %s", name, text)}
 	m.applySpeechBubble(ctx, chat, now)
-	addConsoleMessage(&m.ui.console, ctx.Resources, chat)
+	social.AddConsoleMessage(&m.ui.console, ctx.Resources, chat)
 }
 
 func (m *WorldMode) maybeSendPetHuntingTalk(ctx client.Context, now time.Time) {

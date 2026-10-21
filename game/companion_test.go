@@ -9,6 +9,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
@@ -512,13 +513,13 @@ func TestMercenaryActionFamiliesUseGuildWeaponActions(t *testing.T) {
 	sword := worldstate.Actor{Job: 6037, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
 	mob := worldstate.Actor{Job: 1002, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 
-	if got := attackActionFamilyForActorWithResources(nil, archer); got != sprites.ActionPCAttack2 {
+	if got := sprites.AttackActionFamily(nil, archer); got != sprites.ActionPCAttack2 {
 		t.Fatalf("archer mercenary attack action = %d, want %d", got, sprites.ActionPCAttack2)
 	}
-	if got := attackActionFamilyForActorWithResources(nil, lancer); got != sprites.ActionPCAttack3 {
+	if got := sprites.AttackActionFamily(nil, lancer); got != sprites.ActionPCAttack3 {
 		t.Fatalf("lancer mercenary attack action = %d, want %d", got, sprites.ActionPCAttack3)
 	}
-	if got := attackActionFamilyForActorWithResources(nil, sword); got != sprites.ActionPCAttack2 {
+	if got := sprites.AttackActionFamily(nil, sword); got != sprites.ActionPCAttack2 {
 		t.Fatalf("sword mercenary attack action = %d, want %d", got, sprites.ActionPCAttack2)
 	}
 	if got := hurtActionFamilyForActor(archer); got != sprites.ActionPCHurt {
@@ -533,10 +534,10 @@ func TestMercenaryActionFamiliesUseGuildWeaponActions(t *testing.T) {
 	if got := skillCastActionFamilyForActor(sword, 0); got != sprites.ActionPCSkill {
 		t.Fatalf("sword mercenary cast action = %d, want %d", got, sprites.ActionPCSkill)
 	}
-	if got := readyFightSkillActionSpec.actionFamilyForActorWithResources(nil, sword); got != sprites.ActionPCSkill {
+	if got := effects.ReadyFightSkillActionSpec.ActionFamilyForActorWithResources(nil, sword); got != sprites.ActionPCSkill {
 		t.Fatalf("sword mercenary readyfight skill action = %d, want %d", got, sprites.ActionPCSkill)
 	}
-	if got := attackActionFamilyForActorWithResources(nil, mob); got != sprites.ActionNonPCAttack {
+	if got := sprites.AttackActionFamily(nil, mob); got != sprites.ActionNonPCAttack {
 		t.Fatalf("mob attack action = %d, want %d", got, sprites.ActionNonPCAttack)
 	}
 }
@@ -603,7 +604,7 @@ func TestCompanionWindowsAllowGameplayInput(t *testing.T) {
 		for _, control := range []string{"camera", "skill", "wasd"} {
 			t.Run(name+"/"+control, func(t *testing.T) {
 				ctx := wasdControlsTestContext(t)
-				conn, server := newBotTestConnection(t, 20080910)
+				conn, server := testutil.NewConnection(t, 20080910)
 				ctx.Network = conn
 				ctx.UIManager = gameui.NewManager()
 				ctx.Session.Homunculus.Active = true
@@ -650,7 +651,7 @@ func TestCompanionWindowsAllowGameplayInput(t *testing.T) {
 						t.Fatal("camera rotated through the companion window")
 					}
 				case "skill":
-					if mode.pendingSkill.skill.ID != ctx.Session.Skills.List[0].ID {
+					if mode.skillSystem.Pending.Skill.ID != ctx.Session.Skills.List[0].ID {
 						t.Fatal("open companion window blocked the F1 skill shortcut")
 					}
 				case "wasd":
@@ -699,7 +700,7 @@ func TestCompanionRenameKeepsKeyboardInput(t *testing.T) {
 			if _, err := mode.Update(ctx); err != nil {
 				t.Fatal(err)
 			}
-			if mode.pendingSkill.skill.ID != 0 || mode.bot.KeyboardAvailable {
+			if mode.skillSystem.Pending.Skill.ID != 0 || mode.bot.KeyboardAvailable {
 				t.Fatal("gameplay keyboard input remained active during rename")
 			}
 			if mode.ui.nonConsoleKeyboardInputBlockedExcept(ctx, w) {

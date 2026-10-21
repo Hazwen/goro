@@ -15,6 +15,7 @@ import (
 	"github.com/gogpu/ui/uitest"
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -99,7 +100,7 @@ func TestMissingMapReturnsToLoginWithoutGameAssets(t *testing.T) {
 
 func TestMissingMapClosesConnectionAndAllowsExplicitLogin(t *testing.T) {
 	ctx := mapRecoveryTestContext(t)
-	netClient, server := newBotTestConnection(t, 20080910)
+	netClient, server := testutil.NewConnection(t, 20080910)
 	ctx.Network = netClient
 	// A configured login server makes unwanted automatic reconnects observable.
 	ctx.Resources.ClientInfo.Connections = []res.Connection{{Address: "127.0.0.1", Port: 1}}
@@ -194,7 +195,7 @@ func TestWorldEnterWithGATStillAcknowledgesSuccessfulLoad(t *testing.T) {
 	for _, source := range []string{"new_1-1.gat", "new_zone01.gat"} {
 		t.Run(source, func(t *testing.T) {
 			ctx := mapRecoveryTestContext(t)
-			netClient, server := newBotTestConnection(t, 20080910)
+			netClient, server := testutil.NewConnection(t, 20080910)
 			ctx.Network = netClient
 			writeTestGAT(t, ctx.Resources.Root, source)
 			if source != ctx.World.MapName {

@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	gameui "github.com/kivutar/goro/ui"
 )
 
 func TestEscapeCancelsOnlyTopServerInteraction(t *testing.T) {
-	netClient, server := newBotTestConnection(t, 20080910)
+	netClient, server := testutil.NewConnection(t, 20080910)
 	manager := gameui.NewManager()
 	ctx := client.Context{Network: netClient, Input: input.NewState(), UIManager: manager, ScreenW: 1024, ScreenH: 768}
 	var trade gameui.TradeWindow

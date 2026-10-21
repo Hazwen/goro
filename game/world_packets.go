@@ -5,12 +5,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kivutar/goro/game/npc"
+
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
+	"github.com/kivutar/goro/session"
 	gameui "github.com/kivutar/goro/ui"
 )
 
@@ -38,9 +42,9 @@ func (m *WorldMode) handleNetworkPackets(ctx client.Context, now time.Time) (Mod
 	}
 	networkErrors := ctx.Network.DrainErrors()
 	if login.HandleNetworkDisconnectErrors(ctx, &m.ui.disconnectDialog, networkErrors) {
-		m.ui.npcCutin.Clear()
-		m.ui.mailWindow.CloseFromServer(ctx)
-		m.mail = mailState{}
+		m.ui.npc.Cutin.Clear()
+		m.ui.social.MailWindow.CloseFromServer(ctx)
+		m.socialSystem.Mail = social.MailState{}
 		return nil, true
 	}
 	for _, err := range networkErrors {
@@ -57,13 +61,13 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if m.handleQuestPacket(ctx, pkt) {
 		return nil, false
 	}
-	if m.handleMailPacket(ctx, pkt, now) {
+	if m.social().HandleMailPacket(ctx, pkt, now, m.ui.disconnectDialog.IsOpen()) {
 		return nil, false
 	}
 	if login.HandleDisconnectPacket(ctx, &m.ui.disconnectDialog, pkt) {
-		m.ui.npcCutin.Clear()
-		m.ui.mailWindow.CloseFromServer(ctx)
-		m.mail = mailState{}
+		m.ui.npc.Cutin.Clear()
+		m.ui.social.MailWindow.CloseFromServer(ctx)
+		m.socialSystem.Mail = social.MailState{}
 		return nil, false
 	}
 	if notify, ok, err := network.ParseMapInfoNotify(pkt); err != nil {
@@ -124,7 +128,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if ok, err := network.ParseProgressBarCancel(pkt); err != nil {
 		glog.Errorf("parse progress bar cancellation 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.finishServerProgress(ctx, "server cancel")
+		m.npc().FinishProgress(ctx, "server cancel")
 		return nil, false
 	}
 	if chat, ok, err := network.ParseTalkBoxChatContents(pkt); err != nil {
@@ -172,8 +176,8 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if whisper, ok, err := network.ParseWhisperMessage(pkt); err != nil {
 		glog.Errorf("parse whisper message 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		addWhisperMessage(&m.ui.console, whisper)
-		m.addWhisperWindowIncoming(ctx, whisper)
+		social.AddWhisperMessage(&m.ui.console, whisper)
+		m.social().AddWhisperWindowIncoming(ctx, whisper)
 		return nil, false
 	}
 	if ack, ok, err := network.ParseWhisperAck(pkt); err != nil {
@@ -181,61 +185,61 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	} else if ok {
 		// This reply has no recipient and may arrive out of send order across
 		// map servers. Keep it in the console, without guessing a conversation.
-		addWhisperAck(&m.ui.console, ctx.Resources, ack)
+		social.AddWhisperAck(&m.ui.console, ctx.Resources, ack)
 		return nil, false
 	}
 	if ack, ok, err := network.ParseWhisperIgnoreAck(pkt); err != nil {
 		glog.Errorf("parse whisper ignore ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		addWhisperIgnoreAck(&m.ui.console, ack)
+		social.AddWhisperIgnoreAck(&m.ui.console, ack)
 		return nil, false
 	}
 	if ack, ok, err := network.ParseChatRoomCreateAck(pkt); err != nil {
 		glog.Errorf("parse chat room create ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleChatRoomCreateAck(ctx, ack)
+		m.social().HandleChatRoomCreateAck(ctx, ack)
 		return nil, false
 	}
 	if board, ok, err := network.ParseChatRoomBoard(pkt); err != nil {
 		glog.Errorf("parse chat room board 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyChatRoomBoard(ctx, board)
+		m.social().ApplyChatRoomBoard(ctx, board)
 		return nil, false
 	}
 	if destroy, ok, err := network.ParseChatRoomDestroy(pkt); err != nil {
 		glog.Errorf("parse chat room destroy 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyChatRoomDestroy(ctx, destroy)
+		m.social().ApplyChatRoomDestroy(ctx, destroy)
 		return nil, false
 	}
 	if enter, ok, err := network.ParseChatRoomEnter(pkt); err != nil {
 		glog.Errorf("parse chat room enter 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleChatRoomEnter(ctx, enter)
+		m.social().HandleChatRoomEnter(ctx, enter)
 		return nil, false
 	}
 	if joined, ok, err := network.ParseChatRoomMemberJoin(pkt); err != nil {
 		glog.Errorf("parse chat room member join 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleChatRoomMemberJoin(ctx, joined)
+		m.social().HandleChatRoomMemberJoin(ctx, joined)
 		return nil, false
 	}
 	if left, ok, err := network.ParseChatRoomMemberLeave(pkt); err != nil {
 		glog.Errorf("parse chat room member leave 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleChatRoomMemberLeave(ctx, left)
+		m.social().HandleChatRoomMemberLeave(ctx, left)
 		return nil, false
 	}
 	if change, ok, err := network.ParseChatRoomChange(pkt); err != nil {
 		glog.Errorf("parse chat room change 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleChatRoomChange(ctx, change)
+		m.social().HandleChatRoomChange(ctx, change)
 		return nil, false
 	}
 	if role, ok, err := network.ParseChatRoomRoleChange(pkt); err != nil {
 		glog.Errorf("parse chat room role change 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleChatRoomRoleChange(ctx, role)
+		m.social().HandleChatRoomRoleChange(ctx, role)
 		return nil, false
 	}
 	if emotion, ok, err := network.ParseEmotionNotify(pkt); err != nil {
@@ -287,16 +291,13 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if dialog, ok, err := network.ParseNPCDialog(pkt); err != nil {
 		glog.Errorf("parse npc dialog 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.npcDialog.Apply(dialog)
-		if !m.ui.npcDialog.IsOpen() && (dialog.Kind == network.NPCDialogClear || dialog.Kind == network.NPCDialogClose) {
-			m.ui.npcCutin.Clear()
-		}
+		m.npc().ApplyDialog(dialog)
 		return nil, false
 	}
 	if cutin, ok, err := network.ParseNPCCutin(pkt); err != nil {
 		glog.Errorf("parse NPC cut-in 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		if err := m.applyNPCCutin(ctx, cutin); err != nil {
+		if err := m.npc().ApplyCutin(ctx, cutin); err != nil {
 			glog.Warnf("NPC cut-in unavailable image=%q position=%d: %v", cutin.Image, cutin.Position, err)
 		}
 		return nil, false
@@ -378,7 +379,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse use item ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		glog.Debugf("use item ack index=%d item=%d aid=%d amount=%d result=%d", useAck.Index, useAck.ItemID, useAck.AID, useAck.Amount, useAck.Result)
-		m.addItemUseEffect(ctx, useAck)
+		m.effects().AddItemUseEffect(ctx, useAck)
 		// Successful item uses are broadcast to nearby players. Their effects
 		// are visible, but their inventory indexes belong to those players.
 		if !useItemAckIsLocal(ctx, useAck) {
@@ -392,7 +393,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		}
 		depletedItemID := useAck.ItemID
 		if depletedItemID == 0 {
-			if item, found := findSessionInventoryItem(ctx.Session, useAck.Index); found {
+			if item, found := session.FindInventoryItem(ctx.Session, useAck.Index); found {
 				depletedItemID = item.ItemID
 			}
 		}
@@ -563,13 +564,13 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if prompt, ok, err := network.ParseStoragePasswordPrompt(pkt); err != nil {
 		glog.Errorf("parse storage password prompt 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleStoragePasswordPrompt(ctx, prompt)
+		m.npc().HandleStoragePasswordPrompt(ctx, prompt)
 		return nil, false
 	}
 	if result, ok, err := network.ParseStoragePasswordResult(pkt); err != nil {
 		glog.Errorf("parse storage password result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleStoragePasswordResult(ctx, result)
+		m.npc().HandleStoragePasswordResult(ctx, result)
 		return nil, false
 	}
 	if storageItems, ok, err := network.ParseStorageItemList(pkt); err != nil {
@@ -611,32 +612,32 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if friends, ok, err := network.ParseFriendsList(pkt); err != nil {
 		glog.Errorf("parse friends list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyFriendsList(ctx, friends)
+		social.ApplyFriendsList(ctx, friends)
 		return nil, false
 	}
 	if friendState, ok, err := network.ParseFriendState(pkt); err != nil {
 		glog.Errorf("parse friend state 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyFriendState(ctx, friendState)
+		social.ApplyFriendState(ctx, friendState)
 		return nil, false
 	}
 	if friendRequest, ok, err := network.ParseFriendRequest(pkt); err != nil {
 		glog.Errorf("parse friend request 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.openFriendRequest(ctx, friendRequest)
+		m.social().OpenFriendRequest(ctx, friendRequest)
 		return nil, false
 	}
 	if friendAdded, ok, err := network.ParseFriendAddResult(pkt); err != nil {
 		glog.Errorf("parse friend add result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyFriendAddResult(ctx, friendAdded)
-		m.addFriendResultMessage(friendAdded)
+		social.ApplyFriendAddResult(ctx, friendAdded)
+		m.social().AddFriendResultMessage(friendAdded)
 		return nil, false
 	}
 	if friendDeleted, ok, err := network.ParseFriendDelete(pkt); err != nil {
 		glog.Errorf("parse friend delete 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		if friend, removed := applyFriendDelete(ctx, friendDeleted); removed {
+		if friend, removed := social.ApplyFriendDelete(ctx, friendDeleted); removed {
 			name := friend.Name
 			if strings.TrimSpace(name) == "" {
 				name = "Friend"
@@ -648,81 +649,81 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if partyCreate, ok, err := network.ParsePartyCreateResult(pkt); err != nil {
 		glog.Errorf("parse party create result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handlePartyCreateResult(ctx, partyCreate)
+		m.social().HandlePartyCreateResult(ctx, partyCreate)
 		return nil, false
 	}
 	if partyList, ok, err := network.ParsePartyList(pkt); err != nil {
 		glog.Errorf("parse party list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyPartyList(ctx, partyList)
+		social.ApplyPartyList(ctx, partyList)
 		return nil, false
 	}
 	if partyInvite, ok, err := network.ParsePartyInviteRequest(pkt); err != nil {
 		glog.Errorf("parse party invite request 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.openPartyInviteRequest(ctx, partyInvite)
+		m.social().OpenPartyInviteRequest(ctx, partyInvite)
 		return nil, false
 	}
 	if partyInviteAnswer, ok, err := network.ParsePartyInviteAnswer(pkt); err != nil {
 		glog.Errorf("parse party invite answer 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handlePartyInviteAnswer(partyInviteAnswer)
+		m.social().HandlePartyInviteAnswer(partyInviteAnswer)
 		return nil, false
 	}
 	if partyOption, ok, err := network.ParsePartyOption(pkt); err != nil {
 		glog.Errorf("parse party option 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyPartyOption(ctx, partyOption)
+		social.ApplyPartyOption(ctx, partyOption)
 		return nil, false
 	}
 	if partyConfig, ok, err := network.ParsePartyInviteConfig(pkt); err != nil {
 		glog.Errorf("parse party invite config 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyPartyInviteConfig(ctx, partyConfig)
-		m.ui.partySettings.Rebind(ctx)
+		social.ApplyPartyInviteConfig(ctx, partyConfig)
+		m.ui.social.PartySettings.Rebind(ctx)
 		return nil, false
 	}
 	if guildMenuAccess, ok, err := network.ParseGuildMenuAccess(pkt); err != nil {
 		glog.Errorf("parse guild menu access 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildMenuAccess(ctx, guildMenuAccess)
-		m.ui.guildWindow.Refresh(ctx)
+		social.ApplyLocalGuildMenuAccess(ctx, guildMenuAccess)
+		m.ui.social.GuildWindow.Refresh(ctx)
 		return nil, false
 	}
 	if guildBelonging, ok, err := network.ParseGuildBelonging(pkt); err != nil {
 		glog.Errorf("parse guild belonging 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildBelonging(ctx, guildBelonging)
+		m.social().HandleGuildBelonging(ctx, guildBelonging)
 		return nil, false
 	}
 	if guildInfo, ok, err := network.ParseGuildInfo(pkt); err != nil {
 		glog.Errorf("parse guild info 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildDetails(ctx, guildInfo)
-		m.requestActorGuildEmblem(ctx, guildInfo.GuildID, guildInfo.EmblemVersion)
+		social.ApplyLocalGuildDetails(ctx, guildInfo)
+		m.social().RequestActorGuildEmblem(ctx, guildInfo.GuildID, guildInfo.EmblemVersion)
 		return nil, false
 	}
 	if guildMembers, ok, err := network.ParseGuildMembers(pkt); err != nil {
 		glog.Errorf("parse guild members 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildMembers(ctx, guildMembers)
+		social.ApplyLocalGuildMembers(ctx, guildMembers)
 		return nil, false
 	}
 	if guildRelations, ok, err := network.ParseGuildRelations(pkt); err != nil {
 		glog.Errorf("parse guild relations 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildRelations(ctx, guildRelations)
-		m.ui.guildWindow.Refresh(ctx)
+		social.ApplyLocalGuildRelations(ctx, guildRelations)
+		m.ui.social.GuildWindow.Refresh(ctx)
 		return nil, false
 	}
 	if guildMemberState, ok, err := network.ParseGuildMemberState(pkt); err != nil {
 		glog.Errorf("parse guild member state 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildMemberState(ctx, guildMemberState)
+		social.ApplyLocalGuildMemberState(ctx, guildMemberState)
 		if guildMemberState.State == 0 {
 			m.ui.minimap.ApplyGuildMemberPosition(guildMemberState.AccountID, -1, -1)
 		}
-		m.ui.guildWindow.Refresh(ctx)
+		m.ui.social.GuildWindow.Refresh(ctx)
 		return nil, false
 	}
 	if guildMemberLocation, ok, err := network.ParseGuildMemberLocation(pkt); err != nil {
@@ -734,142 +735,142 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if guildMember, ok, err := network.ParseGuildMemberInfo(pkt); err != nil {
 		glog.Errorf("parse guild member info 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildMember(ctx, guildMember)
+		social.ApplyLocalGuildMember(ctx, guildMember)
 		return nil, false
 	}
 	if memberPositions, ok, err := network.ParseGuildMemberPositions(pkt); err != nil {
 		glog.Errorf("parse guild member positions 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildMemberPositions(ctx, memberPositions)
-		m.ui.guildWindow.Refresh(ctx)
+		social.ApplyLocalGuildMemberPositions(ctx, memberPositions)
+		m.ui.social.GuildWindow.Refresh(ctx)
 		return nil, false
 	}
 	if guildPositions, ok, err := network.ParseGuildPositions(pkt); err != nil {
 		glog.Errorf("parse guild positions 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildPositions(ctx, guildPositions)
+		social.ApplyLocalGuildPositions(ctx, guildPositions)
 		return nil, false
 	}
 	if guildPositionNames, ok, err := network.ParseGuildPositionNames(pkt); err != nil {
 		glog.Errorf("parse guild position names 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildPositionNames(ctx, guildPositionNames)
+		social.ApplyLocalGuildPositionNames(ctx, guildPositionNames)
 		return nil, false
 	}
 	if guildSkills, ok, err := network.ParseGuildSkillInfo(pkt); err != nil {
 		glog.Errorf("parse guild skills 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildSkills(ctx, guildSkills)
+		social.ApplyLocalGuildSkills(ctx, guildSkills)
 		return nil, false
 	}
 	if guildDeparture, ok, err := network.ParseGuildMemberDeparture(pkt); err != nil {
 		glog.Errorf("parse guild member departure 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildMemberDeparture(ctx, guildDeparture)
+		m.social().HandleGuildMemberDeparture(ctx, guildDeparture)
 		return nil, false
 	}
 	if guildExpulsion, ok, err := network.ParseGuildMemberExpulsion(pkt); err != nil {
 		glog.Errorf("parse guild member expulsion 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildMemberExpulsion(ctx, guildExpulsion)
+		m.social().HandleGuildMemberExpulsion(ctx, guildExpulsion)
 		return nil, false
 	}
 	if guildDisband, ok, err := network.ParseGuildDisbandResult(pkt); err != nil {
 		glog.Errorf("parse guild disband result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildDisbandResult(ctx, guildDisband)
+		m.social().HandleGuildDisbandResult(ctx, guildDisband)
 		return nil, false
 	}
 	if guildExpelHistory, ok, err := network.ParseGuildExpelHistory(pkt); err != nil {
 		glog.Errorf("parse guild expel history 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildExpelHistory(ctx, guildExpelHistory)
+		social.ApplyLocalGuildExpelHistory(ctx, guildExpelHistory)
 		return nil, false
 	}
 	if guildNotice, ok, err := network.ParseGuildNotice(pkt); err != nil {
 		glog.Errorf("parse guild notice 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildNotice(ctx, guildNotice)
+		m.social().HandleGuildNotice(ctx, guildNotice)
 		return nil, false
 	}
 	if guildChat, ok, err := network.ParseGuildChat(pkt); err != nil {
 		glog.Errorf("parse guild chat 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyGuildChat(guildChat, &m.ui.console)
+		social.ApplyGuildChat(guildChat, &m.ui.console)
 		return nil, false
 	}
 	if guildEmblem, ok, err := network.ParseGuildEmblemImage(pkt); err != nil {
 		glog.Errorf("parse guild emblem 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyGuildEmblemImage(ctx, guildEmblem)
+		m.social().ApplyGuildEmblemImage(ctx, guildEmblem)
 		return nil, false
 	}
 	if guildEmblemChange, ok, err := network.ParseGuildEmblemChange(pkt); err != nil {
 		glog.Errorf("parse guild emblem change 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyGuildEmblemChange(ctx, guildEmblemChange)
+		m.social().ApplyGuildEmblemChange(ctx, guildEmblemChange)
 		return nil, false
 	}
 	if guildCreate, ok, err := network.ParseGuildCreationResult(pkt); err != nil {
 		glog.Errorf("parse guild create result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildCreationResult(ctx, guildCreate)
+		m.social().HandleGuildCreationResult(ctx, guildCreate)
 		return nil, false
 	}
 	if guildInvite, ok, err := network.ParseGuildInviteRequest(pkt); err != nil {
 		glog.Errorf("parse guild invite request 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.openGuildInviteRequest(ctx, guildInvite)
+		m.social().OpenGuildInviteRequest(ctx, guildInvite)
 		return nil, false
 	}
 	if guildInviteAck, ok, err := network.ParseGuildInviteAck(pkt); err != nil {
 		glog.Errorf("parse guild invite ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildInviteAck(guildInviteAck)
+		m.social().HandleGuildInviteAck(guildInviteAck)
 		return nil, false
 	}
 	if allianceRequest, ok, err := network.ParseGuildAllianceRequest(pkt); err != nil {
 		glog.Errorf("parse guild alliance request 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.openGuildAllianceRequest(ctx, allianceRequest)
+		m.social().OpenGuildAllianceRequest(ctx, allianceRequest)
 		return nil, false
 	}
 	if allianceResult, ok, err := network.ParseGuildAllianceResult(pkt); err != nil {
 		glog.Errorf("parse guild alliance result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildAllianceResult(allianceResult)
+		m.social().HandleGuildAllianceResult(allianceResult)
 		return nil, false
 	}
 	if hostilityResult, ok, err := network.ParseGuildHostilityResult(pkt); err != nil {
 		glog.Errorf("parse guild hostility result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleGuildHostilityResult(hostilityResult)
+		m.social().HandleGuildHostilityResult(hostilityResult)
 		return nil, false
 	}
 	if relationDeleted, ok, err := network.ParseGuildRelationDeleted(pkt); err != nil {
 		glog.Errorf("parse deleted guild relation 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildRelationDeleted(ctx, relationDeleted)
-		m.ui.guildWindow.Refresh(ctx)
+		social.ApplyLocalGuildRelationDeleted(ctx, relationDeleted)
+		m.ui.social.GuildWindow.Refresh(ctx)
 		return nil, false
 	}
 	if relationAdded, ok, err := network.ParseGuildRelationAdded(pkt); err != nil {
 		glog.Errorf("parse added guild relation 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyLocalGuildRelation(ctx, relationAdded)
-		m.ui.guildWindow.Refresh(ctx)
+		social.ApplyLocalGuildRelation(ctx, relationAdded)
+		m.ui.social.GuildWindow.Refresh(ctx)
 		return nil, false
 	}
 	if partyMember, ok, err := network.ParsePartyMemberJoin(pkt); err != nil {
 		glog.Errorf("parse party member join 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyPartyMemberJoin(ctx, partyMember)
+		social.ApplyPartyMemberJoin(ctx, partyMember)
 		return nil, false
 	}
 	if partyLeave, ok, err := network.ParsePartyMemberLeave(pkt); err != nil {
 		glog.Errorf("parse party member leave 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		if !applyPartyMemberLeave(ctx, partyLeave) {
+		if !social.ApplyPartyMemberLeave(ctx, partyLeave) {
 			m.ui.console.AddErrorMessage("Cannot leave party on this map.")
 		}
 		return nil, false
@@ -877,37 +878,37 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if partyHP, ok, err := network.ParsePartyMemberHP(pkt); err != nil {
 		glog.Errorf("parse party member hp 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyPartyMemberHP(ctx, partyHP)
+		social.ApplyPartyMemberHP(ctx, partyHP)
 		return nil, false
 	}
 	if partyPosition, ok, err := network.ParsePartyMemberPosition(pkt); err != nil {
 		glog.Errorf("parse party member position 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyPartyMemberPosition(ctx, partyPosition)
+		social.ApplyPartyMemberPosition(ctx, partyPosition)
 		return nil, false
 	}
 	if partyChat, ok, err := network.ParsePartyChat(pkt); err != nil {
 		glog.Errorf("parse party chat 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyPartyChat(ctx, partyChat, &m.ui.console)
+		social.ApplyPartyChat(ctx, partyChat, &m.ui.console)
 		return nil, false
 	}
 	if tradeRequest, ok, err := network.ParseTradeRequest(pkt); err != nil {
 		glog.Errorf("parse trade request 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.openTradeRequest(ctx, tradeRequest)
+		m.social().OpenTradeRequest(ctx, tradeRequest)
 		return nil, false
 	}
 	if adoptionRequest, ok, err := network.ParseAdoptionRequest(pkt); err != nil {
 		glog.Errorf("parse adoption request 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.openAdoptionRequest(ctx, adoptionRequest)
+		m.social().OpenAdoptionRequest(ctx, adoptionRequest)
 		return nil, false
 	}
 	if adoptionMessage, ok, err := network.ParseAdoptionMessage(pkt); err != nil {
 		glog.Errorf("parse adoption message 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleAdoptionMessage(adoptionMessage)
+		m.social().HandleAdoptionMessage(adoptionMessage)
 		return nil, false
 	}
 	if network.ParseAdoptionStarted(pkt) {
@@ -938,40 +939,40 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if tradeResponse, ok, err := network.ParseTradeResponse(pkt); err != nil {
 		glog.Errorf("parse trade response 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleTradeResponse(ctx, tradeResponse)
+		m.social().HandleTradeResponse(ctx, tradeResponse)
 		return nil, false
 	}
 	if tradeItem, ok, err := network.ParseTradeItem(pkt); err != nil {
 		glog.Errorf("parse trade item 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.tradeWindow.AddReceivedItem(ctx, tradeItem)
+		m.ui.social.TradeWindow.AddReceivedItem(ctx, tradeItem)
 		return nil, false
 	}
 	if tradeAck, ok, err := network.ParseTradeAddItemAck(pkt); err != nil {
 		glog.Errorf("parse trade add item ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.tradeWindow.AddOwnItemAck(ctx, tradeAck)
+		m.ui.social.TradeWindow.AddOwnItemAck(ctx, tradeAck)
 		return nil, false
 	}
 	if tradeConclude, ok, err := network.ParseTradeConclude(pkt); err != nil {
 		glog.Errorf("parse trade conclude 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.tradeWindow.SetConcluded(ctx, tradeConclude.Other)
+		m.ui.social.TradeWindow.SetConcluded(ctx, tradeConclude.Other)
 		return nil, false
 	}
 	if network.ParseTradeCanceled(pkt) {
-		m.ui.tradeWindow.Close(ctx)
+		m.ui.social.TradeWindow.Close(ctx)
 		m.ui.console.AddErrorMessage("Trade canceled.")
 		return nil, false
 	}
 	if tradeExec, ok, err := network.ParseTradeExec(pkt); err != nil {
 		glog.Errorf("parse trade exec 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.handleTradeExec(ctx, tradeExec)
+		m.social().HandleTradeExec(ctx, tradeExec)
 		return nil, false
 	}
 	if network.ParseTradeUndo(pkt) {
-		m.ui.tradeWindow.Undo(ctx)
+		m.ui.social.TradeWindow.Undo(ctx)
 		return nil, false
 	}
 	if storageItem, ok, err := network.ParseStorageItemAdded(pkt); err != nil {
@@ -1031,47 +1032,47 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse vending open request 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		glog.Debugf("vending open request max_items=%d", vendOpen.MaxItems)
-		m.ui.vendingWindow.OpenSetup(ctx, vendOpen)
+		m.ui.social.VendingWindow.OpenSetup(ctx, vendOpen)
 		return nil, false
 	}
 	if board, ok, err := network.ParseVendingBoard(pkt); err != nil {
 		glog.Errorf("parse vending board 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyVendingBoard(ctx, board)
+		m.social().ApplyVendingBoard(ctx, board)
 		return nil, false
 	}
 	if board, ok, err := network.ParseVendingBoardDisappear(pkt); err != nil {
 		glog.Errorf("parse vending board disappear 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyVendingBoardDisappear(ctx, board)
+		m.social().ApplyVendingBoardDisappear(ctx, board)
 		return nil, false
 	}
 	if vendList, ok, err := network.ParseVendingItemList(pkt); err != nil {
 		glog.Errorf("parse vending item list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		if vendList.Own {
-			m.ui.vendingWindow.ApplyOwnList(ctx, vendList)
+			m.ui.social.VendingWindow.ApplyOwnList(ctx, vendList)
 		} else {
-			m.ui.vendingWindow.OpenBuy(ctx, vendList)
+			m.ui.social.VendingWindow.OpenBuy(ctx, vendList)
 		}
 		return nil, false
 	}
 	if vendResult, ok, err := network.ParseVendingPurchaseResult(pkt); err != nil {
 		glog.Errorf("parse vending purchase result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.vendingWindow.ApplyPurchaseResult(ctx, vendResult)
+		m.ui.social.VendingWindow.ApplyPurchaseResult(ctx, vendResult)
 		return nil, false
 	}
 	if sold, ok, err := network.ParseVendingSoldItem(pkt); err != nil {
 		glog.Errorf("parse vending sold item 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.vendingWindow.ApplySoldItem(ctx, sold)
+		m.ui.social.VendingWindow.ApplySoldItem(ctx, sold)
 		return nil, false
 	}
 	if network.ParseStorageClosed(pkt) {
-		applyStorageClosed(ctx)
+		session.CloseStorage(ctx.Session)
 		m.ui.storageWindow.SetOpen(false)
-		m.ui.storagePassword.CloseFromServer(ctx)
+		m.ui.npc.StoragePassword.CloseFromServer(ctx)
 		return nil, false
 	}
 	if network.ParseCartClosed(pkt) {
@@ -1082,25 +1083,25 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if deal, ok, err := network.ParseShopDealSelection(pkt); err != nil {
 		glog.Errorf("parse shop deal selection 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.shopWindow.OpenDeal(deal, ctx)
+		m.ui.npc.Shop.OpenDeal(deal, ctx)
 		return nil, false
 	}
 	if sellList, ok, err := network.ParseShopSellList(pkt); err != nil {
 		glog.Errorf("parse shop sell list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.shopWindow.OpenSell(sellList, ctx)
+		m.ui.npc.Shop.OpenSell(sellList, ctx)
 		return nil, false
 	}
 	if buyList, ok, err := network.ParseShopBuyList(pkt); err != nil {
 		glog.Errorf("parse shop buy list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.shopWindow.OpenBuy(buyList, ctx)
+		m.ui.npc.Shop.OpenBuy(buyList, ctx)
 		return nil, false
 	}
 	if result, ok, err := network.ParseShopResult(pkt); err != nil {
 		glog.Errorf("parse shop result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.ui.shopWindow.ApplyResult(ctx, result)
+		m.ui.npc.Shop.ApplyResult(ctx, result)
 		if result.Sell && result.Result == 0 {
 			m.ui.console.AddBlueMessage("The deal has successfully completed.")
 		}
@@ -1131,7 +1132,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse NPC sprite change 0x%04X: %v", pkt.ID, err)
 		return nil, false
 	} else if ok {
-		applyNPCSpriteChange(ctx, change)
+		npc.ApplySpriteChange(ctx, change)
 		return nil, false
 	}
 	if look, ok, err := network.ParseActorLookChange(pkt); err != nil {
@@ -1160,7 +1161,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if update, ok, err := network.ParseNPCShowEffectUpdate(pkt); err != nil {
 		glog.Errorf("parse NPC effect update 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		if applyNPCShowEffectUpdate(ctx, update) {
+		if npc.ApplyShowEffectUpdate(ctx, update) {
 			m.syncActorSpiritEffects(ctx, update.ActorID)
 			m.effects().SyncActorEntryLevel99Aura(ctx, update.ActorID)
 		}
@@ -1354,7 +1355,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if skillUnit, ok, err := network.ParseSkillUnitUpdate(pkt); err != nil {
 		glog.Errorf("parse skill unit update 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applySkillUnitUpdate(skillUnit)
+		m.skills().ApplySkillUnitUpdate(skillUnit)
 		return nil, false
 	}
 	if spheres, ok, err := network.ParseSpiritSphereCount(pkt); err != nil {

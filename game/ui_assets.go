@@ -9,6 +9,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -40,7 +41,7 @@ func (m *WorldMode) SkillIconImage(manager *res.Manager, skill session.Skill) im
 	}
 	resourceName, ok := manager.SkillResourceName(int(skill.ID))
 	if !ok {
-		resourceName = strings.ToUpper(strings.ReplaceAll(skillLabel(skill), " ", "_"))
+		resourceName = strings.ToUpper(strings.ReplaceAll(skills.SkillLabel(skill), " ", "_"))
 	}
 	key := fmt.Sprintf("__skill_icon_image_%d_%s", skill.ID, resourceName)
 	if m.imageCache == nil {

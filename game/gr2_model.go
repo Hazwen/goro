@@ -101,27 +101,11 @@ func (m *WorldMode) gr2BatchTexture(ctx client.Context, actor worldstate.Actor, 
 		return nil
 	}
 	if _, ok := view.emblemTextures[index]; ok {
-		if emblem := m.gr2ActorGuildEmblemTexture(ctx, actor); emblem != nil {
+		if emblem := m.social().GuildFlagEmblem(ctx, actor); emblem != nil {
 			return emblem
 		}
 	}
 	return view.textures[index]
-}
-
-func (m *WorldMode) gr2ActorGuildEmblemTexture(ctx client.Context, actor worldstate.Actor) *render.Image {
-	if actor.GuildID == 0 || actor.EmblemVersion == 0 {
-		return nil
-	}
-	if m.guildEmblems == nil {
-		m.requestActorGuildEmblem(ctx, actor.GuildID, actor.EmblemVersion)
-		return nil
-	}
-	emblem := m.guildEmblems[actor.GuildID]
-	if emblem.flagImage == nil || emblem.version < actor.EmblemVersion {
-		m.requestActorGuildEmblem(ctx, actor.GuildID, actor.EmblemVersion)
-		return nil
-	}
-	return emblem.flagImage
 }
 
 func (m *WorldMode) nonPCGR2ModelView(ctx client.Context, actor worldstate.Actor) *gr2ModelView {

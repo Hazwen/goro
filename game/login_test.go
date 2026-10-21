@@ -8,6 +8,7 @@ import (
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -277,7 +278,7 @@ func TestCharacterSwitchKeepsConsolePublishableAfterLoginClear(t *testing.T) {
 }
 
 func TestLoginPacketFlowHandsBootstrapStateToWorld(t *testing.T) {
-	netClient, server := newBotTestConnection(t, 20080910)
+	netClient, server := testutil.NewConnection(t, 20080910)
 	ctx := client.Context{
 		Network: netClient, Session: &session.Session{AccountID: 2000000, CharID: 150000},
 		World: worldstate.New(), Resources: &res.Manager{ClientInfo: res.ClientInfo{Connections: []res.Connection{{Address: "127.0.0.1"}}}},

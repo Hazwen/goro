@@ -4,7 +4,6 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
-
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 )
@@ -175,16 +174,4 @@ func refreshLocalPlayerMoveSpeed(ctx client.Context) {
 		speed = ctx.Session.Movement.ServerSpeed
 	}
 	ctx.World.Player.Speed = speed
-}
-
-func sessionSkillLevel(s *session.Session, skillID uint16) int {
-	if s == nil {
-		return 0
-	}
-	for _, skill := range s.Skills.List {
-		if skill.ID == skillID {
-			return skill.Level
-		}
-	}
-	return 0
 }

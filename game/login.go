@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kivutar/goro/game/npc"
+
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
@@ -138,64 +141,64 @@ func applyLoginWorldPacket(ctx client.Context, pkt network.Packet, console *game
 	if chat, ok, err := network.ParseChatMessage(pkt); err != nil {
 		return true, fmt.Errorf("parse chat message: %w", err)
 	} else if ok {
-		addConsoleMessage(console, ctx.Resources, chat)
+		social.AddConsoleMessage(console, ctx.Resources, chat)
 		return true, nil
 	}
 	if whisper, ok, err := network.ParseWhisperMessage(pkt); err != nil {
 		return true, fmt.Errorf("parse whisper message: %w", err)
 	} else if ok {
-		addWhisperMessage(console, whisper)
+		social.AddWhisperMessage(console, whisper)
 		return true, nil
 	}
 	if ack, ok, err := network.ParseWhisperAck(pkt); err != nil {
 		return true, fmt.Errorf("parse whisper ack: %w", err)
 	} else if ok {
-		addWhisperAck(console, ctx.Resources, ack)
+		social.AddWhisperAck(console, ctx.Resources, ack)
 		return true, nil
 	}
 	if ack, ok, err := network.ParseWhisperIgnoreAck(pkt); err != nil {
 		return true, fmt.Errorf("parse whisper ignore ack: %w", err)
 	} else if ok {
-		addWhisperIgnoreAck(console, ack)
+		social.AddWhisperIgnoreAck(console, ack)
 		return true, nil
 	}
 	if friends, ok, err := network.ParseFriendsList(pkt); err != nil {
 		return true, fmt.Errorf("parse friends list: %w", err)
 	} else if ok {
-		applyFriendsList(ctx, friends)
+		social.ApplyFriendsList(ctx, friends)
 		return true, nil
 	}
 	if friendState, ok, err := network.ParseFriendState(pkt); err != nil {
 		return true, fmt.Errorf("parse friend state: %w", err)
 	} else if ok {
-		applyFriendState(ctx, friendState)
+		social.ApplyFriendState(ctx, friendState)
 		return true, nil
 	}
 	if board, ok, err := network.ParseVendingBoard(pkt); err != nil {
 		return true, fmt.Errorf("parse vending board: %w", err)
 	} else if ok {
-		applyVendingBoardToWorld(ctx, board)
+		social.ApplyVendingBoardToWorld(ctx, board)
 		glog.Debugf("login vending board actor=%d name=%q", board.OwnerAID, board.Name)
 		return true, nil
 	}
 	if board, ok, err := network.ParseVendingBoardDisappear(pkt); err != nil {
 		return true, fmt.Errorf("parse vending board disappear: %w", err)
 	} else if ok {
-		applyVendingBoardDisappearToWorld(ctx, board)
+		social.ApplyVendingBoardDisappearToWorld(ctx, board)
 		glog.Debugf("login vending board removed actor=%d", board.OwnerAID)
 		return true, nil
 	}
 	if board, ok, err := network.ParseChatRoomBoard(pkt); err != nil {
 		return true, fmt.Errorf("parse chat room board: %w", err)
 	} else if ok {
-		applyChatRoomBoardToWorld(ctx, board)
+		social.ApplyChatRoomBoardToWorld(ctx, board)
 		glog.Debugf("login chat room board actor=%d room=%d title=%q", board.OwnerID, board.RoomID, board.Title)
 		return true, nil
 	}
 	if destroy, ok, err := network.ParseChatRoomDestroy(pkt); err != nil {
 		return true, fmt.Errorf("parse chat room destroy: %w", err)
 	} else if ok {
-		applyChatRoomDestroyToWorld(ctx, destroy)
+		social.ApplyChatRoomDestroyToWorld(ctx, destroy)
 		glog.Debugf("login chat room board removed room=%d", destroy.RoomID)
 		return true, nil
 	}
@@ -230,7 +233,7 @@ func applyLoginActorBootstrapPacket(ctx client.Context, pkt network.Packet) (boo
 	if update, ok, err := network.ParseNPCShowEffectUpdate(pkt); err != nil {
 		return true, fmt.Errorf("parse NPC effect update: %w", err)
 	} else if ok {
-		applyNPCShowEffectUpdate(ctx, update)
+		npc.ApplyShowEffectUpdate(ctx, update)
 		return true, nil
 	}
 	if spheres, ok, err := network.ParseSpiritSphereCount(pkt); err != nil {
@@ -242,7 +245,7 @@ func applyLoginActorBootstrapPacket(ctx client.Context, pkt network.Packet) (boo
 	if change, ok, err := network.ParseNPCSpriteChange(pkt); err != nil {
 		return true, fmt.Errorf("parse NPC sprite change: %w", err)
 	} else if ok {
-		applyNPCSpriteChange(ctx, change)
+		npc.ApplySpriteChange(ctx, change)
 		return true, nil
 	}
 	if look, ok, err := network.ParseActorLookChange(pkt); err != nil {

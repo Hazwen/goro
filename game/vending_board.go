@@ -8,6 +8,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	gameui "github.com/kivutar/goro/ui"
@@ -17,7 +18,7 @@ import (
 func (m *WorldMode) drawVendingBoardLabels(screen *render.Frame, ctx client.Context, entries []scene.ActorDrawEntry) {
 	icon := m.vendingShopIcon(ctx.Resources)
 	for _, entry := range entries {
-		if !actorHasVending(entry.Actor) {
+		if !social.ActorHasVending(entry.Actor) {
 			continue
 		}
 		label := scene.SanitizeActorName(entry.Actor.VendingName)
@@ -28,13 +29,13 @@ func (m *WorldMode) drawVendingBoardLabels(screen *render.Frame, ctx client.Cont
 
 func (m *WorldMode) drawChatRoomBoardLabels(screen *render.Frame, ctx client.Context, entries []scene.ActorDrawEntry) {
 	for _, entry := range entries {
-		if !actorHasChatRoom(entry.Actor) {
+		if !social.ActorHasChatRoom(entry.Actor) {
 			continue
 		}
 		label := chatRoomBoardLabel(entry.Actor)
 		icon := m.chatRoomBoardIcon(ctx.Resources, entry.Actor.ChatRoomPublic)
 		labelY := actorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
-		if actorHasVending(entry.Actor) {
+		if social.ActorHasVending(entry.Actor) {
 			vendingLabel := scene.SanitizeActorName(entry.Actor.VendingName)
 			labelY -= boardLabelHeight(vendingLabel) + boardLabelGap
 		}
@@ -195,7 +196,7 @@ func (m *WorldMode) hoveredVendingBoard(ctx client.Context, projection scene.Pro
 		if _, dead := m.actorDeaths[actor.ID]; dead {
 			continue
 		}
-		if actor.ID == 0 || scene.IsLocalActor(ctx, actor.ID) || !actorHasVending(actor) {
+		if actor.ID == 0 || scene.IsLocalActor(ctx, actor.ID) || !social.ActorHasVending(actor) {
 			continue
 		}
 		bounds, ok := vendingBoardActorBounds(ctx, projection, actor, now)
@@ -223,7 +224,7 @@ func (m *WorldMode) hoveredChatRoomBoard(ctx client.Context, projection scene.Pr
 		if _, dead := m.actorDeaths[actor.ID]; dead {
 			continue
 		}
-		if actor.ID == 0 || scene.IsLocalActor(ctx, actor.ID) || !actorHasChatRoom(actor) {
+		if actor.ID == 0 || scene.IsLocalActor(ctx, actor.ID) || !social.ActorHasChatRoom(actor) {
 			continue
 		}
 		bounds, ok := m.chatRoomBoardActorBounds(ctx, projection, actor, now)
@@ -264,7 +265,7 @@ func (m *WorldMode) chatRoomBoardActorBounds(ctx client.Context, projection scen
 	point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 	topY := actorSpriteTopY(float64(point.Y), scale) - boardLabelGap - boardLabelHeight(label)
-	if actorHasVending(actor) {
+	if social.ActorHasVending(actor) {
 		topY -= boardLabelHeight(actor.VendingName) + boardLabelGap
 	}
 	return boardLabelBounds(label, float64(point.X), topY)

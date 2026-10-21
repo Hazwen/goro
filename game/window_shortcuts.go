@@ -27,7 +27,7 @@ func (m *WorldMode) windowShortcutAllowed(ctx client.Context, code input.KeyCode
 		case gpucontext.KeyE, gpucontext.KeyQ, gpucontext.KeyS, gpucontext.KeyA,
 			gpucontext.KeyZ, gpucontext.KeyH, gpucontext.KeyW, gpucontext.KeyV:
 		case gpucontext.KeyC:
-			target = &m.ui.chatRoomCreate.Window
+			target = &m.ui.social.ChatRoomCreate.Window
 		case gpucontext.KeyJ:
 			target = &m.ui.petInfoWindow.Window
 		case gpucontext.KeyR:
@@ -60,19 +60,19 @@ func (m *WorldMode) toggleWindowFromInput(ctx client.Context) bool {
 		case gpucontext.KeyA:
 			m.ui.statsWindow.Toggle(ctx)
 		case gpucontext.KeyZ:
-			m.ui.friendsWindow.ToggleParty(ctx)
+			m.ui.social.FriendsWindow.ToggleParty(ctx)
 		case gpucontext.KeyH:
-			m.ui.friendsWindow.ToggleFriends(ctx)
+			m.ui.social.FriendsWindow.ToggleFriends(ctx)
 		case gpucontext.KeyW:
 			m.ui.cartWindow.Toggle(ctx)
 		case gpucontext.KeyV:
 			m.ui.characterWindow.ToggleCompact()
 			m.ui.basicMenu.FollowCharacterWindow(ctx, &m.ui.characterWindow)
 		case gpucontext.KeyC:
-			if m.ui.chatRoomCreate.IsOpen() {
-				m.ui.chatRoomCreate.Close()
+			if m.ui.social.ChatRoomCreate.IsOpen() {
+				m.ui.social.ChatRoomCreate.Close()
 			} else {
-				m.ui.chatRoomCreate.Open(ctx)
+				m.ui.social.ChatRoomCreate.Open(ctx)
 			}
 		case gpucontext.KeyJ:
 			if m.ui.petInfoWindow.IsOpen() {

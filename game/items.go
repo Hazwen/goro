@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
@@ -119,7 +120,7 @@ func (m *WorldMode) applyItemPickupAck(ctx client.Context, ack network.ItemPicku
 	}
 	gained := item.Amount
 	if ack.Result == itemPickupResultReceive {
-		if previous, ok := findSessionInventoryItem(ctx.Session, ack.Index); ok && previous.ItemID == ack.ItemID {
+		if previous, ok := session.FindInventoryItem(ctx.Session, ack.Index); ok && previous.ItemID == ack.ItemID {
 			gained = item.Amount - previous.Amount
 			if gained <= 0 {
 				gained = item.Amount
@@ -146,7 +147,7 @@ func (m *WorldMode) requestPickup(ctx client.Context, item worldstate.FloorItem,
 	if ctx.PlayerHasEffectState(db.EffectStateHide) {
 		return false
 	}
-	if playerIsDead(ctx) {
+	if scene.PlayerIsDead(ctx) {
 		return false
 	}
 	if ctx.Network == nil {
@@ -661,7 +662,7 @@ func (m *WorldMode) skillIconTexture(manager *res.Manager, skill session.Skill) 
 	}
 	resourceName, ok := manager.SkillResourceName(int(skill.ID))
 	if !ok {
-		resourceName = strings.ToUpper(strings.ReplaceAll(skillLabel(skill), " ", "_"))
+		resourceName = strings.ToUpper(strings.ReplaceAll(skills.SkillLabel(skill), " ", "_"))
 	}
 	key := fmt.Sprintf("__skill_icon_%d_%s", skill.ID, resourceName)
 	if m.mapScene.Textures == nil {

@@ -111,23 +111,6 @@ func applySpiritSphereCount(ctx client.Context, update network.SpiritSphereCount
 	return true
 }
 
-// Like GameModeShowEFST, this updates the displayed effects without replacing
-// the actor's movement, appearance, or body/health states.
-func applyNPCShowEffectUpdate(ctx client.Context, update network.NPCShowEffectUpdate) bool {
-	if ctx.World == nil {
-		return false
-	}
-	actor, ok := ctx.World.Actors[update.ActorID]
-	if !ok {
-		return false
-	}
-	actor.Opt3State = update.Opt3State
-	actor.HasState = true
-	actor.Level, actor.HasLevel = update.Level, true
-	ctx.World.Actors[actor.ID] = actor
-	return true
-}
-
 func (m *WorldMode) applySoulLinkerMonsterSkill(ctx client.Context, notify network.SkillNoDamageNotify) {
 	var bit uint32
 	switch notify.SkillID {

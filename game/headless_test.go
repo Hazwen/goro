@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/companion"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
@@ -36,8 +37,8 @@ func TestHeadlessCombatKeepsStateWithoutVisuals(t *testing.T) {
 	mode := NewWorldMode()
 
 	mode.applySkillCastNotify(ctx, network.SkillCastNotify{SourceID: sess.AccountID, TargetID: 300, SkillID: db.SkillMGFirebolt, DelayTime: 500})
-	if anim := mode.actorAnims[sess.AccountID]; anim.duration != 500*time.Millisecond {
-		t.Fatalf("cast duration = %v, want server's 500 ms", anim.duration)
+	if anim := mode.actorAnims[sess.AccountID]; anim.Duration != 500*time.Millisecond {
+		t.Fatalf("cast duration = %v, want server's 500 ms", anim.Duration)
 	}
 	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
 		SourceID: 300, TargetID: sess.AccountID, SourceSpeed: 600, TargetSpeed: 250, Damage: 10,
@@ -45,8 +46,8 @@ func TestHeadlessCombatKeepsStateWithoutVisuals(t *testing.T) {
 	if actor := world.Actors[300]; actor.AITargetID != sess.AccountID || actor.AIMotion != companion.MotionAttack {
 		t.Fatalf("monster combat state was lost: %+v", actor)
 	}
-	if anim := mode.actorAnims[300]; anim.duration != 600*time.Millisecond {
-		t.Fatalf("attack duration = %v, want server's 600 ms", anim.duration)
+	if anim := mode.actorAnims[300]; anim.Duration != 600*time.Millisecond {
+		t.Fatalf("attack duration = %v, want server's 600 ms", anim.Duration)
 	}
 	mode.applyRecovery(ctx, network.Recovery{StatusID: network.StatusHP, Amount: 20})
 	if sess.Vitals.HP != 70 {
@@ -56,7 +57,7 @@ func TestHeadlessCombatKeepsStateWithoutVisuals(t *testing.T) {
 	mode.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: sess.AccountID, SkillID: db.SkillMGFirewall, X: 10, Y: 20})
 	mode.applyEmotionNotify(ctx, network.EmotionNotify{GID: 300, Type: 0})
 	mode.applySpeechBubble(ctx, network.ChatMessage{GID: 300, Text: "hello"}, time.Now())
-	if err := mode.applyNPCCutin(ctx, network.NPCCutin{Image: "headless-unused", Position: network.NPCCutinLeft}); err != nil {
+	if err := mode.npc().ApplyCutin(ctx, network.NPCCutin{Image: "headless-unused", Position: network.NPCCutinLeft}); err != nil {
 		t.Fatal(err)
 	}
 	mode.reloadPlayerSpriteView(ctx, "test")
@@ -97,7 +98,7 @@ func TestHeadlessSongSkillsStillSendChat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	networkClient, conn := newBotTestConnection(t, 20080910)
+	networkClient, conn := testutil.NewConnection(t, 20080910)
 	sess := session.New()
 	sess.AccountID, sess.CharID = 2000000, 150000
 	sess.Selected = session.Character{ID: sess.CharID, Name: "Tester", Job: db.JobDancer}
@@ -136,7 +137,7 @@ end
 `, output)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	networkClient, conn := newBotTestConnection(t, 20080910)
+	networkClient, conn := testutil.NewConnection(t, 20080910)
 	sess := session.New()
 	sess.AccountID, sess.CharID = 2000000, 150000
 	sess.Vitals.HP, sess.Vitals.MaxHP = 100, 100
@@ -167,7 +168,7 @@ end
 	}
 	mode.startServerProgress(ctx, network.ProgressBar{Duration: time.Hour}, time.Now())
 	update("0")
-	mode.serverProgress.started = time.Now().Add(-2 * time.Hour)
+	mode.npcSystem.Progress.Started = time.Now().Add(-2 * time.Hour)
 	update("1")
 	readBotTestPackets(t, conn, network.BuildProgressBarDonePacket())
 	mode.startActorDeath(ctx, sess.AccountID)

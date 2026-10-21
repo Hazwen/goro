@@ -16,6 +16,7 @@ import (
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -240,7 +241,7 @@ func TestBardNativeAnimationFrames(t *testing.T) {
 		frames []int
 	}{{db.SkillBaWhistle, []int{1, 2, 3, 1, 2, 3}}, {db.SkillBDRokisweil, []int{1, 2, 3, 2, 1, 2}}, {db.SkillBaFrostjoke, []int{4, 5, 4, 5, 4, 5}}, {db.SkillBaPangvoice, []int{4, 5, 4, 5, 4, 5}}} {
 		m := &WorldMode{}
-		m.startSkillActionAnimation(ctx, 2000000, ctx.World.Player, skillAction(tc.skill), start, time.Second)
+		m.startSkillActionAnimation(ctx, 2000000, ctx.World.Player, effects.SkillAction(tc.skill), start, time.Second)
 		for i, frame := range tc.frames {
 			now := start.Add(time.Duration(i)*10*db.EffectFrameDuration + time.Millisecond)
 			anim, _ := m.actorAnimation(2000000, now)
@@ -252,18 +253,18 @@ func TestBardNativeAnimationFrames(t *testing.T) {
 		}
 		if tc.skill == db.SkillBaFrostjoke || tc.skill == db.SkillBaPangvoice {
 			anim, _ := m.actorAnimation(2000000, start.Add(1800*time.Millisecond))
-			if anim.actionFamily != scene.SpriteActionIdle {
+			if anim.ActionFamily != scene.SpriteActionIdle {
 				t.Fatal("shout animation must stop after 1800ms")
 			}
 		} else {
 			m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: db.SkillBDAdaptation, SourceID: 2000000, TargetID: 2000000, Result: 1})
-			if m.actorAnims[2000000].actionFamily != scene.SpriteActionIdle {
+			if m.actorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
 				t.Fatal("Adaptation must return to standing")
 			}
 		}
 	}
 	m := &WorldMode{}
-	m.startSkillActionAnimation(ctx, 2000000, ctx.World.Player, attackSkillActionSpec, start, time.Second)
+	m.startSkillActionAnimation(ctx, 2000000, ctx.World.Player, effects.AttackSkillActionSpec, start, time.Second)
 	m.stopPerformance(ctx, network.StatusEffectChange{StatusID: db.StatusBdplaying})
 	if len(m.actorAnims) != 2 {
 		t.Fatal("ending a song cancelled an unrelated attack")
@@ -285,17 +286,17 @@ func TestGypsySkillAnimationsWithClientAssets(t *testing.T) {
 		a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillCGArrowvulcan, SourceSpeed: 500, HitCount: 9, Damage: 100}
 		m.applyActorActionNotify(ctx, a)
 		anim := m.actorAnims[a.SourceID]
-		if anim.actionFamily != sprites.ActionPCAttack3 || anim.next == nil || anim.next.actionFamily != sprites.ActionPCAttack2 {
+		if anim.ActionFamily != sprites.ActionPCAttack3 || anim.Next == nil || anim.Next.ActionFamily != sprites.ActionPCAttack2 {
 			t.Fatal("Gypsy must shoot with ACT 88, then use her whip attack for additional hits")
 		}
-		for _, step := range []actorAnimation{anim, *anim.next, *anim.next.next} {
-			index, action, ok := sprites.ResolveAction(view.Body.Act, step.actionFamily, direction)
-			if !ok || index/8 != step.actionFamily || step.hasFixedMotion && step.fixedMotion >= len(action.Animations) {
+		for _, step := range []scene.ActorAnimation{anim, *anim.Next, *anim.Next.Next} {
+			index, action, ok := sprites.ResolveAction(view.Body.Act, step.ActionFamily, direction)
+			if !ok || index/8 != step.ActionFamily || step.HasFixedMotion && step.FixedMotion >= len(action.Animations) {
 				t.Fatal("Gypsy attack must use its requested action and frame without fallback")
 			}
 			state := sprites.State{Direction: direction}
 			applyActorAnimationToSpriteState(&state, step, true)
-			billboard, ok := sprites.HumanoidBillboard(view, state, step.started)
+			billboard, ok := sprites.HumanoidBillboard(view, state, step.Started)
 			if !ok || billboard == nil || billboard.Image == nil {
 				t.Fatalf("Gypsy attack failed to render for direction %d", direction)
 			}
@@ -303,14 +304,14 @@ func TestGypsySkillAnimationsWithClientAssets(t *testing.T) {
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillCGHermode, SourceID: a.SourceID})
 		dance := m.actorAnims[a.SourceID]
 		_, action, ok := sprites.ResolveAction(view.Body.Act, sprites.ActionPCSkill, direction)
-		if !ok || len(action.Animations) < 4 || !dance.pingPong {
+		if !ok || len(action.Animations) < 4 || !dance.PingPong {
 			t.Fatal("Gypsy must have the complete three-frame dance, without falling back to another action")
 		}
 		state := sprites.State{Direction: direction}
 		applyActorAnimationToSpriteState(&state, dance, true)
 		for i, want := range []int{1, 2, 3, 2, 1} {
-			at := dance.started.Add(time.Duration(i) * dance.speed)
-			if got := sprites.BodyMotionForState(action, state, dance.started, at); got != want {
+			at := dance.Started.Add(time.Duration(i) * dance.Speed)
+			if got := sprites.BodyMotionForState(action, state, dance.Started, at); got != want {
 				t.Fatalf("Gypsy dance frame %d: got %d, want %d", i, got, want)
 			}
 		}
@@ -371,7 +372,7 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 		for _, skill := range []uint16{db.SkillCRSlimpitcher, db.SkillCRAciddemonstration} {
 			m.startSkillSourceCastAnimation(ctx, 2000000, skill, 3*time.Second, start)
 			anim := m.actorAnims[2000000]
-			if anim.actionFamily != sprites.ActionPCAttack1 || anim.duration != time.Second || anim.speed != 10*db.EffectFrameDuration || anim.length != 5 || anim.loop {
+			if anim.ActionFamily != sprites.ActionPCAttack1 || anim.Duration != time.Second || anim.Speed != 10*db.EffectFrameDuration || anim.Length != 5 || anim.Loop {
 				t.Fatal("Creator throw must use the finite native five-frame ACT 40 sequence")
 			}
 			for direction := 0; direction < 8; direction++ {
@@ -382,7 +383,7 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 				state := sprites.State{Direction: direction}
 				applyActorAnimationToSpriteState(&state, anim, true)
 				for i, want := range []int{0, 1, 2, 3, 4, 4} {
-					at := start.Add(time.Duration(i)*anim.speed + time.Millisecond)
+					at := start.Add(time.Duration(i)*anim.Speed + time.Millisecond)
 					if got := sprites.BodyMotionForState(action, state, start, at); got != want {
 						t.Fatalf("throw step %d: got frame %d, want %d", i, got, want)
 					}
@@ -404,8 +405,8 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 	} {
 		m := &WorldMode{}
 		m.startSkillSourceCastAnimation(ctx, 2000000, tc.skill, time.Second, start)
-		m.addSkillCastEffects(ctx, tc.skill, 1, 2000000, 0, 0, 0, time.Second, start, "test")
-		if m.actorAnims[2000000].actionFamily != tc.pose || len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.aura {
+		m.effects().AddSkillCastEffects(ctx, tc.skill, 1, 2000000, 0, 0, 0, time.Second, start, "test")
+		if m.actorAnims[2000000].ActionFamily != tc.pose || len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.aura {
 			t.Fatalf("incorrect cast pose or aura for skill %d", tc.skill)
 		}
 	}
@@ -480,7 +481,7 @@ func TestHighWizardClientAssets(t *testing.T) {
 		{db.SkillHWMagiccrasher, 55}, {db.SkillHWMagicpower, 16}, {db.SkillHWNapalmvulcan, 55}, {db.SkillHWGanbantein, 58}, {db.SkillHWGravitation, 55},
 	} {
 		m := &WorldMode{}
-		m.addSkillCastEffects(ctx, tc.skill, 3, 2000000, 0, 0, 0, time.Second, start, "test")
+		m.effects().AddSkillCastEffects(ctx, tc.skill, 3, 2000000, 0, 0, 0, time.Second, start, "test")
 		if len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.aura {
 			t.Fatalf("incorrect native casting aura for %d", tc.skill)
 		}
@@ -907,7 +908,7 @@ func TestMonkTwoFrameSkillsKeepTheirOriginalTiming(t *testing.T) {
 				SourceID: 2000000, TargetID: 300, SkillID: skillID, SourceSpeed: sourceSpeed,
 				Action: network.ActorActionSkill, HitCount: 1, Damage: 100,
 			})
-			started := m.actorAnims[150000].started
+			started := m.actorAnims[150000].Started
 			action := res.ACTAction{DelayMS: 100, Animations: make([]res.ACTAnimation, 8)}
 			for _, tc := range []struct {
 				elapsed time.Duration
@@ -936,12 +937,12 @@ func TestBladeStopFreezesAndReleasesBothActors(t *testing.T) {
 	ctx := testutil.MonkEffectContext()
 	m := &WorldMode{}
 	now := time.Now()
-	m.setActorAction(ctx, 300, actorAnimation{actionFamily: sprites.ActionPCAttack1, started: now, fixedMotion: 2, hasFixedMotion: true})
+	m.setActorAction(ctx, 300, scene.ActorAnimation{ActionFamily: sprites.ActionPCAttack1, Started: now, FixedMotion: 2, HasFixedMotion: true})
 	m.applyActorBladeStop(ctx, network.ActorBladeStop{SourceID: 2000000, TargetID: 300, Active: true})
-	if anim := m.actorAnims[150000]; anim.actionFamily != sprites.ActionPCSkill || anim.fixedMotion != 4 || anim.play {
+	if anim := m.actorAnims[150000]; anim.ActionFamily != sprites.ActionPCSkill || anim.FixedMotion != 4 || anim.Play {
 		t.Fatalf("caster pose = %+v", anim)
 	}
-	if anim := m.actorAnims[300]; anim.actionFamily != sprites.ActionPCAttack1 || anim.play || !anim.hasFixedMotion || anim.fixedMotion != 2 {
+	if anim := m.actorAnims[300]; anim.ActionFamily != sprites.ActionPCAttack1 || anim.Play || !anim.HasFixedMotion || anim.FixedMotion != 2 {
 		t.Fatalf("victim was put in another animation: %+v", anim)
 	}
 	for _, id := range []uint32{2000000, 300} {
@@ -949,14 +950,14 @@ func TestBladeStopFreezesAndReleasesBothActors(t *testing.T) {
 		if tint := actorStateTint(actor); tint != (color.RGBA{R: 64, G: 64, B: 64, A: 255}) {
 			t.Fatalf("Blade Stop tint = %v", tint)
 		}
-		if anim, ok := m.actorAnimation(id, time.Now().Add(time.Minute)); !ok || !anim.hasFixedMotion {
+		if anim, ok := m.actorAnimation(id, time.Now().Add(time.Minute)); !ok || !anim.HasFixedMotion {
 			t.Fatalf("actor %d resumed before Blade Stop release", id)
 		}
 	}
 	m.applyActorBladeStop(ctx, network.ActorBladeStop{SourceID: 2000000, TargetID: 300})
 	for _, id := range []uint32{2000000, 150000, 300} {
 		actor, _, _ := scene.ActorForCombatID(ctx, id)
-		if actor.Opt3State&db.Opt3Bladestop != 0 || !m.actorAnims[id].play || m.actorAnims[id].hasFixedMotion {
+		if actor.Opt3State&db.Opt3Bladestop != 0 || !m.actorAnims[id].Play || m.actorAnims[id].HasFixedMotion {
 			t.Fatalf("actor %d still stopped after release", id)
 		}
 	}
@@ -964,25 +965,25 @@ func TestBladeStopFreezesAndReleasesBothActors(t *testing.T) {
 
 func TestNinjaPosesAndMirrorImage(t *testing.T) {
 	for _, skill := range []uint16{523, 527, 528, 534, 537, 540, 543} {
-		spec := skillAction(skill)
+		spec := effects.SkillAction(skill)
 		first, last, duration := 0, 1, 500*time.Millisecond
 		if skill == 523 || skill == 534 || skill == 540 || skill == 543 {
 			first, last, duration = 2, 5, time.Second
 		}
 		total := time.Duration(0)
 		for frame := first; frame <= last; frame++ {
-			if spec.action != skillActorActionSkill || !spec.hasFrame || spec.frame != frame || spec.play {
+			if spec.Action != effects.SkillActorActionSkill || !spec.HasFrame || spec.Frame != frame || spec.Play {
 				t.Fatalf("skill %d wrong ACT pose %+v", skill, spec)
 			}
-			total += spec.duration
+			total += spec.Duration
 			if frame < last {
-				if spec.next == nil {
+				if spec.Next == nil {
 					t.Fatal("missing pose")
 				}
-				spec = *spec.next
+				spec = *spec.Next
 			}
 		}
-		if total != duration || spec.next != nil {
+		if total != duration || spec.Next != nil {
 			t.Fatalf("skill %d wrong animation lifetime", skill)
 		}
 	}
@@ -1507,7 +1508,7 @@ func TestStarGladiatorWarmthStatusAndSkillPackets(t *testing.T) {
 			t.Fatal("Warmth release must restart its state effects, add red particles, and delay the sound ten ticks")
 		}
 		anim := m.actorAnims[100]
-		if anim.actionFamily != sprites.ActionPCSkill || anim.fixedMotion != 3 || !anim.hasFixedMotion || anim.duration != time.Second {
+		if anim.ActionFamily != sprites.ActionPCSkill || anim.FixedMotion != 3 || !anim.HasFixedMotion || anim.Duration != time.Second {
 			t.Fatalf("Warmth release pose: %+v", anim)
 		}
 		m.applyStatusEffectChange(ctx, network.StatusEffectChange{StatusID: status, Active: false})
@@ -1533,13 +1534,13 @@ func TestFusionPresentationDoesNotAdvanceUnrelatedAnimations(t *testing.T) {
 				m.effects().FusionHeight(actor, now.Add(-db.EffectFrameDuration), false)
 				actor.EffectState = 0
 			}
-			anim := actorAnimation{
-				actionFamily: sprites.ActionPCSkill,
-				started:      now.Add(-2 * time.Second),
-				duration:     time.Second,
-				next:         &actorAnimation{actionFamily: scene.SpriteActionIdle, loop: true},
+			anim := scene.ActorAnimation{
+				ActionFamily: sprites.ActionPCSkill,
+				Started:      now.Add(-2 * time.Second),
+				Duration:     time.Second,
+				Next:         &scene.ActorAnimation{ActionFamily: scene.SpriteActionIdle, Loop: true},
 			}
-			m.actorAnims = map[uint32]actorAnimation{actor.ID: anim}
+			m.actorAnims = map[uint32]scene.ActorAnimation{actor.ID: anim}
 			m.starFusionHeight(actor, now)
 			if got := m.actorAnims[actor.ID]; !reflect.DeepEqual(got, anim) {
 				t.Fatal("Fusion presentation advanced a non-flying actor's animation queue")
@@ -1607,13 +1608,13 @@ func TestTaekwonReadyPosesBelongToSkillPackets(t *testing.T) {
 		}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: tc.skill, SourceID: 2000000, TargetID: 2000000, Result: 1})
 		anim := m.actorAnims[100]
-		if anim.actionFamily != tc.family || !anim.hasFixedMotion || anim.fixedMotion != tc.frame || anim.play || anim.duration != 2*time.Second {
+		if anim.ActionFamily != tc.family || !anim.HasFixedMotion || anim.FixedMotion != tc.frame || anim.Play || anim.Duration != 2*time.Second {
 			t.Fatalf("skill %d ready animation: %+v", tc.skill, anim)
 		}
 		if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != effects.TaeReady {
 			t.Fatalf("skill %d must flash blue: %+v", tc.skill, m.effects().Active)
 		}
-		if _, ok := m.actorAnimation(100, anim.started.Add(2*time.Second)); ok {
+		if _, ok := m.actorAnimation(100, anim.Started.Add(2*time.Second)); ok {
 			t.Fatal("ready pose did not expire")
 		}
 	}
@@ -1897,7 +1898,7 @@ func TestApplyTrickDeadStatusHoldsDeathPose(t *testing.T) {
 		Active:   true,
 	})
 	anim, ok := mode.actorAnimation(150000, time.Now())
-	if !ok || anim.actionFamily != sprites.ActionPCDeath || !anim.holdFinal {
+	if !ok || anim.ActionFamily != sprites.ActionPCDeath || !anim.HoldFinal {
 		t.Fatalf("trick dead animation = %+v ok=%t, want held death pose", anim, ok)
 	}
 
@@ -1907,7 +1908,7 @@ func TestApplyTrickDeadStatusHoldsDeathPose(t *testing.T) {
 		Active:   false,
 	})
 	anim, ok = mode.actorAnimation(150000, time.Now())
-	if !ok || anim.actionFamily != scene.SpriteActionIdle || anim.holdFinal {
+	if !ok || anim.ActionFamily != scene.SpriteActionIdle || anim.HoldFinal {
 		t.Fatalf("trick dead inactive animation = %+v ok=%t, want idle", anim, ok)
 	}
 }
@@ -1919,7 +1920,7 @@ func TestTrickDeadSkillDoesNotStartDefaultSkillAction(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 	mode := &WorldMode{}
 
-	if action := skillAction(db.SkillNVTrickdead); !action.defined || action.action != skillActorActionNone {
+	if action := effects.SkillAction(db.SkillNVTrickdead); !action.Defined || action.Action != effects.SkillActorActionNone {
 		t.Fatalf("trick dead skill action = %+v, want no source action", action)
 	}
 	mode.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{
@@ -1940,7 +1941,7 @@ func TestBackSlideSkillDoesNotStartDefaultSkillAction(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 	mode := &WorldMode{}
 
-	if action := skillAction(db.SkillTFBacksliding); !action.defined || action.action != skillActorActionNone {
+	if action := effects.SkillAction(db.SkillTFBacksliding); !action.Defined || action.Action != effects.SkillActorActionNone {
 		t.Fatalf("back slide skill action = %+v, want no source action", action)
 	}
 	mode.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{
@@ -3306,11 +3307,12 @@ func TestCursorMagnetOffsetSnapsTargetSkillToSelf(t *testing.T) {
 		},
 		World: world,
 	}
-	mode := &WorldMode{pendingSkill: pendingSkillTarget{skill: session.Skill{
+	mode := &WorldMode{skillSystem: skills.System{Pending: skills.PendingTarget{Skill: session.Skill{
 		ID:    db.SkillAMPotionpitcher,
-		Type:  skillTargetFriend,
+		Type:  skills.SkillTargetFriend,
 		Range: 9,
-	}}}
+	}}},
+	}
 
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(10), scene.CellCenter(20), 0)
 	targetX, targetY := actorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
@@ -3347,11 +3349,12 @@ func TestCursorMagnetOffsetSnapsTargetSkillToHomunculus(t *testing.T) {
 		},
 		World: world,
 	}
-	mode := &WorldMode{pendingSkill: pendingSkillTarget{skill: session.Skill{
+	mode := &WorldMode{skillSystem: skills.System{Pending: skills.PendingTarget{Skill: session.Skill{
 		ID:    db.SkillAMPotionpitcher,
-		Type:  skillTargetFriend,
+		Type:  skills.SkillTargetFriend,
 		Range: 9,
-	}}}
+	}}},
+	}
 
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(11), scene.CellCenter(20), 0)
 	targetX, targetY := actorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
@@ -3445,14 +3448,14 @@ func TestWalkingSpriteStateIgnoresReadyFightAnimation(t *testing.T) {
 		Loop:         true,
 	}
 
-	if applyActorAnimationToSpriteState(&state, actorAnimation{actionFamily: sprites.ActionPCReadyFight, loop: true}, true) {
+	if applyActorAnimationToSpriteState(&state, scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}, true) {
 		t.Fatal("ready fight should not override walking state")
 	}
 	if state.ActionFamily != scene.SpriteActionWalk || !state.Moving {
 		t.Fatalf("state = %+v, want still walking", state)
 	}
 
-	if !applyActorAnimationToSpriteState(&state, actorAnimation{actionFamily: sprites.ActionPCDeath}, true) {
+	if !applyActorAnimationToSpriteState(&state, scene.ActorAnimation{ActionFamily: sprites.ActionPCDeath}, true) {
 		t.Fatal("death should override walking state")
 	}
 	if state.ActionFamily != sprites.ActionPCDeath || state.Moving {
@@ -3460,7 +3463,7 @@ func TestWalkingSpriteStateIgnoresReadyFightAnimation(t *testing.T) {
 	}
 
 	nonPC := sprites.State{ActionFamily: scene.SpriteActionWalk, Moving: true, Loop: true}
-	if !applyActorAnimationToSpriteState(&nonPC, actorAnimation{actionFamily: sprites.ActionNonPCDeath}, false) {
+	if !applyActorAnimationToSpriteState(&nonPC, scene.ActorAnimation{ActionFamily: sprites.ActionNonPCDeath}, false) {
 		t.Fatal("non-pc death should override walking state")
 	}
 	if nonPC.ActionFamily != sprites.ActionNonPCDeath || nonPC.Moving {

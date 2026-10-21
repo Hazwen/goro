@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
@@ -43,14 +44,14 @@ func (m *WorldMode) applyActorStateChange(ctx client.Context, change network.Act
 		}
 	}
 	if local {
-		if !localStealthAllowsSkill(ctx, 0) {
+		if !skills.LocalStealthAllowsSkill(ctx, 0) {
 			m.cancelAttackIntent()
 		}
 		if ctx.PlayerHasEffectState(db.EffectStateHide) {
 			m.pendingPickup = pickupIntent{}
 		}
-		if !localStealthAllowsSkill(ctx, m.pendingSkill.skill.ID) {
-			m.pendingSkill = pendingSkillTarget{}
+		if !skills.LocalStealthAllowsSkill(ctx, m.skillSystem.Pending.Skill.ID) {
+			m.skillSystem.Pending = skills.PendingTarget{}
 		}
 		if newVisualJob := localPlayerVisualJob(ctx); newVisualJob != oldVisualJob {
 			m.reloadPlayerSpriteView(ctx, fmt.Sprintf("state effect=0x%08X", change.EffectState))
@@ -62,8 +63,8 @@ func (m *WorldMode) applyActorStateChange(ctx client.Context, change network.Act
 		if m.pendingAttack.targetID == change.ID || m.lockedAttackID == change.ID {
 			m.cancelAttackIntent()
 		}
-		if m.pendingSkill.targetID == change.ID {
-			m.pendingSkill = pendingSkillTarget{}
+		if m.skillSystem.Pending.TargetID == change.ID {
+			m.skillSystem.Pending = skills.PendingTarget{}
 		}
 		if m.attackFocusID == change.ID {
 			m.clearAttackFocus()
@@ -109,7 +110,7 @@ func (m *WorldMode) applyActorBladeStopSide(ctx client.Context, actorID, lookID 
 		return
 	}
 	now := time.Now()
-	anim := actorAnimation{actionFamily: scene.SpriteActionIdle, started: now, play: true, hasPlay: true}
+	anim := scene.ActorAnimation{ActionFamily: scene.SpriteActionIdle, Started: now, Play: true, HasPlay: true}
 	if active {
 		// Freeze the victim's current frame, before stopping movement or turning.
 		state := m.nonPCSpriteState(actor, now)
@@ -126,20 +127,20 @@ func (m *WorldMode) applyActorBladeStopSide(ctx client.Context, actorID, lookID 
 		} else if view := m.nonPCSpriteView(ctx, actor); view != nil {
 			started = view.Started
 		}
-		anim.actionFamily = state.ActionFamily
-		anim.fixedMotion = state.FixedMotion
+		anim.ActionFamily = state.ActionFamily
+		anim.FixedMotion = state.FixedMotion
 		renderActor := actor
 		renderActor.Dir = sprites.DirectionForCamera(actor.Dir, scene.CameraYawForMap(ctx))
 		if action, ok := m.actorResolvedAction(ctx, renderActor, state.ActionFamily); ok {
-			anim.fixedMotion = sprites.BodyMotionForState(action, state, started, now)
+			anim.FixedMotion = sprites.BodyMotionForState(action, state, started, now)
 		}
 		if caster && res.HasPlayerJobToken(scene.ActorVisualJob(actor)) {
-			anim.actionFamily = sprites.ActionPCSkill
-			anim.fixedMotion = 4
+			anim.ActionFamily = sprites.ActionPCSkill
+			anim.FixedMotion = 4
 		}
-		anim.play = false
-		anim.hasFixedMotion = true
-		anim.holdFinal = true
+		anim.Play = false
+		anim.HasFixedMotion = true
+		anim.HoldFinal = true
 		actor.Opt3State |= db.Opt3Bladestop
 	} else {
 		actor.Opt3State &^= db.Opt3Bladestop

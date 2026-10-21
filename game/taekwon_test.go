@@ -11,7 +11,6 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
-	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -19,21 +18,6 @@ import (
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
 )
-
-func TestTaekwonFamilySkillEffectsMatchRobrowser(t *testing.T) {
-	spiritLinks := []uint16{
-		db.SkillSLAlchemist, db.SkillSLMonk, db.SkillSLStar, db.SkillSLSage,
-		db.SkillSLCrusader, db.SkillSLSupernovice, db.SkillSLKnight, db.SkillSLWizard,
-		db.SkillSLPriest, db.SkillSLBarddancer, db.SkillSLRogue, db.SkillSLAssasin,
-		db.SkillSLBlacksmith, db.SkillSLHunter, db.SkillSLSoullinker, db.SkillSLHigh,
-	}
-	for _, skillID := range spiritLinks {
-		expectEffectIDs(t, "spirit link", skillEffectIDs(skillID), 424, 503)
-	}
-	expectEffectIDs(t, "SG_FUSION", skillEffectIDs(db.SkillSGFusion))
-	expectEffectIDs(t, "SG_FUSION success", skillSuccessEffectSelfIDs(db.SkillSGFusion), effects.Quake)
-	expectEffectIDs(t, "SL_SKA", skillEffectIDs(db.SkillSLSka), effects.SteelBody, effects.Gumgang2, effects.Quake)
-}
 
 func TestStarWarmAndSoulLinkStatusTints(t *testing.T) {
 	swoo := actorStateTint(worldstate.Actor{Job: 1002, Opt3State: db.Opt3Overthrust})

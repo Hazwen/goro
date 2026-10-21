@@ -19,10 +19,10 @@ func TestWindowShortcutsToggle(t *testing.T) {
 		{"equipment", gpucontext.KeyQ, false, func(m *WorldMode) *gameui.Window { return &m.ui.equipmentWindow.Window }},
 		{"skills", gpucontext.KeyS, false, func(m *WorldMode) *gameui.Window { return &m.ui.skillWindow.Window }},
 		{"stats", gpucontext.KeyA, false, func(m *WorldMode) *gameui.Window { return &m.ui.statsWindow.Window }},
-		{"party", gpucontext.KeyZ, false, func(m *WorldMode) *gameui.Window { return &m.ui.friendsWindow.Window }},
-		{"friends", gpucontext.KeyH, false, func(m *WorldMode) *gameui.Window { return &m.ui.friendsWindow.Window }},
+		{"party", gpucontext.KeyZ, false, func(m *WorldMode) *gameui.Window { return &m.ui.social.FriendsWindow.Window }},
+		{"friends", gpucontext.KeyH, false, func(m *WorldMode) *gameui.Window { return &m.ui.social.FriendsWindow.Window }},
 		{"cart", gpucontext.KeyW, false, func(m *WorldMode) *gameui.Window { return &m.ui.cartWindow.Window }},
-		{"chat room", gpucontext.KeyC, false, func(m *WorldMode) *gameui.Window { return &m.ui.chatRoomCreate.Window }},
+		{"chat room", gpucontext.KeyC, false, func(m *WorldMode) *gameui.Window { return &m.ui.social.ChatRoomCreate.Window }},
 		{"pet", gpucontext.KeyJ, false, func(m *WorldMode) *gameui.Window { return &m.ui.petInfoWindow.Window }},
 		{"homunculus", gpucontext.KeyR, false, func(m *WorldMode) *gameui.Window { return &m.ui.companions.HomunculusInfo.Window }},
 		{"mercenary", gpucontext.KeyR, true, func(m *WorldMode) *gameui.Window { return &m.ui.companions.MercenaryInfo.Window }},
@@ -78,7 +78,7 @@ func TestWindowShortcutModifiersAndBlocking(t *testing.T) {
 				ctx.Input.SetKeyCode(tc.modifier, true)
 			}
 			if tc.blocked {
-				m.ui.chatRoomCreate.Open(ctx)
+				m.ui.social.ChatRoomCreate.Open(ctx)
 			}
 			if tc.consumed {
 				ctx.Input.ConsumeKeyCodePress(gpucontext.KeyO)

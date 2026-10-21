@@ -3,10 +3,13 @@ package game
 import (
 	"time"
 
+	"github.com/kivutar/goro/game/npc"
+
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/bot"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/session"
@@ -40,7 +43,7 @@ func (m *WorldMode) updateBotInput(ctx client.Context, keyboardAvailable bool) {
 }
 
 func (m *WorldMode) scriptAttack(ctx client.Context, id uint32) bool {
-	if playerIsDead(ctx) || ctx.World == nil {
+	if scene.PlayerIsDead(ctx) || ctx.World == nil {
 		return false
 	}
 	actor, ok := ctx.World.Actors[id]
@@ -67,7 +70,7 @@ func (m *WorldMode) scriptSkill(ctx client.Context, id uint32, skill session.Ski
 		}
 		skill.Level = requestedLevel
 	}
-	if isSelfTargetSkill(skill) {
+	if skills.IsSelfTargetSkill(skill) {
 		if id != scene.LocalSkillTarget(ctx) {
 			return false
 		}
@@ -107,7 +110,7 @@ func scriptUseItem(ctx client.Context, index int) bool {
 	if ctx.Session == nil || index <= 0 || index > int(^uint16(0)) {
 		return false
 	}
-	item, ok := findSessionInventoryItem(ctx.Session, uint16(index))
+	item, ok := session.FindInventoryItem(ctx.Session, uint16(index))
 	if !ok {
 		return false
 	}
@@ -156,22 +159,22 @@ func (mode *WorldMode) scriptSkillTargets(ctx client.Context, ignoreShift bool, 
 	if mode == nil || ctx.World == nil {
 		return result
 	}
-	pending := mode.pendingSkill
-	if pending.skill.ID == 0 || pending.targetID != 0 || isGroundTargetSkill(pending.skill) || isSelfTargetSkill(pending.skill) {
+	pending := mode.skillSystem.Pending
+	if pending.Skill.ID == 0 || pending.TargetID != 0 || skills.IsGroundTargetSkill(pending.Skill) || skills.IsSelfTargetSkill(pending.Skill) {
 		return result
 	}
-	override := skillTargetOverrideActive(ctx)
+	override := skills.SkillTargetOverrideActive(ctx)
 	if ignoreShift {
 		override = ctx.Session != nil && ctx.Session.NoShift
 	}
 	x, y := scene.CurrentPlayerCell(ctx, now)
 	appendTarget := func(actor worldstate.Actor) {
-		if _, dead := mode.actorDeaths[actor.ID]; dead || !actorCanBeSkillTargetedWithOverride(ctx, pending.skill, actor, override) {
+		if _, dead := mode.actorDeaths[actor.ID]; dead || !actorCanBeSkillTargetedWithOverride(ctx, pending.Skill, actor, override) {
 			return
 		}
 		result = append(result, actor)
 	}
-	if actor, ok, _ := scene.ActorForCombatID(ctx, scene.LocalSkillTarget(ctx)); ok && !playerIsDead(ctx) {
+	if actor, ok, _ := scene.ActorForCombatID(ctx, scene.LocalSkillTarget(ctx)); ok && !scene.PlayerIsDead(ctx) {
 		actor.X, actor.Y = x, y
 		appendTarget(actor)
 	}
@@ -187,17 +190,17 @@ func (m *WorldMode) scriptUsePendingSkill(ctx client.Context, id uint32) bool {
 	if m == nil || id == 0 {
 		return false
 	}
-	pending := m.pendingSkill
-	if pending.skill.ID == 0 || pending.targetID != 0 || isGroundTargetSkill(pending.skill) || isSelfTargetSkill(pending.skill) {
+	pending := m.skillSystem.Pending
+	if pending.Skill.ID == 0 || pending.TargetID != 0 || skills.IsGroundTargetSkill(pending.Skill) || skills.IsSelfTargetSkill(pending.Skill) {
 		return false
 	}
 	actor, ok, _ := scene.ActorForCombatID(ctx, id)
 	_, dead := m.actorDeaths[id]
-	if !ok || dead || !actorCanBeSkillTargeted(ctx, pending.skill, actor) {
+	if !ok || dead || !actorCanBeSkillTargeted(ctx, pending.Skill, actor) {
 		return false
 	}
-	if err := m.skills().UseTarget(ctx, pending.skill, actor, "script"); err != nil {
-		glog.Debugf("script pending skill failed skill=%d target=%d: %v", pending.skill.ID, id, err)
+	if err := m.skills().UseTarget(ctx, pending.Skill, actor, "script"); err != nil {
+		glog.Debugf("script pending skill failed skill=%d target=%d: %v", pending.Skill.ID, id, err)
 		return false
 	}
 	return true
@@ -213,7 +216,7 @@ func (m *WorldMode) scriptHighlightActor(ctx client.Context, id uint32) bool {
 	}
 	actor, ok, _ := scene.ActorForCombatID(ctx, id)
 	_, dead := m.actorDeaths[id]
-	if !ok || dead || isWarpActor(actor) || actor.Job == scene.ActorJobHiddenWarpNPC {
+	if !ok || dead || npc.IsWarpActor(actor) || actor.Job == scene.ActorJobHiddenWarpNPC {
 		return false
 	}
 	if m.scriptHighlight.id != id {
@@ -226,25 +229,25 @@ func (mode *WorldMode) scriptPendingSkill(ctx client.Context) (bot.PendingSkill,
 	if mode == nil {
 		return bot.PendingSkill{}, false
 	}
-	pending := mode.pendingSkill
-	if pending.skill.ID == 0 || pending.targetID != 0 {
+	pending := mode.skillSystem.Pending
+	if pending.Skill.ID == 0 || pending.TargetID != 0 {
 		return bot.PendingSkill{}, false
 	}
 	target := "actor"
-	if isGroundTargetSkill(pending.skill) {
+	if skills.IsGroundTargetSkill(pending.Skill) {
 		target = "ground"
-	} else if isSelfTargetSkill(pending.skill) {
+	} else if skills.IsSelfTargetSkill(pending.Skill) {
 		target = "self"
 	}
-	maxLevel := pending.maxLevel
+	maxLevel := pending.MaxLevel
 	if maxLevel <= 0 {
-		maxLevel = skillUseMaxLevel(pending.skill)
+		maxLevel = skills.SkillUseMaxLevel(pending.Skill)
 	}
-	result := bot.PendingSkill{Skill: pending.skill, MaxLevel: maxLevel, Target: target}
-	if caster, ok := skillCasterForSkill(ctx, pending.skill); ok {
-		result.CasterID = caster.id
-		result.CasterKind = skillCasterKindName(caster.kind)
-		result.CasterX, result.CasterY = skillCasterCell(caster, time.Now())
+	result := bot.PendingSkill{Skill: pending.Skill, MaxLevel: maxLevel, Target: target}
+	if caster, ok := skills.SkillCasterForSkill(ctx, pending.Skill); ok {
+		result.CasterID = caster.ID
+		result.CasterKind = skills.SkillCasterKindName(caster.Kind)
+		result.CasterX, result.CasterY = skills.SkillCasterCell(caster, time.Now())
 	}
 	return result, true
 }
@@ -336,11 +339,11 @@ func newLuaScript(ctx client.Context, mode Mode, path string) (*bot.Script, erro
 }
 
 func (m *WorldMode) controlScriptUI(ctx client.Context, action string) bool {
-	if m.uiInputSuspended() || !m.ui.npcInputAvailable() || !m.ui.npcDialog.IsOpen() {
+	if m.uiInputSuspended() || !m.ui.npcInputAvailable() || !m.ui.npc.Dialog.IsOpen() {
 		return false
 	}
 	if action == "" {
 		return true
 	}
-	return m.ui.npcDialog.Control(ctx, action)
+	return m.ui.npc.Dialog.Control(ctx, action)
 }

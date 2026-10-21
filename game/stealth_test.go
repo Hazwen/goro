@@ -10,6 +10,7 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -83,7 +84,7 @@ func TestStealthVisibilityAndPicking2008(t *testing.T) {
 						if _, ok := hoveredCursorActor(ctx, projection, 400, 300, time.Now(), nil); ok {
 							t.Fatal("hidden actor was hoverable")
 						}
-						if actorCanBeAttackClicked(ctx, actor) || actorCanOpenPlayerContext(ctx, actor) || actorCanBeSkillTargeted(ctx, session.Skill{ID: db.SkillALHeal, Type: skillTargetFriend}, actor) {
+						if actorCanBeAttackClicked(ctx, actor) || actorCanOpenPlayerContext(ctx, actor) || actorCanBeSkillTargeted(ctx, session.Skill{ID: db.SkillALHeal, Type: skills.SkillTargetFriend}, actor) {
 							t.Fatal("hidden actor was targetable")
 						}
 						if siegeActorShowsGuildEmblem(scene.ActorDrawEntry{Actor: actor}) {
@@ -140,7 +141,7 @@ func TestStealthDrawsShadowOrBlackBody(t *testing.T) {
 
 func TestStealthActionPackets(t *testing.T) {
 	ctx := stealthTestContext()
-	netClient, server := newBotTestConnection(t, 20080910)
+	netClient, server := testutil.NewConnection(t, 20080910)
 	ctx.Network = netClient
 	mode := &WorldMode{}
 	actor := worldstate.Actor{ID: 300, X: 11, Y: 20, Job: 1002, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob, HasState: true}
@@ -157,7 +158,7 @@ func TestStealthActionPackets(t *testing.T) {
 		if client.SetSitting(ctx, true) == nil || gameui.UseInventoryItem(ctx, item) == nil {
 			t.Fatal("Hiding allowed sitting or item use")
 		}
-		if mode.skills().Use(ctx, session.Skill{ID: db.SkillALHeal, Level: 1, Type: skillTargetFriend, Range: 9}, "test") == nil || mode.pendingSkill.skill.ID != 0 {
+		if mode.skills().Use(ctx, session.Skill{ID: db.SkillALHeal, Level: 1, Type: skills.SkillTargetFriend, Range: 9}, "test") == nil || mode.skillSystem.Pending.Skill.ID != 0 {
 			t.Fatal("Hiding started a forbidden skill")
 		}
 		return nil
@@ -183,7 +184,7 @@ func TestStealthActionPackets(t *testing.T) {
 		}
 		return nil
 	})
-	if err := mode.skills().Use(ctx, session.Skill{ID: db.SkillSTChasewalk, Type: skillTargetSelf, Level: 1}, "test"); err != nil {
+	if err := mode.skills().Use(ctx, session.Skill{ID: db.SkillSTChasewalk, Type: skills.SkillTargetSelf, Level: 1}, "test"); err != nil {
 		t.Fatal(err)
 	}
 	readBotTestPackets(t, server, network.BuildUseSkillToIDPacketForClientDate(db.SkillSTChasewalk, 1, ctx.Session.AccountID, 20080910))
@@ -208,7 +209,7 @@ func TestStealthActionPackets(t *testing.T) {
 func TestStealthDoesNotRestrictCompanionSkills(t *testing.T) {
 	ctx := stealthTestContext()
 	ctx.World.Player.EffectState = db.EffectStateHide | db.EffectStateChasewalk
-	if !localStealthAllowsSkill(ctx, db.SkillHomunBegin+1) || !localStealthAllowsSkill(ctx, db.SkillMercenaryBegin+1) {
+	if !skills.LocalStealthAllowsSkill(ctx, db.SkillHomunBegin+1) || !skills.LocalStealthAllowsSkill(ctx, db.SkillMercenaryBegin+1) {
 		t.Fatal("owner stealth restricted a companion's skills")
 	}
 }
@@ -235,10 +236,10 @@ func TestStealthCancelsQueuedActionsAndHidesAttachments(t *testing.T) {
 	}
 	mode.pendingAttack = attackIntent{targetID: actor.ID}
 	mode.lockedAttackID, mode.attackFocusID = actor.ID, actor.ID
-	mode.pendingSkill = pendingSkillTarget{skill: session.Skill{ID: db.SkillALHeal}, targetID: actor.ID}
+	mode.skillSystem.Pending = skills.PendingTarget{Skill: session.Skill{ID: db.SkillALHeal}, TargetID: actor.ID}
 	mode.applyActorStateChange(ctx, network.ActorStateChange{ID: actor.ID, EffectState: db.EffectStateCloak})
 	mode.effects().SyncLevel99AuraEffects(ctx, time.Now())
-	if mode.pendingAttack.targetID != 0 || mode.lockedAttackID != 0 || mode.attackFocusID != 0 || mode.pendingSkill.skill.ID != 0 || len(mode.effects().Active) != 0 {
+	if mode.pendingAttack.targetID != 0 || mode.lockedAttackID != 0 || mode.attackFocusID != 0 || mode.skillSystem.Pending.Skill.ID != 0 || len(mode.effects().Active) != 0 {
 		t.Fatal("hidden target retained an action or aura")
 	}
 	mode.applyActorStateChange(ctx, network.ActorStateChange{ID: actor.ID})
@@ -248,9 +249,9 @@ func TestStealthCancelsQueuedActionsAndHidesAttachments(t *testing.T) {
 	}
 	mode.pendingAttack = attackIntent{targetID: actor.ID}
 	mode.pendingPickup = pickupIntent{itemID: 400}
-	mode.pendingSkill = pendingSkillTarget{skill: session.Skill{ID: db.SkillALHeal}, targetID: actor.ID}
+	mode.skillSystem.Pending = skills.PendingTarget{Skill: session.Skill{ID: db.SkillALHeal}, TargetID: actor.ID}
 	mode.applyActorStateChange(ctx, network.ActorStateChange{ID: ctx.Session.AccountID, EffectState: db.EffectStateHide})
-	if mode.pendingAttack.targetID != 0 || mode.pendingPickup.itemID != 0 || mode.pendingSkill.skill.ID != 0 {
+	if mode.pendingAttack.targetID != 0 || mode.pendingPickup.itemID != 0 || mode.skillSystem.Pending.Skill.ID != 0 {
 		t.Fatal("Hiding retained a queued local action")
 	}
 	entry := scene.ActorDrawEntry{Actor: worldstate.Actor{ID: 100, EffectState: db.EffectStateHide | db.EffectStateCart1 | db.EffectStateFalcon, HasCart: true, HasCartState: true}}

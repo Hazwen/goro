@@ -31,7 +31,7 @@ func (m *WorldMode) applySpeechBubble(ctx client.Context, chat network.ChatMessa
 		return
 	}
 	text := speechBubbleText(chat.Text)
-	x, y, onTrap := m.skillUnitModelCell(chat.GID)
+	x, y, onTrap := m.skills().SkillUnitModelCell(chat.GID)
 	if onTrap {
 		text = strings.TrimSpace(chat.Text)
 	}
@@ -79,7 +79,7 @@ func speechBubbleActorIDs(ctx client.Context, chat network.ChatMessage) []uint32
 	if !ok || ctx.Session == nil {
 		return nil
 	}
-	if !strings.EqualFold(strings.TrimSpace(name), selectedCharacterName(ctx.Session)) {
+	if !strings.EqualFold(strings.TrimSpace(name), scene.SelectedCharacterName(ctx.Session)) {
 		return nil
 	}
 	ids := make([]uint32, 0, 2)

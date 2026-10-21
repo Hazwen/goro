@@ -7,12 +7,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kivutar/goro/game/npc"
+
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
@@ -56,11 +59,11 @@ func normalizePickScale(scale float64) float64 {
 }
 
 func actorCanBeSkillTargeted(ctx client.Context, skill session.Skill, actor worldstate.Actor) bool {
-	return actorCanBeSkillTargetedWithOverride(ctx, skill, actor, skillTargetOverrideActive(ctx))
+	return actorCanBeSkillTargetedWithOverride(ctx, skill, actor, skills.SkillTargetOverrideActive(ctx))
 }
 
 func actorCanBeSkillTargetedWithOverride(ctx client.Context, skill session.Skill, actor worldstate.Actor, override bool) bool {
-	if actor.ID == 0 || isWarpActor(actor) {
+	if actor.ID == 0 || npc.IsWarpActor(actor) {
 		return false
 	}
 	if scene.ActorHasStealth(actor) && !scene.IsLocalActor(ctx, actor.ID) {
@@ -70,17 +73,17 @@ func actorCanBeSkillTargetedWithOverride(ctx client.Context, skill session.Skill
 	if !ok {
 		return false
 	}
-	if skill.Type == skillTargetPet {
-		return targetFlags&skillTargetPet != 0
+	if skill.Type == skills.SkillTargetPet {
+		return targetFlags&skills.SkillTargetPet != 0
 	}
 	if skill.Type&targetFlags != 0 {
-		if scene.IsLocalActor(ctx, actor.ID) && skill.Type&skillTargetEnemy != 0 {
+		if scene.IsLocalActor(ctx, actor.ID) && skill.Type&skills.SkillTargetEnemy != 0 {
 			return false
 		}
 		return true
 	}
 	if override || skillTargetMapStateAllowsMismatch(ctx, actor) {
-		if scene.IsLocalActor(ctx, actor.ID) && skill.Type&skillTargetEnemy != 0 {
+		if scene.IsLocalActor(ctx, actor.ID) && skill.Type&skills.SkillTargetEnemy != 0 {
 			return false
 		}
 		return true
@@ -93,26 +96,26 @@ func skillCanTargetDeadActor(skill session.Skill, actor worldstate.Actor) bool {
 }
 
 func skillTargetFlagsForActor(ctx client.Context, actor worldstate.Actor) (uint32, bool) {
-	if actor.ID == 0 || isWarpActor(actor) || actor.Job == scene.ActorJobHiddenWarpNPC {
+	if actor.ID == 0 || npc.IsWarpActor(actor) || actor.Job == scene.ActorJobHiddenWarpNPC {
 		return 0, false
 	}
 	if scene.IsLocalActor(ctx, actor.ID) {
-		return skillTargetFriend, true
+		return skills.SkillTargetFriend, true
 	}
 	if actor.HasObjectType {
 		switch actor.ObjectType {
 		case scene.ActorObjectTypePC, scene.ActorObjectTypeElemental:
-			return skillTargetFriend, true
+			return skills.SkillTargetFriend, true
 		case scene.ActorObjectTypeHomunculus, scene.ActorObjectTypeMercenary:
-			return skillTargetFriend | skillTargetHomun, true
+			return skills.SkillTargetFriend | skills.SkillTargetHomun, true
 		case scene.ActorObjectTypeMob, scene.ActorObjectTypeUnit, scene.ActorObjectTypeNPCABR, scene.ActorObjectTypeNPCBionic:
-			return skillTargetEnemy | skillTargetPet, true
+			return skills.SkillTargetEnemy | skills.SkillTargetPet, true
 		default:
 			return 0, false
 		}
 	}
 	if res.HasPlayerJobToken(int(actor.Job)) {
-		return skillTargetFriend, true
+		return skills.SkillTargetFriend, true
 	}
 	return 0, false
 }
@@ -275,7 +278,7 @@ func (m *WorldMode) upsertNetworkActor(ctx client.Context, entry network.ActorEn
 	upsertNetworkActor(ctx, entry)
 	m.syncActorSpiritEffects(ctx, entry.ID)
 	m.effects().SyncActorEntryLevel99Aura(ctx, entry.ID)
-	m.requestActorGuildEmblem(ctx, entry.GuildID, entry.EmblemVersion)
+	m.social().RequestActorGuildEmblem(ctx, entry.GuildID, entry.EmblemVersion)
 	if !entry.HasState {
 		return
 	}
@@ -502,25 +505,6 @@ func (m *WorldMode) cleanupVanishedActors(ctx client.Context, now time.Time) {
 		m.removeActorNow(ctx, id)
 		glog.Debugf("actor out-of-sight removed id=%d", id)
 	}
-}
-
-func applyNPCSpriteChange(ctx client.Context, change network.NPCSpriteChange) {
-	if ctx.World == nil || change.ID == 0 || scene.IsLocalActor(ctx, change.ID) || change.ID == ctx.World.Player.ID {
-		return
-	}
-	if change.Job > math.MaxInt16 || res.HasPlayerJobToken(int(change.Job)) {
-		return
-	}
-	actor, ok := ctx.World.Actors[change.ID]
-	if !ok || scene.ActorRepresentsPlayer(actor) {
-		return
-	}
-	actor.Job = int16(change.Job)
-	actor.Appearance = true
-	// Sprite/model caches are keyed by job, so the next draw selects the new
-	// resources without changing views shared by other actors. Updating the
-	// appearance leaves the actor's movement and other state intact.
-	ctx.World.Actors[change.ID] = actor
 }
 
 func applyActorLookChange(ctx client.Context, look network.ActorLookChange) bool {
@@ -793,7 +777,7 @@ func (m *WorldMode) drawHoveredLocalPlayerNameLabel(screen *render.Frame, ctx cl
 		if life, ok := m.actorLifeForDisplay(ctx, entry.Actor); ok {
 			labelY = actorNameBelowLifeBarY(entry.ScreenY, entry.Scale, life)
 		}
-		drawActorNameLabelsAtY(screen, actorDisplayLabels(ctx, entry.Actor, true), m.actorGuildEmblem(ctx, entry.Actor, true), entry.ScreenX, labelY, actorNameLabelColor(entry.Actor, true))
+		drawActorNameLabelsAtY(screen, actorDisplayLabels(ctx, entry.Actor, true), m.social().ActorGuildEmblem(ctx, entry.Actor, true), entry.ScreenX, labelY, actorNameLabelColor(entry.Actor, true))
 		return
 	}
 }
@@ -867,12 +851,12 @@ func (m *WorldMode) drawSceneActorEntry(screen *render.Frame, ctx client.Context
 		}
 		return
 	}
-	if visual := specialNPCVisualForActor(entry.Actor); visual != specialNPCVisualNone {
-		if m.drawSpecialNPCVisual(screen, ctx, projection, entry, visual, time.Now()) {
+	if visual := npc.SpecialVisualForActor(entry.Actor); visual != npc.SpecialVisualNone {
+		if npc.DrawSpecialVisual(screen, ctx, projection, entry, visual, time.Now(), m.effects()) {
 			return
 		}
 	}
-	if isWarpActor(entry.Actor) {
+	if npc.IsWarpActor(entry.Actor) {
 		return
 	}
 	if !cartDrawAfterActor(entry.Actor, cameraYaw) {
@@ -985,7 +969,7 @@ func actorViewportCullMargins(scale float64) (left, right, top, bottom float64) 
 }
 
 func actorCastsShadow(actor worldstate.Actor) bool {
-	if isWarpActor(actor) || actorJobHasSpecialNoShadow(int(actor.Job)) {
+	if npc.IsWarpActor(actor) || npc.JobHasNoShadow(int(actor.Job)) {
 		return false
 	}
 	return actorShadowSize(actor) > 0
@@ -998,10 +982,10 @@ func (m *WorldMode) actorShadowSuppressed(actor worldstate.Actor, now time.Time)
 	if anim, ok := m.actorAnimation(actor.ID, now); ok {
 		// Action numbers depend on the actor: monster attack is player sit,
 		// and monster death is player combat-ready.
-		if anim.actionFamily == deathActionFamilyForActor(actor) {
+		if anim.ActionFamily == deathActionFamilyForActor(actor) {
 			return true
 		}
-		return anim.actionFamily == scene.SpriteActionSit && (res.HasPlayerJobToken(int(actor.Job)) || companion.IsMercenary(actor))
+		return anim.ActionFamily == scene.SpriteActionSit && (res.HasPlayerJobToken(int(actor.Job)) || companion.IsMercenary(actor))
 	}
 	return false
 }
@@ -1055,12 +1039,12 @@ func actorDisplayPrimaryName(ctx client.Context, actor worldstate.Actor, isPlaye
 		return ""
 	}
 	if isPlayer {
-		if name := scene.SanitizeActorName(selectedCharacterName(ctx.Session)); name != "" {
+		if name := scene.SanitizeActorName(scene.SelectedCharacterName(ctx.Session)); name != "" {
 			return actorDisplayNameWithParty(ctx, actor, name, true)
 		}
 		return actorDisplayNameWithParty(ctx, actor, scene.SanitizeActorName(actor.Name), true)
 	}
-	if isWarpActor(actor) {
+	if npc.IsWarpActor(actor) {
 		return ""
 	}
 	if name := scene.SanitizeActorName(actor.Name); name != "" {
@@ -1123,21 +1107,6 @@ func actorPartyDisplayName(ctx client.Context, actor worldstate.Actor, isPlayer 
 	return ""
 }
 
-func actorIsPartyMember(s *session.Session, actor worldstate.Actor, actorName string) bool {
-	if s == nil || actor.ID == 0 {
-		return false
-	}
-	for _, member := range s.Party.Members {
-		if member.AccountID == actor.ID {
-			return true
-		}
-		if actorName != "" && strings.EqualFold(scene.SanitizeActorName(member.Name), actorName) {
-			return true
-		}
-	}
-	return false
-}
-
 func (m *WorldMode) drawHoveredActorNameLabel(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
 	if ctx.Input == nil || ctx.World == nil {
 		return
@@ -1146,7 +1115,7 @@ func (m *WorldMode) drawHoveredActorNameLabel(screen *render.Frame, ctx client.C
 		return
 	}
 	actor, ok := hoveredCursorActor(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths)
-	if !ok || isWarpActor(actor) {
+	if !ok || npc.IsWarpActor(actor) {
 		return
 	}
 	labels := m.hoveredActorDisplayLabels(ctx, actor, now)
@@ -1162,7 +1131,7 @@ func (m *WorldMode) drawHoveredActorNameLabel(screen *render.Frame, ctx client.C
 	if life, ok := m.actorLifeForDisplay(ctx, actor); ok {
 		labelY = actorNameBelowLifeBarY(float64(point.Y), scale, life)
 	}
-	drawActorNameLabelsAtY(screen, labels, m.actorGuildEmblem(ctx, actor, isPlayer), float64(point.X), labelY, actorNameLabelColor(actor, isPlayer))
+	drawActorNameLabelsAtY(screen, labels, m.social().ActorGuildEmblem(ctx, actor, isPlayer), float64(point.X), labelY, actorNameLabelColor(actor, isPlayer))
 }
 
 func (m *WorldMode) hoveredActorDisplayLabels(ctx client.Context, actor worldstate.Actor, now time.Time) []string {
@@ -1239,13 +1208,6 @@ func shouldUseServerNameForHoverActor(actor worldstate.Actor) bool {
 	}
 }
 
-func selectedCharacterName(s *session.Session) string {
-	if s == nil {
-		return ""
-	}
-	return s.SelectedCharacter().Name
-}
-
 func displayNameFromResource(name string) string {
 	name = strings.TrimSpace(strings.TrimSuffix(name, ".spr"))
 	name = strings.TrimSuffix(name, ".act")
@@ -1257,14 +1219,6 @@ func displayNameFromResource(name string) string {
 		fields[i] = titleASCIIWord(field)
 	}
 	return strings.Join(fields, " ")
-}
-
-func isWarpActor(actor worldstate.Actor) bool {
-	return isWarpActorJob(int(actor.Job))
-}
-
-func isWarpActorJob(job int) bool {
-	return job == scene.ActorJobWarpPortal || job == scene.ActorJobWarpPortalActive || job == scene.ActorJobWarpPortalWaiting
 }
 
 func titleASCIIWord(word string) string {
@@ -1633,36 +1587,36 @@ func (m *WorldMode) drawPlayerSprite3D(ctx client.Context, screen *render.Frame,
 	return true
 }
 
-func applyActorAnimationToSpriteState(state *sprites.State, anim actorAnimation, playerLike bool) bool {
+func applyActorAnimationToSpriteState(state *sprites.State, anim scene.ActorAnimation, playerLike bool) bool {
 	if state == nil {
 		return false
 	}
 	if state.Moving && !actorAnimationOverridesWalk(anim, playerLike) {
 		return false
 	}
-	state.ActionFamily = anim.actionFamily
-	state.Started = anim.started
-	state.Loop = anim.loop
-	state.PingPong = anim.pingPong
-	state.Play = anim.play
-	state.HasPlay = anim.hasPlay
-	state.Length = anim.length
-	state.HasLength = anim.hasLength
-	state.FrameOffset = anim.frameOffset
-	state.HasFrameOffset = anim.hasFrameOffset
+	state.ActionFamily = anim.ActionFamily
+	state.Started = anim.Started
+	state.Loop = anim.Loop
+	state.PingPong = anim.PingPong
+	state.Play = anim.Play
+	state.HasPlay = anim.HasPlay
+	state.Length = anim.Length
+	state.HasLength = anim.HasLength
+	state.FrameOffset = anim.FrameOffset
+	state.HasFrameOffset = anim.HasFrameOffset
 	state.Moving = false
-	state.FixedMotion = anim.fixedMotion
-	state.HasFixedMotion = anim.hasFixedMotion
-	state.Speed = anim.speed
-	state.HasSpeed = anim.hasSpeed
+	state.FixedMotion = anim.FixedMotion
+	state.HasFixedMotion = anim.HasFixedMotion
+	state.Speed = anim.Speed
+	state.HasSpeed = anim.HasSpeed
 	return true
 }
 
-func actorAnimationOverridesWalk(anim actorAnimation, playerLike bool) bool {
+func actorAnimationOverridesWalk(anim scene.ActorAnimation, playerLike bool) bool {
 	if playerLike {
-		return anim.actionFamily == sprites.ActionPCDeath
+		return anim.ActionFamily == sprites.ActionPCDeath
 	}
-	return anim.actionFamily == sprites.ActionNonPCDeath
+	return anim.ActionFamily == sprites.ActionNonPCDeath
 }
 
 func (m *WorldMode) drawActorSpriteBillboardTintAlpha3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA, blend render.Blend) {

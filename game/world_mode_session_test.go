@@ -12,11 +12,14 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/kivutar/goro/game/npc"
+
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -159,8 +162,8 @@ func TestHandleMapChangeSameServerUpdatesMapAndResetsActors(t *testing.T) {
 		ScreenH:   720,
 	}
 	mode := &WorldMode{}
-	mode.ui.npcDialog.Apply(network.NPCDialog{Kind: network.NPCDialogSay, NPCID: 10, Message: "Warping..."})
-	if !mode.ui.npcDialog.Update(ctx) {
+	mode.ui.npc.Dialog.Apply(network.NPCDialog{Kind: network.NPCDialogSay, NPCID: 10, Message: "Warping..."})
+	if !mode.ui.npc.Dialog.Update(ctx) {
 		t.Fatal("npc dialog did not publish before map change")
 	}
 	if len(uiManager.overlays) == 0 {
@@ -268,7 +271,7 @@ func TestNextWorldModeCarriesAndRebindsWhisperWindow(t *testing.T) {
 		ScreenH:   720,
 	}
 	mode := &WorldMode{}
-	mode.ui.whisperWindows.Open(ctx, "Alice")
+	mode.ui.social.WhisperWindows.Open(ctx, "Alice")
 	manager := ctx.UIManager.(*worldModeTestUIManager)
 	if len(manager.overlays) != 1 {
 		t.Fatalf("whisper overlays before map change = %d, want 1", len(manager.overlays))
@@ -276,7 +279,7 @@ func TestNextWorldModeCarriesAndRebindsWhisperWindow(t *testing.T) {
 	previousOverlay := manager.overlays[0]
 
 	next := mode.nextWorldMode()
-	if !next.ui.whisperWindows.IsOpen() {
+	if !next.ui.social.WhisperWindows.IsOpen() {
 		t.Fatal("next world mode did not carry open whisper window")
 	}
 	next.rebindPersistentUI(ctx)
@@ -288,7 +291,7 @@ func TestNextWorldModeCarriesAndRebindsWhisperWindow(t *testing.T) {
 		t.Fatal("whisper rebind replaced its stable overlay")
 	}
 
-	next.ui.whisperWindows.Find("Alice").AddError(ctx, "send failed")
+	next.ui.social.WhisperWindows.Find("Alice").AddError(ctx, "send failed")
 	if len(manager.overlays) != 1 {
 		t.Fatalf("whisper overlays after refresh = %d, want 1", len(manager.overlays))
 	}
@@ -303,7 +306,7 @@ func TestNextWorldModeCarriesAndRebindsFriendSettingsWindow(t *testing.T) {
 		ScreenH:   720,
 	}
 	mode := &WorldMode{}
-	mode.ui.friendSettings.Open(ctx)
+	mode.ui.social.FriendSettings.Open(ctx)
 	manager := ctx.UIManager.(*worldModeTestUIManager)
 	if len(manager.overlays) != 1 {
 		t.Fatalf("friend settings overlays before map change = %d, want 1", len(manager.overlays))
@@ -311,7 +314,7 @@ func TestNextWorldModeCarriesAndRebindsFriendSettingsWindow(t *testing.T) {
 	previousOverlay := manager.overlays[0]
 
 	next := mode.nextWorldMode()
-	if !next.ui.friendSettings.IsOpen() {
+	if !next.ui.social.FriendSettings.IsOpen() {
 		t.Fatal("next world mode did not carry open friend settings window")
 	}
 	next.rebindPersistentUI(ctx)
@@ -336,7 +339,7 @@ func TestNextWorldModeCarriesAndRebindsPartySettingsWindow(t *testing.T) {
 		ScreenH:   720,
 	}
 	mode := &WorldMode{}
-	mode.ui.partySettings.Open(ctx)
+	mode.ui.social.PartySettings.Open(ctx)
 	manager := ctx.UIManager.(*worldModeTestUIManager)
 	if len(manager.overlays) != 1 {
 		t.Fatalf("party settings overlays before map change = %d, want 1", len(manager.overlays))
@@ -344,7 +347,7 @@ func TestNextWorldModeCarriesAndRebindsPartySettingsWindow(t *testing.T) {
 	previousOverlay := manager.overlays[0]
 
 	next := mode.nextWorldMode()
-	if !next.ui.partySettings.IsOpen() {
+	if !next.ui.social.PartySettings.IsOpen() {
 		t.Fatal("next world mode did not carry open party settings window")
 	}
 	next.rebindPersistentUI(ctx)
@@ -365,8 +368,8 @@ func TestNextWorldModeCarriesAndRebindsPartyHelperWindows(t *testing.T) {
 		ScreenH:   720,
 	}
 	mode := &WorldMode{}
-	mode.ui.partyCreate.Open(ctx)
-	mode.ui.partyInvite.Open(ctx)
+	mode.ui.social.PartyCreate.Open(ctx)
+	mode.ui.social.PartyInvite.Open(ctx)
 	manager := ctx.UIManager.(*worldModeTestUIManager)
 	if len(manager.overlays) != 2 {
 		t.Fatalf("party helper overlays before map change = %d, want 2", len(manager.overlays))
@@ -375,8 +378,8 @@ func TestNextWorldModeCarriesAndRebindsPartyHelperWindows(t *testing.T) {
 	previousInvite := manager.overlays[1]
 
 	next := mode.nextWorldMode()
-	if !next.ui.partyCreate.IsOpen() || !next.ui.partyInvite.IsOpen() {
-		t.Fatalf("next world mode did not carry helper windows create=%t invite=%t", next.ui.partyCreate.IsOpen(), next.ui.partyInvite.IsOpen())
+	if !next.ui.social.PartyCreate.IsOpen() || !next.ui.social.PartyInvite.IsOpen() {
+		t.Fatalf("next world mode did not carry helper windows create=%t invite=%t", next.ui.social.PartyCreate.IsOpen(), next.ui.social.PartyInvite.IsOpen())
 	}
 	next.rebindPersistentUI(ctx)
 
@@ -501,7 +504,7 @@ func TestGuildCreationWaitsForBelongingBeforeOpeningGuildWindow(t *testing.T) {
 	}
 	var mode WorldMode
 
-	mode.handleGuildCreationResult(ctx, network.GuildCreationResult{Result: 0})
+	mode.social().HandleGuildCreationResult(ctx, network.GuildCreationResult{Result: 0})
 
 	if got := ctx.Session.GuildName; got != "" {
 		t.Fatalf("session guild = %q before belonging, want empty", got)
@@ -512,14 +515,14 @@ func TestGuildCreationWaitsForBelongingBeforeOpeningGuildWindow(t *testing.T) {
 	if got := ctx.Session.PendingGuildName; got != "Knights" {
 		t.Fatalf("pending guild = %q before belonging, want Knights", got)
 	}
-	if !mode.guildOpenPending {
+	if !mode.socialSystem.GuildOpenPending {
 		t.Fatal("guild window open was not deferred")
 	}
-	if mode.ui.guildWindow.IsOpen() {
+	if mode.ui.social.GuildWindow.IsOpen() {
 		t.Fatal("guild window opened before belonging")
 	}
 
-	mode.handleGuildBelonging(ctx, network.GuildBelonging{GuildID: 9, GuildName: "Knights"})
+	mode.social().HandleGuildBelonging(ctx, network.GuildBelonging{GuildID: 9, GuildName: "Knights"})
 
 	if got := ctx.Session.GuildID; got != 9 {
 		t.Fatalf("session guild ID = %d, want 9", got)
@@ -533,10 +536,10 @@ func TestGuildCreationWaitsForBelongingBeforeOpeningGuildWindow(t *testing.T) {
 	if got := ctx.Session.PendingGuildName; got != "" {
 		t.Fatalf("pending guild = %q after belonging, want empty", got)
 	}
-	if mode.guildOpenPending {
+	if mode.socialSystem.GuildOpenPending {
 		t.Fatal("deferred guild window open was not consumed")
 	}
-	if !mode.ui.guildWindow.IsOpen() {
+	if !mode.ui.social.GuildWindow.IsOpen() {
 		t.Fatal("guild window did not open after belonging")
 	}
 }
@@ -549,12 +552,12 @@ func TestGuildCreationOpensWhenBelongingArrivedFirst(t *testing.T) {
 	}
 	var mode WorldMode
 
-	mode.handleGuildCreationResult(ctx, network.GuildCreationResult{Result: 0})
+	mode.social().HandleGuildCreationResult(ctx, network.GuildCreationResult{Result: 0})
 
-	if mode.guildOpenPending {
+	if mode.socialSystem.GuildOpenPending {
 		t.Fatal("guild window open remained pending after membership was known")
 	}
-	if !mode.ui.guildWindow.IsOpen() {
+	if !mode.ui.social.GuildWindow.IsOpen() {
 		t.Fatal("guild window did not open with known membership")
 	}
 }
@@ -564,7 +567,7 @@ func TestHandleGuildNoticeUpdatesSessionAndAddsGuildConsoleMessages(t *testing.T
 	mode := &WorldMode{}
 	ctx := client.Context{Session: sessionState}
 
-	mode.handleGuildNotice(ctx, network.GuildNotice{
+	mode.social().HandleGuildNotice(ctx, network.GuildNotice{
 		Subject: " Maintenance ",
 		Notice:  " Gather in Prontera. ",
 	})
@@ -592,7 +595,7 @@ func TestHandleGuildNoticeSkipsEmptyConsoleLines(t *testing.T) {
 	mode := &WorldMode{}
 	ctx := client.Context{Session: &session.Session{}}
 
-	mode.handleGuildNotice(ctx, network.GuildNotice{
+	mode.social().HandleGuildNotice(ctx, network.GuildNotice{
 		Subject: " ",
 		Notice:  " Guild event tonight.\nMeet in Prontera. ",
 	})
@@ -606,7 +609,7 @@ func TestHandleGuildNoticeSkipsEmptyConsoleLines(t *testing.T) {
 func TestApplyGuildChatAddsGuildConsoleMessage(t *testing.T) {
 	mode := &WorldMode{}
 
-	applyGuildChat(network.GuildChat{Message: " Kivutar : hello guild "}, &mode.ui.console)
+	social.ApplyGuildChat(network.GuildChat{Message: " Kivutar : hello guild "}, &mode.ui.console)
 
 	messages := mode.ui.console.Messages()
 	if len(messages) != 1 || messages[0].Text != "Kivutar : hello guild" {
@@ -705,7 +708,7 @@ func TestFormatConsoleMessageUsesMsgStringTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := formatConsoleMessage(manager, network.ChatMessage{MessageID: 1, Value: 3})
+	got := social.FormatConsoleMessage(manager, network.ChatMessage{MessageID: 1, Value: 3})
 	if got != "You got 3 items." {
 		t.Fatalf("message = %q", got)
 	}
@@ -751,7 +754,7 @@ func TestExitRefusalMessageUsesMsgString502(t *testing.T) {
 
 func TestColoredConsoleMessageUsesPacketColor(t *testing.T) {
 	console := &gameui.ChatConsole{}
-	addConsoleMessage(console, nil, network.ChatMessage{Text: "Experience Gained Base:1 (0.01%) Job:1 (0.01%)", Color: 0x00B5FFB5, HasColor: true})
+	social.AddConsoleMessage(console, nil, network.ChatMessage{Text: "Experience Gained Base:1 (0.01%) Job:1 (0.01%)", Color: 0x00B5FFB5, HasColor: true})
 
 	messages := console.Messages()
 	wantColor := color.RGBA{R: 0xB5, G: 0xFF, B: 0xB5, A: 255}
@@ -834,7 +837,7 @@ func TestActorDisplayNameDoesNotLabelWarpPortal(t *testing.T) {
 		if got := actorDisplayName(ctx, actor, false); got != "" {
 			t.Fatalf("job %d display name = %q, want empty", job, got)
 		}
-		if !isWarpActor(actor) {
+		if !npc.IsWarpActor(actor) {
 			t.Fatalf("job %d expected warp actor classification", job)
 		}
 	}
@@ -1070,22 +1073,6 @@ func TestUseItemAckFailureDoesNotChangeInventory(t *testing.T) {
 	}
 }
 
-func TestUseItemAckAddsItemUseEffect(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	sessionState := &session.Session{AccountID: 2000000}
-	mode := &WorldMode{}
-	ctx := client.Context{Session: sessionState, World: world}
-
-	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 501, AID: 2000000, Amount: 2, Result: 1})
-	if len(mode.effects().Active) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
-	}
-	if effect := mode.effects().Active[0]; effect.ActorID != 2000000 || effect.EffectID != effects.PotionRed || effect.X != 10 || effect.Y != 20 {
-		t.Fatalf("effect = %+v", effect)
-	}
-}
-
 func TestUseItemAckYellowPotionSchedulesHealSound(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
@@ -1093,7 +1080,7 @@ func TestUseItemAckYellowPotionSchedulesHealSound(t *testing.T) {
 	mode := &WorldMode{}
 	ctx := client.Context{Session: sessionState, World: world}
 
-	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 503, AID: 2000000, Amount: 2, Result: 1})
+	mode.effects().AddItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 503, AID: 2000000, Amount: 2, Result: 1})
 	if len(mode.effects().Active) != 1 {
 		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
@@ -1119,7 +1106,7 @@ func TestUseItemAckStatFoodSchedulesHealSound(t *testing.T) {
 	mode := &WorldMode{}
 	ctx := client.Context{Session: sessionState, World: world}
 
-	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 12041, AID: 2000000, Amount: 2, Result: 1})
+	mode.effects().AddItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 12041, AID: 2000000, Amount: 2, Result: 1})
 	if len(mode.effects().Active) != 1 {
 		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
@@ -1135,143 +1122,6 @@ func TestUseItemAckStatFoodSchedulesHealSound(t *testing.T) {
 	}
 	if !sound.positioned || sound.actorID != 2000000 || sound.x != 10 || sound.y != 20 {
 		t.Fatalf("sound position = %+v", sound)
-	}
-}
-
-func TestMercenaryPotionItemEffectsTargetVisibleMercenary(t *testing.T) {
-	testCases := []struct {
-		name     string
-		itemID   uint16
-		effectID int
-	}{
-		{"red", 12184, effects.Food},
-		{"blue", 12185, effects.Food},
-		{"concentration", 12241, effects.ItemFast},
-		{"awakening", 12242, effects.ItemFast2},
-		{"berserk", 12243, effects.ItemFast3},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			world := worldstate.New()
-			world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-			world.UpsertActor(worldstate.Actor{ID: 400, X: 13, Y: 24, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary})
-			sessionState := &session.Session{
-				AccountID: 2000000,
-				Mercenary: session.Companion{
-					ID:     400,
-					Active: true,
-				},
-			}
-			mode := &WorldMode{}
-			ctx := client.Context{Session: sessionState, World: world}
-
-			mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: tc.itemID, AID: 2000000, Amount: 2, Result: 1})
-
-			if len(mode.effects().Active) != 1 {
-				t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
-			}
-			if effect := mode.effects().Active[0]; effect.ActorID != 400 || effect.EffectID != tc.effectID || effect.X != 13 || effect.Y != 24 {
-				t.Fatalf("effect = %+v", effect)
-			}
-		})
-	}
-}
-
-func TestMercenaryPotionItemEffectsFallbackToAckActorWithoutMercenary(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	sessionState := &session.Session{AccountID: 2000000}
-	mode := &WorldMode{}
-	ctx := client.Context{Session: sessionState, World: world}
-
-	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 12184, AID: 2000000, Amount: 2, Result: 1})
-
-	if len(mode.effects().Active) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
-	}
-	if effect := mode.effects().Active[0]; effect.ActorID != 2000000 || effect.EffectID != effects.Food || effect.X != 10 || effect.Y != 20 {
-		t.Fatalf("effect = %+v", effect)
-	}
-}
-
-func TestRemoteMercenaryPotionItemEffectKeepsAckActor(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.UpsertActor(worldstate.Actor{ID: 400, X: 13, Y: 24, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary})
-	world.UpsertActor(worldstate.Actor{ID: 1100, X: 30, Y: 40})
-	sessionState := &session.Session{
-		AccountID: 2000000,
-		Mercenary: session.Companion{
-			ID:     400,
-			Active: true,
-		},
-	}
-	mode := &WorldMode{}
-	ctx := client.Context{Session: sessionState, World: world}
-
-	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 12184, AID: 1100, Amount: 2, Result: 1})
-
-	if len(mode.effects().Active) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
-	}
-	if effect := mode.effects().Active[0]; effect.ActorID != 1100 || effect.EffectID != effects.Food || effect.X != 30 || effect.Y != 40 {
-		t.Fatalf("effect = %+v", effect)
-	}
-}
-
-func TestUseItemAckDispatchesAllMappedItemEffectArrays(t *testing.T) {
-	const itemID uint16 = 65000
-	itemEffectSpecs[itemID] = itemEffectSpec{
-		effectIDs:         []int{effects.PotionRed, effects.Blessing},
-		effectIDsOnCaster: []int{effects.Endure},
-	}
-	defer delete(itemEffectSpecs, itemID)
-
-	world := worldstate.New()
-	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.Actors[1100] = worldstate.Actor{ID: 1100, X: 12, Y: 22}
-	mode := &WorldMode{}
-	ctx := client.Context{Session: &session.Session{AccountID: 2000000}, World: world}
-
-	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: itemID, AID: 1100, Amount: 2, Result: 1})
-
-	want := []struct {
-		effectID int
-		actorID  uint32
-		x        int
-		y        int
-	}{
-		{effects.PotionRed, 1100, 12, 22},
-		{effects.Blessing, 1100, 12, 22},
-		{effects.Endure, 1100, 12, 22},
-	}
-	if len(mode.effects().Active) != len(want) {
-		t.Fatalf("world effects = %d, want %d: %+v", len(mode.effects().Active), len(want), mode.effects().Active)
-	}
-	for i, wantEffect := range want {
-		got := mode.effects().Active[i]
-		if got.EffectID != wantEffect.effectID || got.ActorID != wantEffect.actorID || got.X != wantEffect.x || got.Y != wantEffect.y {
-			t.Fatalf("effect %d = %+v, want %+v", i, got, wantEffect)
-		}
-	}
-}
-
-func TestButterflyWingEffectIsPinnedAtUsePosition(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	sessionState := &session.Session{AccountID: 2000000}
-	mode := &WorldMode{}
-	ctx := client.Context{Session: sessionState, World: world}
-
-	mode.addItemUseEffect(ctx, network.UseItemAck{Index: 12, ItemID: 602, AID: 2000000, Amount: 1, Result: 1})
-	world.Player.X = 30
-	world.Player.Y = 40
-
-	if len(mode.effects().Active) != 1 {
-		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
-	}
-	if effect := mode.effects().Active[0]; effect.ActorID != 0 || effect.EffectID != effects.Teleportation || effect.X != 10 || effect.Y != 20 {
-		t.Fatalf("effect = %+v", effect)
 	}
 }
 
