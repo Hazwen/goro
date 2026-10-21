@@ -3,11 +3,11 @@ package game
 import (
 	"time"
 
-	"github.com/kivutar/goro/game/npc"
-
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/bot"
+	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/glog"
@@ -47,7 +47,7 @@ func (m *WorldMode) scriptAttack(ctx client.Context, id uint32) bool {
 		return false
 	}
 	actor, ok := ctx.World.Actors[id]
-	if !ok || !actorCanBeAttackClicked(ctx, actor) {
+	if !ok || !actors.ActorCanBeAttackClicked(ctx, actor) {
 		return false
 	}
 	m.requestAttack(ctx, actor, "script")
@@ -81,8 +81,8 @@ func (m *WorldMode) scriptSkill(ctx client.Context, id uint32, skill session.Ski
 		return true
 	}
 	actor, ok, _ := scene.ActorForCombatID(ctx, id)
-	_, dead := m.actorDeaths[id]
-	if !ok || dead || !actorCanBeSkillTargeted(ctx, skill, actor) {
+	_, dead := m.actorSystem.ActorDeaths[id]
+	if !ok || dead || !actors.ActorCanBeSkillTargeted(ctx, skill, actor) {
 		glog.Debugf("script skill invalid target skill=%d target=%d", skill.ID, id)
 		return false
 	}
@@ -169,7 +169,7 @@ func (mode *WorldMode) scriptSkillTargets(ctx client.Context, ignoreShift bool, 
 	}
 	x, y := scene.CurrentPlayerCell(ctx, now)
 	appendTarget := func(actor worldstate.Actor) {
-		if _, dead := mode.actorDeaths[actor.ID]; dead || !actorCanBeSkillTargetedWithOverride(ctx, pending.Skill, actor, override) {
+		if _, dead := mode.actorSystem.ActorDeaths[actor.ID]; dead || !actors.ActorCanBeSkillTargetedWithOverride(ctx, pending.Skill, actor, override) {
 			return
 		}
 		result = append(result, actor)
@@ -195,8 +195,8 @@ func (m *WorldMode) scriptUsePendingSkill(ctx client.Context, id uint32) bool {
 		return false
 	}
 	actor, ok, _ := scene.ActorForCombatID(ctx, id)
-	_, dead := m.actorDeaths[id]
-	if !ok || dead || !actorCanBeSkillTargeted(ctx, pending.Skill, actor) {
+	_, dead := m.actorSystem.ActorDeaths[id]
+	if !ok || dead || !actors.ActorCanBeSkillTargeted(ctx, pending.Skill, actor) {
 		return false
 	}
 	if err := m.skills().UseTarget(ctx, pending.Skill, actor, "script"); err != nil {
@@ -215,7 +215,7 @@ func (m *WorldMode) scriptHighlightActor(ctx client.Context, id uint32) bool {
 		return true
 	}
 	actor, ok, _ := scene.ActorForCombatID(ctx, id)
-	_, dead := m.actorDeaths[id]
+	_, dead := m.actorSystem.ActorDeaths[id]
 	if !ok || dead || npc.IsWarpActor(actor) || actor.Job == scene.ActorJobHiddenWarpNPC {
 		return false
 	}
@@ -308,8 +308,8 @@ func newLuaScript(ctx client.Context, mode Mode, path string) (*bot.Script, erro
 			Skill: world.scriptSkill, Loot: world.scriptLoot, UseItem: scriptUseItem,
 			UsePendingSkill: world.scriptUsePendingSkill, HighlightActor: world.scriptHighlightActor,
 			SkillTargets: world.scriptSkillTargets, PendingSkill: world.scriptPendingSkill,
-			CanAttack: actorCanBeAttackClicked, CompanionLife: world.companionLife,
-			ActorDead:    func(id uint32) bool { _, dead := world.actorDeaths[id]; return dead },
+			CanAttack: actors.ActorCanBeAttackClicked, CompanionLife: world.companionLife,
+			ActorDead:    func(id uint32) bool { _, dead := world.actorSystem.ActorDeaths[id]; return dead },
 			WalkSequence: func() uint64 { return world.walkSequence },
 			UseShortcut: func(ctx client.Context, slot int) (uint16, bool) {
 				return world.ui.shortcutBar.ActivateSlot(ctx, world, slot)

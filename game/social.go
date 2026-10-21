@@ -31,7 +31,7 @@ func (m *WorldMode) handleChatMessage(ctx client.Context, chat network.ChatMessa
 		m.social().AddChatRoomMessage(ctx, chat)
 		return
 	}
-	m.applySpeechBubble(ctx, chat, now)
+	m.actors().ApplySpeechBubble(ctx, chat, now)
 	social.AddConsoleMessage(&m.ui.console, ctx.Resources, chat)
 }
 
@@ -41,7 +41,7 @@ func (m *WorldMode) openPlayerContextFromInput(ctx client.Context, now time.Time
 	}
 	screenW, screenH := ctx.ScreenSize()
 	projection := m.sceneProjection(ctx, screenW, screenH, now)
-	actor, ok := clickedPlayerTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths)
+	actor, ok := clickedPlayerTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths)
 	if !ok {
 		return false
 	}
@@ -75,7 +75,7 @@ func (m *WorldMode) drawSiegeGuildEmblems(screen *render.Frame, ctx client.Conte
 		if bounds.Dx() <= 0 || bounds.Dy() <= 0 {
 			continue
 		}
-		centerX, topY := m.siegeGuildEmblemAnchor(ctx, projection, now, entry)
+		centerX, topY := m.actors().SiegeGuildEmblemAnchor(ctx, projection, now, entry)
 		x, y := siegeGuildEmblemPosition(centerX, topY, siegeGuildEmblemSize)
 		x, y = render.SnapScreenPoint(screen, x, y)
 		var opts render.DrawImageOptions
@@ -88,32 +88,6 @@ func (m *WorldMode) drawSiegeGuildEmblems(screen *render.Frame, ctx client.Conte
 
 func siegeActorShowsGuildEmblem(entry scene.ActorDrawEntry) bool {
 	return !scene.ActorHasStealth(entry.Actor) && entry.Actor.GuildID != 0 && entry.Actor.EmblemVersion != 0
-}
-
-func (m *WorldMode) siegeGuildEmblemAnchor(ctx client.Context, projection scene.Projection, now time.Time, entry scene.ActorDrawEntry) (float64, float64) {
-	centerX := entry.ScreenX
-	topY := actorSpriteTopY(entry.ScreenY, entry.Scale)
-	if entry.IsPlayer || !m.nonPCActorHasGR2Model(ctx, entry.Actor) {
-		return centerX, topY
-	}
-
-	view := m.nonPCGR2ModelView(ctx, entry.Actor)
-	if view == nil || view.geometry == nil {
-		return centerX, topY
-	}
-	scale := gr2ModelWorldScale * m.actorBodySizeMultiplier(entry.Actor.ID, now)
-	top := scene.Point3{
-		X: float64(view.geometry.Center[0]),
-		Y: float64(view.geometry.Center[1]),
-		Z: float64(view.geometry.Center[2] + view.geometry.Size[2]/2),
-	}
-	matrix := gr2ActorModelMatrix(entry.WorldX, entry.WorldY, entry.WorldZ, entry.Actor.Dir, scale)
-	worldTop := scene.Mat4TransformPoint(matrix, top)
-	projected := projection.Project(worldTop.X, worldTop.Z, worldTop.Y)
-	if !scene.IsFinite(float64(projected.X)) || !scene.IsFinite(float64(projected.Y)) {
-		return centerX, topY
-	}
-	return float64(projected.X), float64(projected.Y)
 }
 
 func siegeGuildEmblemPosition(centerX, topY float64, size int) (float64, float64) {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
@@ -122,11 +123,11 @@ func TestAppendActorDrawEntryUsesPathRenderDirection(t *testing.T) {
 	}
 	projection := testutil.Projection(800, 600, 0.5, 1.5, 0)
 
-	entries := appendActorDrawEntry(nil, world, projection, actor, false, now, 800, 600)
+	entries := actors.AppendActorDrawEntry(nil, world, projection, actor, false, now, 800, 600)
 	if len(entries) != 1 {
 		t.Fatalf("entries = %d, want 1", len(entries))
 	}
-	if got, want := entries[0].Actor.Dir, directionFromDelta(0, 1, 1, 1, 4); got != want {
+	if got, want := entries[0].Actor.Dir, actors.DirectionFromDelta(0, 1, 1, 1, 4); got != want {
 		t.Fatalf("entry direction = %d, want %d", got, want)
 	}
 }
@@ -135,7 +136,7 @@ func TestActorBillboardSortDepthUsesTopInCameraProjection(t *testing.T) {
 	projection := testutil.Projection(800, 600, 10.5, 20.5, 0)
 	footDepth := projection.Depth(10.5, 20.5, 0)
 	topDepth := projection.Depth(10.5, 20.5, scene.ActorBillboardWorldHeightUnit)
-	got := actorBillboardSortDepth(projection, 10.5, 20.5, 0)
+	got := actors.ActorBillboardSortDepth(projection, 10.5, 20.5, 0)
 	want := math.Min(footDepth, topDepth)
 	if got != want {
 		t.Fatalf("billboard depth = %.4f, want closer of foot %.4f and top %.4f", got, footDepth, topDepth)
@@ -502,7 +503,7 @@ func TestActorShadowFactorAveragesGNDLightmapAlpha(t *testing.T) {
 		gnd.Cells[i].Top = 0
 	}
 
-	got := actorShadowFactor(&worldstate.World{GND: gnd}, 3, 3)
+	got := actors.ActorShadowFactor(&worldstate.World{GND: gnd}, 3, 3)
 	want := float64(128) / 255
 	if math.Abs(got-want) > 0.0001 {
 		t.Fatalf("shadow factor = %.4f, want %.4f", got, want)
@@ -535,14 +536,14 @@ func TestActorShadowFactorIgnoresGroundShadowBelowElevatedGAT(t *testing.T) {
 		gat.Cells[i].Heights = [4]float32{2, 2, 2, 2}
 	}
 
-	got := actorShadowFactor(&worldstate.World{GAT: gat, GND: gnd}, 3, 3)
+	got := actors.ActorShadowFactor(&worldstate.World{GAT: gat, GND: gnd}, 3, 3)
 	if got != 1 {
 		t.Fatalf("elevated GAT shadow factor = %.4f, want 1", got)
 	}
 }
 
 func TestActorShadowFactorDefaultsToLitWithoutGroundLightmap(t *testing.T) {
-	if got := actorShadowFactor(nil, 3, 3); got != 1 {
+	if got := actors.ActorShadowFactor(nil, 3, 3); got != 1 {
 		t.Fatalf("nil world shadow = %.2f, want 1", got)
 	}
 	gnd := &res.GND{
@@ -551,7 +552,7 @@ func TestActorShadowFactorDefaultsToLitWithoutGroundLightmap(t *testing.T) {
 		Surfaces: []res.GNDSurface{{LightmapID: 0}},
 		Cells:    []res.GNDCell{{Top: -1}},
 	}
-	if got := actorShadowFactor(&worldstate.World{GND: gnd}, 0, 0); got != 1 {
+	if got := actors.ActorShadowFactor(&worldstate.World{GND: gnd}, 0, 0); got != 1 {
 		t.Fatalf("missing top surface shadow = %.2f, want 1", got)
 	}
 }

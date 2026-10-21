@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"github.com/kivutar/goro/client"
@@ -21,8 +21,16 @@ func actorStealthView(ctx client.Context, actor worldstate.Actor, local bool) sc
 	if localActorHasStatus(ctx, db.StatusClairvoyance) {
 		return scene.StealthSilhouette
 	}
-	if actor.EffectState&(db.EffectStateCloak|db.EffectStateChasewalk) == 0 && (local || localPlayerIsAdmin(ctx)) {
+	if actor.EffectState&(db.EffectStateCloak|db.EffectStateChasewalk) == 0 && (local || LocalPlayerIsAdmin(ctx)) {
 		return scene.StealthShadow
 	}
 	return scene.StealthHidden
+}
+
+func localActorHasStatus(ctx client.Context, statusID uint16) bool {
+	if ctx.Session == nil || ctx.Session.Statuses.Active == nil {
+		return false
+	}
+	_, ok := ctx.Session.Statuses.Active[statusID]
+	return ok
 }

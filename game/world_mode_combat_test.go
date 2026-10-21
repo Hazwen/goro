@@ -12,6 +12,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
@@ -120,7 +121,7 @@ func TestAcolyteSupportOwnershipAndActions(t *testing.T) {
 		if tc.skill == db.SkillALIncagi {
 			pose = scene.SpriteActionIdle
 		}
-		if m.actorAnims[2000000].ActionFamily != pose {
+		if m.actorSystem.ActorAnims[2000000].ActionFamily != pose {
 			t.Fatalf("skill %d: wrong release pose", tc.skill)
 		}
 	}
@@ -142,7 +143,7 @@ func TestAlchemistBottlePackets(t *testing.T) {
 			t.Fatal("Potion Pitcher must produce one silent bottle; the server owns the heal effect")
 		}
 		e := m.effects().Active[0]
-		if e.EffectID != effects.ThrowItem2 || e.ActorID != n.SourceID || e.TargetID != n.TargetID || e.ItemLevel != level || m.actorAnims[n.SourceID].ActionFamily != sprites.ActionPCAttack1 {
+		if e.EffectID != effects.ThrowItem2 || e.ActorID != n.SourceID || e.TargetID != n.TargetID || e.ItemLevel != level || m.actorSystem.ActorAnims[n.SourceID].ActionFamily != sprites.ActionPCAttack1 {
 			t.Fatal("incorrect bottle owner, level or throwing pose")
 		}
 		p, _, _ := effects.ThrowItemAt(e, 13)
@@ -163,7 +164,7 @@ func TestAlchemistBottlePackets(t *testing.T) {
 		m := &WorldMode{}
 		n := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillAMAcidterror, Damage: damage, Action: network.ActorActionSkill, SourceSpeed: 1000}
 		m.applyActorActionNotify(ctx, n)
-		if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != effects.ThrowItem || !m.effects().Active[0].Starts.Equal(m.actorAnims[n.SourceID].Started) {
+		if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != effects.ThrowItem || !m.effects().Active[0].Starts.Equal(m.actorSystem.ActorAnims[n.SourceID].Started) {
 			t.Fatal("Acid Terror must throw at release, including misses, with no extra hit spark")
 		}
 		n.Action = 5
@@ -176,7 +177,7 @@ func TestAlchemistBottlePackets(t *testing.T) {
 	start := time.Unix(100, 0)
 	m.startSkillSourceCastAnimation(ctx, 2000000, db.SkillAMBerserkpitcher, time.Second, start)
 	m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SourceID: 2000000, TargetID: 2000000, SkillID: db.SkillAMBerserkpitcher, Result: 1})
-	if len(m.effects().Active) != 2 || m.effects().Active[0].EffectID != effects.ThrowItem5 || m.effects().Active[0].ItemLevel != 4 || m.effects().Active[1].EffectID != effects.ItemFast3 || !m.actorAnims[2000000].Started.Equal(start) {
+	if len(m.effects().Active) != 2 || m.effects().Active[0].EffectID != effects.ThrowItem5 || m.effects().Active[0].ItemLevel != 4 || m.effects().Active[1].EffectID != effects.ItemFast3 || !m.actorSystem.ActorAnims[2000000].Started.Equal(start) {
 		t.Fatal("Berserk Pitcher must keep its casting pose, throw a white bottle and buff its target")
 	}
 	p, _, _ := effects.ThrowItemAt(m.effects().Active[0], 13)
@@ -294,13 +295,13 @@ func TestArcherConcentrationAndUtility(t *testing.T) {
 func TestArcherArrowShowerGroundAndDamagePackets(t *testing.T) {
 	ctx := testutil.ArcherEffectContext()
 	family := sprites.AttackActionFamily(nil, ctx.World.Player)
-	m := &WorldMode{playerView: humanoidSoundView(family, 4, 2, []string{"atk"})}
+	m := &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(family, 4, 2, []string{"atk"})}}
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: db.SkillACShower, X: 20, Y: 20})
 	if len(m.effects().Active) != 1 || m.effects().Active[0].ArrowTargets == nil {
 		t.Fatal("Arrow Shower must fire on empty ground")
 	}
 	ground := m.effects().Active[0]
-	if ground.Starts.Sub(m.actorAnims[2000000].Started) != effects.ArrowShowerReleaseDelay {
+	if ground.Starts.Sub(m.actorSystem.ActorAnims[2000000].Started) != effects.ArrowShowerReleaseDelay {
 		t.Fatal("ground arrows must wait 18 native 24 ms ticks")
 	}
 	if len(m.scheduledSounds) != 1 || !sameStringSet(m.scheduledSounds[0].paths, db.WeaponAttackSounds(db.WeaponBow)) {
@@ -337,7 +338,7 @@ func TestArcherArrowShowerGroundAndDamagePackets(t *testing.T) {
 func TestArcherArrowShowerReplacesPendingReleaseSound(t *testing.T) {
 	ctx := testutil.ArcherEffectContext()
 	family := sprites.AttackActionFamily(nil, ctx.World.Player)
-	m := &WorldMode{playerView: humanoidSoundView(family, 4, 2, []string{"atk"})}
+	m := &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(family, 4, 2, []string{"atk"})}}
 	ground := network.GroundSkillNotify{SourceID: 2000000, SkillID: db.SkillACShower, X: 20, Y: 20}
 	m.applyGroundSkillNotify(ctx, ground)
 	// Other casters and independent effects must survive replacement.
@@ -356,7 +357,7 @@ func TestArcherArrowShowerReplacesPendingReleaseSound(t *testing.T) {
 		switch {
 		case sound.actorID == ground.SourceID && sameStringSet(sound.paths, db.WeaponAttackSounds(db.WeaponBow)):
 			releases++
-			if want := m.actorAnims[ground.SourceID].Started.Add(100 * time.Millisecond); !sound.at.Equal(want) {
+			if want := m.actorSystem.ActorAnims[ground.SourceID].Started.Add(100 * time.Millisecond); !sound.at.Equal(want) {
 				t.Fatalf("release at %s, want latest animation's marker at %s", sound.at, want)
 			}
 		case sound.actorID >= 300 && sound.actorID <= 302:
@@ -407,7 +408,7 @@ func TestArcherArrowFlightAndSplash(t *testing.T) {
 		if damage > 0 {
 			want++
 		}
-		if len(m.effects().Active) != want || m.effects().Active[0].EffectID != effects.BashBegin || m.actorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
+		if len(m.effects().Active) != want || m.effects().Active[0].EffectID != effects.BashBegin || m.actorSystem.ActorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
 			t.Fatal("Arrow Repel must use the native skill pose and flash, with no bow projectile")
 		}
 	}
@@ -437,8 +438,8 @@ func TestAssassinCrossPacketSequence(t *testing.T) {
 		if skill == 406 {
 			pose = sprites.ActionPCAttack3
 		}
-		if len(m.effects().Active) != len(want) || m.actorAnims[2000000].ActionFamily != pose {
-			t.Fatalf("skill %d: effects=%+v pose=%+v", skill, m.effects().Active, m.actorAnims)
+		if len(m.effects().Active) != len(want) || m.actorSystem.ActorAnims[2000000].ActionFamily != pose {
+			t.Fatalf("skill %d: effects=%+v pose=%+v", skill, m.effects().Active, m.actorSystem.ActorAnims)
 		}
 		for i, e := range m.effects().Active {
 			if e.EffectID != want[i] || e.ActorID != 2000000 {
@@ -538,7 +539,7 @@ func TestAssassinCrossClientAssets(t *testing.T) {
 		if skill == 379 || skill == 406 {
 			aura = 59
 		}
-		if len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != aura || m.actorAnims[2000000].ActionFamily != sprites.ActionPCReadyFight {
+		if len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != aura || m.actorSystem.ActorAnims[2000000].ActionFamily != sprites.ActionPCReadyFight {
 			t.Fatalf("skill %d: wrong casting aura or pose", skill)
 		}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, Result: 1})
@@ -546,7 +547,7 @@ func TestAssassinCrossClientAssets(t *testing.T) {
 		if skill == 379 || skill == 406 {
 			pose = sprites.ActionPCAttack3
 		}
-		if m.actorAnims[2000000].ActionFamily != pose {
+		if m.actorSystem.ActorAnims[2000000].ActionFamily != pose {
 			t.Fatalf("skill %d: wrong 2008 release pose", skill)
 		}
 	}
@@ -559,7 +560,7 @@ func TestAssassinCrossClientAssets(t *testing.T) {
 			if weapon == db.WeaponKatar {
 				pose = sprites.ActionPCAttack3
 			}
-			if m.actorAnims[2000000].ActionFamily != pose {
+			if m.actorSystem.ActorAnims[2000000].ActionFamily != pose {
 				t.Fatalf("skill %d must use the weapon's attack pose %d", skill, pose)
 			}
 		}
@@ -657,10 +658,10 @@ func TestAssassinBuffsAndSplasherSequence(t *testing.T) {
 
 func TestBardMusicalStrikeTiming(t *testing.T) {
 	ctx := testutil.ArcherEffectContext()
-	m := &WorldMode{playerView: humanoidSoundView(sprites.ActionPCAttack3, 4, 2, []string{"atk"})}
+	m := &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(sprites.ActionPCAttack3, 4, 2, []string{"atk"})}}
 	a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillBaMusicalstrike, SourceSpeed: 500, HitCount: 1, Damage: 100}
 	m.applyActorActionNotify(ctx, a)
-	anim := m.actorAnims[a.SourceID]
+	anim := m.actorSystem.ActorAnims[a.SourceID]
 	if anim.ActionFamily != sprites.ActionPCAttack3 {
 		t.Fatal("Musical Strike must use ACT 88")
 	}
@@ -777,9 +778,9 @@ func TestChampionAttacksUseReleaseEffectsAndSingleSecondaryHit(t *testing.T) {
 		m = &WorldMode{}
 		a.Action = 5
 		m.applyActorActionNotify(ctx, a)
-		_, sourceAnimated := m.actorAnims[a.SourceID]
+		_, sourceAnimated := m.actorSystem.ActorAnims[a.SourceID]
 		if len(m.effects().Active) != 0 || sourceAnimated {
-			t.Fatalf("skill %d splash: effects=%+v anims=%+v sounds=%+v", tc.skill, m.effects().Active, m.actorAnims, m.scheduledSounds)
+			t.Fatalf("skill %d splash: effects=%+v anims=%+v sounds=%+v", tc.skill, m.effects().Active, m.actorSystem.ActorAnims, m.scheduledSounds)
 		}
 		for _, sound := range m.scheduledSounds {
 			if sound.actorID != a.TargetID {
@@ -799,7 +800,7 @@ func TestChampionZenCastPoseAndServerOwnedSpheres(t *testing.T) {
 	}
 	m = &WorldMode{}
 	m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: 401, SourceID: 2000000, TargetID: 2000000, DelayTime: 4000, Property: 3})
-	anim := m.actorAnims[2000000]
+	anim := m.actorSystem.ActorAnims[2000000]
 	if anim.ActionFamily != sprites.ActionPCSkill || !anim.HasFixedMotion || anim.FixedMotion != 0 || anim.Play {
 		t.Fatalf("Zen must hold skill frame zero: %+v", anim)
 	}
@@ -820,7 +821,7 @@ func TestChampionZenCastPoseAndServerOwnedSpheres(t *testing.T) {
 	}
 	m.effects().Active, m.scheduledSounds = nil, nil
 	m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: 401, SourceID: 2000000, TargetID: 2000000, Result: 1})
-	if len(m.effects().Active)+len(m.scheduledSounds) != 0 || ctx.World.Player.SpiritSpheres != 0 || m.actorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
+	if len(m.effects().Active)+len(m.scheduledSounds) != 0 || ctx.World.Player.SpiritSpheres != 0 || m.actorSystem.ActorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
 		t.Fatal("Zen release must stand, without replaying casting effects or inventing spheres")
 	}
 	for count := uint16(1); count <= 5; count++ {
@@ -831,7 +832,7 @@ func TestChampionZenCastPoseAndServerOwnedSpheres(t *testing.T) {
 	}
 	for _, skill := range []uint16{db.SkillMOCallspirits, db.SkillMOKitranslation} {
 		m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: skill, SourceID: 2000000, DelayTime: 1000})
-		anim := m.actorAnims[2000000]
+		anim := m.actorSystem.ActorAnims[2000000]
 		if anim.ActionFamily != sprites.ActionPCSkill || !anim.HasFixedMotion || anim.FixedMotion != 0 || anim.Play {
 			t.Fatal("the inherited sphere skills must use the same casting pose as Zen")
 		}
@@ -844,7 +845,7 @@ func TestChampionAttackPoses(t *testing.T) {
 	for _, skill := range []uint16{370, 371, 372} {
 		m := &WorldMode{}
 		m.applyActorActionNotify(ctx, network.ActorActionNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, Damage: 100, HitCount: 1, SourceSpeed: 800, Action: network.ActorActionSkill})
-		anim := m.actorAnims[2000000]
+		anim := m.actorSystem.ActorAnims[2000000]
 		switch skill {
 		case 370:
 			if anim.ActionFamily != sprites.ActionPCSkill || anim.FrameOffset != 3 || anim.Length != 2 || !anim.Play || anim.Speed != 10*db.EffectFrameDuration || anim.Duration != 20*db.EffectFrameDuration {
@@ -864,11 +865,11 @@ func TestChampionAttackPoses(t *testing.T) {
 
 func TestClownGypsyArrowVulcanTiming(t *testing.T) {
 	ctx := testutil.ArcherEffectContext()
-	m := &WorldMode{playerView: humanoidSoundView(sprites.ActionPCAttack3, 6, 3, []string{"atk"})}
+	m := &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(sprites.ActionPCAttack3, 6, 3, []string{"atk"})}}
 	a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillCGArrowvulcan, SourceSpeed: 500, HitCount: 9, Damage: 100}
 	m.applyActorActionNotify(ctx, a)
-	start := m.actorAnims[a.SourceID].Started
-	if anim := m.actorAnims[a.SourceID]; anim.ActionFamily != sprites.ActionPCAttack3 || anim.Speed != 500*time.Millisecond/6 {
+	start := m.actorSystem.ActorAnims[a.SourceID].Started
+	if anim := m.actorSystem.ActorAnims[a.SourceID]; anim.ActionFamily != sprites.ActionPCAttack3 || anim.Speed != 500*time.Millisecond/6 {
 		t.Fatal("Arrow Vulcan must release with ACT 88 at the server's attack speed")
 	}
 	counts := map[int]int{}
@@ -892,7 +893,7 @@ func TestClownGypsyArrowVulcanTiming(t *testing.T) {
 	}
 	for i := 1; i < 9; i++ {
 		at := hitAt.Add(time.Duration(i) * scene.MultiHitDelay)
-		anim, _ := m.actorAnimation(a.SourceID, at)
+		anim, _ := m.actors().ActorAnimation(a.SourceID, at)
 		if anim.ActionFamily != sprites.AttackActionFamily(nil, ctx.World.Player) || !anim.HasFixedMotion || anim.FixedMotion != 4 {
 			t.Fatalf("additional hit %d must restart the native attack", i)
 		}
@@ -910,7 +911,7 @@ func TestClownGypsyArrowVulcanTiming(t *testing.T) {
 		if m.effects().Active[2].EffectID != effects.BeginSpell6 {
 			t.Fatal("Clown casts must use the white aura")
 		}
-		if skill == db.SkillCGArrowvulcan && (!m.actorAnims[a.SourceID].HasFixedMotion || m.actorAnims[a.SourceID].ActionFamily != sprites.ActionPCAttack3) {
+		if skill == db.SkillCGArrowvulcan && (!m.actorSystem.ActorAnims[a.SourceID].HasFixedMotion || m.actorSystem.ActorAnims[a.SourceID].ActionFamily != sprites.ActionPCAttack3) {
 			t.Fatal("Vulcan cast must hold the ready-shot pose")
 		}
 	}
@@ -968,7 +969,7 @@ func TestCreatorGroundAndProtectionPackets(t *testing.T) {
 		if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != tc.effect || m.effects().Active[0].ActorID != 0 || m.effects().Active[0].X != 22 || m.effects().Active[0].Y != 21 {
 			t.Fatal("Aid Condensed Potion must produce one ground burst of the appropriate color")
 		}
-		if len(m.scheduledSounds) != 1 || m.scheduledSounds[0].paths[0] != "assulter_attack.wav" || m.scheduledSounds[0].volume != 40.0/150 || m.scheduledSounds[0].positioned || !m.actorAnims[2000000].Started.Equal(start) {
+		if len(m.scheduledSounds) != 1 || m.scheduledSounds[0].paths[0] != "assulter_attack.wav" || m.scheduledSounds[0].volume != 40.0/150 || m.scheduledSounds[0].positioned || !m.actorSystem.ActorAnims[2000000].Started.Equal(start) {
 			t.Fatal("ground burst must play its sound and preserve the casting throw animation")
 		}
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: db.SkillCRSlimpitcher, Level: uint16(tc.level), X: 22, Y: 21})
@@ -978,7 +979,7 @@ func TestCreatorGroundAndProtectionPackets(t *testing.T) {
 	}
 	m := &WorldMode{}
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: db.SkillCRCultivation, X: 22, Y: 21})
-	if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != effects.BeginSpell6 || m.effects().Active[0].ActorID != 2000000 || m.actorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
+	if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != effects.BeginSpell6 || m.effects().Active[0].ActorID != 2000000 || m.actorSystem.ActorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
 		t.Fatal("Cultivation must use the caster's white flash and skill pose; the server owns the spawned plant")
 	}
 	m = &WorldMode{}
@@ -1011,12 +1012,12 @@ func TestCreatorAcidDemonstrationPackets(t *testing.T) {
 	if e.ActorID != 2000000 || e.TargetID != 300 || e.ActorOrigin.X != 10.5 || e.ProjectileDirection.X != 10 {
 		t.Fatal("bottle flight must capture the caster and victim at cast start")
 	}
-	cast := m.actorAnims[2000000].Started
+	cast := m.actorSystem.ActorAnims[2000000].Started
 	m.effects().Active = nil
 	m.scheduledSounds = nil
 	a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillCRAciddemonstration, HitCount: 10, Damage: 100, SourceSpeed: 500, Action: network.ActorActionSkill}
 	m.applyActorActionNotify(ctx, a)
-	if !m.actorAnims[2000000].Started.Equal(cast) || len(m.effects().Active) != 11 {
+	if !m.actorSystem.ActorAnims[2000000].Started.Equal(cast) || len(m.effects().Active) != 11 {
 		t.Fatal("Acid Demonstration must keep its cast pose, start one impact ring, and flash for each hit")
 	}
 	e = m.effects().Active[0]
@@ -1045,20 +1046,20 @@ func TestDancerScreamAndSlingingArrow(t *testing.T) {
 	ctx := testutil.ArcherEffectContext()
 	m := &WorldMode{}
 	m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: db.SkillDCScream, SourceID: 2000000, TargetID: 300, Result: 1})
-	anim := m.actorAnims[2000000]
+	anim := m.actorSystem.ActorAnims[2000000]
 	if !anim.HasFixedMotion || anim.FixedMotion != 0 || anim.ActionFamily != sprites.ActionPCSkill || anim.Duration != 1200*time.Millisecond {
 		t.Fatal("Scream must hold skill frame zero for 1200ms")
 	}
 	if len(m.effects().Active) != 1 || m.effects().Active[0].ActorID != 2000000 || len(m.scheduledSounds) != 0 {
 		t.Fatal("Scream's silent chat effect must belong to the caster")
 	}
-	if _, ok := m.actorAnimation(2000000, anim.Started.Add(1200*time.Millisecond)); ok {
+	if _, ok := m.actors().ActorAnimation(2000000, anim.Started.Add(1200*time.Millisecond)); ok {
 		t.Fatal("Scream pose outlived its native duration")
 	}
-	m = &WorldMode{playerView: humanoidSoundView(sprites.ActionPCAttack3, 4, 2, []string{"atk"})}
+	m = &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(sprites.ActionPCAttack3, 4, 2, []string{"atk"})}}
 	a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillDCThrowarrow, SourceSpeed: 500, HitCount: 1, Damage: 100}
 	m.applyActorActionNotify(ctx, a)
-	anim = m.actorAnims[a.SourceID]
+	anim = m.actorSystem.ActorAnims[a.SourceID]
 	if len(m.effects().Active) != 2 || anim.ActionFamily != sprites.ActionPCAttack3 {
 		t.Fatal("Slinging Arrow needs ACT 88, one arrow, and one impact")
 	}
@@ -1164,7 +1165,7 @@ func TestHighWizardSoulDrainPackets(t *testing.T) {
 	if drain.ActorOrigin.X != 20.5 || drain.ProjectileDirection.X != -10 {
 		t.Fatal("souls must travel from the defeated monster back to the caster")
 	}
-	anim := m.actorAnims[n.SourceID]
+	anim := m.actorSystem.ActorAnims[n.SourceID]
 	if anim.ActionFamily*8 != 88 || anim.Length != 4 || anim.Speed != 10*db.EffectFrameDuration || anim.Duration != time.Second {
 		t.Fatal("Soul Drain must force ACT 88 frames 0–3 for one second")
 	}
@@ -1226,13 +1227,13 @@ func TestHunterBlitzBeatFirstHitOnly(t *testing.T) {
 func TestHunterPhantasmicArrowRelease(t *testing.T) {
 	ctx := testutil.ArcherEffectContext()
 	family := sprites.AttackActionFamily(nil, ctx.World.Player)
-	m := &WorldMode{playerView: humanoidSoundView(family, 4, 2, []string{"atk"})}
+	m := &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(family, 4, 2, []string{"atk"})}}
 	m.applyActorActionNotify(ctx, network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillHTPhantasmic, Damage: 100, HitCount: 1, SourceSpeed: 500})
-	if m.actorAnims[2000000].ActionFamily != family || len(m.effects().Active) != 4 {
+	if m.actorSystem.ActorAnims[2000000].ActionFamily != family || len(m.effects().Active) != 4 {
 		t.Fatal("Phantasmic Arrow must use the normal bow pose, flash, arrow, and two impacts")
 	}
 	arrow := m.effects().Active[1]
-	if arrow.EffectID != effects.ArrowShot || arrow.Starts.Sub(m.actorAnims[2000000].Started) != 250*time.Millisecond || arrow.Expires.Sub(arrow.Starts) != scene.ReferenceBowArrowFlightDuration {
+	if arrow.EffectID != effects.ArrowShot || arrow.Starts.Sub(m.actorSystem.ActorAnims[2000000].Started) != 250*time.Millisecond || arrow.Expires.Sub(arrow.Starts) != scene.ReferenceBowArrowFlightDuration {
 		t.Fatalf("wrong arrow timing: %+v", arrow)
 	}
 	for _, e := range m.effects().Active[2:] {
@@ -1255,7 +1256,7 @@ func TestKnightSplashDoesNotReplayCasterOrEffects(t *testing.T) {
 		if len(m.effects().Active) != 0 {
 			t.Fatalf("splash skill %d replayed effects: %+v", skill, m.effects().Active)
 		}
-		if !m.actorAnims[2000000].Started.Equal(starts) || ctx.World.Player.Dir != 2 {
+		if !m.actorSystem.ActorAnims[2000000].Started.Equal(starts) || ctx.World.Player.Dir != 2 {
 			t.Fatalf("splash skill %d restarted or turned the caster", skill)
 		}
 	}
@@ -1280,7 +1281,7 @@ func TestKnightQuickenAndAutoCounter(t *testing.T) {
 	for _, state := range []string{"ready", "expired", "cancelled"} {
 		m := &WorldMode{}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: db.SkillKNAutocounter, SourceID: 2000000, TargetID: 2000000, Result: 1})
-		anim := m.actorAnims[2000000]
+		anim := m.actorSystem.ActorAnims[2000000]
 		if !anim.AutoCounter || anim.ActionFamily != sprites.ActionPCAttack2 || !anim.HasFixedMotion || anim.FixedMotion != 0 || anim.Duration != 1500*time.Millisecond || len(m.effects().Active) != 0 || len(m.scheduledSounds) != 0 {
 			t.Fatalf("Auto Counter must silently hold the first attack frame: %+v", anim)
 		}
@@ -1391,11 +1392,11 @@ func TestLordKnightBuffsAndCast(t *testing.T) {
 		if tc.skill != db.SkillLKParrying && count != 1 {
 			t.Fatalf("skill %d stacked buff effects", tc.skill)
 		}
-		if tc.skill == db.SkillLKParrying && m.actorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
+		if tc.skill == db.SkillLKParrying && m.actorSystem.ActorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
 			t.Fatal("Parrying must use standing pose")
 		}
 		if tc.skill == db.SkillLKAurablade {
-			anim := m.actorAnims[2000000]
+			anim := m.actorSystem.ActorAnims[2000000]
 			if anim.ActionFamily*8 != 32 || anim.Length != 6 || anim.Duration != time.Second || anim.Speed != 10*db.EffectFrameDuration {
 				t.Fatalf("Aura Blade must animate native action 32, frames 0..5: %+v", anim)
 			}
@@ -1517,7 +1518,7 @@ func TestCallSpiritsFinishesStandingWithoutAnotherSkillAnimation(t *testing.T) {
 	m := &WorldMode{}
 	m.applySkillCastNotify(ctx, network.SkillCastNotify{SourceID: 2000000, TargetID: 2000000, SkillID: db.SkillMOCallspirits, DelayTime: 1000})
 	m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SourceID: 2000000, TargetID: 2000000, SkillID: db.SkillMOCallspirits, Result: 1})
-	if anim := m.actorAnims[150000]; anim.ActionFamily != scene.SpriteActionIdle {
+	if anim := m.actorSystem.ActorAnims[150000]; anim.ActionFamily != scene.SpriteActionIdle {
 		t.Fatalf("Call Spirits result animation = %+v, want standing", anim)
 	}
 	if ctx.World.Player.SpiritSpheres != 0 {
@@ -1554,11 +1555,11 @@ func TestMonkSkillResultsUseDedicatedPoses(t *testing.T) {
 		ctx := testutil.MonkEffectContext()
 		m := &WorldMode{}
 		m.applyActorActionNotify(ctx, network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: tc.skill, SkillLevel: 5, SourceSpeed: 800, Damage: 100, HitCount: 1, Action: network.ActorActionSkill})
-		anim := m.actorAnims[150000]
+		anim := m.actorSystem.ActorAnims[150000]
 		if anim.ActionFamily != tc.family || anim.FrameOffset != tc.frame || anim.Play != tc.play {
 			t.Fatalf("skill %d pose = %+v", tc.skill, anim)
 		}
-		if _, active := m.actorAnimation(150000, anim.Started.Add(2*time.Second)); active {
+		if _, active := m.actors().ActorAnimation(150000, anim.Started.Add(2*time.Second)); active {
 			t.Fatalf("skill %d pose never released", tc.skill)
 		}
 	}
@@ -1568,14 +1569,14 @@ func TestBladeStopWaitingPoseExpires(t *testing.T) {
 	ctx := testutil.MonkEffectContext()
 	m := &WorldMode{}
 	m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SourceID: 2000000, TargetID: 2000000, SkillID: db.SkillMOBladestop, Result: 1})
-	anim := m.actorAnims[150000]
+	anim := m.actorSystem.ActorAnims[150000]
 	if anim.ActionFamily != sprites.ActionPCSkill || anim.FixedMotion != 3 || anim.Play {
 		t.Fatalf("Blade Stop waiting pose = %+v", anim)
 	}
-	if _, active := m.actorAnimation(150000, anim.Started.Add(2*time.Second)); !active {
+	if _, active := m.actors().ActorAnimation(150000, anim.Started.Add(2*time.Second)); !active {
 		t.Fatal("Blade Stop waiting pose ended too soon")
 	}
-	if _, active := m.actorAnimation(150000, anim.Started.Add(3*time.Second)); active {
+	if _, active := m.actors().ActorAnimation(150000, anim.Started.Add(3*time.Second)); active {
 		t.Fatal("Blade Stop waiting pose did not expire")
 	}
 }
@@ -1596,7 +1597,7 @@ func TestMonkAttackActivationSounds(t *testing.T) {
 				SourceSpeed: 800, Damage: damage, HitCount: 3, Action: network.ActorActionSkill,
 			}
 			m.applyActorActionNotify(ctx, action)
-			start := m.actorAnims[150000].Started
+			start := m.actorSystem.ActorAnims[150000].Started
 			count := 0
 			for _, sound := range m.scheduledSounds {
 				if reflect.DeepEqual(sound.paths, []string{tc.sound}) {
@@ -1938,7 +1939,7 @@ func TestProfessorSkillPackets(t *testing.T) {
 		if !reflect.DeepEqual(owners, tc.owners) || len(m.scheduledSounds) != tc.sounds {
 			t.Fatalf("skill %d: effects=%v sounds=%+v", tc.skill, owners, m.scheduledSounds)
 		}
-		if m.actorAnims[n.SourceID].ActionFamily != sprites.ActionPCSkill {
+		if m.actorSystem.ActorAnims[n.SourceID].ActionFamily != sprites.ActionPCSkill {
 			t.Fatalf("skill %d must use the skill release pose", tc.skill)
 		}
 		if tc.skill == 374 && (m.effects().Active[0].TargetID != 300 || !m.scheduledSounds[0].positioned) {
@@ -2115,7 +2116,7 @@ func TestSniperCastAndBuffOwnership(t *testing.T) {
 			t.Fatalf("skill %d needs cast circle, lock-on, and native aura", tc.skill)
 		}
 		if tc.skill == db.SkillSNSharpshooting {
-			anim := m.actorAnims[2000000]
+			anim := m.actorSystem.ActorAnims[2000000]
 			if anim.ActionFamily*8 != 88 || !anim.HasFixedMotion || anim.FixedMotion != 0 || anim.Play {
 				t.Fatal("Sharp Shooting must hold ready-shot frame zero while casting")
 			}
@@ -2136,7 +2137,7 @@ func TestSniperCastAndBuffOwnership(t *testing.T) {
 		if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != tc.effect || m.effects().Active[0].ActorID != n.SourceID {
 			t.Fatalf("skill %d must launch once on its packet source", tc.skill)
 		}
-		if tc.skill == db.SkillSNSight && m.actorAnims[n.SourceID].ActionFamily != scene.SpriteActionIdle {
+		if tc.skill == db.SkillSNSight && m.actorSystem.ActorAnims[n.SourceID].ActionFamily != scene.SpriteActionIdle {
 			t.Fatal("True Sight should leave the caster standing")
 		}
 		if tc.skill == db.SkillSNWindwalk && (!m.effects().Active[0].HasActorTransform || m.effects().Active[0].ActorOrigin.X != 10.5) {
@@ -2149,10 +2150,10 @@ func TestSniperDamageTimingAndSplash(t *testing.T) {
 	ctx := testutil.ArcherEffectContext()
 	family := sprites.AttackActionFamily(nil, ctx.World.Player)
 	for _, skill := range []uint16{db.SkillSNSharpshooting, db.SkillSNFalconassault} {
-		m := &WorldMode{playerView: humanoidSoundView(family, 4, 2, []string{"atk"})}
+		m := &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(family, 4, 2, []string{"atk"})}}
 		a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: skill, SourceSpeed: 500, HitCount: 5, Damage: 100}
 		m.applyActorActionNotify(ctx, a)
-		start := m.actorAnims[a.SourceID].Started
+		start := m.actorSystem.ActorAnims[a.SourceID].Started
 		counts := map[int]int{}
 		var arrow effects.Instance
 		for _, e := range m.effects().Active {
@@ -2254,7 +2255,7 @@ func TestAllSoulLinkerSkillsHaveCastAndActivationEffects(t *testing.T) {
 		if m.scheduledSounds[1].at.Sub(m.scheduledSounds[0].at) != 145*db.EffectFrameDuration {
 			t.Fatal("Soul Link sound timing")
 		}
-		anim := m.actorAnims[150000]
+		anim := m.actorSystem.ActorAnims[150000]
 		if anim.ActionFamily != sprites.ActionPCSkill || anim.FixedMotion != 3 || !anim.HasFixedMotion {
 			t.Fatalf("link %d caster pose: %+v", skill, anim)
 		}
@@ -2299,7 +2300,7 @@ func TestStalkerPacketEffects(t *testing.T) {
 		}
 		n.Result = 1
 		m.applySkillNoDamageNotify(ctx, n)
-		if len(m.effects().Active) != len(tc.ids) || m.actorAnims[n.SourceID].ActionFamily != sprites.ActionPCSkill {
+		if len(m.effects().Active) != len(tc.ids) || m.actorSystem.ActorAnims[n.SourceID].ActionFamily != sprites.ActionPCSkill {
 			t.Fatalf("skill %d: wrong effects or release pose", tc.skill)
 		}
 		for i, e := range m.effects().Active {
@@ -2334,7 +2335,7 @@ func TestStalkerCastingAndSpin(t *testing.T) {
 	}{{389, 501, scene.SpriteActionIdle}, {390, 16, sprites.ActionPCReadyFight}, {475, 59, scene.SpriteActionIdle}, {476, 16, sprites.ActionPCReadyFight}} {
 		m := &WorldMode{}
 		m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: tc.skill, SourceID: 2000000, DelayTime: 5000, Property: 3})
-		if len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.aura || m.actorAnims[2000000].ActionFamily != tc.action {
+		if len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.aura || m.actorSystem.ActorAnims[2000000].ActionFamily != tc.action {
 			t.Fatalf("skill %d: wrong casting aura/pose", tc.skill)
 		}
 		if tc.skill != 389 {
@@ -2346,7 +2347,7 @@ func TestStalkerCastingAndSpin(t *testing.T) {
 		}
 		for _, test := range []struct{ tick, direction int }{{0, 0}, {15, 4}, {16, 5}, {30, 2}, {40, 0}, {41, 1}, {100, 0}} {
 			now := start.Add(time.Duration(test.tick) * db.EffectFrameDuration)
-			if got := m.skillEffectDirection(ctx, 100, 0, now); got != test.direction {
+			if got := m.actors().SkillEffectDirection(ctx, 100, 0, now); got != test.direction {
 				t.Fatalf("Chase Walk tick %d: direction %d, want %d", test.tick, got, test.direction)
 			}
 		}
@@ -2354,11 +2355,11 @@ func TestStalkerCastingAndSpin(t *testing.T) {
 			t.Fatal("casting spin changed authoritative facing")
 		}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: 389, SourceID: 2000000, TargetID: 2000000, Result: 1})
-		if m.skillEffectDirection(ctx, 100, 0, start.Add(20*db.EffectFrameDuration)) != 0 {
+		if m.actors().SkillEffectDirection(ctx, 100, 0, start.Add(20*db.EffectFrameDuration)) != 0 {
 			t.Fatal("casting spin survived skill release")
 		}
-		delete(m.actorAnims, 2000000)
-		if m.skillEffectDirection(ctx, 100, 0, start.Add(20*db.EffectFrameDuration)) != 0 {
+		delete(m.actorSystem.ActorAnims, 2000000)
+		if m.actors().SkillEffectDirection(ctx, 100, 0, start.Add(20*db.EffectFrameDuration)) != 0 {
 			t.Fatal("casting spin survived interrupted animation")
 		}
 	}
@@ -2392,7 +2393,7 @@ func TestStarGladiatorNoDamageOwnershipAndSounds(t *testing.T) {
 			}
 		}
 		if tc.skill >= 431 && tc.skill <= 433 {
-			anim := m.actorAnims[100]
+			anim := m.actorSystem.ActorAnims[100]
 			if anim.FixedMotion != 2 || !anim.HasFixedMotion || anim.Duration != time.Second {
 				t.Fatal("Comfort must hold skill motion two for one second")
 			}
@@ -2425,7 +2426,7 @@ func TestStarGladiatorCastsAndRejectedSkills(t *testing.T) {
 	for skill := uint16(427); skill <= 444; skill++ {
 		m := &WorldMode{}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: skill, SourceID: 2000000, TargetID: 300})
-		if len(m.effects().Active)+len(m.actorAnims)+len(m.scheduledSounds) != 0 {
+		if len(m.effects().Active)+len(m.actorSystem.ActorAnims)+len(m.scheduledSounds) != 0 {
 			t.Fatal("failed skill created release effects")
 		}
 	}
@@ -2520,9 +2521,9 @@ func TestTaekwonHighJumpCastAndLanding(t *testing.T) {
 		if len(m.effects().Active) != count || m.effects().Active[0].EffectID != effects.JumpBody || m.effects().Active[1].EffectID != effects.Peong {
 			t.Fatalf("High Jump cast must launch takeoff and dust, even without a delay: %+v", m.effects().Active)
 		}
-		start := m.actorAnims[2000000].Started
+		start := m.actorSystem.ActorAnims[2000000].Started
 		for _, tc := range []struct{ tick, motion int }{{0, 0}, {29, 0}, {30, 1}, {40, 1}} {
-			anim, ok := m.actorAnimation(2000000, start.Add(time.Duration(tc.tick)*db.EffectFrameDuration))
+			anim, ok := m.actors().ActorAnimation(2000000, start.Add(time.Duration(tc.tick)*db.EffectFrameDuration))
 			if !ok || anim.ActionFamily != sprites.ActionPCAttack1 || anim.FixedMotion != tc.motion {
 				t.Fatalf("High Jump casting pose tick %d: %+v", tc.tick, anim)
 			}
@@ -2536,8 +2537,8 @@ func TestTaekwonHighJumpCastAndLanding(t *testing.T) {
 				t.Fatal("landing did not remove takeoff through the local actor alias")
 			}
 		}
-		start = m.actorAnims[100].Started
-		anim, ok := m.actorAnimation(100, start.Add(40*db.EffectFrameDuration))
+		start = m.actorSystem.ActorAnims[100].Started
+		anim, ok := m.actors().ActorAnimation(100, start.Add(40*db.EffectFrameDuration))
 		if !ok || anim.ActionFamily != scene.SpriteActionWalk || anim.FixedMotion != 5 {
 			t.Fatalf("High Jump landing must finish on walk motion five: %+v", anim)
 		}
@@ -2556,7 +2557,7 @@ func TestTaekwonSecondaryKickDoesNotRepeatRelease(t *testing.T) {
 		if len(m.effects().Active) != 0 {
 			t.Fatal("secondary kick replayed release effects")
 		}
-		if _, ok := m.actorAnims[100]; ok {
+		if _, ok := m.actorSystem.ActorAnims[100]; ok {
 			t.Fatal("secondary kick restarted the caster pose")
 		}
 		for _, sound := range m.scheduledSounds {
@@ -2584,14 +2585,14 @@ func TestTaekwonKicksUseNativeMotionSequences(t *testing.T) {
 		ctx.World.Player.Job, ctx.Session.Selected.Job = tc.job, int16(tc.job)
 		m := &WorldMode{}
 		m.applyActorActionNotify(ctx, network.ActorActionNotify{SkillID: tc.skill, SourceID: 2000000, TargetID: 300, Action: network.ActorActionSkill, SourceSpeed: 400, Damage: 10, HitCount: 1})
-		start := m.actorAnims[100].Started
+		start := m.actorSystem.ActorAnims[100].Started
 		for i, frame := range tc.frames {
-			anim, ok := m.actorAnimation(100, start.Add(time.Duration(i*tc.ticks)*db.EffectFrameDuration))
+			anim, ok := m.actors().ActorAnimation(100, start.Add(time.Duration(i*tc.ticks)*db.EffectFrameDuration))
 			if !ok || anim.ActionFamily != tc.family || !anim.HasFixedMotion || anim.FixedMotion != frame || anim.Play {
 				t.Fatalf("skill %d job %d motion %d = %+v", tc.skill, tc.job, i, anim)
 			}
 		}
-		if _, ok := m.actorAnimation(100, start.Add(500*time.Millisecond)); ok {
+		if _, ok := m.actors().ActorAnimation(100, start.Add(500*time.Millisecond)); ok {
 			t.Fatal("kick animation did not expire")
 		}
 	}
@@ -2692,23 +2693,23 @@ func TestThiefFindStoneAnimation(t *testing.T) {
 			ctx := testutil.ThiefEffectContext()
 			m := &WorldMode{}
 			if tc.frames > 0 {
-				m.playerView = humanoidTimingView(scene.SpriteActionPickup, tc.frames)
-				for i := range m.playerView.Body.Act.Actions {
-					m.playerView.Body.Act.Actions[i].DelayMS = 100
+				m.actorSystem.PlayerView = humanoidTimingView(scene.SpriteActionPickup, tc.frames)
+				for i := range m.actorSystem.PlayerView.Body.Act.Actions {
+					m.actorSystem.PlayerView.Body.Act.Actions[i].DelayMS = 100
 				}
 			}
 			notify := network.SkillCastNotify{SkillID: db.SkillTFPickstone, SourceID: 2000000, TargetID: 2000000, DelayTime: 500}
 			m.applySkillCastNotify(ctx, notify)
 			for _, id := range []uint32{2000000, 100} {
-				anim := m.actorAnims[id]
+				anim := m.actorSystem.ActorAnims[id]
 				if anim.ActionFamily != scene.SpriteActionPickup || anim.Duration != tc.duration || anim.HasSpeed {
 					t.Fatalf("Find Stone must play pickup once at the sprite's own speed: %+v", anim)
 				}
 				end := anim.Started.Add(tc.duration)
-				if _, active := m.actorAnimation(id, end.Add(-time.Millisecond)); !active {
+				if _, active := m.actors().ActorAnimation(id, end.Add(-time.Millisecond)); !active {
 					t.Fatal("pickup ended before its last frame finished")
 				}
-				if _, active := m.actorAnimation(id, end); active {
+				if _, active := m.actors().ActorAnimation(id, end); active {
 					t.Fatal("pickup must end before the cast finishes")
 				}
 				bar := m.actorCastBars[id]
@@ -2721,7 +2722,7 @@ func TestThiefFindStoneAnimation(t *testing.T) {
 			m.applySkillCastNotify(ctx, notify)
 			m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: db.SkillTFPickstone, SourceID: 2000000, TargetID: 2000000, Result: 1})
 			for _, id := range []uint32{2000000, 100} {
-				if anim := m.actorAnims[id]; anim.ActionFamily != scene.SpriteActionIdle {
+				if anim := m.actorSystem.ActorAnims[id]; anim.ActionFamily != scene.SpriteActionIdle {
 					t.Fatalf("Find Stone must return to standing on success: %+v", anim)
 				}
 			}
@@ -2751,7 +2752,7 @@ func TestWhitesmithBuffsAndCasting(t *testing.T) {
 		if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != tc.effect || m.effects().Active[0].ActorID != n.SourceID || len(m.scheduledSounds) != tc.sounds {
 			t.Fatalf("skill %d must play once on its caster", tc.skill)
 		}
-		if m.actorAnims[n.SourceID].ActionFamily != tc.action {
+		if m.actorSystem.ActorAnims[n.SourceID].ActionFamily != tc.action {
 			t.Fatalf("skill %d has the wrong release pose", tc.skill)
 		}
 		if tc.skill == db.SkillWSOverthrustmax {
@@ -2777,7 +2778,7 @@ func TestCartTerminationDamageTiming(t *testing.T) {
 		m := &WorldMode{}
 		a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillWSCarttermination, Action: network.ActorActionSkill, Damage: damage, SourceSpeed: 1000}
 		m.applyActorActionNotify(ctx, a)
-		anim := m.actorAnims[a.SourceID]
+		anim := m.actorSystem.ActorAnims[a.SourceID]
 		start := anim.Started
 		if anim.ActionFamily != sprites.ActionPCSkill || start.IsZero() {
 			t.Fatal("Cart Termination must use the skill release pose")
@@ -2894,14 +2895,14 @@ func TestWarpPortalActorEntryAddsWarpZoneEffect(t *testing.T) {
 			ctx := client.Context{Session: sessionState, World: world}
 			entry := network.ActorEntry{ID: 900, Job: job, X: 30, Y: 40}
 
-			upsertNetworkActor(ctx, entry)
-			mode.applyWarpPortalEntry(ctx, entry)
-			mode.applyWarpPortalEntry(ctx, entry)
+			actors.UpsertNetworkActor(ctx, entry)
+			mode.actors().ApplyWarpPortalEntry(ctx, entry)
+			mode.actors().ApplyWarpPortalEntry(ctx, entry)
 
 			if len(mode.effects().Active) != 1 {
 				t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 			}
-			if effect := mode.effects().Active[0]; effect.ActorID != 900 || effect.EffectID != effects.WarpZone2 || effect.X != 30 || effect.Y != 40 || effect.Duration != warpPortalActorEffectLifetime {
+			if effect := mode.effects().Active[0]; effect.ActorID != 900 || effect.EffectID != effects.WarpZone2 || effect.X != 30 || effect.Y != 40 || effect.Duration != actors.WarpPortalActorEffectLifetime {
 				t.Fatalf("effect = %+v", effect)
 			}
 		})
@@ -2915,13 +2916,13 @@ func TestWaitingWarpPortalActorEntryAddsReadyPortalEffect(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 	entry := network.ActorEntry{ID: 900, Job: scene.ActorJobWarpPortalWaiting, X: 30, Y: 40}
 
-	upsertNetworkActor(ctx, entry)
-	mode.applyWarpPortalEntry(ctx, entry)
+	actors.UpsertNetworkActor(ctx, entry)
+	mode.actors().ApplyWarpPortalEntry(ctx, entry)
 
 	if len(mode.effects().Active) != 1 {
 		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
 	}
-	if effect := mode.effects().Active[0]; effect.ActorID != 900 || effect.EffectID != effects.ReadyPortal || effect.X != 30 || effect.Y != 40 || effect.Duration != warpPortalActorEffectLifetime {
+	if effect := mode.effects().Active[0]; effect.ActorID != 900 || effect.EffectID != effects.ReadyPortal || effect.X != 30 || effect.Y != 40 || effect.Duration != actors.WarpPortalActorEffectLifetime {
 		t.Fatalf("effect = %+v", effect)
 	}
 }
@@ -2933,11 +2934,11 @@ func TestWarpPortalActorEntryReplacesWaitingEffect(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 	entry := network.ActorEntry{ID: 900, Job: scene.ActorJobWarpPortalWaiting, X: 30, Y: 40}
 
-	upsertNetworkActor(ctx, entry)
-	mode.applyWarpPortalEntry(ctx, entry)
+	actors.UpsertNetworkActor(ctx, entry)
+	mode.actors().ApplyWarpPortalEntry(ctx, entry)
 	entry.Job = scene.ActorJobWarpPortalActive
-	upsertNetworkActor(ctx, entry)
-	mode.applyWarpPortalEntry(ctx, entry)
+	actors.UpsertNetworkActor(ctx, entry)
+	mode.actors().ApplyWarpPortalEntry(ctx, entry)
 
 	if len(mode.effects().Active) != 1 {
 		t.Fatalf("world effects = %d, want 1", len(mode.effects().Active))
@@ -2954,8 +2955,8 @@ func TestRemoveActorNowRemovesActorWorldEffects(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 	entry := network.ActorEntry{ID: 900, Job: scene.ActorJobWarpPortal, X: 30, Y: 40}
 
-	upsertNetworkActor(ctx, entry)
-	mode.applyWarpPortalEntry(ctx, entry)
+	actors.UpsertNetworkActor(ctx, entry)
+	mode.actors().ApplyWarpPortalEntry(ctx, entry)
 	mode.removeActorNow(ctx, entry.ID)
 
 	if len(mode.effects().Active) != 0 {
@@ -2965,7 +2966,7 @@ func TestRemoveActorNowRemovesActorWorldEffects(t *testing.T) {
 
 func TestWarpActorUsesCenteredWorldAnchor(t *testing.T) {
 	actor := worldstate.Actor{Job: scene.ActorJobWarpPortal}
-	x, y := actorWorldAnchor(actor, 30, 40)
+	x, y := actors.ActorWorldAnchor(actor, 30, 40)
 	if x != 30.5 || y != 40.5 {
 		t.Fatalf("warp anchor = %.1f, %.1f; want 30.5, 40.5", x, y)
 	}
@@ -2973,7 +2974,7 @@ func TestWarpActorUsesCenteredWorldAnchor(t *testing.T) {
 
 func TestNormalActorUsesCenteredWorldAnchor(t *testing.T) {
 	actor := worldstate.Actor{Job: 1002}
-	x, y := actorWorldAnchor(actor, 30, 40)
+	x, y := actors.ActorWorldAnchor(actor, 30, 40)
 	if x != 30.5 || y != 40.5 {
 		t.Fatalf("normal actor anchor = %.1f, %.1f; want 30.5, 40.5", x, y)
 	}
@@ -2982,15 +2983,10 @@ func TestNormalActorUsesCenteredWorldAnchor(t *testing.T) {
 func TestApplyActorActionNotifyUpdatesLocalSitState(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Moving: true}
-	mode := &WorldMode{
-		actorAnims: map[uint32]scene.ActorAnimation{
-			2000000: {ActionFamily: sprites.ActionPCReadyFight, Loop: true},
-			150000:  {ActionFamily: sprites.ActionPCReadyFight, Loop: true},
-		},
-		pendingAttack:  attackIntent{targetID: 300},
-		lockedAttackID: 300,
-		attackFocusID:  300,
-	}
+	mode := &WorldMode{pendingAttack: attackIntent{targetID: 300}, lockedAttackID: 300, attackFocusID: 300, actorSystem: actors.System{ActorAnims: map[uint32]scene.ActorAnimation{
+		2000000: {ActionFamily: sprites.ActionPCReadyFight, Loop: true},
+		150000:  {ActionFamily: sprites.ActionPCReadyFight, Loop: true},
+	}}}
 	ctx := client.Context{
 		Session: &session.Session{AccountID: 2000000, CharID: 150000},
 		World:   world,
@@ -3006,18 +3002,18 @@ func TestApplyActorActionNotifyUpdatesLocalSitState(t *testing.T) {
 	if world.Player.Moving {
 		t.Fatal("local player kept moving while sitting")
 	}
-	if _, ok := mode.actorAnims[2000000]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[2000000]; ok {
 		t.Fatal("local account animation survived sitting")
 	}
-	if _, ok := mode.actorAnims[150000]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[150000]; ok {
 		t.Fatal("local character animation survived sitting")
 	}
 	if mode.pendingAttack.targetID != 0 || mode.lockedAttackID != 0 || mode.attackFocusID != 0 {
 		t.Fatalf("local attack intent survived sitting: pending=%d locked=%d focus=%d", mode.pendingAttack.targetID, mode.lockedAttackID, mode.attackFocusID)
 	}
 
-	mode.actorAnims[2000000] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
-	mode.actorAnims[150000] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
+	mode.actorSystem.ActorAnims[2000000] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
+	mode.actorSystem.ActorAnims[150000] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
 	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
 		SourceID: 2000000,
 		Action:   network.ActionStandUp,
@@ -3025,10 +3021,10 @@ func TestApplyActorActionNotifyUpdatesLocalSitState(t *testing.T) {
 	if world.Player.Sitting {
 		t.Fatal("local player did not stand")
 	}
-	if _, ok := mode.actorAnims[2000000]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[2000000]; ok {
 		t.Fatal("local account animation survived standing")
 	}
-	if _, ok := mode.actorAnims[150000]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[150000]; ok {
 		t.Fatal("local character animation survived standing")
 	}
 }
@@ -3036,9 +3032,9 @@ func TestApplyActorActionNotifyUpdatesLocalSitState(t *testing.T) {
 func TestApplyActorActionNotifyUpdatesRemoteSitState(t *testing.T) {
 	world := worldstate.New()
 	world.UpsertActor(worldstate.Actor{ID: 300, X: 10, Y: 20, Moving: true})
-	mode := &WorldMode{actorAnims: map[uint32]scene.ActorAnimation{
+	mode := &WorldMode{actorSystem: actors.System{ActorAnims: map[uint32]scene.ActorAnimation{
 		300: {ActionFamily: sprites.ActionPCReadyFight, Loop: true},
-	}}
+	}}}
 	ctx := client.Context{
 		Session: &session.Session{AccountID: 2000000, CharID: 150000},
 		World:   world,
@@ -3051,11 +3047,11 @@ func TestApplyActorActionNotifyUpdatesRemoteSitState(t *testing.T) {
 	if actor := world.Actors[300]; !actor.Sitting || actor.Moving {
 		t.Fatalf("remote actor sit state = sitting %t moving %t", actor.Sitting, actor.Moving)
 	}
-	if _, ok := mode.actorAnims[300]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[300]; ok {
 		t.Fatal("remote actor animation survived sitting")
 	}
 
-	mode.actorAnims[300] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
+	mode.actorSystem.ActorAnims[300] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
 	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
 		SourceID: 300,
 		Action:   network.ActionStandUp,
@@ -3063,7 +3059,7 @@ func TestApplyActorActionNotifyUpdatesRemoteSitState(t *testing.T) {
 	if actor := world.Actors[300]; actor.Sitting {
 		t.Fatalf("remote actor stayed sitting: %+v", actor)
 	}
-	if _, ok := mode.actorAnims[300]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[300]; ok {
 		t.Fatal("remote actor animation survived standing")
 	}
 }
@@ -3074,10 +3070,8 @@ func TestPickupWaitsForServerAnimationAndDisappear(t *testing.T) {
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Dir: 4}
 	item := worldstate.FloorItem{ID: 9001, ItemID: 909, X: 11, Y: 20, Amount: 1}
 	world.UpsertItem(item)
-	mode := &WorldMode{
-		actorAnims: make(map[uint32]scene.ActorAnimation),
-	}
-	mode.actorAnims[150000] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
+	mode := &WorldMode{actorSystem: actors.System{ActorAnims: make(map[uint32]scene.ActorAnimation)}}
+	mode.actorSystem.ActorAnims[150000] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
 	ctx := client.Context{
 		Session: &session.Session{
 			AccountID: 2000000,
@@ -3095,15 +3089,15 @@ func TestPickupWaitsForServerAnimationAndDisappear(t *testing.T) {
 	if _, ok := world.Items[item.ID]; !ok {
 		t.Fatal("pickup request removed item before server disappearance")
 	}
-	if anim := mode.actorAnims[150000]; anim.ActionFamily != sprites.ActionPCReadyFight || len(mode.actorAnims) != 1 {
-		t.Fatalf("pickup request changed the player's animation before server confirmation: %+v", mode.actorAnims)
+	if anim := mode.actorSystem.ActorAnims[150000]; anim.ActionFamily != sprites.ActionPCReadyFight || len(mode.actorSystem.ActorAnims) != 1 {
+		t.Fatalf("pickup request changed the player's animation before server confirmation: %+v", mode.actorSystem.ActorAnims)
 	}
 	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
 		SourceID: world.Player.ID,
 		TargetID: item.ID,
 		Action:   network.ActorActionPickupItem,
 	})
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("local pickup animation missing")
 	}
@@ -3113,10 +3107,10 @@ func TestPickupWaitsForServerAnimationAndDisappear(t *testing.T) {
 	if anim.Next != nil {
 		t.Fatalf("pickup ack animation next = %+v, want nil so it returns to idle", anim.Next)
 	}
-	if expired, ok := mode.actorAnimation(150000, anim.Started.Add(anim.Duration)); ok {
+	if expired, ok := mode.actors().ActorAnimation(150000, anim.Started.Add(anim.Duration)); ok {
 		t.Fatalf("pickup request expired animation = %+v, want idle fallback", expired)
 	}
-	if world.Dir != directionFromDelta(10, 20, 11, 20, 4) {
+	if world.Dir != actors.DirectionFromDelta(10, 20, 11, 20, 4) {
 		t.Fatalf("player dir = %d", world.Dir)
 	}
 
@@ -3148,8 +3142,8 @@ func TestRejectedPickupDoesNotAnimate(t *testing.T) {
 	}
 	readBotTestPackets(t, serverConn, network.BuildItemPickupPacketForClientDate(item.ID, 20080910))
 	mode.applyItemPickupAck(ctx, network.ItemPickupAck{ItemID: item.ItemID, Result: 1})
-	if len(mode.actorAnims) != 0 || len(mode.effects().Active) != 0 || len(mode.scheduledSounds) != 0 {
-		t.Fatalf("rejected pickup played an animation, effect or sound: animations=%+v effects=%+v sounds=%+v", mode.actorAnims, mode.effects().Active, mode.scheduledSounds)
+	if len(mode.actorSystem.ActorAnims) != 0 || len(mode.effects().Active) != 0 || len(mode.scheduledSounds) != 0 {
+		t.Fatalf("rejected pickup played an animation, effect or sound: animations=%+v effects=%+v sounds=%+v", mode.actorSystem.ActorAnims, mode.effects().Active, mode.scheduledSounds)
 	}
 	if len(ctx.Session.Inventory.Items) != 0 || len(world.Items) != 1 {
 		t.Fatal("rejected pickup changed the inventory or floor items")
@@ -3229,10 +3223,8 @@ func TestApplyActorPickupActionNotifyStartsPickupInsteadOfAttack(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Dir: 4}
 	world.UpsertItem(worldstate.FloorItem{ID: 9001, ItemID: 909, X: 11, Y: 20, Amount: 1})
-	mode := &WorldMode{
-		actorAnims: make(map[uint32]scene.ActorAnimation),
-	}
-	mode.actorAnims[150000] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
+	mode := &WorldMode{actorSystem: actors.System{ActorAnims: make(map[uint32]scene.ActorAnimation)}}
+	mode.actorSystem.ActorAnims[150000] = scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}
 	ctx := client.Context{
 		Session: &session.Session{
 			AccountID: 2000000,
@@ -3247,7 +3239,7 @@ func TestApplyActorPickupActionNotifyStartsPickupInsteadOfAttack(t *testing.T) {
 		Action:   network.ActorActionPickupItem,
 	})
 
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("local pickup animation missing")
 	}
@@ -3257,13 +3249,13 @@ func TestApplyActorPickupActionNotifyStartsPickupInsteadOfAttack(t *testing.T) {
 	if anim.Next != nil {
 		t.Fatalf("pickup animation next = %+v, want nil so it returns to idle", anim.Next)
 	}
-	if expired, ok := mode.actorAnimation(150000, anim.Started.Add(anim.Duration)); ok {
+	if expired, ok := mode.actors().ActorAnimation(150000, anim.Started.Add(anim.Duration)); ok {
 		t.Fatalf("pickup expired animation = %+v, want idle fallback", expired)
 	}
 	if len(mode.damageFloaters) != 0 {
 		t.Fatalf("pickup notify should not create damage floaters: %+v", mode.damageFloaters)
 	}
-	if world.Dir != directionFromDelta(10, 20, 11, 20, 4) {
+	if world.Dir != actors.DirectionFromDelta(10, 20, 11, 20, 4) {
 		t.Fatalf("player dir = %d", world.Dir)
 	}
 }
@@ -3392,16 +3384,16 @@ func TestActorLifeForDisplayHidesMonsterHPBarsFor2008Client(t *testing.T) {
 }
 
 func TestActorOverlayLifeBarIsBelowNameLabel(t *testing.T) {
-	nameY := actorNameLabelY(100, 1.2)
-	barY := actorLifeBarY(100, 1.2)
+	nameY := actors.ActorNameLabelY(100, 1.2)
+	barY := actors.ActorLifeBarY(100, 1.2)
 	if barY <= nameY+10 {
 		t.Fatalf("bar y = %.1f, name y = %.1f; want bar below name", barY, nameY)
 	}
 }
 
 func TestActorOverlayCastBarIsBelowSpeechBubble(t *testing.T) {
-	bubbleBottomY := actorSpeechBubbleBottomY(100, 1.2)
-	barY := actorCastBarY(100, 1.2)
+	bubbleBottomY := actors.ActorSpeechBubbleBottomY(100, 1.2)
+	barY := actors.ActorCastBarY(100, 1.2)
 	if barY <= bubbleBottomY {
 		t.Fatalf("cast bar y = %.1f, bubble bottom y = %.1f; want cast bar below bubble", barY, bubbleBottomY)
 	}
@@ -3421,7 +3413,7 @@ func TestActorOverlayBarFillWidthRoundsAndClamps(t *testing.T) {
 
 func TestLocalPlayerNameIsBelowHPAndSPBars(t *testing.T) {
 	life := actorLife{hasSP: true}
-	barY := actorLifeBarY(100, 1.2)
+	barY := actors.ActorLifeBarY(100, 1.2)
 	nameY := actorNameBelowLifeBarY(100, 1.2, life)
 	if nameY <= barY+actorLifeBarHeight(life) {
 		t.Fatalf("name y = %.1f, bar y = %.1f; want name below hp/sp bars", nameY, barY)
@@ -3436,7 +3428,7 @@ func TestActorLifeBarHeightAddsHomunculusHungerRow(t *testing.T) {
 
 func TestHomunculusNameYUsesThreeBarHeight(t *testing.T) {
 	life := actorLife{hasSP: true, hasHunger: true}
-	barY := actorLifeBarY(100, 1.2)
+	barY := actors.ActorLifeBarY(100, 1.2)
 	nameY := actorNameBelowLifeBarY(100, 1.2, life)
 	if got := nameY - (barY + actorLifeBarHeight(life)); got != 3 {
 		t.Fatalf("name gap = %.1f, want 3px below hp/sp/hunger bars", got)
@@ -3505,10 +3497,10 @@ func TestActorActionFrameDelayUsesPlayerWeaponActionFrames(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Job: 1, Weapon: 3, Dir: 0}
 	actionFamily := sprites.AttackActionFamily(nil, world.Player)
-	mode := &WorldMode{playerView: humanoidTimingView(actionFamily, 4)}
+	mode := &WorldMode{actorSystem: actors.System{PlayerView: humanoidTimingView(actionFamily, 4)}}
 	ctx := client.Context{Session: &session.Session{AccountID: 2000000, CharID: 150000}, World: world}
 
-	if got := mode.actorActionFrameDelay(ctx, world.Player, actionFamily, 800*time.Millisecond); got != 200*time.Millisecond {
+	if got := mode.actors().ActorActionFrameDelay(ctx, world.Player, actionFamily, 800*time.Millisecond); got != 200*time.Millisecond {
 		t.Fatalf("frame delay = %s, want attack duration divided by weapon action frames", got)
 	}
 }
@@ -3525,7 +3517,7 @@ func TestActorActionNotifySetsPlayerWeaponAttackFrameDelay(t *testing.T) {
 		HasObjectType: true,
 	})
 	actionFamily := sprites.AttackActionFamily(nil, world.Player)
-	mode := &WorldMode{playerView: humanoidTimingView(actionFamily, 4)}
+	mode := &WorldMode{actorSystem: actors.System{PlayerView: humanoidTimingView(actionFamily, 4)}}
 	ctx := client.Context{
 		Session: &session.Session{AccountID: 2000000, CharID: 150000, Selected: session.Character{ID: 150000, Job: 1, Weapon: 3}},
 		World:   world,
@@ -3540,7 +3532,7 @@ func TestActorActionNotifySetsPlayerWeaponAttackFrameDelay(t *testing.T) {
 		Action:      0,
 	})
 
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("attack animation missing")
 	}
@@ -3695,11 +3687,9 @@ func TestMercenaryAttackSchedulesWeaponSwingAndHitSounds(t *testing.T) {
 		HasObjectType: true,
 	})
 	actionFamily := sprites.AttackActionFamily(nil, mercenary)
-	mode := &WorldMode{
-		mercenaryViews: map[sprites.Appearance]*sprites.Humanoid{
-			sprites.MercenaryAppearanceForActor(mercenary): humanoidSoundView(actionFamily, 2, 1, []string{"atk"}),
-		},
-	}
+	mode := &WorldMode{actorSystem: actors.System{MercenaryViews: map[sprites.Appearance]*sprites.Humanoid{
+		sprites.MercenaryAppearanceForActor(mercenary): humanoidSoundView(actionFamily, 2, 1, []string{"atk"}),
+	}}}
 	ctx := client.Context{Session: &session.Session{AccountID: 2000000, CharID: 150000}, World: world}
 
 	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
@@ -3756,7 +3746,7 @@ func TestPlayerBowNormalAttackUsesReferenceReleaseAndImpactTimeline(t *testing.T
 				HasObjectType: true,
 			})
 			actionFamily := sprites.AttackActionFamily(nil, player)
-			mode := &WorldMode{playerView: humanoidSoundView(actionFamily, 4, 2, []string{"atk"})}
+			mode := &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(actionFamily, 4, 2, []string{"atk"})}}
 			ctx := client.Context{
 				Session: &session.Session{
 					AccountID: playerID,
@@ -3775,7 +3765,7 @@ func TestPlayerBowNormalAttackUsesReferenceReleaseAndImpactTimeline(t *testing.T
 				Action:      0,
 			})
 
-			sourceAnim, ok := mode.actorAnims[playerID]
+			sourceAnim, ok := mode.actorSystem.ActorAnims[playerID]
 			if !ok {
 				t.Fatal("bow attack animation missing")
 			}
@@ -3809,7 +3799,7 @@ func TestPlayerBowNormalAttackUsesReferenceReleaseAndImpactTimeline(t *testing.T
 				if impact.EffectID != effects.Hit1 || impact.ActorID != targetID || !impact.Starts.Equal(projectile.Expires) {
 					t.Fatalf("impact = %+v projectile=%+v", impact, projectile)
 				}
-				targetAnim, ok := mode.actorAnims[targetID]
+				targetAnim, ok := mode.actorSystem.ActorAnims[targetID]
 				if !ok || !targetAnim.Started.Equal(impact.Starts) {
 					t.Fatalf("target hurt animation = %+v ok=%t impact=%+v", targetAnim, ok, impact)
 				}
@@ -3832,8 +3822,8 @@ func TestPlayerBowNormalAttackUsesReferenceReleaseAndImpactTimeline(t *testing.T
 			if len(mode.scheduledSounds) != 1 {
 				t.Fatalf("miss sounds = %+v, want bow release only", mode.scheduledSounds)
 			}
-			if _, ok := mode.actorAnims[targetID]; ok {
-				t.Fatalf("miss started target hurt animation: %+v", mode.actorAnims[targetID])
+			if _, ok := mode.actorSystem.ActorAnims[targetID]; ok {
+				t.Fatalf("miss started target hurt animation: %+v", mode.actorSystem.ActorAnims[targetID])
 			}
 			if len(mode.damageFloaters) != 1 || mode.damageFloaters[0].kind != damageFloaterMiss || !mode.damageFloaters[0].starts.Equal(projectile.Expires) {
 				t.Fatalf("miss floater = %+v projectile=%+v", mode.damageFloaters, projectile)
@@ -3867,7 +3857,7 @@ func TestDoubleStrafeUsesReferenceBowReleaseAndMultiHitTimeline(t *testing.T) {
 				HasObjectType: true,
 			})
 			actionFamily := effects.SkillAction(db.SkillACDouble).ActionFamilyForActorWithResources(nil, player)
-			mode := &WorldMode{playerView: humanoidSoundView(actionFamily, 4, 2, []string{"atk"})}
+			mode := &WorldMode{actorSystem: actors.System{PlayerView: humanoidSoundView(actionFamily, 4, 2, []string{"atk"})}}
 			ctx := client.Context{
 				Session: &session.Session{
 					AccountID: playerID,
@@ -3889,7 +3879,7 @@ func TestDoubleStrafeUsesReferenceBowReleaseAndMultiHitTimeline(t *testing.T) {
 				SkillLevel:  10,
 			})
 
-			sourceAnim, ok := mode.actorAnims[playerID]
+			sourceAnim, ok := mode.actorSystem.ActorAnims[playerID]
 			if !ok {
 				t.Fatal("Double Strafe animation missing")
 			}
@@ -3935,7 +3925,7 @@ func TestDoubleStrafeUsesReferenceBowReleaseAndMultiHitTimeline(t *testing.T) {
 						t.Fatalf("Double Strafe impact %d = %+v, want effect %d at %s", i, impact, wantID, wantStarts)
 					}
 				}
-				targetAnim, ok := mode.actorAnims[targetID]
+				targetAnim, ok := mode.actorSystem.ActorAnims[targetID]
 				if !ok || !targetAnim.Started.Equal(projectile.Expires) {
 					t.Fatalf("Double Strafe target animation = %+v ok=%t, want first impact at %s", targetAnim, ok, projectile.Expires)
 				}
@@ -3972,8 +3962,8 @@ func TestDoubleStrafeUsesReferenceBowReleaseAndMultiHitTimeline(t *testing.T) {
 			if len(impactSounds) != 0 {
 				t.Fatalf("Double Strafe miss impact sounds = %+v, want none", impactSounds)
 			}
-			if _, ok := mode.actorAnims[targetID]; ok {
-				t.Fatalf("Double Strafe miss started target hurt animation: %+v", mode.actorAnims[targetID])
+			if _, ok := mode.actorSystem.ActorAnims[targetID]; ok {
+				t.Fatalf("Double Strafe miss started target hurt animation: %+v", mode.actorSystem.ActorAnims[targetID])
 			}
 			if len(mode.damageFloaters) != 1 || mode.damageFloaters[0].kind != damageFloaterMiss || !mode.damageFloaters[0].starts.Equal(projectile.Expires) {
 				t.Fatalf("Double Strafe miss floater = %+v projectile=%+v", mode.damageFloaters, projectile)
@@ -3994,25 +3984,23 @@ func TestApplyActorActionNotifyUsesMobACTHitPhase(t *testing.T) {
 		ObjectType:    scene.ActorObjectTypeMob,
 		HasObjectType: true,
 	})
-	mode := &WorldMode{
-		nonPCViews: map[int]*scene.SpriteView{
-			1002: {
-				Act: &res.ACT{
-					Actions: []res.ACTAction{
-						{},
-						{},
-						{Animations: []res.ACTAnimation{
-							{Sound: -1},
-							{Sound: -1},
-							{Sound: 0},
-							{Sound: -1},
-						}},
-					},
-					Sounds: []string{"poring_attack.wav"},
+	mode := &WorldMode{actorSystem: actors.System{NonPCViews: map[int]*scene.SpriteView{
+		1002: {
+			Act: &res.ACT{
+				Actions: []res.ACTAction{
+					{},
+					{},
+					{Animations: []res.ACTAnimation{
+						{Sound: -1},
+						{Sound: -1},
+						{Sound: 0},
+						{Sound: -1},
+					}},
 				},
+				Sounds: []string{"poring_attack.wav"},
 			},
 		},
-	}
+	}}}
 	ctx := client.Context{
 		Session: &session.Session{
 			AccountID: 2000000,
@@ -4032,11 +4020,11 @@ func TestApplyActorActionNotifyUsesMobACTHitPhase(t *testing.T) {
 		Action:      0,
 	})
 
-	sourceAnim, ok := mode.actorAnims[300]
+	sourceAnim, ok := mode.actorSystem.ActorAnims[300]
 	if !ok {
 		t.Fatal("source animation missing")
 	}
-	targetAnim, ok := mode.actorAnims[150000]
+	targetAnim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("local target animation missing")
 	}
@@ -4062,22 +4050,20 @@ func TestApplyActorVanishDeathKeepsMobForDeathAnimation(t *testing.T) {
 		ObjectType:    scene.ActorObjectTypeMob,
 		HasObjectType: true,
 	})
-	mode := &WorldMode{
-		nonPCViews: map[int]*scene.SpriteView{
-			1002: {
-				Act: &res.ACT{
-					Actions: []res.ACTAction{
-						{},
-						{},
-						{},
-						{},
-						{Animations: []res.ACTAnimation{{Sound: 0}, {Sound: -1}}, DelayMS: 100},
-					},
-					Sounds: []string{"poring_die.wav"},
+	mode := &WorldMode{actorSystem: actors.System{NonPCViews: map[int]*scene.SpriteView{
+		1002: {
+			Act: &res.ACT{
+				Actions: []res.ACTAction{
+					{},
+					{},
+					{},
+					{},
+					{Animations: []res.ACTAnimation{{Sound: 0}, {Sound: -1}}, DelayMS: 100},
 				},
+				Sounds: []string{"poring_die.wav"},
 			},
 		},
-	}
+	}}}
 	ctx := client.Context{
 		Session: &session.Session{AccountID: 2000000, CharID: 150000, Selected: session.Character{ID: 150000}},
 		World:   world,
@@ -4088,7 +4074,7 @@ func TestApplyActorVanishDeathKeepsMobForDeathAnimation(t *testing.T) {
 	if _, ok := world.Actors[300]; !ok {
 		t.Fatal("dead actor was removed immediately")
 	}
-	anim, ok := mode.actorAnims[300]
+	anim, ok := mode.actorSystem.ActorAnims[300]
 	if !ok {
 		t.Fatal("death animation missing")
 	}
@@ -4098,10 +4084,10 @@ func TestApplyActorVanishDeathKeepsMobForDeathAnimation(t *testing.T) {
 	if anim.HoldFinal {
 		t.Fatal("non-player death animation should not hold forever")
 	}
-	if removeAt, ok := mode.actorDeaths[300]; !ok || !removeAt.After(anim.Started) {
+	if removeAt, ok := mode.actorSystem.ActorDeaths[300]; !ok || !removeAt.After(anim.Started) {
 		t.Fatalf("death removal time = %s ok=%t", removeAt, ok)
 	}
-	if got := mode.actorDeaths[300].Sub(anim.Started); got != scene.NonPCDeathFadeDuration {
+	if got := mode.actorSystem.ActorDeaths[300].Sub(anim.Started); got != scene.NonPCDeathFadeDuration {
 		t.Fatalf("death visible duration = %s, want %s", got, scene.NonPCDeathFadeDuration)
 	}
 	mode.processNonPCMotionSound(ctx, world.Actors[300], anim.Started)
@@ -4109,7 +4095,7 @@ func TestApplyActorVanishDeathKeepsMobForDeathAnimation(t *testing.T) {
 		t.Fatalf("death sounds = %+v", mode.scheduledSounds)
 	}
 
-	mode.cleanupDeadActors(ctx, mode.actorDeaths[300].Add(time.Millisecond))
+	mode.cleanupDeadActors(ctx, mode.actorSystem.ActorDeaths[300].Add(time.Millisecond))
 	if _, ok := world.Actors[300]; ok {
 		t.Fatal("dead actor was not removed after death hold")
 	}
@@ -4175,16 +4161,16 @@ func TestRemotePlayerDeathRemainsUntilResurrection(t *testing.T) {
 		World:   world,
 	}
 
-	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actorVanishDeath})
+	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actors.ActorVanishDeath})
 
-	anim, ok := mode.actorAnims[300]
+	anim, ok := mode.actorSystem.ActorAnims[300]
 	if !ok || anim.ActionFamily != sprites.ActionPCDeath || !anim.HoldFinal {
 		t.Fatalf("remote player death animation = %+v ok=%t", anim, ok)
 	}
-	if removeAt, ok := mode.actorDeaths[300]; !ok || !removeAt.IsZero() {
+	if removeAt, ok := mode.actorSystem.ActorDeaths[300]; !ok || !removeAt.IsZero() {
 		t.Fatalf("remote player death deadline = %s ok=%t, want persistent zero deadline", removeAt, ok)
 	}
-	if alpha := mode.actorDeathAlpha(300, anim.Started.Add(time.Hour)); alpha != 1 {
+	if alpha := mode.actors().ActorDeathAlpha(300, anim.Started.Add(time.Hour)); alpha != 1 {
 		t.Fatalf("remote player death alpha = %f, want 1", alpha)
 	}
 	mode.cleanupDeadActors(ctx, anim.Started.Add(time.Hour))
@@ -4193,10 +4179,10 @@ func TestRemotePlayerDeathRemainsUntilResurrection(t *testing.T) {
 	}
 
 	mode.applyActorResurrection(ctx, network.ActorResurrection{ID: 300})
-	if _, ok := mode.actorDeaths[300]; ok {
+	if _, ok := mode.actorSystem.ActorDeaths[300]; ok {
 		t.Fatal("remote player remained marked dead after resurrection")
 	}
-	if _, ok := mode.actorAnims[300]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[300]; ok {
 		t.Fatal("remote player death animation remained after resurrection")
 	}
 	if actor := world.Actors[300]; !actor.HasAIMotion || actor.AIMotion != companion.MotionStand {
@@ -4205,7 +4191,7 @@ func TestRemotePlayerDeathRemainsUntilResurrection(t *testing.T) {
 }
 
 func TestApplyActorVanishLogoutAndTeleportAddTeleportEffect(t *testing.T) {
-	for _, reason := range []uint8{actorVanishLogout, actorVanishTeleport} {
+	for _, reason := range []uint8{actors.ActorVanishLogout, actors.ActorVanishTeleport} {
 		t.Run(fmt.Sprintf("reason_%d", reason), func(t *testing.T) {
 			now := time.Now()
 			world := worldstate.New()
@@ -4253,7 +4239,7 @@ func TestApplyActorVanishOutOfSightDoesNotAddTeleportEffect(t *testing.T) {
 		World:   world,
 	}
 
-	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actorVanishOutOfSight})
+	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actors.ActorVanishOutOfSight})
 
 	if len(mode.effects().Active) != 0 {
 		t.Fatalf("world effects = %+v, want none", mode.effects().Active)
@@ -4277,31 +4263,31 @@ func TestApplyActorVanishOutOfSightFadesBeforeRemovingNPC(t *testing.T) {
 		World:   world,
 	}
 
-	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actorVanishOutOfSight})
+	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actors.ActorVanishOutOfSight})
 
 	if _, ok := world.Actors[300]; !ok {
 		t.Fatal("out-of-sight NPC was removed immediately")
 	}
-	fade, ok := mode.actorVanishes[300]
+	fade, ok := mode.actorSystem.ActorVanishes[300]
 	if !ok {
 		t.Fatal("out-of-sight fade missing")
 	}
-	if got := fade.removeAt.Sub(fade.started); got != actorVanishOutOfSightFadeDuration {
-		t.Fatalf("fade duration = %s, want %s", got, actorVanishOutOfSightFadeDuration)
+	if got := fade.RemoveAt.Sub(fade.Started); got != actors.ActorVanishOutOfSightFadeDuration {
+		t.Fatalf("fade duration = %s, want %s", got, actors.ActorVanishOutOfSightFadeDuration)
 	}
-	if got := mode.actorVanishAlpha(300, fade.started.Add(actorVanishOutOfSightFadeDuration/2)); math.Abs(got-0.5) > 0.001 {
+	if got := mode.actors().ActorVanishAlpha(300, fade.Started.Add(actors.ActorVanishOutOfSightFadeDuration/2)); math.Abs(got-0.5) > 0.001 {
 		t.Fatalf("fade alpha halfway = %.3f, want 0.5", got)
 	}
 
-	mode.cleanupVanishedActors(ctx, fade.started.Add(actorVanishOutOfSightFadeDuration/2))
+	mode.cleanupVanishedActors(ctx, fade.Started.Add(actors.ActorVanishOutOfSightFadeDuration/2))
 	if _, ok := world.Actors[300]; !ok {
 		t.Fatal("out-of-sight NPC was removed before fade completed")
 	}
-	mode.cleanupVanishedActors(ctx, fade.removeAt.Add(time.Millisecond))
+	mode.cleanupVanishedActors(ctx, fade.RemoveAt.Add(time.Millisecond))
 	if _, ok := world.Actors[300]; ok {
 		t.Fatal("out-of-sight NPC remained after fade completed")
 	}
-	if _, ok := mode.actorVanishes[300]; ok {
+	if _, ok := mode.actorSystem.ActorVanishes[300]; ok {
 		t.Fatal("out-of-sight fade state remained after cleanup")
 	}
 }
@@ -4324,13 +4310,13 @@ func TestMobLookChangeToPlayerJobDoesNotChangeDeathSpriteFamily(t *testing.T) {
 		World:   world,
 	}
 
-	applyActorLookChange(ctx, network.ActorLookChange{ID: 300, Type: 0, Value: 0})
+	actors.ApplyActorLookChange(ctx, network.ActorLookChange{ID: 300, Type: 0, Value: 0})
 	if got := world.Actors[300].Job; got != 1161 {
 		t.Fatalf("mob job after look change = %d, want 1161", got)
 	}
 
 	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: 1})
-	anim, ok := mode.actorAnims[300]
+	anim, ok := mode.actorSystem.ActorAnims[300]
 	if !ok {
 		t.Fatal("death animation missing")
 	}
@@ -4641,7 +4627,7 @@ func TestLocalDeathAnimationHoldsUntilPlayerAlive(t *testing.T) {
 	if !ctx.Session.Dead {
 		t.Fatal("session should be marked dead")
 	}
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("character death animation missing")
 	}
@@ -4651,11 +4637,11 @@ func TestLocalDeathAnimationHoldsUntilPlayerAlive(t *testing.T) {
 	if !anim.HoldFinal {
 		t.Fatal("local death animation should hold final frame")
 	}
-	accountAnim, ok := mode.actorAnims[2000000]
+	accountAnim, ok := mode.actorSystem.ActorAnims[2000000]
 	if !ok || !accountAnim.HoldFinal || accountAnim.ActionFamily != sprites.ActionPCDeath {
 		t.Fatalf("account death animation = %+v ok=%t", accountAnim, ok)
 	}
-	if held, ok := mode.actorAnimation(150000, anim.Started.Add(anim.Duration+time.Second)); !ok || held.ActionFamily != sprites.ActionPCDeath {
+	if held, ok := mode.actors().ActorAnimation(150000, anim.Started.Add(anim.Duration+time.Second)); !ok || held.ActionFamily != sprites.ActionPCDeath {
 		t.Fatalf("expired local death animation = %+v ok=%t", held, ok)
 	}
 
@@ -4668,10 +4654,10 @@ func TestLocalDeathAnimationHoldsUntilPlayerAlive(t *testing.T) {
 	if ctx.Session.Dead {
 		t.Fatal("session should be marked alive")
 	}
-	if _, ok := mode.actorAnims[150000]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[150000]; ok {
 		t.Fatal("character death animation should clear when player is alive")
 	}
-	if _, ok := mode.actorAnims[2000000]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[2000000]; ok {
 		t.Fatal("account death animation should clear when player is alive")
 	}
 }
@@ -4725,7 +4711,7 @@ func TestSavePointRespawnHoldsDeathAnimationUntilMapChange(t *testing.T) {
 	ctx.Session.Vitals.HP = 1
 	ctx.Session.Selected.HP = 1
 	mode.clearLocalDeathStateIfAlive(ctx)
-	if _, ok := mode.actorAnims[150000]; !ok {
+	if _, ok := mode.actorSystem.ActorAnims[150000]; !ok {
 		t.Fatal("positive HP cleared death animation before respawn map change")
 	}
 	if !mode.ui.escapeMenu.IsOpen() || !mode.ui.escapeMenu.DeathMode() {
@@ -4736,7 +4722,7 @@ func TestSavePointRespawnHoldsDeathAnimationUntilMapChange(t *testing.T) {
 	if next == nil {
 		t.Fatal("respawn map change did not create the destination world mode")
 	}
-	if _, ok := mode.actorAnims[150000]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[150000]; ok {
 		t.Fatal("death animation remained after respawn map change")
 	}
 	if mode.ui.escapeMenu.IsOpen() || mode.ui.escapeMenu.DeathMode() {
@@ -4749,21 +4735,18 @@ func TestSavePointRespawnHoldsDeathAnimationUntilMapChange(t *testing.T) {
 
 func TestActorDeathAlphaFadesOverVisibleDuration(t *testing.T) {
 	started := time.Unix(10, 0)
-	mode := &WorldMode{
-		actorAnims: map[uint32]scene.ActorAnimation{
-			300: {ActionFamily: sprites.ActionNonPCDeath, Started: started, Duration: scene.NonPCDeathFadeDuration},
-		},
-		actorDeaths: map[uint32]time.Time{
-			300: started.Add(scene.NonPCDeathFadeDuration),
-		},
-	}
-	if got := mode.actorDeathAlpha(300, started); got != 1 {
+	mode := &WorldMode{actorSystem: actors.System{ActorAnims: map[uint32]scene.ActorAnimation{
+		300: {ActionFamily: sprites.ActionNonPCDeath, Started: started, Duration: scene.NonPCDeathFadeDuration},
+	}, ActorDeaths: map[uint32]time.Time{
+		300: started.Add(scene.NonPCDeathFadeDuration),
+	}}}
+	if got := mode.actors().ActorDeathAlpha(300, started); got != 1 {
 		t.Fatalf("alpha at start = %.2f, want 1", got)
 	}
-	if got := mode.actorDeathAlpha(300, started.Add(scene.NonPCDeathFadeDuration/2)); math.Abs(got-0.5) > 0.001 {
+	if got := mode.actors().ActorDeathAlpha(300, started.Add(scene.NonPCDeathFadeDuration/2)); math.Abs(got-0.5) > 0.001 {
 		t.Fatalf("alpha halfway = %.2f, want 0.5", got)
 	}
-	if got := mode.actorDeathAlpha(300, started.Add(scene.NonPCDeathFadeDuration)); got != 0 {
+	if got := mode.actors().ActorDeathAlpha(300, started.Add(scene.NonPCDeathFadeDuration)); got != 0 {
 		t.Fatalf("alpha at end = %.2f, want 0", got)
 	}
 }
@@ -4781,19 +4764,17 @@ func TestProcessNonPCMotionSoundSchedulesIdleACTSound(t *testing.T) {
 		HasObjectType: true,
 	}
 	world.UpsertActor(actor)
-	mode := &WorldMode{
-		nonPCViews: map[int]*scene.SpriteView{
-			1002: {
-				Started: now,
-				Act: &res.ACT{
-					Actions: []res.ACTAction{
-						{Animations: []res.ACTAnimation{{Sound: 0}, {Sound: -1}}, DelayMS: 100},
-					},
-					Sounds: []string{"poring_idle.wav"},
+	mode := &WorldMode{actorSystem: actors.System{NonPCViews: map[int]*scene.SpriteView{
+		1002: {
+			Started: now,
+			Act: &res.ACT{
+				Actions: []res.ACTAction{
+					{Animations: []res.ACTAnimation{{Sound: 0}, {Sound: -1}}, DelayMS: 100},
 				},
+				Sounds: []string{"poring_idle.wav"},
 			},
 		},
-	}
+	}}}
 	ctx := client.Context{World: world}
 
 	mode.processNonPCMotionSound(ctx, actor, now)

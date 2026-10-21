@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kivutar/goro/game/npc"
-
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/login"
+	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/glog"
@@ -134,7 +134,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if chat, ok, err := network.ParseTalkBoxChatContents(pkt); err != nil {
 		glog.Errorf("parse talk box chat 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applySpeechBubble(ctx, chat, now)
+		m.actors().ApplySpeechBubble(ctx, chat, now)
 		return nil, false
 	}
 	if chat, ok, err := network.ParseChatMessage(pkt); err != nil {
@@ -255,7 +255,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		return nil, true
 	}
 	if enter, err := network.ParseMapAcceptEnter(pkt); err == nil {
-		applyMapAcceptEnter(ctx, enter)
+		actors.ApplyMapAcceptEnter(ctx, enter)
 		sendLessEffectPreference(ctx)
 		if m.pendingWarp {
 			m.pendingWarp = false
@@ -266,7 +266,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if ack, ok, err := network.ParseActorNameAck(pkt); err != nil {
 		glog.Errorf("parse actor name ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		applyActorNameAck(ctx, ack)
+		actors.ApplyActorNameAck(ctx, ack)
 		return nil, false
 	}
 	if ack, ok, err := network.ParseRestartAck(pkt); err != nil {
@@ -331,7 +331,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		if scene.IsLocalActor(ctx, position.ID) {
 			glog.Debugf("local position fix id=%d x=%d y=%d", position.ID, position.X, position.Y)
 		}
-		applyActorSetPosition(ctx, position)
+		actors.ApplyActorSetPosition(ctx, position)
 		if scene.IsLocalActor(ctx, position.ID) {
 			m.continuePendingAttack(ctx, "position fix")
 			m.continuePendingPickup(ctx, "position fix")
@@ -345,7 +345,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		if scene.IsLocalActor(ctx, position.ID) {
 			glog.Debugf("local jump position id=%d x=%d y=%d", position.ID, position.X, position.Y)
 		}
-		applyActorJumpPosition(ctx, position)
+		actors.ApplyActorJumpPosition(ctx, position)
 		return nil, false
 	}
 	if item, ok, err := network.ParseFloorItemEntry(pkt); err != nil {
@@ -1141,8 +1141,8 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		if m.applySkillUnitLookChange(ctx, look) {
 			return nil, false
 		}
-		if applyActorLookChange(ctx, look) {
-			m.reloadPlayerSpriteView(ctx, fmt.Sprintf("look type=%d value=%d", look.Type, look.Value))
+		if actors.ApplyActorLookChange(ctx, look) {
+			m.actors().ReloadPlayerSpriteView(ctx, fmt.Sprintf("look type=%d value=%d", look.Type, look.Value))
 		}
 		return nil, false
 	}
@@ -1162,7 +1162,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse NPC effect update 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		if npc.ApplyShowEffectUpdate(ctx, update) {
-			m.syncActorSpiritEffects(ctx, update.ActorID)
+			m.actors().SyncActorSpiritEffects(ctx, update.ActorID)
 			m.effects().SyncActorEntryLevel99Aura(ctx, update.ActorID)
 		}
 		return nil, false
@@ -1361,8 +1361,8 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if spheres, ok, err := network.ParseSpiritSphereCount(pkt); err != nil {
 		glog.Errorf("parse spirit spheres 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		if applySpiritSphereCount(ctx, spheres) {
-			m.syncActorSpiritEffects(ctx, spheres.ActorID)
+		if actors.ApplySpiritSphereCount(ctx, spheres) {
+			m.actors().SyncActorSpiritEffects(ctx, spheres.ActorID)
 		}
 		return nil, false
 	}
@@ -1409,9 +1409,9 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse actor entry 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		m.clearActorDeath(entry.ID)
-		m.clearActorVanish(entry.ID)
+		m.actors().ClearActorVanish(entry.ID)
 		m.upsertNetworkActor(ctx, entry)
-		m.applyWarpPortalEntry(ctx, entry)
+		m.actors().ApplyWarpPortalEntry(ctx, entry)
 	}
 
 	return nil, false

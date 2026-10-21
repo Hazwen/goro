@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"image/color"
@@ -9,13 +9,12 @@ import (
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
-	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
 )
 
-const actorEffectCartMask = db.EffectStateCart1 | db.EffectStateCart2 | db.EffectStateCart3 | db.EffectStateCart4 | db.EffectStateCart5
+const ActorEffectCartMask = db.EffectStateCart1 | db.EffectStateCart2 | db.EffectStateCart3 | db.EffectStateCart4 | db.EffectStateCart5
 
 func applyActorCartStateFromEffect(actor *worldstate.Actor) {
 	if actor == nil {
@@ -33,7 +32,7 @@ func applyActorCartStateFromEffect(actor *worldstate.Actor) {
 }
 
 func cartNumFromEffectState(effectState uint32, job int) (int, bool) {
-	if effectState&actorEffectCartMask == 0 {
+	if effectState&ActorEffectCartMask == 0 {
 		return 0, false
 	}
 	if playerJobUsesNoviceCart(job) {
@@ -53,7 +52,7 @@ func cartNumFromEffectState(effectState uint32, job int) (int, bool) {
 	}
 }
 
-func actorCartState(actor worldstate.Actor) (bool, int) {
+func ActorCartState(actor worldstate.Actor) (bool, int) {
 	if actor.HasCartState {
 		return actor.HasCart, normalizeCartNumForActor(int(actor.Job), actor.CartNum)
 	}
@@ -61,13 +60,13 @@ func actorCartState(actor worldstate.Actor) (bool, int) {
 	return ok, normalizeCartNumForActor(int(actor.Job), cartNum)
 }
 
-func setActorPushCartStatus(actor *worldstate.Actor, active bool, cartNum int) {
+func SetActorPushCartStatus(actor *worldstate.Actor, active bool, cartNum int) {
 	if actor == nil {
 		return
 	}
 	actor.HasCart = active
 	actor.HasCartState = true
-	actor.EffectState &^= actorEffectCartMask
+	actor.EffectState &^= ActorEffectCartMask
 	if !active {
 		return
 	}
@@ -108,7 +107,7 @@ func effectStateForCartNum(cartNum int) uint32 {
 }
 
 func cartDrawAfterActor(actor worldstate.Actor, cameraYaw float64) bool {
-	hasCart, _ := actorCartState(actor)
+	hasCart, _ := ActorCartState(actor)
 	if !hasCart || !res.HasPlayerJobToken(int(actor.Job)) {
 		return false
 	}
@@ -141,7 +140,7 @@ func cartSpriteOffset(direction int) (float64, float64) {
 	}
 }
 
-func cartOffsetBillboard(billboard *scene.Billboard, dx, dy float64) *scene.Billboard {
+func CartOffsetBillboard(billboard *scene.Billboard, dx, dy float64) *scene.Billboard {
 	if billboard == nil {
 		return nil
 	}
@@ -153,34 +152,10 @@ func cartOffsetBillboard(billboard *scene.Billboard, dx, dy float64) *scene.Bill
 
 func cartDirectionOffsetBillboard(billboard *scene.Billboard, direction int) *scene.Billboard {
 	dx, dy := cartSpriteOffset(direction)
-	return cartOffsetBillboard(billboard, dx, dy)
+	return CartOffsetBillboard(billboard, dx, dy)
 }
 
-func (m *WorldMode) applyPushCartStatus(ctx client.Context, change network.StatusEffectChange) bool {
-	if change.StatusID != db.StatusOnPushCart || ctx.World == nil {
-		return false
-	}
-	cartNum := 1
-	if change.HasValues {
-		cartNum = int(change.Values[0])
-	}
-	if change.ActorID == 0 || scene.IsLocalActor(ctx, change.ActorID) {
-		setActorPushCartStatus(&ctx.World.Player, change.Active, cartNum)
-		refreshLocalPlayerMoveSpeed(ctx)
-		glog.Debugf("actor cart status local actor=%d active=%t cart=%d", change.ActorID, change.Active, ctx.World.Player.CartNum)
-		return true
-	}
-	actor, ok := ctx.World.Actors[change.ActorID]
-	if !ok {
-		return true
-	}
-	setActorPushCartStatus(&actor, change.Active, cartNum)
-	upsertActor(ctx, actor)
-	glog.Debugf("actor cart status actor=%d active=%t cart=%d", change.ActorID, change.Active, actor.CartNum)
-	return true
-}
-
-func (m *WorldMode) cartSpriteView(ctx client.Context, cartNum int) *scene.SpriteView {
+func (m *System) cartSpriteView(ctx client.Context, cartNum int) *scene.SpriteView {
 	if ctx.Resources == nil {
 		return nil
 	}
@@ -190,37 +165,37 @@ func (m *WorldMode) cartSpriteView(ctx client.Context, cartNum int) *scene.Sprit
 	if cartNum > 13 {
 		cartNum = 13
 	}
-	if m.cartViews == nil {
-		m.cartViews = make(map[int]*scene.SpriteView)
+	if m.CartViews == nil {
+		m.CartViews = make(map[int]*scene.SpriteView)
 	}
-	if m.cartViewMiss == nil {
-		m.cartViewMiss = make(map[int]struct{})
+	if m.CartViewMiss == nil {
+		m.CartViewMiss = make(map[int]struct{})
 	}
-	if view, ok := m.cartViews[cartNum]; ok {
+	if view, ok := m.CartViews[cartNum]; ok {
 		return view
 	}
-	if _, miss := m.cartViewMiss[cartNum]; miss {
+	if _, miss := m.CartViewMiss[cartNum]; miss {
 		return nil
 	}
 	view, status := sprites.LoadCart(ctx.Resources, cartNum)
 	if view == nil {
-		m.cartViewMiss[cartNum] = struct{}{}
+		m.CartViewMiss[cartNum] = struct{}{}
 		glog.Warnf("cart sprite unavailable cart=%d: %s", cartNum, status)
 		return nil
 	}
-	m.cartViews[cartNum] = view
+	m.CartViews[cartNum] = view
 	if status != "" {
 		glog.Debugf("cart sprite resources cart=%d %s", cartNum, status)
 	}
 	return view
 }
 
-func (m *WorldMode) drawActorCart3D(screen *render.Frame, ctx client.Context, projection scene.Projection, entry scene.ActorDrawEntry, cameraYaw float64, shadow float64, alpha float64) bool {
+func (m *System) DrawActorCart3D(screen *render.Frame, ctx client.Context, projection scene.Projection, entry scene.ActorDrawEntry, cameraYaw float64, shadow float64, alpha float64) bool {
 	actor := entry.Actor
 	if scene.ActorHasStealth(actor) || !res.HasPlayerJobToken(int(actor.Job)) {
 		return false
 	}
-	hasCart, cartNum := actorCartState(actor)
+	hasCart, cartNum := ActorCartState(actor)
 	if !hasCart {
 		return false
 	}
@@ -252,19 +227,19 @@ func (m *WorldMode) drawActorCart3D(screen *render.Frame, ctx client.Context, pr
 		return false
 	}
 	billboard = cartDirectionOffsetBillboard(billboard, cartSpriteDirection(actor, cameraYaw))
-	m.drawActorSpriteBillboardTintAlpha3D(screen, projection, billboard, entry.WorldX, entry.WorldY, entry.WorldZ, entry.Scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, render.BlendSourceOver)
+	m.DrawActorSpriteBillboardTintAlpha3D(screen, projection, billboard, entry.WorldX, entry.WorldY, entry.WorldZ, entry.Scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, render.BlendSourceOver)
 	return true
 }
 
-func (m *WorldMode) drawActorCartShadow3D(screen *render.Frame, ctx client.Context, projection scene.Projection, entry scene.ActorDrawEntry, cameraYaw float64, now time.Time) bool {
+func (m *System) DrawActorCartShadow3D(screen *render.Frame, ctx client.Context, projection scene.Projection, entry scene.ActorDrawEntry, cameraYaw float64, now time.Time) bool {
 	actor := entry.Actor
-	if !entry.CastShadow || scene.ActorHasStealth(actor) || m.shadowView == nil || m.shadowViewMiss || !res.HasPlayerJobToken(int(actor.Job)) {
+	if !entry.CastShadow || scene.ActorHasStealth(actor) || m.ShadowView == nil || m.ShadowViewMiss || !res.HasPlayerJobToken(int(actor.Job)) {
 		return false
 	}
-	if hasCart, _ := actorCartState(actor); !hasCart {
+	if hasCart, _ := ActorCartState(actor); !hasCart {
 		return false
 	}
-	billboard, ok := sprites.FixedBillboard(m.shadowView)
+	billboard, ok := sprites.FixedBillboard(m.ShadowView)
 	if !ok {
 		return false
 	}

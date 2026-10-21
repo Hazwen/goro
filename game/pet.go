@@ -133,7 +133,7 @@ func (m *WorldMode) handlePetCaptureClick(ctx client.Context, projection scene.P
 		return false
 	}
 	skill := petCaptureTargetSkill()
-	actor, ok := clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths)
+	actor, ok := clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths)
 	if !ok {
 		if x, y, groundOK := maps.ClickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); groundOK {
 			glog.Debugf("pet capture canceled by ground click mouse=%d,%d target=%d,%d", ctx.Input.MouseX, ctx.Input.MouseY, x, y)
@@ -227,16 +227,16 @@ func (m *WorldMode) applyPetStateChange(ctx client.Context, change network.PetSt
 
 func (m *WorldMode) applyPetAccessoryChange(ctx client.Context, id uint32, accessoryID uint32) {
 	if accessoryID == 0 {
-		delete(m.petAccessoryIDs, id)
+		delete(m.actorSystem.PetAccessoryIDs, id)
 		return
 	}
-	if m.petAccessoryIDs == nil {
-		m.petAccessoryIDs = make(map[uint32]uint32)
+	if m.actorSystem.PetAccessoryIDs == nil {
+		m.actorSystem.PetAccessoryIDs = make(map[uint32]uint32)
 	}
-	m.petAccessoryIDs[id] = accessoryID
+	m.actorSystem.PetAccessoryIDs[id] = accessoryID
 	if ctx.World != nil {
 		if actor, ok := ctx.World.Actors[id]; ok {
-			_ = m.nonPCSpriteView(ctx, actor)
+			_ = m.actors().NonPCSpriteView(ctx, actor)
 		}
 	}
 }
@@ -276,7 +276,7 @@ func (m *WorldMode) applyPetTalk(ctx client.Context, id uint32, text string, now
 		name = "Pet"
 	}
 	chat := network.ChatMessage{GID: id, Text: fmt.Sprintf("%s : %s", name, text)}
-	m.applySpeechBubble(ctx, chat, now)
+	m.actors().ApplySpeechBubble(ctx, chat, now)
 	social.AddConsoleMessage(&m.ui.console, ctx.Resources, chat)
 }
 
@@ -450,7 +450,7 @@ func (m *WorldMode) startPetPerformance(ctx client.Context, id uint32, data uint
 		action = sprites.ActionNonPCSpecial
 	}
 	now := time.Now()
-	duration := m.actorActionDuration(ctx, actor, action, scene.DefaultAttackAnimationDuration)
+	duration := m.actors().ActorActionDuration(ctx, actor, action, scene.DefaultAttackAnimationDuration)
 	m.startActorAnimation(ctx, id, action, now, duration)
 }
 
@@ -460,7 +460,7 @@ func (m *WorldMode) openPetContextFromInput(ctx client.Context, now time.Time) b
 	}
 	screenW, screenH := ctx.ScreenSize()
 	projection := m.sceneProjection(ctx, screenW, screenH, now)
-	actor, ok := clickedPetTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths, m.petID)
+	actor, ok := clickedPetTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths, m.petID)
 	if !ok {
 		return false
 	}

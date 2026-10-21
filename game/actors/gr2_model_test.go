@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"math"

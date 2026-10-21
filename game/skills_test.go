@@ -18,6 +18,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
@@ -764,7 +765,7 @@ func TestAcolyteCastAuraAndPoses(t *testing.T) {
 		} else if skill == db.SkillALBlessing {
 			pose = scene.SpriteActionIdle
 		}
-		if m.actorAnims[2000000].ActionFamily != pose {
+		if m.actorSystem.ActorAnims[2000000].ActionFamily != pose {
 			t.Fatalf("skill %d: wrong casting pose", skill)
 		}
 	}
@@ -805,7 +806,7 @@ func TestAlchemistBerserkPotionAndCoupleCasting(t *testing.T) {
 	entry := scene.ActorDrawEntry{Actor: ctx.World.Actors[300], WorldX: 20.5, WorldY: 20.5}
 	for _, tick := range []int{0, 150, 151} {
 		frame := render.NewFrame(800, 600)
-		m.drawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, 1, 1, 1, color.RGBA{255, 255, 255, 255}, render.BlendSourceOver, start.Add(time.Duration(tick)*db.EffectFrameDuration))
+		m.actors().DrawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, 1, 1, 1, color.RGBA{255, 255, 255, 255}, render.BlendSourceOver, start.Add(time.Duration(tick)*db.EffectFrameDuration))
 		draw := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards").Index(0)
 		green := 120.0 / 255
 		if tick == 151 {
@@ -1099,12 +1100,12 @@ func TestBlacksmithHammerFallAndCastPoses(t *testing.T) {
 	start := time.Unix(100, 0)
 	m := &WorldMode{}
 	m.startSkillSourceCastAnimation(ctx, 2000000, db.SkillBSHammerfall, time.Second, start)
-	if m.actorAnims[2000000].ActionFamily != sprites.AttackActionFamily(ctx.Resources, ctx.World.Player) {
+	if m.actorSystem.ActorAnims[2000000].ActionFamily != sprites.AttackActionFamily(ctx.Resources, ctx.World.Player) {
 		t.Fatal("Hammer Fall must cast with the equipped weapon's attack pose")
 	}
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillBSHammerfall, SourceID: 2000000, X: 15, Y: 20})
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillBSHammerfall, SourceID: 2000000, X: 15, Y: 20})
-	if len(m.effects().Active) != 2 || m.actorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
+	if len(m.effects().Active) != 2 || m.actorSystem.ActorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
 		t.Fatal("each Hammer Fall must play its release pose and create a fresh ground impact")
 	}
 	for _, e := range m.effects().Active {
@@ -1493,7 +1494,7 @@ func TestGunslingerNativePosesAndCasting(t *testing.T) {
 		m := &WorldMode{}
 		now := time.Unix(100, 0)
 		m.startSkillSourceCastAnimation(ctx, 2000000, id, 2*time.Second, now)
-		a := m.actorAnims[2000000]
+		a := m.actorSystem.ActorAnims[2000000]
 		family, frame := sprites.ActionPCSkill, 1
 		if id >= 518 {
 			family, frame = sprites.ActionPCAttack1, 0
@@ -1670,7 +1671,7 @@ func TestKnightChargeAttackCast(t *testing.T) {
 	ctx := testutil.KnightEffectContext()
 	m := &WorldMode{}
 	m.applySkillCastNotify(ctx, network.SkillCastNotify{SkillID: db.SkillKNChargeatk, SourceID: 2000000, TargetID: 300, DelayTime: 1000})
-	if m.actorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
+	if m.actorSystem.ActorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
 		t.Fatal("Charge Attack must charge while standing")
 	}
 	found := false
@@ -2142,15 +2143,15 @@ func TestBladeStopCapturesVictimsPlayingFrame(t *testing.T) {
 		actions[i] = res.ACTAction{DelayMS: 100, Animations: make([]res.ACTAnimation, 4)}
 	}
 	started := time.Now().Add(-150 * time.Millisecond)
-	m := &WorldMode{playerView: &sprites.Humanoid{Body: &scene.SpriteView{Act: &res.ACT{Actions: actions}}, Started: started}}
+	m := &WorldMode{actorSystem: actors.System{PlayerView: &sprites.Humanoid{Body: &scene.SpriteView{Act: &res.ACT{Actions: actions}}, Started: started}}}
 	m.setCombatActorAction(ctx, 2000000, scene.ActorAnimation{ActionFamily: sprites.ActionPCAttack1, Started: started, Play: true, HasPlay: true, Duration: time.Second})
 	m.applyActorBladeStop(ctx, network.ActorBladeStop{SourceID: 300, TargetID: 2000000, Active: true})
-	anim := m.actorAnims[150000]
+	anim := m.actorSystem.ActorAnims[150000]
 	want := scene.MinInt(3, int(anim.Started.Sub(started)/(100*time.Millisecond)))
 	if want == 0 || anim.FixedMotion != want || anim.Play {
 		t.Fatalf("victim pose = %+v, want frozen frame %d", anim, want)
 	}
-	if later, ok := m.actorAnimation(150000, time.Now().Add(time.Minute)); !ok || later.FixedMotion != want {
+	if later, ok := m.actors().ActorAnimation(150000, time.Now().Add(time.Minute)); !ok || later.FixedMotion != want {
 		t.Fatal("Blade Stop victim resumed animation before release")
 	}
 }
@@ -2204,10 +2205,7 @@ func TestMagicCrasherBlendReachesActorDraws(t *testing.T) {
 		Act:    &res.ACT{Actions: []res.ACTAction{{DelayMS: 100, Animations: []res.ACTAnimation{{Layers: []res.ACTLayer{{Index: 0, SPRType: res.SPRFrameRGBA, ScaleX: 1, ScaleY: 1, Color: [4]float32{1, 1, 1, 1}}}}}}}},
 		Images: make(map[scene.SpriteFrameKey]*render.Image), Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
-	mode := &WorldMode{
-		playerView: &sprites.Humanoid{Body: sprite},
-		nonPCViews: map[int]*scene.SpriteView{1002: sprite},
-	}
+	mode := &WorldMode{actorSystem: actors.System{PlayerView: &sprites.Humanoid{Body: sprite}, NonPCViews: map[int]*scene.SpriteView{1002: sprite}}}
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 42, X: 10, Y: 20}
 	ctx := client.Context{World: world, Session: &session.Session{AccountID: 43, CharID: 44}}
@@ -2227,9 +2225,9 @@ func TestMagicCrasherBlendReachesActorDraws(t *testing.T) {
 					var drawn bool
 					if local {
 						entry.Actor = world.Player
-						drawn = mode.drawPlayerSprite3D(ctx, frame, projection, entry, 0, 0, 1, 1)
+						drawn = mode.actors().DrawPlayerSprite3D(ctx, frame, projection, entry, 0, 0, 1, 1)
 					} else {
-						drawn = mode.drawNonPCSprite3D(frame, ctx, projection, entry, 0, 1)
+						drawn = mode.actors().DrawNonPCSprite3D(frame, ctx, projection, entry, 0, 1)
 					}
 					commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
 					if !drawn || commands.Len() != 1 {
@@ -2275,7 +2273,7 @@ func TestPriestCasting(t *testing.T) {
 		if skill == db.SkillPRRedemptio {
 			pose = scene.SpriteActionIdle
 		}
-		if m.actorAnims[2000000].ActionFamily != pose {
+		if m.actorSystem.ActorAnims[2000000].ActionFamily != pose {
 			t.Fatalf("skill %d: wrong cast pose", skill)
 		}
 	}
@@ -2306,7 +2304,7 @@ func TestProfessorClientAssets(t *testing.T) {
 		if skill == 404 {
 			aura = 16
 		}
-		if m.actorAnims[2000000].ActionFamily != sprites.ActionPCReadyFight || len(m.effects().Active) != 3 || m.effects().Active[2].EffectID != aura {
+		if m.actorSystem.ActorAnims[2000000].ActionFamily != sprites.ActionPCReadyFight || len(m.effects().Active) != 3 || m.effects().Active[2].EffectID != aura {
 			t.Fatalf("skill %d needs casting aura %d and the ready pose", skill, aura)
 		}
 	}
@@ -2372,14 +2370,11 @@ func TestWorldDrawPlacesEffectsBeforeAndAfterEntities(t *testing.T) {
 			ctx.Config.Render.NoUI = true
 			before, actor, after := testutil.EffectRenderTestSprite(), testutil.EffectRenderTestSprite(), testutil.EffectRenderTestSprite()
 			starts := time.Now().Add(-time.Second)
-			mode := &WorldMode{
-				effectSystem: effects.System{EffectViews: map[string]*scene.SpriteView{"before": before, "after": after}, Active: []effects.Instance{
-					{EffectID: effectID, X: 1, Y: 1, Starts: starts, Expires: starts.Add(time.Hour)},
-					{EffectID: effectID, X: 1, Y: 1, Starts: starts, Expires: starts},
-					{EffectID: effectID, X: 1, Y: 1, Starts: starts.Add(time.Hour)},
-				}},
-				nonPCViews: map[int]*scene.SpriteView{1002: actor},
-			}
+			mode := &WorldMode{effectSystem: effects.System{EffectViews: map[string]*scene.SpriteView{"before": before, "after": after}, Active: []effects.Instance{
+				{EffectID: effectID, X: 1, Y: 1, Starts: starts, Expires: starts.Add(time.Hour)},
+				{EffectID: effectID, X: 1, Y: 1, Starts: starts, Expires: starts},
+				{EffectID: effectID, X: 1, Y: 1, Starts: starts.Add(time.Hour)},
+			}}, actorSystem: actors.System{NonPCViews: map[int]*scene.SpriteView{1002: actor}}}
 			frame := render.NewFrame(800, 600)
 			mode.Draw(ctx, frame)
 			commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
@@ -3129,10 +3124,10 @@ func TestWizardMeteorKeepsReleasePose(t *testing.T) {
 	for i := range actions {
 		actions[i].Animations = make([]res.ACTAnimation, 4)
 	}
-	m := &WorldMode{playerView: &sprites.Humanoid{Body: &scene.SpriteView{Act: &res.ACT{Actions: actions}}}}
+	m := &WorldMode{actorSystem: actors.System{PlayerView: &sprites.Humanoid{Body: &scene.SpriteView{Act: &res.ACT{Actions: actions}}}}}
 	for _, x := range []uint16{5, 30} {
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillWZMeteor, SourceID: 2000000, X: x, Y: 20})
-		anim := m.actorAnims[100]
+		anim := m.actorSystem.ActorAnims[100]
 		if ctx.World.Player.Dir != 3 || anim.ActionFamily != sprites.ActionPCSkill || anim.Play || !anim.HasFixedMotion || anim.FixedMotion != 3 {
 			t.Fatal("Meteor must hold the last skill frame without turning toward each impact")
 		}
@@ -3162,7 +3157,7 @@ func TestWizardMeteorPreservesMovement(t *testing.T) {
 			if !local {
 				got = ctx.World.Actors[actor.ID]
 			}
-			if !reflect.DeepEqual(got, actor) || len(m.actorAnims) != 0 {
+			if !reflect.DeepEqual(got, actor) || len(m.actorSystem.ActorAnims) != 0 {
 				t.Fatalf("meteor interrupted actor %d's movement or walking animation", sourceID)
 			}
 		}
@@ -3214,22 +3209,22 @@ func TestEffectBodyColorTintFollowsRobrowserFlashWindow(t *testing.T) {
 			Expires:  starts.Add(300 * time.Millisecond),
 		}}},
 	}
-	if got := mode.actorBodyColorTint(42, base, starts); got != base {
+	if got := mode.actors().ActorBodyColorTint(42, base, starts); got != base {
 		t.Fatalf("initial tint = %+v, want base %+v", got, base)
 	}
-	if got := mode.actorBodyColorTint(42, base, starts.Add(50*time.Millisecond)); got != (color.RGBA{R: 177, G: 75, B: 100, A: 255}) {
+	if got := mode.actors().ActorBodyColorTint(42, base, starts.Add(50*time.Millisecond)); got != (color.RGBA{R: 177, G: 75, B: 100, A: 255}) {
 		t.Fatalf("half flash tint = %+v", got)
 	}
-	if got := mode.actorBodyColorTint(42, base, starts.Add(100*time.Millisecond)); got != (color.RGBA{R: 255, G: 0, B: 0, A: 255}) {
+	if got := mode.actors().ActorBodyColorTint(42, base, starts.Add(100*time.Millisecond)); got != (color.RGBA{R: 255, G: 0, B: 0, A: 255}) {
 		t.Fatalf("full flash tint = %+v", got)
 	}
-	if got := mode.actorBodyColorTint(42, base, starts.Add(300*time.Millisecond)); got != (color.RGBA{R: 255, G: 0, B: 0, A: 255}) {
+	if got := mode.actors().ActorBodyColorTint(42, base, starts.Add(300*time.Millisecond)); got != (color.RGBA{R: 255, G: 0, B: 0, A: 255}) {
 		t.Fatalf("final flash tint = %+v", got)
 	}
-	if got := mode.actorBodyColorTint(42, base, starts.Add(301*time.Millisecond)); got != base {
+	if got := mode.actors().ActorBodyColorTint(42, base, starts.Add(301*time.Millisecond)); got != base {
 		t.Fatalf("expired tint = %+v, want base %+v", got, base)
 	}
-	if got := mode.actorBodyColorTint(99, base, starts.Add(100*time.Millisecond)); got != base {
+	if got := mode.actors().ActorBodyColorTint(99, base, starts.Add(100*time.Millisecond)); got != base {
 		t.Fatalf("other actor tint = %+v, want base %+v", got, base)
 	}
 }
@@ -3245,15 +3240,15 @@ func TestMagicCrasher2BodyColorTintUsesOriginalColorWindow(t *testing.T) {
 			Expires:  starts.Add(100 * db.EffectFrameDuration),
 		}}},
 	}
-	first := mode.actorBodyColorTint(42, base, starts.Add(100*time.Millisecond))
-	second := mode.actorBodyColorTint(42, base, starts.Add(100*time.Millisecond))
+	first := mode.actors().ActorBodyColorTint(42, base, starts.Add(100*time.Millisecond))
+	second := mode.actors().ActorBodyColorTint(42, base, starts.Add(100*time.Millisecond))
 	if first != second {
 		t.Fatalf("random tint should be deterministic per frame: first %+v second %+v", first, second)
 	}
 	if first == base || first.A != base.A {
 		t.Fatalf("active random tint = %+v, want color-channel change with unchanged alpha", first)
 	}
-	if got := mode.actorBodyColorTint(42, base, starts.Add(61*db.EffectFrameDuration)); got != base {
+	if got := mode.actors().ActorBodyColorTint(42, base, starts.Add(61*db.EffectFrameDuration)); got != base {
 		t.Fatalf("expired random tint = %+v, want base %+v", got, base)
 	}
 }
@@ -3284,7 +3279,7 @@ func TestActorBodySizeMultiplierFollowsRobrowserEswooSizes(t *testing.T) {
 				Duration: tc.duration,
 			}}},
 		}
-		if got := mode.actorBodySizeMultiplier(42, starts.Add(tc.at)); got != tc.want {
+		if got := mode.actors().ActorBodySizeMultiplier(42, starts.Add(tc.at)); got != tc.want {
 			t.Fatalf("%s multiplier = %f, want %f", tc.name, got, tc.want)
 		}
 	}
@@ -3407,7 +3402,7 @@ func TestLightningBoltStartsWithSkillAction(t *testing.T) {
 			if len(mode.effects().Active) != 1+hitCount {
 				t.Fatalf("effects = %d, want one lightning animation and %d impacts", len(mode.effects().Active), hitCount)
 			}
-			started := mode.actorAnims[2000000].Started
+			started := mode.actorSystem.ActorAnims[2000000].Started
 			bolt := mode.effects().Active[0]
 			if started.IsZero() || bolt.EffectID != effects.LightningBolt || bolt.ActorID != 300 || !bolt.Starts.Equal(started) {
 				t.Fatalf("lightning = %+v, want one animation on target starting with caster at %s", bolt, started)
@@ -3467,7 +3462,7 @@ func TestZeroDamageSkillKeepsExecutionEffectsWithoutHitReaction(t *testing.T) {
 	if len(mode.effects().Active) != 1 || mode.effects().Active[0].EffectID != effects.SoulStrike || mode.effects().Active[0].HitCount != 4 || mode.effects().Active[0].ActorID != 2000000 || mode.effects().Active[0].TargetID != 300 {
 		t.Fatalf("world effects = %+v, want one four-soul sequence from caster to target", mode.effects().Active)
 	}
-	if _, ok := mode.actorAnims[300]; ok {
+	if _, ok := mode.actorSystem.ActorAnims[300]; ok {
 		t.Fatal("zero-damage target received a hurt animation")
 	}
 	if len(mode.scheduledSounds) != 4 {
@@ -3514,7 +3509,7 @@ func TestZeroDamageSkillKeepsImmediateEffectWithoutHitEffect(t *testing.T) {
 	if len(mode.effects().Active) != 1 || mode.effects().Active[0].EffectID != effects.FrostDiver {
 		t.Fatalf("world effects = %+v, want Frost Diver execution effect without hit effect", mode.effects().Active)
 	}
-	wantStart := mode.actorAnims[2000000].Started
+	wantStart := mode.actorSystem.ActorAnims[2000000].Started
 	if !mode.effects().Active[0].Starts.Equal(wantStart) {
 		t.Fatalf("Frost Diver start = %s, want action time %s", mode.effects().Active[0].Starts, wantStart)
 	}
@@ -3583,14 +3578,14 @@ func TestSkillCastNotifyAddsDurationAura(t *testing.T) {
 	if bar.duration != 2500*time.Millisecond || bar.color != (color.RGBA{R: 0, G: 255, B: 0, A: 255}) {
 		t.Fatalf("cast bar = %+v", bar)
 	}
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("cast animation missing")
 	}
 	if anim.ActionFamily != sprites.ActionPCReadyFight || anim.Duration != 2500*time.Millisecond || anim.HasFixedMotion {
 		t.Fatalf("cast animation = %+v", anim)
 	}
-	if world.Dir != directionFromDelta(10, 20, 12, 20, 4) {
+	if world.Dir != actors.DirectionFromDelta(10, 20, 12, 20, 4) {
 		t.Fatalf("cast dir = %d", world.Dir)
 	}
 }
@@ -3629,12 +3624,12 @@ func TestSkillResultAnimationReplacesCastStance(t *testing.T) {
 	ctx := client.Context{Session: &session.Session{AccountID: 2000000, CharID: 150000}, World: world}
 
 	mode.applySkillCastNotify(ctx, network.SkillCastNotify{SourceID: 2000000, TargetID: 1100, SkillID: 28, DelayTime: 1200})
-	if anim, ok := mode.actorAnims[150000]; !ok || anim.ActionFamily != sprites.ActionPCReadyFight {
+	if anim, ok := mode.actorSystem.ActorAnims[150000]; !ok || anim.ActionFamily != sprites.ActionPCReadyFight {
 		t.Fatalf("cast stance animation = %+v ok=%t", anim, ok)
 	}
 
 	mode.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SourceID: 2000000, TargetID: 1100, SkillID: 28, Amount: 234, Result: 1})
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("skill result animation missing")
 	}
@@ -4206,14 +4201,14 @@ func TestAlchemistCastAndGroundOwnership(t *testing.T) {
 		m := &WorldMode{}
 		m.startSkillSourceCastAnimation(ctx, 2000000, tc.skill, 3*time.Second, start)
 		m.effects().AddSkillCastEffects(ctx, tc.skill, 1, 2000000, 0, 0, 0, 3*time.Second, start, "test")
-		if m.actorAnims[2000000].ActionFamily != tc.pose || len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.effect {
+		if m.actorSystem.ActorAnims[2000000].ActionFamily != tc.pose || len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.effect {
 			t.Fatalf("incorrect cast pose or aura for skill %d", tc.skill)
 		}
 	}
 	for _, skill := range []uint16{db.SkillAMDemonstration, db.SkillAMCannibalize, db.SkillAMSpheremine} {
 		m := &WorldMode{}
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: skill, X: 20, Y: 20})
-		if len(m.effects().Active)+len(m.scheduledSounds) != 0 || m.actorAnims[2000000].Started.IsZero() {
+		if len(m.effects().Active)+len(m.scheduledSounds) != 0 || m.actorSystem.ActorAnims[2000000].Started.IsZero() {
 			t.Fatal("ground notification must animate the caster and leave the visual to its unit/entity")
 		}
 		if skill != db.SkillAMDemonstration {
@@ -4231,7 +4226,7 @@ func TestAlchemistCastAndGroundOwnership(t *testing.T) {
 	for _, skill := range []uint16{db.SkillAMPharmacy, db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3} {
 		m := &WorldMode{}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SourceID: 2000000, TargetID: 2000000, SkillID: skill, Result: 1})
-		if len(m.effects().Active)+len(m.scheduledSounds) != 0 || m.actorAnims[2000000].Started.IsZero() {
+		if len(m.effects().Active)+len(m.scheduledSounds) != 0 || m.actorSystem.ActorAnims[2000000].Started.IsZero() {
 			t.Fatal("crafting completion must animate the caster without a release flare or sound")
 		}
 	}
@@ -4279,11 +4274,11 @@ func TestBardPerformanceOwnership(t *testing.T) {
 			if skill == db.SkillBaDissonance || skill == db.SkillBaWhistle {
 				sounds = 0
 			}
-			if len(m.effects().Active) != 0 || len(m.scheduledSounds) != sounds || !m.actorAnims[2000000].Loop {
+			if len(m.effects().Active) != 0 || len(m.scheduledSounds) != sounds || !m.actorSystem.ActorAnims[2000000].Loop {
 				t.Fatalf("skill %d ground=%t: activation must only start performance and its one sound", skill, ground)
 			}
 			m.stopPerformance(ctx, network.StatusEffectChange{StatusID: db.StatusBdplaying, ActorID: 100})
-			if len(m.actorAnims) != 0 {
+			if len(m.actorSystem.ActorAnims) != 0 {
 				t.Fatal("performance end must clear both local actor aliases")
 			}
 		}
@@ -4414,7 +4409,7 @@ func TestClownGypsyHermodeGroundUnitOwnership(t *testing.T) {
 	ctx := testutil.ArcherEffectContext()
 	m := &WorldMode{}
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillCGHermode, SourceID: 2000000})
-	if len(m.effects().Active) != 0 || len(m.scheduledSounds) != 1 || !m.actorAnims[2000000].Loop {
+	if len(m.effects().Active) != 0 || len(m.scheduledSounds) != 1 || !m.actorSystem.ActorAnims[2000000].Loop {
 		t.Fatal("Hermode ground activation must only begin the dance and sound")
 	}
 	unit := network.SkillUnitEntry{ID: 500, UnitID: 185, X: 15, Y: 20, Visible: true}
@@ -4429,7 +4424,7 @@ func TestClownGypsyHermodeGroundUnitOwnership(t *testing.T) {
 	}
 	m.applySkillUnitDisappear(network.SkillUnitDisappear{ID: unit.ID})
 	m.applyStatusEffectChange(ctx, network.StatusEffectChange{StatusID: db.StatusBdplaying, ActorID: 100})
-	if len(m.effects().Active)+len(m.actorAnims) != 0 {
+	if len(m.effects().Active)+len(m.actorSystem.ActorAnims) != 0 {
 		t.Fatal("Hermode ground removal and status ending must stop the cube and dance")
 	}
 }
@@ -4448,11 +4443,11 @@ func TestDancerPerformanceOwnership(t *testing.T) {
 			if skill == db.SkillDCUglydance {
 				sounds = 0
 			}
-			if len(m.effects().Active) != 0 || len(m.scheduledSounds) != sounds || !m.actorAnims[2000000].PingPong {
+			if len(m.effects().Active) != 0 || len(m.scheduledSounds) != sounds || !m.actorSystem.ActorAnims[2000000].PingPong {
 				t.Fatalf("dance %d ground=%t must start only its pose and sound", skill, ground)
 			}
 			m.stopPerformance(ctx, network.StatusEffectChange{StatusID: db.StatusBdplaying, ActorID: 100})
-			if len(m.actorAnims) != 0 {
+			if len(m.actorSystem.ActorAnims) != 0 {
 				t.Fatal("dance continued after status end")
 			}
 		}
@@ -4536,7 +4531,7 @@ func TestDancerWinkAndClientAssets(t *testing.T) {
 	start := time.Now()
 	m.startSkillSourceCastAnimation(ctx, n.SourceID, n.SkillID, time.Second, start)
 	m.effects().AddSkillCastEffects(ctx, n.SkillID, 0, n.SourceID, n.TargetID, 0, 0, time.Second, start, "test")
-	if anim := m.actorAnims[n.SourceID]; !anim.Loop || !anim.PingPong || anim.ActionFamily != sprites.ActionPCSkill {
+	if anim := m.actorSystem.ActorAnims[n.SourceID]; !anim.Loop || !anim.PingPong || anim.ActionFamily != sprites.ActionPCSkill {
 		t.Fatal("Wink must dance during its cast")
 	}
 	if len(m.effects().Active) != 2 {
@@ -4560,10 +4555,10 @@ func TestGunslingerGroundAndCoinLifetime(t *testing.T) {
 	ctx.World.Player.Job = db.JobGunslinger
 	ctx.Session.Selected.Job = db.JobGunslinger
 	for _, count := range []uint16{1, 5, 6, 10, 0} {
-		if !applySpiritSphereCount(ctx, network.SpiritSphereCount{ActorID: 2000000, Count: count}) {
+		if !actors.ApplySpiritSphereCount(ctx, network.SpiritSphereCount{ActorID: 2000000, Count: count}) {
 			t.Fatal("missing local actor")
 		}
-		m.syncActorSpiritEffects(ctx, 2000000)
+		m.actors().SyncActorSpiritEffects(ctx, 2000000)
 		if count == 0 {
 			if len(m.effects().Active) != 0 {
 				t.Fatal("coins survived consumption")
@@ -4575,7 +4570,7 @@ func TestGunslingerGroundAndCoinLifetime(t *testing.T) {
 		}
 		e := m.effects().Active[0]
 		p := e.GunslingerCoins
-		m.syncActorSpiritEffects(ctx, 2000000)
+		m.actors().SyncActorSpiritEffects(ctx, 2000000)
 		if m.effects().Active[0].GunslingerCoins != p {
 			t.Fatal("unchanged count restarted coins")
 		}
@@ -4606,7 +4601,7 @@ func TestHighWizardDamageAndGroundPackets(t *testing.T) {
 			t.Fatalf("skill %d needs its release effect, optional caster flare, and three hits", tc.skill)
 		}
 		release := m.effects().Active[tc.begin]
-		if release.EffectID != tc.effect || !release.Starts.Equal(m.actorAnims[2000000].Started) || !release.Starts.Before(m.effects().Active[tc.begin+1].Starts) {
+		if release.EffectID != tc.effect || !release.Starts.Equal(m.actorSystem.ActorAnims[2000000].Started) || !release.Starts.Before(m.effects().Active[tc.begin+1].Starts) {
 			t.Fatal("release effect must precede the hit flashes")
 		}
 		if len(m.scheduledSounds) != tc.sounds+1+tc.begin {
@@ -4634,7 +4629,7 @@ func TestHighWizardDamageAndGroundPackets(t *testing.T) {
 	}
 	m := &WorldMode{}
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: db.SkillHWGanbantein, X: 22, Y: 21})
-	if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != 223 || m.effects().Active[0].X != 22 || m.effects().Active[0].ActorID != 0 || m.actorAnims[2000000].ActionFamily != sprites.ActionPCSkill || len(m.scheduledSounds) != 1 || m.scheduledSounds[0].positioned {
+	if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != 223 || m.effects().Active[0].X != 22 || m.effects().Active[0].ActorID != 0 || m.actorSystem.ActorAnims[2000000].ActionFamily != sprites.ActionPCSkill || len(m.scheduledSounds) != 1 || m.scheduledSounds[0].positioned {
 		t.Fatal("Ganbantein needs its ground rings, skill pose and centered sound")
 	}
 	m = &WorldMode{}
@@ -4671,7 +4666,7 @@ func TestHunterTrapPlacementAndTrigger(t *testing.T) {
 			ctx := testutil.ArcherEffectContext()
 			m := &WorldMode{}
 			m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: tc.skill, X: 15, Y: 20})
-			if len(m.effects().Active) != 0 || m.actorAnims[2000000].ActionFamily != scene.SpriteActionPickup {
+			if len(m.effects().Active) != 0 || m.actorSystem.ActorAnims[2000000].ActionFamily != scene.SpriteActionPickup {
 				t.Fatal("placing a trap must play pickup without detonating it")
 			}
 			m.applySkillUnitEntry(ctx, network.SkillUnitEntry{ID: 500, UnitID: tc.unit, X: 15, Y: 20, Visible: true})
@@ -4748,7 +4743,7 @@ func TestHunterTrapUtilityTargetsTrapAndSurvivesRemoval(t *testing.T) {
 		if len(m.effects().Active) != 1 || m.effects().Active[0].ActorID != 0 || m.effects().Active[0].X != 15 || m.effects().Active[0].Y != 25 {
 			t.Fatal("effect must stay at removed trap")
 		}
-		if skill == db.SkillHTSpringtrap && (m.falcons[100] == nil || !m.falcons[100].attacking) {
+		if skill == db.SkillHTSpringtrap && (m.actorSystem.Falcons[100] == nil || !m.actorSystem.Falcons[100].Attacking) {
 			t.Fatal("Spring Trap did not send the falcon")
 		}
 	}
@@ -4788,10 +4783,10 @@ func TestHunterTrapTargetAndTalkieBox(t *testing.T) {
 		t.Fatal("trap could not be selected")
 	}
 
-	m.applySpeechBubble(ctx, network.ChatMessage{GID: 500, Text: "Beware : trap!"}, time.Now())
+	m.actors().ApplySpeechBubble(ctx, network.ChatMessage{GID: 500, Text: "Beware : trap!"}, time.Now())
 	m.applySkillUnitLookChange(ctx, network.ActorLookChange{ID: 500, Value: 140})
-	b := m.speechBubbles[500]
-	if b.ground == nil || *b.ground != [2]int{15, 20} || b.text != "Beware : trap!" {
+	b := m.actorSystem.SpeechBubbles[500]
+	if b.Ground == nil || *b.Ground != [2]int{15, 20} || b.Text != "Beware : trap!" {
 		t.Fatalf("wrong Talkie Box bubble: %+v", b)
 	}
 
@@ -4799,8 +4794,8 @@ func TestHunterTrapTargetAndTalkieBox(t *testing.T) {
 		t.Fatal("used trap still selectable")
 	}
 	m.effects().AddAt(ctx, effects.BlitzBeat, 300, time.Now())
-	m.applySpeechBubble(ctx, network.ChatMessage{GID: 300, Text: "Actor : hello"}, time.Now())
-	if b := m.speechBubbles[300]; b.ground != nil || b.text != "hello" {
+	m.actors().ApplySpeechBubble(ctx, network.ChatMessage{GID: 300, Text: "Actor : hello"}, time.Now())
+	if b := m.actorSystem.SpeechBubbles[300]; b.Ground != nil || b.Text != "hello" {
 		t.Fatal("an actor's visual effects must not turn its speech into a ground bubble")
 	}
 }
@@ -4894,7 +4889,7 @@ func TestPriestGroundSpellsUseUnitLifetime(t *testing.T) {
 	for skill, kind := range map[uint16]damageFloaterKind{db.SkillPRSanctuary: damageFloaterRecoveryHP, db.SkillMGSrecovery: damageFloaterRecoverySP} {
 		m := &WorldMode{}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, Result: 1, Amount: 777})
-		if len(m.effects().Active)+len(m.scheduledSounds)+len(m.actorAnims) != 0 || len(m.damageFloaters) != 1 || m.damageFloaters[0].text != "777" || m.damageFloaters[0].kind != kind {
+		if len(m.effects().Active)+len(m.scheduledSounds)+len(m.actorSystem.ActorAnims) != 0 || len(m.damageFloaters) != 1 || m.damageFloaters[0].text != "777" || m.damageFloaters[0].kind != kind {
 			t.Fatalf("skill %d: recovery should show the amount without a spell animation or sound", skill)
 		}
 	}
@@ -4908,7 +4903,7 @@ func TestProfessorGroundUnits(t *testing.T) {
 	}{{404, 182, 405}, {405, 183, 404}} {
 		m := &WorldMode{}
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: tc.skill, SourceID: 2000000, X: 14, Y: 20, Level: 1})
-		if len(m.effects().Active) != 0 || len(m.scheduledSounds) != 0 || m.actorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
+		if len(m.effects().Active) != 0 || len(m.scheduledSounds) != 0 || m.actorSystem.ActorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
 			t.Fatal("ground notification must animate the caster without duplicating the unit's effect")
 		}
 		m.applySkillUnitEntry(ctx, network.SkillUnitEntry{ID: 900, UnitID: tc.unit, X: 14, Y: 20, Visible: true})
@@ -4943,7 +4938,7 @@ func TestSageGroundSpellOwnership(t *testing.T) {
 		if cast.EffectID != tc.cast || cast.ActorID != 0 || cast.X != 15 || cast.Y != 20 || cast.Persistent {
 			t.Fatalf("skill %d: activation must stay at the selected cell", tc.skill)
 		}
-		if len(m.actorAnims) == 0 {
+		if len(m.actorSystem.ActorAnims) == 0 {
 			t.Fatalf("skill %d: caster has no release animation", tc.skill)
 		}
 		// A recast at the same location must replay the brief activation.
@@ -5097,7 +5092,7 @@ func TestPneumaGroundSkillAndUnitDoNotDuplicate(t *testing.T) {
 		if effect.EffectID != effects.Pneuma || effect.ActorID != unit.ID || !effect.Persistent || effect.X != 12 || effect.Y != 23 {
 			t.Fatal("Pneuma must belong to its ground unit")
 		}
-		if mode.actorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
+		if mode.actorSystem.ActorAnims[2000000].ActionFamily != sprites.ActionPCSkill {
 			t.Fatal("Pneuma release must animate its caster")
 		}
 		mode.applySkillUnitDisappear(network.SkillUnitDisappear{ID: unit.ID})
@@ -5591,10 +5586,10 @@ func TestSkillNoDamageNotifyAddsSongTalkBeginEffects(t *testing.T) {
 			if effect := mode.effects().Active[0]; effect.ActorID != 2000000 || effect.EffectID != tc.effectID {
 				t.Fatalf("effect = %+v, want actor 2000000 effect %d", effect, tc.effectID)
 			}
-			if bubble, ok := mode.speechBubbles[2000000]; !ok || bubble.text != tc.text {
+			if bubble, ok := mode.actorSystem.SpeechBubbles[2000000]; !ok || bubble.Text != tc.text {
 				t.Fatalf("account bubble = %+v ok=%t, want %q", bubble, ok, tc.text)
 			}
-			if bubble, ok := mode.speechBubbles[150000]; !ok || bubble.text != tc.text {
+			if bubble, ok := mode.actorSystem.SpeechBubbles[150000]; !ok || bubble.Text != tc.text {
 				t.Fatalf("char bubble = %+v ok=%t, want %q", bubble, ok, tc.text)
 			}
 		})
@@ -5625,7 +5620,7 @@ func TestSkillNoDamageNotifyEndureUsesReadyFightAction(t *testing.T) {
 	ctx := client.Context{Session: sessionState, World: world}
 
 	mode.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: 8, TargetID: 2000000, SourceID: 2000000, Result: 1})
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("source animation missing")
 	}
@@ -5652,7 +5647,7 @@ func TestSkillNoDamageNotifyAddsHealEffect(t *testing.T) {
 	if effect := mode.effects().Active[0]; effect.ActorID != 1100 || effect.EffectID != effects.Heal || effect.X != 12 || effect.Y != 22 {
 		t.Fatalf("effect = %+v", effect)
 	}
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("source cast animation missing")
 	}
@@ -5690,7 +5685,7 @@ func TestActorActionNotifyHealUsesCastAndOffensiveHealEffect(t *testing.T) {
 		Action:      8,
 	})
 
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("source animation missing")
 	}
@@ -5738,7 +5733,7 @@ func TestActorActionNotifyBashUsesRobrowserWeaponAttackOverride(t *testing.T) {
 		Action:      network.ActorActionSkill,
 	})
 
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("source animation missing")
 	}
@@ -5768,7 +5763,7 @@ func TestActorActionNotifyHealDoesNotOverwriteLocalCastWithHurt(t *testing.T) {
 		Action:      network.ActorActionSkill,
 	})
 
-	anim, ok := mode.actorAnims[150000]
+	anim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("source animation missing")
 	}

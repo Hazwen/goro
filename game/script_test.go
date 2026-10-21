@@ -14,6 +14,7 @@ import (
 	"github.com/gogpu/gpucontext"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/bot"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/login"
@@ -294,7 +295,7 @@ func TestWASDInvalidSkillTargetReleasesConfirmation(t *testing.T) {
 				case "removed":
 					mode.removeActorNow(ctx, 300)
 				case "dead":
-					mode.actorDeaths = map[uint32]time.Time{300: time.Now()}
+					mode.actorSystem.ActorDeaths = map[uint32]time.Time{300: time.Now()}
 				case "hidden":
 					actor := ctx.World.Actors[300]
 					actor.EffectState = db.EffectStateHide
@@ -733,7 +734,7 @@ func TestWASDGamepadHealTargetsRespectNoShift(t *testing.T) {
 				{Type: network.HotkeyTypeSkill, ID: uint32(skill.ID), Level: 3},
 			}}
 			mode := NewWorldMode()
-			mode.actorDeaths = map[uint32]time.Time{301: time.Now()}
+			mode.actorSystem.ActorDeaths = map[uint32]time.Time{301: time.Now()}
 			loadKeyboardTestBot(t, ctx, mode)
 			pad := input.GamepadFrame{ID: "test"}
 			pad.Axes[input.GamepadRightTrigger] = 1
@@ -781,7 +782,7 @@ func TestWASDGamepadTargetCyclingKeepsEnemyAndSkillSelectionsSeparate(t *testing
 	ctx.World.Actors[302] = worldstate.Actor{ID: 302, X: 10, Y: 21, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	ctx.World.Actors[303] = worldstate.Actor{ID: 303, X: 10, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	mode := NewWorldMode()
-	mode.actorDeaths = map[uint32]time.Time{303: time.Now()}
+	mode.actorSystem.ActorDeaths = map[uint32]time.Time{303: time.Now()}
 	loadKeyboardTestBot(t, ctx, mode)
 	pad := input.GamepadFrame{ID: "test"}
 	press := func(button input.GamepadButton, want uint32) {
@@ -2016,10 +2017,7 @@ func TestWASDLuaCyclesAndUsesPendingSkillTargets(t *testing.T) {
 	world.Actors[302] = worldstate.Actor{ID: 302, X: 10, Y: 21, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	world.Actors[400] = worldstate.Actor{ID: 400, X: 10, Y: 19, ObjectType: scene.ActorObjectTypePC, HasObjectType: true}
 	skill := session.Skill{ID: db.SkillACDouble, Type: skills.SkillTargetEnemy, Level: 3, Range: 9}
-	mode := &WorldMode{skillSystem: skills.System{Pending: skills.PendingTarget{Skill: skill, MaxLevel: 10}},
-
-		actorDeaths: map[uint32]time.Time{302: time.Now().Add(time.Second)},
-	}
+	mode := &WorldMode{skillSystem: skills.System{Pending: skills.PendingTarget{Skill: skill, MaxLevel: 10}}, actorSystem: actors.System{ActorDeaths: map[uint32]time.Time{302: time.Now().Add(time.Second)}}}
 	bot, err := newLuaScript(
 		client.Context{Input: inputState, Network: networkClient, Session: sess, World: world},
 		mode,
@@ -2535,7 +2533,7 @@ func TestLuaBotDoesNotExposeDyingEnemies(t *testing.T) {
 	world.Player = worldstate.Actor{ID: sess.CharID, X: 10, Y: 20}
 	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 12, Y: 21, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 
-	mode := &WorldMode{actorDeaths: map[uint32]time.Time{300: time.Now().Add(time.Second)}}
+	mode := &WorldMode{actorSystem: actors.System{ActorDeaths: map[uint32]time.Time{300: time.Now().Add(time.Second)}}}
 	path := scriptTestFile(t, `function tick() assert(#goro.enemies() == 0) end`)
 	script, err := newLuaScript(client.Context{Session: sess, World: world}, mode, path)
 	if err != nil {

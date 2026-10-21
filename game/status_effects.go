@@ -5,6 +5,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
@@ -19,15 +20,15 @@ func (m *WorldMode) applyStatusEffectChange(ctx client.Context, change network.S
 	if m.applyPushCartStatus(ctx, change) {
 		return
 	}
-	m.applyFalconStatus(ctx, change)
+	m.actors().ApplyFalconStatus(ctx, change)
 	m.stopPerformance(ctx, change)
 	if actorID := applyActorOpt3StateStatus(ctx, change); actorID != 0 {
-		m.syncActorSpiritEffects(ctx, actorID)
+		m.actors().SyncActorSpiritEffects(ctx, actorID)
 		if change.StatusID == db.StatusLkconcentration {
 			if scene.IsLocalActor(ctx, actorID) {
 				actorID = scene.LocalSkillTarget(ctx)
 			}
-			m.setActorStateEffect(ctx, actorID, effects.LKConcentration, change.Active)
+			m.actors().SetActorStateEffect(ctx, actorID, effects.LKConcentration, change.Active)
 		}
 	}
 	m.applyTrickDeadStatus(ctx, change)
@@ -38,7 +39,7 @@ func (m *WorldMode) applyStatusEffectChange(ctx client.Context, change network.S
 		if id == 0 || scene.IsLocalActor(ctx, id) {
 			id = scene.LocalSkillTarget(ctx)
 		}
-		m.setActorStateEffect(ctx, id, effects.SightBlaster, change.Active)
+		m.actors().SetActorStateEffect(ctx, id, effects.SightBlaster, change.Active)
 	}
 	if change.StatusID == db.StatusSmaReady && change.Active {
 		id := change.ActorID
@@ -168,7 +169,7 @@ func applyActorOpt3StateStatus(ctx client.Context, change network.StatusEffectCh
 		ctx.World.Player.Opt3State = actor.Opt3State
 		ctx.World.Player.HasState = true
 	} else {
-		upsertActor(ctx, actor)
+		actors.UpsertActor(ctx, actor)
 	}
 	return id
 }
@@ -195,8 +196,8 @@ func (m *WorldMode) applyTrickDeadStatus(ctx client.Context, change network.Stat
 	}
 	now := time.Now()
 	if change.Active {
-		actionFamily := deathActionFamilyForActor(actor)
-		m.setTrickDeadStatusAction(ctx, id, actionFamily, now, m.actorActionDuration(ctx, actor, actionFamily, scene.DefaultDeathAnimationDuration), true)
+		actionFamily := actors.DeathActionFamilyForActor(actor)
+		m.setTrickDeadStatusAction(ctx, id, actionFamily, now, m.actors().ActorActionDuration(ctx, actor, actionFamily, scene.DefaultDeathAnimationDuration), true)
 		glog.Debugf("trick dead active actor=%d", id)
 		return
 	}
@@ -227,12 +228,4 @@ func (m *WorldMode) removeExpiredStatusEffects(s *session.Session, now time.Time
 			}
 		}
 	}
-}
-
-func localActorHasStatus(ctx client.Context, statusID uint16) bool {
-	if ctx.Session == nil || ctx.Session.Statuses.Active == nil {
-		return false
-	}
-	_, ok := ctx.Session.Statuses.Active[statusID]
-	return ok
 }

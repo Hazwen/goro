@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kivutar/goro/game/npc"
-
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/bot"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/login"
 	maps "github.com/kivutar/goro/game/map"
+	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/social"
@@ -31,6 +31,7 @@ import (
 )
 
 type WorldMode struct {
+	actorSystem       actors.System
 	socialSystem      social.System
 	npcSystem         npc.System
 	skillSystem       skills.System
@@ -46,14 +47,6 @@ type WorldMode struct {
 	imageCache        map[string]image.Image
 	imageMiss         map[string]struct{}
 
-	playerView       *sprites.Humanoid
-	shadowView       *scene.SpriteView
-	shadowViewMiss   bool
-	cartViews        map[int]*scene.SpriteView
-	cartViewMiss     map[int]struct{}
-	falconViews      map[int]*scene.SpriteView
-	falconViewMiss   map[int]struct{}
-	falcons          map[uint32]*falconRenderState
 	cursorView       *scene.SpriteView
 	cursorViewMiss   bool
 	slotMachineView  *scene.SpriteView
@@ -72,17 +65,6 @@ type WorldMode struct {
 	itemViews        map[itemSpriteKey]*scene.SpriteView
 	itemViewMiss     map[itemSpriteKey]struct{}
 
-	actorViews        map[sprites.Appearance]*sprites.Humanoid
-	actorViewMiss     map[sprites.Appearance]struct{}
-	mercenaryViews    map[sprites.Appearance]*sprites.Humanoid
-	mercenaryViewMiss map[sprites.Appearance]struct{}
-	nonPCViews        map[int]*scene.SpriteView
-	nonPCViewMiss     map[int]struct{}
-	gr2Models         map[int]*gr2ModelView
-	gr2ModelMiss      map[int]struct{}
-	petAccessoryIDs   map[uint32]uint32
-	petAccessoryViews map[petAccessorySpriteKey]*scene.SpriteView
-	petAccessoryMiss  map[petAccessorySpriteKey]struct{}
 	pendingWarp       bool
 	deferredPackets   []network.Packet
 	pendingAttack     attackIntent
@@ -102,7 +84,6 @@ type WorldMode struct {
 	scriptHighlight   actorHighlight
 	lastAttackAt      time.Time
 	lastChaseAt       time.Time
-	actorAnims        map[uint32]scene.ActorAnimation
 
 	damageFloaters []damageFloater
 
@@ -113,13 +94,10 @@ type WorldMode struct {
 	scheduledStops   []scheduledActorStop
 	scheduledResumes []scheduledWalkResume
 	weather          weather.System
-	actorDeaths      map[uint32]time.Time
-	actorVanishes    map[uint32]actorVanishFade
+
 	actorSoundFrames map[uint32]actorSoundFrame
 	actorLife        map[uint32]actorLife
 	graffiti         map[uint32]*groundGraffiti
-	actorNameReqAt   map[uint32]time.Time
-	speechBubbles    map[uint32]speechBubble
 
 	ui              worldUI
 	mapFade         maps.Fade
@@ -267,8 +245,6 @@ type actorHighlight struct {
 	started time.Time
 }
 
-const actorNameRequestCooldown = time.Second
-
 func NewWorldMode() *WorldMode {
 	m := &WorldMode{}
 	m.ui.npc.BindDialogLifecycle()
@@ -302,9 +278,9 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	}
 	m.mapScene.Textures = make(map[string]*render.Image)
 	m.mapScene.TextureMiss = make(map[string]struct{})
-	m.playerView = nil
-	m.shadowView = nil
-	m.shadowViewMiss = false
+	m.actorSystem.PlayerView = nil
+	m.actorSystem.ShadowView = nil
+	m.actorSystem.ShadowViewMiss = false
 	m.cursorView = nil
 	m.cursorViewMiss = false
 	m.cursorFallback = nil
@@ -323,17 +299,17 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.itemViewMiss = make(map[itemSpriteKey]struct{})
 	m.effects().EffectViews = make(map[string]*scene.SpriteView)
 	m.effects().EffectViewMiss = make(map[string]struct{})
-	m.actorViews = make(map[sprites.Appearance]*sprites.Humanoid)
-	m.actorViewMiss = make(map[sprites.Appearance]struct{})
-	m.mercenaryViews = make(map[sprites.Appearance]*sprites.Humanoid)
-	m.mercenaryViewMiss = make(map[sprites.Appearance]struct{})
-	m.nonPCViews = make(map[int]*scene.SpriteView)
-	m.nonPCViewMiss = make(map[int]struct{})
-	m.gr2Models = make(map[int]*gr2ModelView)
-	m.gr2ModelMiss = make(map[int]struct{})
-	m.petAccessoryIDs = make(map[uint32]uint32)
-	m.petAccessoryViews = make(map[petAccessorySpriteKey]*scene.SpriteView)
-	m.petAccessoryMiss = make(map[petAccessorySpriteKey]struct{})
+	m.actorSystem.ActorViews = make(map[sprites.Appearance]*sprites.Humanoid)
+	m.actorSystem.ActorViewMiss = make(map[sprites.Appearance]struct{})
+	m.actorSystem.MercenaryViews = make(map[sprites.Appearance]*sprites.Humanoid)
+	m.actorSystem.MercenaryViewMiss = make(map[sprites.Appearance]struct{})
+	m.actorSystem.NonPCViews = make(map[int]*scene.SpriteView)
+	m.actorSystem.NonPCViewMiss = make(map[int]struct{})
+	m.actorSystem.GR2Models = make(map[int]*actors.GR2ModelView)
+	m.actorSystem.GR2ModelMiss = make(map[int]struct{})
+	m.actorSystem.PetAccessoryIDs = make(map[uint32]uint32)
+	m.actorSystem.PetAccessoryViews = make(map[actors.PetAccessorySpriteKey]*scene.SpriteView)
+	m.actorSystem.PetAccessoryMiss = make(map[actors.PetAccessorySpriteKey]struct{})
 	m.mapScene.ResetGeometry()
 	m.pendingWarp = false
 	m.pendingAttack = attackIntent{}
@@ -348,7 +324,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.clearScriptHighlight()
 	m.lastAttackAt = time.Time{}
 	m.lastChaseAt = time.Time{}
-	m.actorAnims = make(map[uint32]scene.ActorAnimation)
+	m.actorSystem.ActorAnims = make(map[uint32]scene.ActorAnimation)
 	m.effects().ActorBlurs = nil
 	m.damageFloaters = nil
 	m.npcSystem.Progress = npc.ProgressState{}
@@ -360,11 +336,11 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.mapScene.MapSoundNext = make(map[int]time.Time)
 	m.weather = weather.System{}
 	m.effects().StarFlights = nil
-	m.actorDeaths = make(map[uint32]time.Time)
-	m.actorVanishes = make(map[uint32]actorVanishFade)
+	m.actorSystem.ActorDeaths = make(map[uint32]time.Time)
+	m.actorSystem.ActorVanishes = make(map[uint32]actors.VanishFade)
 	m.actorSoundFrames = make(map[uint32]actorSoundFrame)
 	m.actorLife = make(map[uint32]actorLife)
-	m.speechBubbles = make(map[uint32]speechBubble)
+	m.actorSystem.SpeechBubbles = make(map[uint32]actors.SpeechBubble)
 	m.syncCurrentActorEffectStateEffects(ctx)
 	m.ui.npc.Dialog.ResetPublished(ctx)
 	m.ui.npc.Cutin.Clear()
@@ -378,27 +354,27 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	}
 	playerStatus := ""
 	character := ctx.Session.SelectedCharacter()
-	visualCharacter := localPlayerVisualCharacter(ctx)
-	if view, status := sprites.LoadPlayer(ctx.Resources, visualCharacter, ctx.Session.Sex, localPlayerIsAdmin(ctx)); view != nil {
-		m.playerView = view
+	visualCharacter := actors.LocalPlayerVisualCharacter(ctx)
+	if view, status := sprites.LoadPlayer(ctx.Resources, visualCharacter, ctx.Session.Sex, actors.LocalPlayerIsAdmin(ctx)); view != nil {
+		m.actorSystem.PlayerView = view
 		playerStatus = status
 	} else {
 		playerStatus = status
 	}
 	if view, status := sprites.LoadShadow(ctx.Resources); view != nil {
-		m.shadowView = view
+		m.actorSystem.ShadowView = view
 		if status != "" {
 			playerStatus += " " + status
 		}
 	} else {
-		m.shadowViewMiss = true
+		m.actorSystem.ShadowViewMiss = true
 		glog.Warnf("actor shadow resources unavailable: %s", status)
 	}
-	m.cartViews = make(map[int]*scene.SpriteView)
-	m.cartViewMiss = make(map[int]struct{})
-	m.falconViews = make(map[int]*scene.SpriteView)
-	m.falconViewMiss = make(map[int]struct{})
-	m.falcons = make(map[uint32]*falconRenderState)
+	m.actorSystem.CartViews = make(map[int]*scene.SpriteView)
+	m.actorSystem.CartViewMiss = make(map[int]struct{})
+	m.actorSystem.FalconViews = make(map[int]*scene.SpriteView)
+	m.actorSystem.FalconViewMiss = make(map[int]struct{})
+	m.actorSystem.Falcons = make(map[uint32]*actors.FalconRenderState)
 	if view, status := sprites.LoadCursor(ctx.Resources); view != nil {
 		m.cursorView = view
 		if status != "" {
@@ -409,7 +385,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 		glog.Warnf("cursor resources unavailable: %s", status)
 	}
 	render.SetCursorMode(render.CursorModeHidden)
-	glog.Debugf("player sprite resources char_id=%d name=%s admin=%t job=%d visual_job=%d hair=%d weapon=%d shield=%d head_top=%d head_mid=%d head_low=%d body_pal=%d head_pal=%d hair_color=%d account_sex=%d %s", character.ID, character.Name, localPlayerIsAdmin(ctx), character.Job, visualCharacter.Job, character.Hair, character.Weapon, character.Shield, character.HeadTop, character.HeadMid, character.HeadLow, character.BodyPal, character.HeadPal, character.HairColor, ctx.Session.Sex, playerStatus)
+	glog.Debugf("player sprite resources char_id=%d name=%s admin=%t job=%d visual_job=%d hair=%d weapon=%d shield=%d head_top=%d head_mid=%d head_low=%d body_pal=%d head_pal=%d hair_color=%d account_sex=%d %s", character.ID, character.Name, actors.LocalPlayerIsAdmin(ctx), character.Job, visualCharacter.Job, character.Hair, character.Weapon, character.Shield, character.HeadTop, character.HeadMid, character.HeadLow, character.BodyPal, character.HeadPal, character.HairColor, ctx.Session.Sex, playerStatus)
 	m.rebindPersistentUI(ctx)
 	if ctx.World.MapName == "" {
 		return nil
@@ -562,7 +538,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 			dead := scene.PlayerIsDead(ctx)
 			m.updateBotInput(ctx, !dead)
 			if !dead {
-				m.companions().Update(ctx, m.actorDeaths, now)
+				m.companions().Update(ctx, m.actorSystem.ActorDeaths, now)
 			}
 			m.updateBot(ctx, now)
 		}
@@ -952,7 +928,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if dead {
 		return nil, nil
 	}
-	m.companions().Update(ctx, m.actorDeaths, now)
+	m.companions().Update(ctx, m.actorSystem.ActorDeaths, now)
 	m.updateBot(ctx, now)
 
 	leftClick := !pointerBlocked && ctx.Input.MouseJustPressed(input.MouseButtonLeft)
@@ -994,7 +970,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 			m.requestPickup(ctx, item, "click")
 			return nil, nil
 		}
-		if actor, ok := hoveredCursorActor(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths); ok && npc.IsWarpActor(actor) {
+		if actor, ok := hoveredCursorActor(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths); ok && npc.IsWarpActor(actor) {
 			m.clearLockedAttack()
 			m.clearAttackFocus()
 			if targetX, targetY, targetOK := warpWalkTarget(ctx, actor, now); targetOK {
@@ -1005,12 +981,12 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 			}
 			return nil, nil
 		}
-		if actor, ok := clickedAttackTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths); ok {
+		if actor, ok := clickedAttackTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths); ok {
 			glog.Debugf("click attack target mouse=%d,%d id=%d name=%q job=%d object_type=%d player=%d,%d target=%d,%d", ctx.Input.MouseX, ctx.Input.MouseY, actor.ID, actor.Name, actor.Job, actor.ObjectType, playerX, playerY, actor.X, actor.Y)
 			m.requestAttack(ctx, actor, "click")
 			return nil, nil
 		}
-		if actor, ok := clickedTalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths); ok {
+		if actor, ok := clickedTalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths); ok {
 			glog.Debugf("click npc talk target mouse=%d,%d id=%d name=%q job=%d object_type=%d player=%d,%d target=%d,%d", ctx.Input.MouseX, ctx.Input.MouseY, actor.ID, actor.Name, actor.Job, actor.ObjectType, playerX, playerY, actor.X, actor.Y)
 			m.clearAttackFocus()
 			m.requestNPCTalk(ctx, actor, "click")
@@ -1151,7 +1127,7 @@ func (m *WorldMode) handleMapChange(ctx client.Context, change network.MapChange
 	ctx.World.ResetMapProperty()
 	ctx.World.MapName = change.MapName
 	ctx.Session.Zone.MapName = change.MapName
-	applyWarpPosition(ctx, change.X, change.Y)
+	actors.ApplyWarpPosition(ctx, change.X, change.Y)
 	ctx.World.Actors = make(map[uint32]worldstate.Actor)
 	if reuseLoadedMap {
 		m.camera.ResetTracking()
@@ -1307,12 +1283,12 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 			m.skills().DrawSkillUnitRSMModels(screen, ctx, projection, now)
 			m.effects().Draw(screen, ctx, projection, now, true)
 			m.drawGroundItems(screen, ctx, projection, now)
-			actorOverlays = m.drawSceneActors(screen, ctx, projection)
+			actorOverlays = m.actors().DrawSceneActors(screen, ctx, projection)
 		}
 	} else if ctx.World.GAT != nil {
 		m.effects().Draw(screen, ctx, projection, now, true)
 		m.drawGroundItems(screen, ctx, projection, now)
-		actorOverlays = m.drawSceneActors(screen, ctx, projection)
+		actorOverlays = m.actors().DrawSceneActors(screen, ctx, projection)
 	} else {
 		m.effects().Draw(screen, ctx, projection, now, true)
 	}
@@ -1401,14 +1377,14 @@ func clickedAttackTarget(ctx client.Context, projection scene.Projection, mouseX
 		if _, dead := deadActors[actor.ID]; dead {
 			continue
 		}
-		if !actorCanBeAttackClicked(ctx, actor) {
+		if !actors.ActorCanBeAttackClicked(ctx, actor) {
 			continue
 		}
 		actorX, actorY := scene.ActorRenderPosition(actor, now)
 		terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
 		point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 		scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
-		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
+		if !actors.PointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
 			continue
 		}
 		dx := float64(point.X) - float64(mouseX)
@@ -1429,17 +1405,17 @@ func clickedSkillTarget(ctx client.Context, projection scene.Projection, skill s
 	bestDistance := math.Inf(1)
 	var best worldstate.Actor
 	for _, actor := range skillTargetCandidates(ctx, skill) {
-		if _, dead := deadActors[actor.ID]; dead && !skillCanTargetDeadActor(skill, actor) {
+		if _, dead := deadActors[actor.ID]; dead && !actors.SkillCanTargetDeadActor(skill, actor) {
 			continue
 		}
-		if !actorCanBeSkillTargeted(ctx, skill, actor) {
+		if !actors.ActorCanBeSkillTargeted(ctx, skill, actor) {
 			continue
 		}
 		actorX, actorY := scene.ActorRenderPosition(actor, now)
 		terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
 		point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 		scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
-		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
+		if !actors.PointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
 			continue
 		}
 		dx := float64(point.X) - float64(mouseX)
@@ -1463,14 +1439,14 @@ func clickedPlayerTarget(ctx client.Context, projection scene.Projection, mouseX
 		if _, dead := deadActors[actor.ID]; dead {
 			continue
 		}
-		if !actorCanOpenPlayerContext(ctx, actor) {
+		if !actors.ActorCanOpenPlayerContext(ctx, actor) {
 			continue
 		}
 		actorX, actorY := scene.ActorRenderPosition(actor, now)
 		terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
 		point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 		scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
-		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
+		if !actors.PointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
 			continue
 		}
 		dx := float64(point.X) - float64(mouseX)
@@ -1527,7 +1503,7 @@ func (m *WorldMode) drawSceneModelsAndActors(screen *render.Frame, ctx client.Co
 	m.mapScene.DrawRSMModels(screen, ctx.Resources, ctx.World.RSW, ctx.World.RSM, ctx.World.GND, projection, now)
 	m.skills().DrawSkillUnitRSMModels(screen, ctx, projection, now)
 	m.effects().Draw(screen, ctx, projection, now, true)
-	actors := m.collectSceneActorEntries(screen, ctx, projection)
+	actors := m.actors().CollectSceneActorEntries(screen, ctx, projection)
 	items := m.collectSceneItemEntries(screen, ctx, projection, now)
 	for _, entry := range sortedSceneDrawEntries(actors, items) {
 		if entry.itemShadowIndex >= 0 {
@@ -1535,16 +1511,16 @@ func (m *WorldMode) drawSceneModelsAndActors(screen *render.Frame, ctx client.Co
 			continue
 		}
 		if entry.shadowIndex >= 0 {
-			m.drawActorShadowEntry(screen, ctx, projection, actors[entry.shadowIndex])
+			m.actors().DrawActorShadowEntry(screen, ctx, projection, actors[entry.shadowIndex])
 			continue
 		}
 		if entry.itemIndex >= 0 {
 			m.drawGroundItemEntry3D(screen, projection, items[entry.itemIndex])
 			continue
 		}
-		m.drawSceneActorEntry(screen, ctx, projection, actors[entry.actorIndex])
+		m.actors().DrawSceneActorEntry(screen, ctx, projection, actors[entry.actorIndex])
 	}
-	m.drawSceneActorFalcons(screen, ctx, projection, actors)
+	m.actors().DrawSceneActorFalcons(screen, ctx, projection, actors)
 	return actors
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
@@ -108,7 +109,7 @@ func TestHomunculusActorEntryUsesKnownSessionName(t *testing.T) {
 		World:   worldstate.New(),
 	}
 
-	upsertNetworkActor(ctx, network.ActorEntry{
+	actors.UpsertNetworkActor(ctx, network.ActorEntry{
 		ID:            300,
 		Job:           6002,
 		X:             10,
@@ -134,7 +135,7 @@ func TestHomunculusActorEntryDoesNotUseSessionNameForDifferentID(t *testing.T) {
 		World:   worldstate.New(),
 	}
 
-	upsertNetworkActor(ctx, network.ActorEntry{
+	actors.UpsertNetworkActor(ctx, network.ActorEntry{
 		ID:            301,
 		Job:           6002,
 		X:             10,
@@ -302,7 +303,7 @@ func TestPendingHomunculusDeleteVanishClearsSession(t *testing.T) {
 	mode.ui.companions.HomunculusInfo.OpenInfo(ctx, sess.Homunculus)
 	mode.ui.companions.HomunculusSkill.Open(ctx, nil)
 
-	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actorVanishOutOfSight})
+	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actors.ActorVanishOutOfSight})
 
 	if sess.Homunculus.Active || sess.Homunculus.ID != 0 || sess.Homunculus.Name != "" {
 		t.Fatalf("homunculus session after delete = %+v", sess.Homunculus)
@@ -339,7 +340,7 @@ func TestHomunculusVanishWithoutDeleteKeepsSession(t *testing.T) {
 		},
 	}
 
-	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actorVanishOutOfSight})
+	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actors.ActorVanishOutOfSight})
 
 	if !sess.Homunculus.Active || sess.Homunculus.ID != 300 {
 		t.Fatalf("homunculus session should survive non-delete vanish: %+v", sess.Homunculus)
@@ -488,7 +489,7 @@ func TestPendingMercenaryDeleteVanishClearsSession(t *testing.T) {
 	mode.ui.companions.MercenaryInfo.OpenInfo(ctx, sess.Mercenary)
 	mode.ui.companions.MercenarySkill.Open(ctx, nil)
 
-	mode.applyActorVanish(ctx, network.ActorVanish{ID: 400, Reason: actorVanishOutOfSight})
+	mode.applyActorVanish(ctx, network.ActorVanish{ID: 400, Reason: actors.ActorVanishOutOfSight})
 
 	if sess.Mercenary.Active || sess.Mercenary.ID != 0 || sess.Mercenary.Name != "" {
 		t.Fatalf("mercenary session after delete = %+v", sess.Mercenary)
@@ -525,10 +526,10 @@ func TestMercenaryActionFamiliesUseGuildWeaponActions(t *testing.T) {
 	if got := hurtActionFamilyForActor(archer); got != sprites.ActionPCHurt {
 		t.Fatalf("archer mercenary hurt action = %d, want %d", got, sprites.ActionPCHurt)
 	}
-	if got := deathActionFamilyForActor(archer); got != sprites.ActionNonPCDeath {
+	if got := actors.DeathActionFamilyForActor(archer); got != sprites.ActionNonPCDeath {
 		t.Fatalf("archer mercenary death action = %d, want %d", got, sprites.ActionNonPCDeath)
 	}
-	if got := deathActionFamilyForActor(sword); got != sprites.ActionPCDeath {
+	if got := actors.DeathActionFamilyForActor(sword); got != sprites.ActionPCDeath {
 		t.Fatalf("sword mercenary death action = %d, want %d", got, sprites.ActionPCDeath)
 	}
 	if got := skillCastActionFamilyForActor(sword, 0); got != sprites.ActionPCSkill {

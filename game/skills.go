@@ -2,13 +2,13 @@ package game
 
 import (
 	"image/color"
-	"math"
 	"slices"
 	"strconv"
 	"time"
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
@@ -38,7 +38,7 @@ func (m *WorldMode) applySkillNameBubble(ctx client.Context, sourceID uint32, sk
 	if !ok || !skills.ActorSupportsSkillNameBubble(source, local) {
 		return
 	}
-	m.applySpeechBubble(ctx, network.ChatMessage{GID: sourceID, Text: skills.SkillNameBubbleText(ctx, skillID)}, now)
+	m.actors().ApplySpeechBubble(ctx, network.ChatMessage{GID: sourceID, Text: skills.SkillNameBubbleText(ctx, skillID)}, now)
 }
 
 func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.SkillNoDamageNotify) {
@@ -73,7 +73,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 		// Activation is silent; each sacrificed attack launches BASH3D.
 		return
 	}
-	m.applyFalconSkillNoDamageNotify(ctx, notify, now)
+	m.actors().ApplyFalconSkillNoDamageNotify(ctx, notify, now)
 	m.applyClownGypsySkill(ctx, notify, now)
 	m.effects().ApplyAlchemistSkill(ctx, notify, now)
 	m.applyHighWizardSkill(ctx, notify, now)
@@ -135,7 +135,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 			if effectID == effects.LKConcentration {
 				m.effects().Remove(effectID, actorID)
 			}
-			m.setActorStateEffect(ctx, actorID, effectID, true)
+			m.actors().SetActorStateEffect(ctx, actorID, effectID, true)
 			continue
 		}
 		if effectID == effects.SpearQuicken || effectID == effects.AuraBlade || effectID == effects.Overthrust {
@@ -145,7 +145,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 			glog.Debugf("skill success self effect skill=%d src=%d target=%d effect=%d amount=%d", notify.SkillID, notify.SourceID, notify.TargetID, effectID, notify.Amount)
 		}
 	}
-	m.applySoulLinkerMonsterSkill(ctx, notify)
+	m.actors().ApplySoulLinkerMonsterSkill(ctx, notify)
 }
 
 func (m *WorldMode) applySkillCastNotify(ctx client.Context, notify network.SkillCastNotify) {
@@ -308,7 +308,7 @@ func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID u
 		return
 	}
 	if actionFamily == scene.SpriteActionPickup {
-		duration = m.actorActionDuration(ctx, source, actionFamily, 300*time.Millisecond)
+		duration = m.actors().ActorActionDuration(ctx, source, actionFamily, 300*time.Millisecond)
 	}
 	m.startCombatAnimation(ctx, sourceID, actionFamily, now, duration)
 }
@@ -328,14 +328,14 @@ func (m *WorldMode) faceSkillSource(ctx client.Context, sourceID, targetID uint3
 	if cellX == 0 && cellY == 0 {
 		return
 	}
-	dir := directionFromDelta(source.X, source.Y, cellX, cellY, source.Dir)
+	dir := actors.DirectionFromDelta(source.X, source.Y, cellX, cellY, source.Dir)
 	if sourceLocal {
 		ctx.World.Player.Dir = dir
 		ctx.World.Dir = dir
 		return
 	}
 	source.Dir = dir
-	upsertActor(ctx, source)
+	actors.UpsertActor(ctx, source)
 }
 
 func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify) {
@@ -348,8 +348,8 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 		if actor, ok, _ := scene.ActorForCombatID(ctx, notify.SourceID); ok {
 			m.startSkillActionAnimation(ctx, notify.SourceID, actor, effects.SkillAction(notify.SkillID), now, scene.DefaultAttackAnimationDuration)
 			family := skillActionFamilyForActorWithResources(ctx.Resources, actor, notify.SkillID)
-			if action, ok := m.actorResolvedAction(ctx, actor, family); ok {
-				act := m.actorActionACT(ctx, actor)
+			if action, ok := m.actors().ActorResolvedAction(ctx, actor, family); ok {
+				act := m.actors().ActorActionACT(ctx, actor)
 				motion := actionAttackMarkerMotion(act, action)
 				delay := combatMotionDelayFromAction(action, scene.DefaultAttackAnimationDuration, motion)
 				m.scheduleSkillActionSoundAtActor(now.Add(delay), notify.SourceID, notify.SkillID, actionSFXCandidatesForActor(actor, act, action, motion)...)
@@ -413,7 +413,7 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 				// Each meteor holds the release pose instead of turning toward its impact.
 				spec = effects.SkillActionSpec{Defined: true, Action: effects.SkillActorActionSkill, HasFrame: true}
 				actor.Dir = 0
-				if action, ok := m.actorResolvedAction(ctx, actor, sprites.ActionPCSkill); ok {
+				if action, ok := m.actors().ActorResolvedAction(ctx, actor, sprites.ActionPCSkill); ok {
 					spec.Frame = max(0, len(action.Animations)-1)
 				}
 			}
@@ -427,7 +427,7 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 		}
 		return
 	}
-	m.applyFalconGroundSkillNotify(ctx, notify, now)
+	m.actors().ApplyFalconGroundSkillNotify(ctx, notify, now)
 	for _, effectID := range effectIDs {
 		if m.effects().AddCellIfMissing(ctx, effectID, int(notify.X), int(notify.Y), now) {
 			glog.Debugf("ground skill effect skill=%d src=%d level=%d cell=%d,%d effect=%d", notify.SkillID, notify.SourceID, notify.Level, notify.X, notify.Y, effectID)
@@ -512,42 +512,6 @@ func (m *WorldMode) applySkillFailAck(ctx client.Context, ack network.SkillFailA
 	m.ui.console.AddErrorMessage("%s", message)
 }
 
-func (m *WorldMode) skillEffectDirection(ctx client.Context, actorID uint32, direction int, now time.Time) int {
-	for _, effect := range m.effects().Active {
-		if (effect.EffectID != effects.FalconAssault && effect.EffectID != effects.CastSpin && effect.EffectID != effects.StormKick) || now.Before(effect.Starts) || effect.Expired(now) {
-			continue
-		}
-		if effect.ActorID != actorID && !(scene.IsLocalActor(ctx, actorID) && scene.IsLocalActor(ctx, effect.ActorID)) {
-			continue
-		}
-		frame := int(now.Sub(effect.Starts) / db.EffectFrameDuration)
-		turn := 0.0
-		switch effect.EffectID {
-		case effects.StormKick:
-			if frame > 47 {
-				continue
-			}
-			turn = float64(frame+1) * 30
-		case effects.FalconAssault:
-			if frame < 30 || frame > 54 {
-				continue
-			}
-			turn = float64(frame-29) * 30
-		case effects.CastSpin:
-			anim, ok := m.actorAnims[effect.ActorID]
-			if frame >= 100 || !ok || anim.ActionFamily != scene.SpriteActionIdle || !anim.Started.Equal(effect.Starts) || now.Sub(anim.Started) >= anim.Duration {
-				continue
-			}
-			ticks := frame + 1
-			turn = float64(12*min(ticks, 16) + 18*scene.ClampInt(ticks-16, 0, 15) + 24*scene.ClampInt(ticks-31, 0, 10) + 48*max(0, ticks-41))
-		default:
-			continue
-		}
-		direction = (direction + int(math.Floor((turn+22.5)/45))) % 8
-	}
-	return direction
-}
-
 func (m *WorldMode) applyClownGypsySkill(ctx client.Context, notify network.SkillNoDamageNotify, now time.Time) {
 	source, target := notify.SourceID, notify.TargetID
 	if scene.IsLocalActor(ctx, source) {
@@ -559,7 +523,7 @@ func (m *WorldMode) applyClownGypsySkill(ctx client.Context, notify network.Skil
 	switch notify.SkillID {
 	case db.SkillCGMoonlit:
 		if _, ok, _ := scene.ActorForCombatID(ctx, source); ok {
-			m.setActorStateEffect(ctx, source, effects.Moonlit, true)
+			m.actors().SetActorStateEffect(ctx, source, effects.Moonlit, true)
 		}
 	case db.SkillCGMarionette:
 		if _, ok, _ := scene.ActorForCombatID(ctx, source); !ok {
@@ -573,8 +537,8 @@ func (m *WorldMode) applyClownGypsySkill(ctx client.Context, notify network.Skil
 			effect := &m.effects().Active[len(m.effects().Active)-1]
 			effect.Persistent, effect.Expires = true, time.Time{}
 		}
-		m.setActorStateEffect(ctx, source, effects.PinkBody, true)
-		m.setActorStateEffect(ctx, target, effects.PinkBody, true)
+		m.actors().SetActorStateEffect(ctx, source, effects.PinkBody, true)
+		m.actors().SetActorStateEffect(ctx, target, effects.PinkBody, true)
 	}
 }
 
@@ -584,12 +548,12 @@ func (m *WorldMode) startArrowVulcanHits(ctx client.Context, action network.Acto
 	if action.SkillID != db.SkillCGArrowvulcan || skillSplashAction(action) || scene.ActionVisualHitCount(action) < 2 {
 		return
 	}
-	anim, ok := m.actorAnims[action.SourceID]
+	anim, ok := m.actorSystem.ActorAnims[action.SourceID]
 	source, sourceOK, _ := scene.ActorForCombatID(ctx, action.SourceID)
 	if !ok || !sourceOK {
 		return
 	}
-	anim.Speed = m.actorActionFrameDelay(ctx, source, anim.ActionFamily, anim.Duration)
+	anim.Speed = m.actors().ActorActionFrameDelay(ctx, source, anim.ActionFamily, anim.Duration)
 	anim.HasSpeed = anim.Speed > 0
 	count := min(9, scene.ActionVisualHitCount(action))
 	next := readyFightAnimation(hitAt.Add(time.Duration(count) * scene.MultiHitDelay))
@@ -660,7 +624,7 @@ func (m *WorldMode) applyHighWizardSkill(ctx client.Context, notify network.Skil
 		}
 		if _, ok, _ := scene.ActorForCombatID(ctx, id); ok {
 			m.effects().Remove(effects.LightBlade, id)
-			m.setActorStateEffect(ctx, id, effects.LightBlade, true)
+			m.actors().SetActorStateEffect(ctx, id, effects.LightBlade, true)
 			m.scheduleSound(now, "effect\\마법력 증폭.wav")
 		}
 	}
@@ -677,7 +641,7 @@ func (m *WorldMode) applyHunterTrapSkill(ctx client.Context, notify network.Skil
 			m.effects().AddCellLifetime(ctx, effectID, 0, x, y, now, 0, false)
 		}
 		if notify.SkillID == db.SkillHTSpringtrap {
-			m.startFalconAttackAt(ctx, notify.SourceID, x, y, now)
+			m.actors().StartFalconAttackAt(ctx, notify.SourceID, x, y, now)
 		}
 	}
 	return true
@@ -695,7 +659,7 @@ func (m *WorldMode) applyHunterGroundSkill(ctx client.Context, notify network.Gr
 	if actor, ok, _ := scene.ActorForCombatID(ctx, notify.SourceID); ok {
 		m.startSkillActionAnimation(ctx, notify.SourceID, actor, effects.SkillAction(notify.SkillID), now, scene.DefaultAttackAnimationDuration)
 	}
-	m.applyFalconGroundSkillNotify(ctx, notify, now)
+	m.actors().ApplyFalconGroundSkillNotify(ctx, notify, now)
 	for _, effectID := range effects.SkillGroundEffectIDs(notify.SkillID) {
 		m.effects().AddCellLifetime(ctx, effectID, 0, int(notify.X), int(notify.Y), now, 0, false)
 	}
@@ -732,7 +696,7 @@ func (m *WorldMode) stopPerformance(ctx client.Context, change network.StatusEff
 		ids = []uint32{ctx.Session.AccountID, ctx.Session.CharID}
 	}
 	for _, id := range ids {
-		if anim, ok := m.actorAnims[id]; ok && anim.Loop && anim.ActionFamily == sprites.ActionPCSkill && anim.HasFrameOffset && anim.FrameOffset == 1 && anim.Length == 3 {
+		if anim, ok := m.actorSystem.ActorAnims[id]; ok && anim.Loop && anim.ActionFamily == sprites.ActionPCSkill && anim.HasFrameOffset && anim.FrameOffset == 1 && anim.Length == 3 {
 			m.clearActorAction(ctx, id)
 		}
 	}
@@ -746,7 +710,7 @@ func (m *WorldMode) applyCloseConfineStatus(ctx client.Context, change network.S
 	if id == 0 || scene.IsLocalActor(ctx, id) {
 		id = scene.LocalSkillTarget(ctx)
 	}
-	m.setActorStateEffect(ctx, id, effects.NPCStop2, change.Active)
+	m.actors().SetActorStateEffect(ctx, id, effects.NPCStop2, change.Active)
 	if change.Active && change.HasDuration {
 		now := time.Now()
 		for i := range m.effects().Active {
@@ -791,7 +755,7 @@ func (m *WorldMode) applyStarGladiatorSkill(ctx client.Context, notify network.S
 		}
 		m.effects().Remove(effects.DoubleGumgang, id)
 		m.effects().Remove(effects.RedLightBody, id)
-		m.syncActorSpiritEffects(ctx, id)
+		m.actors().SyncActorSpiritEffects(ctx, id)
 	}
 }
 
@@ -816,7 +780,7 @@ func (m *WorldMode) syncStarDevil(ctx client.Context) {
 	if wanted == 0 {
 		m.effects().Remove(effects.BlackDevil, id)
 	} else if !m.effects().HasActive(wanted, id, now) {
-		m.setActorStateEffect(ctx, id, wanted, true)
+		m.actors().SetActorStateEffect(ctx, id, wanted, true)
 		m.effects().AddAt(ctx, effects.BlackDevil, id, now)
 		m.scheduleSoundVolume(now, .4, "effect\\_blind.wav")
 	}
@@ -868,7 +832,7 @@ func (m *WorldMode) skills() *skills.System {
 		WalkBlocked:         func() { m.setWalkCooldown(walkRequestCooldown) },
 		RememberSenseTarget: m.rememberSenseTarget,
 		ClickActor: func(ctx client.Context, projection scene.Projection, skill session.Skill, x, y int, now time.Time) (worldstate.Actor, bool) {
-			return clickedSkillTarget(ctx, projection, skill, x, y, now, m.actorDeaths)
+			return clickedSkillTarget(ctx, projection, skill, x, y, now, m.actorSystem.ActorDeaths)
 		},
 		NumberBillboard: m.damageNumberBillboard,
 		Effects:         m.effects(),

@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"math"
@@ -185,7 +185,7 @@ func gr2ActionForActionFamily(actionFamily int) (res.GR2Action, bool) {
 	return action, action != res.GR2ActionStand
 }
 
-func (v *gr2ModelView) paletteForActor(actor worldstate.Actor, state sprites.State, now time.Time) []scene.Mat4 {
+func (v *GR2ModelView) paletteForActor(actor worldstate.Actor, state sprites.State, now time.Time) []scene.Mat4 {
 	if v == nil || v.pose == nil {
 		return nil
 	}
@@ -207,14 +207,14 @@ func (v *gr2ModelView) paletteForActor(actor worldstate.Actor, state sprites.Sta
 	return v.skinningPalette(action, elapsed)
 }
 
-func (v *gr2ModelView) clip(action res.GR2Action) *gr2AnimationClip {
+func (v *GR2ModelView) clip(action res.GR2Action) *gr2AnimationClip {
 	if v == nil || int(action) < 0 || int(action) >= len(v.clips) {
 		return nil
 	}
 	return v.clips[action]
 }
 
-func (v *gr2ModelView) skinningPalette(action res.GR2Action, elapsed float64) []scene.Mat4 {
+func (v *GR2ModelView) skinningPalette(action res.GR2Action, elapsed float64) []scene.Mat4 {
 	if v == nil || v.pose == nil {
 		return nil
 	}
@@ -242,7 +242,7 @@ func (v *gr2ModelView) skinningPalette(action res.GR2Action, elapsed float64) []
 	return clip.skinningPalette(v.pose, t)
 }
 
-func (v *gr2ModelView) actionDuration(action res.GR2Action) time.Duration {
+func (v *GR2ModelView) actionDuration(action res.GR2Action) time.Duration {
 	if v == nil {
 		return 0
 	}

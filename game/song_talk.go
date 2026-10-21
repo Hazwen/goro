@@ -39,5 +39,5 @@ func (m *WorldMode) applySongTalk(ctx client.Context, actorID uint32, kind res.S
 			}
 		}
 	}
-	m.applySpeechBubble(ctx, network.ChatMessage{GID: actorID, Text: text}, now)
+	m.actors().ApplySpeechBubble(ctx, network.ChatMessage{GID: actorID, Text: text}, now)
 }

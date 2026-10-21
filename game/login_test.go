@@ -8,6 +8,7 @@ import (
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/input"
@@ -96,7 +97,7 @@ func TestLoginMapChangeResetsWorldForChangedSelectedCharacter(t *testing.T) {
 	if world.Player.ID != 150001 || world.Player.Job != db.JobWizard {
 		t.Fatalf("world player = %+v, want selected wizard", world.Player)
 	}
-	if world.Player.HasCart || world.Player.Opt3State != 0 || world.Player.EffectState&actorEffectCartMask != 0 {
+	if world.Player.HasCart || world.Player.Opt3State != 0 || world.Player.EffectState&actors.ActorEffectCartMask != 0 {
 		t.Fatalf("old local state leaked after login map change: %+v", world.Player)
 	}
 	if len(world.Actors) != 0 {
@@ -221,7 +222,7 @@ func TestLoginActorBootstrapRestoresWeddingVisualState(t *testing.T) {
 	if sessionState.Selected.Option&db.EffectStateWedding == 0 {
 		t.Fatalf("selected option = 0x%08X, want wedding", sessionState.Selected.Option)
 	}
-	if got := localPlayerVisualJob(ctx); got != db.JobMarried {
+	if got := actors.LocalPlayerVisualJob(ctx); got != db.JobMarried {
 		t.Fatalf("visual job = %d, want married job %d", got, db.JobMarried)
 	}
 }

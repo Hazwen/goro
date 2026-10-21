@@ -10,6 +10,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/config"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/npc"
@@ -33,18 +34,18 @@ func TestHiddenWarpNPCIsNotVisibleOrSelectable(t *testing.T) {
 				ctx.Resources = &res.Manager{}
 				mode := &WorldMode{}
 				now := time.Now()
-				for _, entry := range mode.collectSceneActorEntries(render.NewFrame(800, 600), ctx, projection) {
+				for _, entry := range mode.actors().CollectSceneActorEntries(render.NewFrame(800, 600), ctx, projection) {
 					if entry.Actor.ID == actor.ID {
 						t.Error("hidden warp NPC entered the actor draw list")
 					}
 				}
-				if actorCastsShadow(actor) {
+				if actors.ActorCastsShadow(actor) {
 					t.Error("hidden warp NPC casts a shadow")
 				}
 				if got := actorDisplayName(ctx, actor, false); got != "" {
 					t.Errorf("display name = %q, want empty", got)
 				}
-				if labels := mode.hoveredActorDisplayLabels(ctx, actor, now); len(labels) != 0 {
+				if labels := mode.actors().HoveredActorDisplayLabels(ctx, actor, now); len(labels) != 0 {
 					t.Errorf("hover labels = %v, want none", labels)
 				}
 				mouseX, mouseY := ctx.Input.MouseX, ctx.Input.MouseY
@@ -55,7 +56,7 @@ func TestHiddenWarpNPCIsNotVisibleOrSelectable(t *testing.T) {
 					t.Error("hidden warp NPC can be talked to")
 				}
 				ctx.Session.NoShift = true
-				if actorCanBeSkillTargeted(ctx, session.Skill{ID: 13, Type: skills.SkillTargetEnemy}, actor) || actorCanBeAttackClicked(ctx, actor) {
+				if actors.ActorCanBeSkillTargeted(ctx, session.Skill{ID: 13, Type: skills.SkillTargetEnemy}, actor) || actors.ActorCanBeAttackClicked(ctx, actor) {
 					t.Error("hidden warp NPC can be targeted")
 				}
 				if mode.scriptHighlightActor(ctx, actor.ID) {
@@ -75,7 +76,7 @@ func TestHiddenWarpNPCRetainsAirshipExplosionAnchor(t *testing.T) {
 	if !ok || actor.Job != entry.Job || actor.X != entry.X || actor.Y != entry.Y {
 		t.Fatalf("hidden effect anchor was not retained: %+v, exists=%t", actor, ok)
 	}
-	mode.applyWarpPortalEntry(ctx, entry)
+	mode.actors().ApplyWarpPortalEntry(ctx, entry)
 	if len(mode.effects().Active) != 0 {
 		t.Fatal("hidden warp NPC generated a visible warp portal")
 	}
@@ -242,7 +243,7 @@ func TestNPCSpriteChangePreservesActorAndMovement(t *testing.T) {
 				t.Fatalf("login=%t type=%d: sprite change modified movement or failed: %+v", login, packetType, got)
 			}
 			// Later movement-only entries must retain the transformed class.
-			upsertNetworkActor(ctx, network.ActorEntry{ID: before.ID, Moving: true, FromX: 15, FromY: 20, ToX: 16, ToY: 20, X: 16, Y: 20})
+			actors.UpsertNetworkActor(ctx, network.ActorEntry{ID: before.ID, Moving: true, FromX: 15, FromY: 20, ToX: 16, ToY: 20, X: 16, Y: 20})
 			if got := ctx.World.Actors[before.ID]; got.Job != 1018 || !got.Moving {
 				t.Fatalf("move lost transformation: %+v", got)
 			}
@@ -293,7 +294,7 @@ func TestPupaTransformationsSwitchSpritesRealData(t *testing.T) {
 	for id := uint32(300); id <= 364; id++ {
 		ctx.World.UpsertActor(worldstate.Actor{ID: id, Job: 1008, Appearance: true, X: 10, Y: 20, Speed: 200})
 	}
-	pupa := mode.nonPCSpriteView(ctx, ctx.World.Actors[300])
+	pupa := mode.actors().NonPCSpriteView(ctx, ctx.World.Actors[300])
 	if pupa == nil || !strings.Contains(strings.ToLower(pupa.Source), "pupa.spr") {
 		t.Fatal("Pupa resource did not load")
 	}
@@ -319,18 +320,18 @@ func TestPupaTransformationsSwitchSpritesRealData(t *testing.T) {
 		}
 	}
 	for id := uint32(301); id <= 364; id++ {
-		upsertNetworkActor(ctx, network.ActorEntry{ID: id, Moving: true, FromX: 10, FromY: 20, ToX: 15, ToY: 20, X: 15, Y: 20})
+		actors.UpsertNetworkActor(ctx, network.ActorEntry{ID: id, Moving: true, FromX: 10, FromY: 20, ToX: 15, ToY: 20, X: 15, Y: 20})
 		actor := ctx.World.Actors[id]
-		view := mode.nonPCSpriteView(ctx, actor)
+		view := mode.actors().NonPCSpriteView(ctx, actor)
 		if actor.Job != 1018 || actor.Name != "Creamy" || view == nil || view == pupa || !strings.Contains(strings.ToLower(view.Source), "creamy.spr") {
 			t.Fatalf("actor %d did not become Creamy: %+v", id, actor)
 		}
-		state := mode.nonPCSpriteState(actor, time.Now())
+		state := mode.actors().NonPCSpriteState(actor, time.Now())
 		if state.ActionFamily != scene.SpriteActionWalk || !state.Moving {
 			t.Fatalf("Creamy lost movement: %+v", state)
 		}
 	}
-	if mode.nonPCSpriteView(ctx, ctx.World.Actors[300]) != pupa {
+	if mode.actors().NonPCSpriteView(ctx, ctx.World.Actors[300]) != pupa {
 		t.Fatal("transformation changed other Pupas' shared sprite")
 	}
 	t.Log("64 Pupas switched to Creamy sprites; unchanged Pupa retained its sprite")

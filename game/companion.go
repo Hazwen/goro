@@ -77,7 +77,7 @@ func (m *WorldMode) handleCompanionAICommandClick(ctx client.Context, now time.T
 	}
 	screenW, screenH := ctx.ScreenSize()
 	projection := m.sceneProjection(ctx, screenW, screenH, now)
-	if actor, ok := clickedAttackTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths); ok {
+	if actor, ok := clickedAttackTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths); ok {
 		m.companions().SetMessage(id, fmt.Sprintf("3,%d", actor.ID))
 		glog.Debugf("%s AI command attack companion=%d target=%d", kind, id, actor.ID)
 		return true
@@ -108,7 +108,7 @@ func (m *WorldMode) openHomunculusContextFromInput(ctx client.Context, now time.
 	}
 	screenW, screenH := ctx.ScreenSize()
 	projection := m.sceneProjection(ctx, screenW, screenH, now)
-	actor, ok := clickedHomunculusTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths)
+	actor, ok := clickedHomunculusTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths)
 	if !ok {
 		return false
 	}
@@ -143,7 +143,7 @@ func (m *WorldMode) openMercenaryContextFromInput(ctx client.Context, now time.T
 	}
 	screenW, screenH := ctx.ScreenSize()
 	projection := m.sceneProjection(ctx, screenW, screenH, now)
-	actor, ok := clickedMercenaryTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths)
+	actor, ok := clickedMercenaryTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths)
 	if !ok {
 		return false
 	}

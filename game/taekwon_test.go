@@ -11,6 +11,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -20,15 +21,15 @@ import (
 )
 
 func TestStarWarmAndSoulLinkStatusTints(t *testing.T) {
-	swoo := actorStateTint(worldstate.Actor{Job: 1002, Opt3State: db.Opt3Overthrust})
+	swoo := actors.ActorStateTint(worldstate.Actor{Job: 1002, Opt3State: db.Opt3Overthrust})
 	if swoo.R != 255 || swoo.G != 255 || swoo.B != 255 || swoo.A != 255 {
 		t.Fatalf("Eswoo must not apply the player Overthrust tint: %+v", swoo)
 	}
-	warm := actorStateTint(worldstate.Actor{Opt3State: db.Opt3Warm})
+	warm := actors.ActorStateTint(worldstate.Actor{Opt3State: db.Opt3Warm})
 	if warm.R != 255 || warm.G != 255 || warm.B != 255 || warm.A != 255 {
 		t.Fatalf("Warmth uses an additive red overlay, not a flat tint = %+v", warm)
 	}
-	soulLink := actorStateTint(worldstate.Actor{Opt3State: db.Opt3Soullink})
+	soulLink := actors.ActorStateTint(worldstate.Actor{Opt3State: db.Opt3Soullink})
 	if soulLink.R != 255 || soulLink.G != 255 || soulLink.B != 255 || soulLink.A != 255 {
 		t.Fatalf("Soul Link uses additive silhouettes, not a flat tint: %+v", soulLink)
 	}

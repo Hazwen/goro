@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"image/color"
 	"math"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
@@ -26,6 +28,457 @@ import (
 	gameui "github.com/kivutar/goro/ui"
 	worldstate "github.com/kivutar/goro/world"
 )
+
+func TestBodySizeEffectUsesAbsoluteScaleForBaby(t *testing.T) {
+	starts := time.Unix(10, 0)
+	mode := WorldMode{effectSystem: effects.System{Active: []effects.Instance{{
+		EffectID: effects.BabyBody,
+		ActorID:  42,
+		Starts:   starts,
+		Expires:  starts.Add(300 * time.Millisecond),
+		Duration: 300 * time.Millisecond,
+	}}}}
+	ctx := client.Context{}
+	actor := worldstate.Actor{ID: 42, Job: db.JobNoviceB}
+	baseScale := 10.0 * scene.BabyPlayerBodyScale
+
+	for _, tc := range []struct {
+		name string
+		at   time.Duration
+		want float64
+	}{
+		{"start", 0, 8},
+		{"middle", 150 * time.Millisecond, 6.5},
+		{"end", 300 * time.Millisecond, 5},
+	} {
+		if got := mode.actors().PlayerRenderScale(ctx, actor, baseScale, starts.Add(tc.at)); got != tc.want {
+			t.Fatalf("baby effect scale at %s = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestActorShadowSuppressionUsesActorActions(t *testing.T) {
+	player := worldstate.Actor{ID: 200, Job: db.JobAcolyte}
+	bat := worldstate.Actor{ID: 300, Job: 1005}
+	homunculus := worldstate.Actor{ID: 400, Job: 6001}
+	archer := worldstate.Actor{ID: 500, Job: 6017, ObjectType: scene.ActorObjectTypeMercenary, HasObjectType: true}
+	lancer := worldstate.Actor{ID: 600, Job: 6027, ObjectType: scene.ActorObjectTypeMercenary, HasObjectType: true}
+	fencer := worldstate.Actor{ID: 700, Job: 6037, ObjectType: scene.ActorObjectTypeMercenary, HasObjectType: true}
+	for _, tc := range []struct {
+		name       string
+		actor      worldstate.Actor
+		action     int
+		suppressed bool
+	}{
+		{"player idle", player, scene.SpriteActionIdle, false},
+		{"player attack 1", player, sprites.ActionPCAttack1, false},
+		{"player attack 2", player, sprites.ActionPCAttack2, false},
+		{"player attack 3", player, sprites.ActionPCAttack3, false},
+		{"player combat ready", player, sprites.ActionPCReadyFight, false},
+		{"player sitting", player, scene.SpriteActionSit, true},
+		{"player dead", player, sprites.ActionPCDeath, true},
+		{"bat idle", bat, scene.SpriteActionIdle, false},
+		{"bat attacking", bat, sprites.ActionNonPCAttack, false},
+		{"bat hurt", bat, sprites.ActionNonPCHurt, false},
+		{"bat dead", bat, sprites.ActionNonPCDeath, true},
+		{"monster special", bat, sprites.ActionNonPCSpecial, false},
+		{"homunculus attacking", homunculus, sprites.ActionNonPCAttack, false},
+		{"homunculus dead", homunculus, sprites.ActionNonPCDeath, true},
+		{"archer attacking", archer, sprites.ActionPCAttack2, false},
+		{"archer sitting", archer, scene.SpriteActionSit, true},
+		{"archer dead", archer, sprites.ActionNonPCDeath, true},
+		// Archer mercenaries use action 8 for freeze, not player death.
+		{"archer frozen", archer, 8, false},
+		{"lancer attacking", lancer, sprites.ActionPCAttack3, false},
+		{"lancer dead", lancer, sprites.ActionPCDeath, true},
+		{"fencer attacking", fencer, sprites.ActionPCAttack2, false},
+		{"fencer dead", fencer, sprites.ActionPCDeath, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			now := time.Now()
+			mode := &WorldMode{actorSystem: actors.System{ActorAnims: map[uint32]scene.ActorAnimation{
+				tc.actor.ID: {ActionFamily: tc.action, Started: now, Loop: true},
+			}}}
+			if got := mode.actors().ActorShadowSuppressed(tc.actor, now); got != tc.suppressed {
+				t.Fatalf("shadow suppressed = %t, want %t", got, tc.suppressed)
+			}
+		})
+	}
+}
+
+func TestActorShadowRemainsAfterMaceSwing(t *testing.T) {
+	now := time.Now()
+	player := worldstate.Actor{ID: 200, Job: db.JobAcolyte, Weapon: db.WeaponMace}
+	mode := &WorldMode{actorSystem: actors.System{ActorAnims: map[uint32]scene.ActorAnimation{
+		player.ID: {
+			ActionFamily: sprites.AttackActionFamily(nil, player),
+			Started:      now,
+			Duration:     time.Second,
+			Next:         readyFightAnimation(now.Add(time.Second)),
+		},
+	}}}
+	for _, elapsed := range []time.Duration{0, time.Second, 2 * time.Second} {
+		if mode.actors().ActorShadowSuppressed(player, now.Add(elapsed)) {
+			t.Fatalf("shadow disappeared at %s into the attack/ready transition", elapsed)
+		}
+	}
+}
+
+func TestSittingActorSuppressesShadowWithoutAnimation(t *testing.T) {
+	mode := &WorldMode{}
+	player := worldstate.Actor{ID: 200, Job: db.JobAcolyte, Sitting: true}
+	if !mode.actors().ActorShadowSuppressed(player, time.Now()) {
+		t.Fatal("sitting player retained their shadow")
+	}
+}
+
+func TestApplySpeechBubbleUsesLocalActorIDsForLocalEcho(t *testing.T) {
+	mode := NewWorldMode()
+	ctx := client.Context{Session: &session.Session{
+		AccountID: 2000000,
+		CharID:    150000,
+		Selected:  session.Character{ID: 150000, Name: "Kivutar"},
+	}}
+	mode.actors().ApplySpeechBubble(ctx, network.ChatMessage{Text: "Kivutar : hello"}, time.Now())
+	if mode.actorSystem.SpeechBubbles[150000].Text != "hello" {
+		t.Fatalf("char bubble = %+v, want hello", mode.actorSystem.SpeechBubbles[150000])
+	}
+	if mode.actorSystem.SpeechBubbles[2000000].Text != "hello" {
+		t.Fatalf("account bubble = %+v, want hello", mode.actorSystem.SpeechBubbles[2000000])
+	}
+}
+
+func TestPetTalkUsesPetNameAsSpeaker(t *testing.T) {
+	mode := NewWorldMode()
+	mode.petProperty = network.PetProperty{Name: "Sakurai"}
+	mode.applyPetTalk(client.Context{}, 123, "foo", time.Now())
+	if mode.actorSystem.SpeechBubbles[123].Text != "foo" {
+		t.Fatalf("pet bubble = %+v, want foo", mode.actorSystem.SpeechBubbles[123])
+	}
+}
+
+func TestSkillCastNotifyShowsSkillNameBubble(t *testing.T) {
+	mode := NewWorldMode()
+	world := worldstate.New()
+	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
+	ctx := client.Context{
+		Session: &session.Session{
+			AccountID: 2000000,
+			CharID:    150000,
+			Skills: session.Skills{List: []session.Skill{
+				{ID: db.SkillMGFirebolt, Name: "Fire Bolt"},
+			}},
+		},
+		World: world,
+	}
+
+	mode.applySkillCastNotify(ctx, network.SkillCastNotify{
+		SourceID:  2000000,
+		TargetID:  1100,
+		SkillID:   db.SkillMGFirebolt,
+		DelayTime: 1000,
+	})
+
+	if got := mode.actorSystem.SpeechBubbles[2000000].Text; got != "Fire Bolt !!" {
+		t.Fatalf("account skill bubble = %q, want Fire Bolt !!", got)
+	}
+	if got := mode.actorSystem.SpeechBubbles[150000].Text; got != "Fire Bolt !!" {
+		t.Fatalf("char skill bubble = %q, want Fire Bolt !!", got)
+	}
+}
+
+func TestActorActionNotifyShowsSkillNameBubble(t *testing.T) {
+	mode := NewWorldMode()
+	world := worldstate.New()
+	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Job: 1}
+	world.Actors[1100] = worldstate.Actor{ID: 1100, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	ctx := client.Context{
+		Session: &session.Session{
+			AccountID: 2000000,
+			CharID:    150000,
+			Skills: session.Skills{List: []session.Skill{
+				{ID: db.SkillSMBash, Name: "Bash"},
+			}},
+		},
+		World: world,
+	}
+
+	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
+		SourceID:    2000000,
+		TargetID:    1100,
+		SourceSpeed: 500,
+		TargetSpeed: 500,
+		SkillID:     db.SkillSMBash,
+		SkillLevel:  1,
+		Action:      network.ActorActionSkill,
+	})
+
+	if got := mode.actorSystem.SpeechBubbles[150000].Text; got != "Bash !!" {
+		t.Fatalf("skill action bubble = %q, want Bash !!", got)
+	}
+}
+
+func TestSkillNameBubbleSkipsMobsAndExcludedSkills(t *testing.T) {
+	mode := NewWorldMode()
+	world := worldstate.New()
+	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
+	world.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
+	ctx := client.Context{Session: &session.Session{AccountID: 2000000, CharID: 150000}, World: world}
+
+	mode.applySkillNameBubble(ctx, 300, db.SkillSMBash, time.Now())
+	if len(mode.actorSystem.SpeechBubbles) != 0 {
+		t.Fatalf("mob skill bubble = %+v, want none", mode.actorSystem.SpeechBubbles)
+	}
+
+	mode.applySkillNameBubble(ctx, 2000000, db.SkillTFHiding, time.Now())
+	if len(mode.actorSystem.SpeechBubbles) != 0 {
+		t.Fatalf("excluded skill bubble = %+v, want none", mode.actorSystem.SpeechBubbles)
+	}
+}
+
+func stealthTestContext() client.Context {
+	w := worldstate.New()
+	w.Player = worldstate.Actor{ID: 100, X: 10, Y: 20, HasState: true}
+	w.GAT = &res.GAT{Width: 32, Height: 32, Cells: make([]res.GATCell, 32*32)}
+	return client.Context{World: w, Session: &session.Session{
+		AccountID: 100, CharID: 200, Vitals: session.Vitals{HP: 100},
+		Selected: session.Character{ID: 200, HP: 100},
+	}, ScreenW: 800, ScreenH: 600}
+}
+
+func TestStealthVisibilityAndPicking2008(t *testing.T) {
+	for _, mapProperty := range []worldstate.MapProperty{worldstate.MapPropertyNothing, worldstate.MapPropertyFreePvPZone, worldstate.MapPropertyAgitZone} {
+		for _, viewer := range []string{"self", "party", "other", "detection", "self detection", "GM"} {
+			for _, state := range []uint32{0, db.EffectStateHide, db.EffectStateCloak, db.EffectStateChasewalk, db.EffectStateCloak | db.EffectStateChasewalk, db.EffectStateInvisible, scene.ActorStealthMask} {
+				t.Run(fmt.Sprintf("map=%d/%s/option=%x", mapProperty, viewer, state), func(t *testing.T) {
+					ctx := stealthTestContext()
+					ctx.World.MapProperty = mapProperty
+					actor := worldstate.Actor{ID: 300, X: 10, Y: 20, Job: db.JobAssassin, Name: "Hidden player", GuildID: 2, EmblemVersion: 1, Appearance: true, HasState: true, EffectState: state}
+					local := viewer == "self" || viewer == "self detection"
+					detection := viewer == "detection" || viewer == "self detection"
+					if local {
+						ctx.World.Player.EffectState = state
+						actor.ID = ctx.Session.CharID
+					} else {
+						ctx.World.UpsertActor(actor)
+					}
+					if viewer == "party" {
+						ctx.Session.Party.Members = []session.PartyMember{{AccountID: actor.ID}}
+					}
+					if detection {
+						ctx.Session.Statuses.Active = map[uint16]session.StatusEffect{db.StatusClairvoyance: {}}
+					}
+					if viewer == "GM" {
+						ctx.Session.AdminList = []uint32{ctx.Session.AccountID}
+					}
+					want := scene.StealthHidden
+					switch {
+					case state == 0:
+						want = scene.StealthVisible
+					case state&db.EffectStateInvisible != 0:
+					case detection:
+						want = scene.StealthSilhouette
+					case state == db.EffectStateHide && (local || viewer == "GM"):
+						want = scene.StealthShadow
+					}
+					projection := testutil.Projection(800, 600, scene.CellCenter(10), scene.CellCenter(20), 0)
+					mode := &WorldMode{}
+					entries := mode.actors().CollectSceneActorEntries(render.NewFrame(800, 600), ctx, projection)
+					found := false
+					for _, entry := range entries {
+						if entry.Actor.ID == actor.ID {
+							found = true
+							if entry.Stealth != want {
+								t.Fatalf("render view = %d, want %d", entry.Stealth, want)
+							}
+						}
+					}
+					if found != (local || want != scene.StealthHidden) {
+						t.Fatalf("actor in draw list = %t, want view %d", found, want)
+					}
+					if !local && state != 0 {
+						if _, ok := hoveredCursorActor(ctx, projection, 400, 300, time.Now(), nil); ok {
+							t.Fatal("hidden actor was hoverable")
+						}
+						if actors.ActorCanBeAttackClicked(ctx, actor) || actors.ActorCanOpenPlayerContext(ctx, actor) || actors.ActorCanBeSkillTargeted(ctx, session.Skill{ID: db.SkillALHeal, Type: skills.SkillTargetFriend}, actor) {
+							t.Fatal("hidden actor was targetable")
+						}
+						if siegeActorShowsGuildEmblem(scene.ActorDrawEntry{Actor: actor}) {
+							t.Fatal("hidden actor exposed its guild emblem")
+						}
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestStealthDrawsShadowOrBlackBody(t *testing.T) {
+	sprite := &scene.SpriteView{
+		Spr:    &res.SPR{Frames: []res.SPRFrame{{Type: res.SPRFrameRGBA, Width: 8, Height: 8, Data: testutil.SolidRGBAFrame(8, 8)}}},
+		Act:    &res.ACT{Actions: []res.ACTAction{{DelayMS: 100, Animations: []res.ACTAnimation{{Layers: []res.ACTLayer{{Index: 0, SPRType: res.SPRFrameRGBA, ScaleX: 1, ScaleY: 1, Color: [4]float32{1, 1, 1, 1}}}}}}}},
+		Images: make(map[scene.SpriteFrameKey]*render.Image), Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
+	}
+	mode := &WorldMode{actorSystem: actors.System{ShadowView: sprite, PlayerView: &sprites.Humanoid{Body: sprite}}}
+	ctx := stealthTestContext()
+	projection := testutil.Projection(800, 600, scene.CellCenter(10), scene.CellCenter(20), 0)
+	for _, tc := range []struct {
+		view         scene.StealthView
+		body, shadow bool
+	}{{scene.StealthVisible, true, true}, {scene.StealthShadow, false, true}, {scene.StealthSilhouette, true, false}, {scene.StealthHidden, false, false}} {
+		t.Run(fmt.Sprint(tc.view), func(t *testing.T) {
+			entry := mode.actors().CollectSceneActorEntries(render.NewFrame(800, 600), ctx, projection)[0]
+			entry.Stealth = tc.view
+			frame := render.NewFrame(800, 600)
+			mode.actors().DrawSceneActorEntry(frame, ctx, projection, entry)
+			commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
+			if (commands.Len() > 0) != tc.body {
+				t.Fatalf("body draws = %d, want body=%t", commands.Len(), tc.body)
+			}
+			if tc.view == scene.StealthSilhouette {
+				for _, channel := range []string{"ColorR", "ColorG", "ColorB"} {
+					if commands.Index(0).FieldByName(channel).Float() != 0 {
+						t.Fatal("detected body was not black")
+					}
+				}
+				if commands.Index(0).FieldByName("ColorA").Float() != 1 {
+					t.Fatal("detected body was translucent")
+				}
+			}
+			frame.BeginFrame()
+			mode.actors().DrawActorShadowEntry(frame, ctx, projection, entry)
+			commands = reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
+			if (commands.Len() > 0) != tc.shadow {
+				t.Fatalf("shadow draws = %d, want shadow=%t", commands.Len(), tc.shadow)
+			}
+		})
+	}
+}
+
+func TestStealthActionPackets(t *testing.T) {
+	ctx := stealthTestContext()
+	netClient, server := testutil.NewConnection(t, 20080910)
+	ctx.Network = netClient
+	mode := &WorldMode{}
+	actor := worldstate.Actor{ID: 300, X: 11, Y: 20, Job: 1002, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob, HasState: true}
+	ctx.World.UpsertActor(actor)
+	item := session.InventoryItem{Index: 7, ItemID: 501, Type: db.ItemTypeHealing}
+	floorItem := worldstate.FloorItem{ID: 400, X: 10, Y: 20}
+	ctx.World.Player.EffectState = db.EffectStateHide
+	ctx.Session.Skills.List = []session.Skill{{ID: db.SkillRGTunneldrive, Level: 0}}
+	assertNoBotTestPacket(t, server, func() error {
+		if mode.requestWalk(ctx, 11, 20, "test") || mode.requestPickup(ctx, floorItem, "test") {
+			t.Fatal("Hiding allowed movement or pickup")
+		}
+		mode.requestAttack(ctx, actor, "test")
+		if client.SetSitting(ctx, true) == nil || gameui.UseInventoryItem(ctx, item) == nil {
+			t.Fatal("Hiding allowed sitting or item use")
+		}
+		if mode.skills().Use(ctx, session.Skill{ID: db.SkillALHeal, Level: 1, Type: skills.SkillTargetFriend, Range: 9}, "test") == nil || mode.skillSystem.Pending.Skill.ID != 0 {
+			t.Fatal("Hiding started a forbidden skill")
+		}
+		return nil
+	})
+	ctx.Session.Skills.List = []session.Skill{{ID: db.SkillRGTunneldrive, Level: 1}}
+	if !mode.requestWalk(ctx, 11, 20, "test") {
+		t.Fatal("Tunnel Drive could not walk")
+	}
+	walk, _ := network.BuildWalkToXYPacketForClientDate(11, 20, 20080910)
+	readBotTestPackets(t, server, walk)
+	for _, id := range []uint16{db.SkillTFHiding, db.SkillASGrimtooth, db.SkillRGBackstap, db.SkillRGRaid, db.SkillNJShadowjump, db.SkillNJKirikage} {
+		skill := session.Skill{ID: id, Level: 1}
+		if err := mode.skills().SendToID(ctx, skill, ctx.Session.AccountID, "test"); err != nil {
+			t.Fatalf("allowed hidden skill %d: %v", id, err)
+		}
+		readBotTestPackets(t, server, network.BuildUseSkillToIDPacketForClientDate(id, 1, ctx.Session.AccountID, 20080910))
+	}
+	ctx.World.Player.EffectState = db.EffectStateCloak | db.EffectStateChasewalk
+	assertNoBotTestPacket(t, server, func() error {
+		mode.requestAttack(ctx, actor, "test")
+		if mode.skills().SendToGround(ctx, session.Skill{ID: db.SkillWZStormgust, Level: 1}, 11, 20, "test") == nil {
+			t.Fatal("Chase Walk allowed another skill")
+		}
+		return nil
+	})
+	if err := mode.skills().Use(ctx, session.Skill{ID: db.SkillSTChasewalk, Type: skills.SkillTargetSelf, Level: 1}, "test"); err != nil {
+		t.Fatal(err)
+	}
+	readBotTestPackets(t, server, network.BuildUseSkillToIDPacketForClientDate(db.SkillSTChasewalk, 1, ctx.Session.AccountID, 20080910))
+	ctx.World.Player.EffectState = db.EffectStateCloak
+	mode.requestAttack(ctx, actor, "test")
+	readLegacyBotTestActionPacket(t, server, actor.ID, network.ActionAttack)
+	if err := gameui.UseInventoryItem(ctx, item); err != nil {
+		t.Fatal(err)
+	}
+	readBotTestPackets(t, server, network.BuildUseInventoryItemPacketForClientDate(item.Index, ctx.Session.AccountID, 20080910))
+	actor.EffectState = db.EffectStateHide
+	ctx.World.UpsertActor(actor)
+	assertNoBotTestPacket(t, server, func() error {
+		mode.requestAttack(ctx, actor, "test")
+		if mode.skills().SendToID(ctx, session.Skill{ID: db.SkillALHeal, Level: 1}, actor.ID, "test") == nil {
+			t.Fatal("direct skill send targeted a hidden actor")
+		}
+		return nil
+	})
+}
+
+func TestStealthDoesNotRestrictCompanionSkills(t *testing.T) {
+	ctx := stealthTestContext()
+	ctx.World.Player.EffectState = db.EffectStateHide | db.EffectStateChasewalk
+	if !skills.LocalStealthAllowsSkill(ctx, db.SkillHomunBegin+1) || !skills.LocalStealthAllowsSkill(ctx, db.SkillMercenaryBegin+1) {
+		t.Fatal("owner stealth restricted a companion's skills")
+	}
+}
+
+func TestStealthCollectionHandlesPlayerOutsideViewport(t *testing.T) {
+	ctx := stealthTestContext()
+	ctx.World.Player.X = 100000
+	ctx.World.Player.EffectState = db.EffectStateHide
+	projection := testutil.Projection(800, 600, 0, 0, 0)
+	mode := &WorldMode{}
+	if entries := mode.actors().CollectSceneActorEntries(render.NewFrame(800, 600), ctx, projection); len(entries) != 0 {
+		t.Fatal("offscreen player remained in the draw list")
+	}
+}
+
+func TestStealthCancelsQueuedActionsAndHidesAttachments(t *testing.T) {
+	ctx := stealthTestContext()
+	actor := worldstate.Actor{ID: 300, Job: db.JobAssassin, X: 11, Y: 20, HasLevel: true, Level: 99, Appearance: true, HasState: true}
+	ctx.World.UpsertActor(actor)
+	mode := &WorldMode{}
+	mode.effects().SyncLevel99AuraEffects(ctx, time.Now())
+	if len(mode.effects().Active) == 0 {
+		t.Fatal("missing initial level aura")
+	}
+	mode.pendingAttack = attackIntent{targetID: actor.ID}
+	mode.lockedAttackID, mode.attackFocusID = actor.ID, actor.ID
+	mode.skillSystem.Pending = skills.PendingTarget{Skill: session.Skill{ID: db.SkillALHeal}, TargetID: actor.ID}
+	mode.applyActorStateChange(ctx, network.ActorStateChange{ID: actor.ID, EffectState: db.EffectStateCloak})
+	mode.effects().SyncLevel99AuraEffects(ctx, time.Now())
+	if mode.pendingAttack.targetID != 0 || mode.lockedAttackID != 0 || mode.attackFocusID != 0 || mode.skillSystem.Pending.Skill.ID != 0 || len(mode.effects().Active) != 0 {
+		t.Fatal("hidden target retained an action or aura")
+	}
+	mode.applyActorStateChange(ctx, network.ActorStateChange{ID: actor.ID})
+	mode.effects().SyncLevel99AuraEffects(ctx, time.Now())
+	if len(mode.effects().Active) == 0 {
+		t.Fatal("revealed actor did not regain its aura")
+	}
+	mode.pendingAttack = attackIntent{targetID: actor.ID}
+	mode.pendingPickup = pickupIntent{itemID: 400}
+	mode.skillSystem.Pending = skills.PendingTarget{Skill: session.Skill{ID: db.SkillALHeal}, TargetID: actor.ID}
+	mode.applyActorStateChange(ctx, network.ActorStateChange{ID: ctx.Session.AccountID, EffectState: db.EffectStateHide})
+	if mode.pendingAttack.targetID != 0 || mode.pendingPickup.itemID != 0 || mode.skillSystem.Pending.Skill.ID != 0 {
+		t.Fatal("Hiding retained a queued local action")
+	}
+	entry := scene.ActorDrawEntry{Actor: worldstate.Actor{ID: 100, EffectState: db.EffectStateHide | db.EffectStateCart1 | db.EffectStateFalcon, HasCart: true, HasCartState: true}}
+	if mode.actors().DrawActorCart3D(nil, ctx, scene.Projection{}, entry, 0, 1, 1) {
+		t.Fatal("hidden cart was drawn")
+	}
+	mode.actors().DrawSceneActorFalcons(nil, ctx, scene.Projection{}, []scene.ActorDrawEntry{entry})
+	if len(mode.actorSystem.Falcons) != 0 {
+		t.Fatal("hidden actor created a falcon")
+	}
+}
 
 func TestLevel99AuraAddsNormalEffectsForLocalPlayer(t *testing.T) {
 	mode := &WorldMode{}
@@ -95,7 +548,7 @@ func TestLevel99AuraAddsEffectsForParsedRemoteActorLevel(t *testing.T) {
 		t.Fatalf("remote aura effects = %v, want %v", got, effects.Level99AuraNormalEffects)
 	}
 
-	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actorVanishLogout})
+	mode.applyActorVanish(ctx, network.ActorVanish{ID: 300, Reason: actors.ActorVanishLogout})
 	if got := level99AuraEffectIDsForActor(mode.effects().Active, 300); len(got) != 0 {
 		t.Fatalf("remote aura effects after vanish = %v, want none", got)
 	}
@@ -113,7 +566,7 @@ func TestLevel99AuraRemovedWhenDeadActorCleanupRemovesActor(t *testing.T) {
 		HasLevel: true,
 	}
 	mode.effects().SyncLevel99AuraEffects(ctx, now)
-	mode.actorDeaths = map[uint32]time.Time{300: now.Add(-time.Second)}
+	mode.actorSystem.ActorDeaths = map[uint32]time.Time{300: now.Add(-time.Second)}
 
 	mode.cleanupDeadActors(ctx, now)
 
@@ -162,14 +615,14 @@ func TestOverthrustAfterimages(t *testing.T) {
 		m := &WorldMode{}
 		m.applyStatusEffectChange(ctx, network.StatusEffectChange{ActorID: 2000000, StatusID: status, Active: true})
 		entry := scene.ActorDrawEntry{Actor: ctx.World.Player, IsPlayer: true, WorldX: 10.5, WorldY: 20.5, Scale: 1}
-		tint := actorStateTint(entry.Actor)
+		tint := actors.ActorStateTint(entry.Actor)
 		if tint != (color.RGBA{250, 150, 150, 255}) {
 			t.Fatalf("incorrect native Overthrust tint: %v", tint)
 		}
 		for tick := 0; tick <= 100; tick++ {
 			frame := render.NewFrame(800, 600)
 			entry.WorldX = 10.5 + float64(tick)/10
-			m.drawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, 1, 1, 1, tint, render.BlendSourceOver, start.Add(time.Duration(tick)*db.EffectFrameDuration))
+			m.actors().DrawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, 1, 1, 1, tint, render.BlendSourceOver, start.Add(time.Duration(tick)*db.EffectFrameDuration))
 			if len(m.effects().ActorBlurs[entry.Actor.ID]) > 5 {
 				t.Fatal("afterimages must remain bounded during long movement")
 			}
@@ -244,21 +697,21 @@ func TestBardNativeAnimationFrames(t *testing.T) {
 		m.startSkillActionAnimation(ctx, 2000000, ctx.World.Player, effects.SkillAction(tc.skill), start, time.Second)
 		for i, frame := range tc.frames {
 			now := start.Add(time.Duration(i)*10*db.EffectFrameDuration + time.Millisecond)
-			anim, _ := m.actorAnimation(2000000, now)
+			anim, _ := m.actors().ActorAnimation(2000000, now)
 			state := sprites.State{}
-			applyActorAnimationToSpriteState(&state, anim, true)
+			actors.ApplyActorAnimationToSpriteState(&state, anim, true)
 			if got := sprites.BodyMotionForState(action, state, start, now); got != frame {
 				t.Fatalf("skill %d tick %d: motion %d, want %d", tc.skill, i, got, frame)
 			}
 		}
 		if tc.skill == db.SkillBaFrostjoke || tc.skill == db.SkillBaPangvoice {
-			anim, _ := m.actorAnimation(2000000, start.Add(1800*time.Millisecond))
+			anim, _ := m.actors().ActorAnimation(2000000, start.Add(1800*time.Millisecond))
 			if anim.ActionFamily != scene.SpriteActionIdle {
 				t.Fatal("shout animation must stop after 1800ms")
 			}
 		} else {
 			m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: db.SkillBDAdaptation, SourceID: 2000000, TargetID: 2000000, Result: 1})
-			if m.actorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
+			if m.actorSystem.ActorAnims[2000000].ActionFamily != scene.SpriteActionIdle {
 				t.Fatal("Adaptation must return to standing")
 			}
 		}
@@ -266,7 +719,7 @@ func TestBardNativeAnimationFrames(t *testing.T) {
 	m := &WorldMode{}
 	m.startSkillActionAnimation(ctx, 2000000, ctx.World.Player, effects.AttackSkillActionSpec, start, time.Second)
 	m.stopPerformance(ctx, network.StatusEffectChange{StatusID: db.StatusBdplaying})
-	if len(m.actorAnims) != 2 {
+	if len(m.actorSystem.ActorAnims) != 2 {
 		t.Fatal("ending a song cancelled an unrelated attack")
 	}
 }
@@ -280,12 +733,12 @@ func TestGypsySkillAnimationsWithClientAssets(t *testing.T) {
 	if view == nil || !strings.Contains(view.Body.ActSource, res.PlayerJobToken(db.JobDancerH)) {
 		t.Fatalf("must load the Gypsy body, without a Novice fallback: %s", status)
 	}
-	m := &WorldMode{playerView: view}
+	m := &WorldMode{actorSystem: actors.System{PlayerView: view}}
 	for direction := 0; direction < 8; direction++ {
 		ctx.World.Player.Dir = direction
 		a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillCGArrowvulcan, SourceSpeed: 500, HitCount: 9, Damage: 100}
 		m.applyActorActionNotify(ctx, a)
-		anim := m.actorAnims[a.SourceID]
+		anim := m.actorSystem.ActorAnims[a.SourceID]
 		if anim.ActionFamily != sprites.ActionPCAttack3 || anim.Next == nil || anim.Next.ActionFamily != sprites.ActionPCAttack2 {
 			t.Fatal("Gypsy must shoot with ACT 88, then use her whip attack for additional hits")
 		}
@@ -295,20 +748,20 @@ func TestGypsySkillAnimationsWithClientAssets(t *testing.T) {
 				t.Fatal("Gypsy attack must use its requested action and frame without fallback")
 			}
 			state := sprites.State{Direction: direction}
-			applyActorAnimationToSpriteState(&state, step, true)
+			actors.ApplyActorAnimationToSpriteState(&state, step, true)
 			billboard, ok := sprites.HumanoidBillboard(view, state, step.Started)
 			if !ok || billboard == nil || billboard.Image == nil {
 				t.Fatalf("Gypsy attack failed to render for direction %d", direction)
 			}
 		}
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillCGHermode, SourceID: a.SourceID})
-		dance := m.actorAnims[a.SourceID]
+		dance := m.actorSystem.ActorAnims[a.SourceID]
 		_, action, ok := sprites.ResolveAction(view.Body.Act, sprites.ActionPCSkill, direction)
 		if !ok || len(action.Animations) < 4 || !dance.PingPong {
 			t.Fatal("Gypsy must have the complete three-frame dance, without falling back to another action")
 		}
 		state := sprites.State{Direction: direction}
-		applyActorAnimationToSpriteState(&state, dance, true)
+		actors.ApplyActorAnimationToSpriteState(&state, dance, true)
 		for i, want := range []int{1, 2, 3, 2, 1} {
 			at := dance.Started.Add(time.Duration(i) * dance.Speed)
 			if got := sprites.BodyMotionForState(action, state, dance.Started, at); got != want {
@@ -368,10 +821,10 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 		if view == nil || !strings.Contains(view.Body.ActSource, res.PlayerJobToken(db.JobAlchemistH)) {
 			t.Fatalf("must load the Creator body without a Novice fallback: %s", status)
 		}
-		m := &WorldMode{playerView: view}
+		m := &WorldMode{actorSystem: actors.System{PlayerView: view}}
 		for _, skill := range []uint16{db.SkillCRSlimpitcher, db.SkillCRAciddemonstration} {
 			m.startSkillSourceCastAnimation(ctx, 2000000, skill, 3*time.Second, start)
-			anim := m.actorAnims[2000000]
+			anim := m.actorSystem.ActorAnims[2000000]
 			if anim.ActionFamily != sprites.ActionPCAttack1 || anim.Duration != time.Second || anim.Speed != 10*db.EffectFrameDuration || anim.Length != 5 || anim.Loop {
 				t.Fatal("Creator throw must use the finite native five-frame ACT 40 sequence")
 			}
@@ -381,7 +834,7 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 					t.Fatal("Creator body lacks its full throwing sequence")
 				}
 				state := sprites.State{Direction: direction}
-				applyActorAnimationToSpriteState(&state, anim, true)
+				actors.ApplyActorAnimationToSpriteState(&state, anim, true)
 				for i, want := range []int{0, 1, 2, 3, 4, 4} {
 					at := start.Add(time.Duration(i)*anim.Speed + time.Millisecond)
 					if got := sprites.BodyMotionForState(action, state, start, at); got != want {
@@ -389,7 +842,7 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 					}
 				}
 			}
-			if _, ok := m.actorAnimation(2000000, start.Add(time.Second)); ok {
+			if _, ok := m.actors().ActorAnimation(2000000, start.Add(time.Second)); ok {
 				t.Fatal("throw pose outlived its native one-second duration")
 			}
 		}
@@ -406,7 +859,7 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 		m := &WorldMode{}
 		m.startSkillSourceCastAnimation(ctx, 2000000, tc.skill, time.Second, start)
 		m.effects().AddSkillCastEffects(ctx, tc.skill, 1, 2000000, 0, 0, 0, time.Second, start, "test")
-		if m.actorAnims[2000000].ActionFamily != tc.pose || len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.aura {
+		if m.actorSystem.ActorAnims[2000000].ActionFamily != tc.pose || len(m.effects().Active) != 2 || m.effects().Active[1].EffectID != tc.aura {
 			t.Fatalf("incorrect cast pose or aura for skill %d", tc.skill)
 		}
 	}
@@ -442,7 +895,7 @@ func TestHighWizardMagicPowerLifecycle(t *testing.T) {
 		t.Fatal("weapon sparkle survived buff removal")
 	}
 	ctx.World.Player.Opt3State = db.Opt3Lightblade
-	m.syncActorSpiritEffects(ctx, 2000000)
+	m.actors().SyncActorSpiritEffects(ctx, 2000000)
 	if !m.effects().HasActive(effects.LightBlade, 2000000, time.Now()) {
 		t.Fatal("actor entry must restore the weapon sparkle")
 	}
@@ -458,7 +911,7 @@ func TestHighWizardClientAssets(t *testing.T) {
 		if view == nil || !strings.Contains(view.Body.ActSource, res.PlayerJobToken(db.JobWizardH)) {
 			t.Fatalf("must load the High Wizard body without fallback: %s", status)
 		}
-		m := &WorldMode{playerView: view}
+		m := &WorldMode{actorSystem: actors.System{PlayerView: view}}
 		m.startSkillNoDamageSourceAnimation(ctx, network.SkillNoDamageNotify{SkillID: db.SkillHWSouldrain, SourceID: 2000000, TargetID: 300}, start)
 		for dir := 0; dir < 8; dir++ {
 			_, action, ok := sprites.ResolveAction(view.Body.Act, 11, dir)
@@ -466,7 +919,7 @@ func TestHighWizardClientAssets(t *testing.T) {
 				t.Fatal("High Wizard lacks Soul Drain's forced ACT sequence")
 			}
 			state := sprites.State{Direction: dir}
-			applyActorAnimationToSpriteState(&state, m.actorAnims[2000000], true)
+			actors.ApplyActorAnimationToSpriteState(&state, m.actorSystem.ActorAnims[2000000], true)
 			for tick, want := range []int{0, 1, 2, 3, 3, 3} {
 				if got := sprites.BodyMotionForState(action, state, start, start.Add(time.Duration(tick)*10*db.EffectFrameDuration+time.Millisecond)); got != want {
 					t.Fatalf("Soul Drain frame %d: got %d, want %d", tick, got, want)
@@ -544,7 +997,7 @@ func TestLordKnightBerserkState(t *testing.T) {
 	if !m.effects().HasActive(effects.RedBody, 300, time.Now()) || len(m.scheduledSounds) != 0 {
 		t.Fatal("existing Berserk state must restore silently")
 	}
-	m.removeActorEffectStateEffects(300)
+	m.actors().RemoveActorEffectStateEffects(300)
 	if m.effects().HasActive(effects.RedBody, 300, time.Now()) {
 		t.Fatal("vanished actor retained Berserk")
 	}
@@ -576,7 +1029,7 @@ func TestLordKnightConcentrationState(t *testing.T) {
 			if len(m.effects().Active) != 1 || len(m.scheduledSounds) != 2 {
 				t.Fatal("recasting must replace the activation effect and play its sound once")
 			}
-			m.removeActorEffectStateEffects(owner)
+			m.actors().RemoveActorEffectStateEffects(owner)
 			if len(m.effects().Active) != 0 {
 				t.Fatal("vanishing retained Concentration")
 			}
@@ -708,8 +1161,8 @@ func TestMageSpriteSequencesAndSightLifetime(t *testing.T) {
 		}
 	}
 	m := &WorldMode{effectSystem: effects.System{EffectViews: map[string]*scene.SpriteView{"sight": testutil.EffectRenderTestSprite(), "data\\sprite\\shadow": testutil.EffectRenderTestSprite()}}}
-	m.applyActorEffectStateEffects(ctx, 300, 0, db.EffectStateSight)
-	m.applyActorEffectStateEffects(ctx, 300, db.EffectStateSight, db.EffectStateSight)
+	m.actors().ApplyActorEffectStateEffects(ctx, 300, 0, db.EffectStateSight)
+	m.actors().ApplyActorEffectStateEffects(ctx, 300, db.EffectStateSight, db.EffectStateSight)
 	if len(m.effects().Active) != 1 || len(m.scheduledSounds) != 1 || !m.effects().Active[0].Expires.IsZero() {
 		t.Fatal("Sight must persist without replaying its activation sound")
 	}
@@ -718,7 +1171,7 @@ func TestMageSpriteSequencesAndSightLifetime(t *testing.T) {
 	if got := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards").Len(); got != 20 {
 		t.Fatalf("Sight lost its ten flames and ten shadows: %d", got)
 	}
-	m.applyActorEffectStateEffects(ctx, 300, db.EffectStateSight, 0)
+	m.actors().ApplyActorEffectStateEffects(ctx, 300, db.EffectStateSight, 0)
 	if len(m.effects().Active) != 0 {
 		t.Fatal("Sight remained after the state ended")
 	}
@@ -908,7 +1361,7 @@ func TestMonkTwoFrameSkillsKeepTheirOriginalTiming(t *testing.T) {
 				SourceID: 2000000, TargetID: 300, SkillID: skillID, SourceSpeed: sourceSpeed,
 				Action: network.ActorActionSkill, HitCount: 1, Damage: 100,
 			})
-			started := m.actorAnims[150000].Started
+			started := m.actorSystem.ActorAnims[150000].Started
 			action := res.ACTAction{DelayMS: 100, Animations: make([]res.ACTAnimation, 8)}
 			for _, tc := range []struct {
 				elapsed time.Duration
@@ -916,17 +1369,17 @@ func TestMonkTwoFrameSkillsKeepTheirOriginalTiming(t *testing.T) {
 			}{
 				{0, 3}, {150 * time.Millisecond, 3}, {170 * time.Millisecond, 4}, {1099 * time.Millisecond, 4},
 			} {
-				anim, active := m.actorAnimation(150000, started.Add(tc.elapsed))
+				anim, active := m.actors().ActorAnimation(150000, started.Add(tc.elapsed))
 				if !active {
 					t.Fatalf("skill %d ended at %s with source speed %d", skillID, tc.elapsed, sourceSpeed)
 				}
 				state := sprites.State{}
-				applyActorAnimationToSpriteState(&state, anim, true)
+				actors.ApplyActorAnimationToSpriteState(&state, anim, true)
 				if frame := sprites.BodyMotionForState(action, state, started, started.Add(tc.elapsed)); frame != tc.frame {
 					t.Fatalf("skill %d at %s: frame=%d, want %d", skillID, tc.elapsed, frame, tc.frame)
 				}
 			}
-			if _, active := m.actorAnimation(150000, started.Add(1100*time.Millisecond)); active {
+			if _, active := m.actors().ActorAnimation(150000, started.Add(1100*time.Millisecond)); active {
 				t.Fatalf("skill %d did not release its pose after 1100ms", skillID)
 			}
 		}
@@ -939,25 +1392,25 @@ func TestBladeStopFreezesAndReleasesBothActors(t *testing.T) {
 	now := time.Now()
 	m.setActorAction(ctx, 300, scene.ActorAnimation{ActionFamily: sprites.ActionPCAttack1, Started: now, FixedMotion: 2, HasFixedMotion: true})
 	m.applyActorBladeStop(ctx, network.ActorBladeStop{SourceID: 2000000, TargetID: 300, Active: true})
-	if anim := m.actorAnims[150000]; anim.ActionFamily != sprites.ActionPCSkill || anim.FixedMotion != 4 || anim.Play {
+	if anim := m.actorSystem.ActorAnims[150000]; anim.ActionFamily != sprites.ActionPCSkill || anim.FixedMotion != 4 || anim.Play {
 		t.Fatalf("caster pose = %+v", anim)
 	}
-	if anim := m.actorAnims[300]; anim.ActionFamily != sprites.ActionPCAttack1 || anim.Play || !anim.HasFixedMotion || anim.FixedMotion != 2 {
+	if anim := m.actorSystem.ActorAnims[300]; anim.ActionFamily != sprites.ActionPCAttack1 || anim.Play || !anim.HasFixedMotion || anim.FixedMotion != 2 {
 		t.Fatalf("victim was put in another animation: %+v", anim)
 	}
 	for _, id := range []uint32{2000000, 300} {
 		actor, _, _ := scene.ActorForCombatID(ctx, id)
-		if tint := actorStateTint(actor); tint != (color.RGBA{R: 64, G: 64, B: 64, A: 255}) {
+		if tint := actors.ActorStateTint(actor); tint != (color.RGBA{R: 64, G: 64, B: 64, A: 255}) {
 			t.Fatalf("Blade Stop tint = %v", tint)
 		}
-		if anim, ok := m.actorAnimation(id, time.Now().Add(time.Minute)); !ok || !anim.HasFixedMotion {
+		if anim, ok := m.actors().ActorAnimation(id, time.Now().Add(time.Minute)); !ok || !anim.HasFixedMotion {
 			t.Fatalf("actor %d resumed before Blade Stop release", id)
 		}
 	}
 	m.applyActorBladeStop(ctx, network.ActorBladeStop{SourceID: 2000000, TargetID: 300})
 	for _, id := range []uint32{2000000, 150000, 300} {
 		actor, _, _ := scene.ActorForCombatID(ctx, id)
-		if actor.Opt3State&db.Opt3Bladestop != 0 || !m.actorAnims[id].Play || m.actorAnims[id].HasFixedMotion {
+		if actor.Opt3State&db.Opt3Bladestop != 0 || !m.actorSystem.ActorAnims[id].Play || m.actorSystem.ActorAnims[id].HasFixedMotion {
 			t.Fatalf("actor %d still stopped after release", id)
 		}
 	}
@@ -992,7 +1445,7 @@ func TestNinjaPosesAndMirrorImage(t *testing.T) {
 	m.applyStatusEffectChange(ctx, network.StatusEffectChange{ActorID: 2000000, StatusID: db.StatusNjBunsinjyutsu, Active: true})
 	entry := scene.ActorDrawEntry{Actor: ctx.World.Player, IsPlayer: true, WorldX: 10.5, WorldY: 20.5}
 	entry.Actor.BodyPal = 1 // Mirror Image also works on dyed bodies.
-	tint := actorStateTint(entry.Actor)
+	tint := actors.ActorStateTint(entry.Actor)
 	if tint != (color.RGBA{155, 155, 255, 255}) {
 		t.Fatalf("mirror tint=%v", tint)
 	}
@@ -1021,12 +1474,12 @@ func TestOriginalBodyColourWindowsAndRestoration(t *testing.T) {
 		mode := WorldMode{effectSystem: effects.System{Active: []effects.Instance{{EffectID: id, ActorID: 42, Starts: starts, Expires: starts.Add(spec.Duration)}}}}
 		for _, frame := range []int{-1, 0, 29, 30, 60, 61, 199, 200} {
 			now := starts.Add(time.Duration(frame) * db.EffectFrameDuration)
-			got := mode.actorBodyColorTint(42, base, now)
+			got := mode.actors().ActorBodyColorTint(42, base, now)
 			if got.A != base.A {
 				t.Fatal("body effect changed transparency")
 			}
 			wantBlend := render.BlendSourceOver
-			if got := mode.actorRenderBlend(42, now); got != wantBlend {
+			if got := mode.actors().ActorRenderBlend(42, now); got != wantBlend {
 				t.Fatalf("effect %d frame %d: blend %v, want %v", id, frame, got, wantBlend)
 			}
 			if id == effects.MagicCrasher {
@@ -1034,7 +1487,7 @@ func TestOriginalBodyColourWindowsAndRestoration(t *testing.T) {
 				if (got != base) != active {
 					t.Fatalf("Magic Crasher at frame %d: tint %+v", frame, got)
 				}
-				if again := mode.actorBodyColorTint(42, base, now); again != got {
+				if again := mode.actors().ActorBodyColorTint(42, base, now); again != got {
 					t.Fatal("flash changes within a tick")
 				}
 			} else {
@@ -1046,7 +1499,7 @@ func TestOriginalBodyColourWindowsAndRestoration(t *testing.T) {
 					t.Fatalf("blue transition at frame %d: %+v, want %+v", frame, got, want)
 				}
 			}
-			if mode.actorBodyColorTint(99, base, now) != base {
+			if mode.actors().ActorBodyColorTint(99, base, now) != base {
 				t.Fatal("effect tinted another actor")
 			}
 		}
@@ -1057,7 +1510,7 @@ func TestOriginalBodyColourWindowsAndRestoration(t *testing.T) {
 		mode.effects().Active = append(mode.effects().Active, second)
 		onlySecond := WorldMode{effectSystem: effects.System{Active: []effects.Instance{second}}}
 		now := starts.Add(40 * db.EffectFrameDuration)
-		if mode.actorBodyColorTint(42, base, now) != onlySecond.actorBodyColorTint(42, base, now) {
+		if mode.actors().ActorBodyColorTint(42, base, now) != onlySecond.actors().ActorBodyColorTint(42, base, now) {
 			t.Fatal("recasting compounds body colour")
 		}
 	}
@@ -1094,9 +1547,9 @@ func TestPaladinNativeTiming(t *testing.T) {
 	}
 	m.effects().Active = []effects.Instance{{EffectID: effects.Shrink, ActorID: 300, Starts: start}}
 	base := color.RGBA{255, 255, 255, 255}
-	if m.actorBodyColorTint(300, base, start.Add(6*db.EffectFrameDuration)) != (color.RGBA{250, 250, 100, 255}) ||
-		m.actorBodyColorTint(300, base, start.Add(7*db.EffectFrameDuration)) != base ||
-		m.actorBodyColorTint(300, base, start.Add(26*db.EffectFrameDuration)) != base {
+	if m.actors().ActorBodyColorTint(300, base, start.Add(6*db.EffectFrameDuration)) != (color.RGBA{250, 250, 100, 255}) ||
+		m.actors().ActorBodyColorTint(300, base, start.Add(7*db.EffectFrameDuration)) != base ||
+		m.actors().ActorBodyColorTint(300, base, start.Add(26*db.EffectFrameDuration)) != base {
 		t.Fatal("Shrink must blink only during frames 5..25")
 	}
 }
@@ -1181,7 +1634,7 @@ func TestCloseConfineBodyAndRingRendering(t *testing.T) {
 	entry := scene.ActorDrawEntry{Actor: ctx.World.Actors[300], WorldX: 16.5, WorldY: 20.5}
 	for _, tick := range []int{0, 20, 21, 22, 59, 60, 61} {
 		frame := render.NewFrame(800, 600)
-		m.drawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, 1, 1, 1, color.RGBA{255, 255, 255, 255}, render.BlendSourceOver, starts.Add(time.Duration(tick)*db.EffectFrameDuration))
+		m.actors().DrawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, 1, 1, 1, color.RGBA{255, 255, 255, 255}, render.BlendSourceOver, starts.Add(time.Duration(tick)*db.EffectFrameDuration))
 		draw := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards").Index(0)
 		red := draw.FieldByName("ColorR").Float() > draw.FieldByName("ColorG").Float()
 		if red != (tick == 22) {
@@ -1221,17 +1674,17 @@ func TestSniperBodyFlashAndRotation(t *testing.T) {
 		m := &WorldMode{}
 		m.effects().AddAt(ctx, tc.id, 300, start)
 		now := start.Add(time.Duration(tc.frame) * db.EffectFrameDuration)
-		if (m.actorRenderBlend(300, now) == render.BlendLighter) != tc.flash {
+		if (m.actors().ActorRenderBlend(300, now) == render.BlendLighter) != tc.flash {
 			t.Fatalf("effect %d frame %d: incorrect body blend", tc.id, tc.frame)
 		}
-		if tc.id == effects.Portal4 && tc.flash && m.actorBodyColorTint(300, color.RGBA{255, 255, 255, 255}, now) != (color.RGBA{220, 250, 220, 255}) {
+		if tc.id == effects.Portal4 && tc.flash && m.actors().ActorBodyColorTint(300, color.RGBA{255, 255, 255, 255}, now) != (color.RGBA{220, 250, 220, 255}) {
 			t.Fatal("Wind Walk's body flash must be pale green")
 		}
 	}
 	m := &WorldMode{}
 	m.effects().AddAt(ctx, effects.FalconAssault, 2000000, start)
 	for _, tc := range []struct{ frame, direction int }{{29, 0}, {30, 1}, {31, 1}, {32, 2}, {41, 0}, {54, 1}, {55, 0}} {
-		if d := m.skillEffectDirection(ctx, 100, 0, start.Add(time.Duration(tc.frame)*db.EffectFrameDuration)); d != tc.direction {
+		if d := m.actors().SkillEffectDirection(ctx, 100, 0, start.Add(time.Duration(tc.frame)*db.EffectFrameDuration)); d != tc.direction {
 			t.Fatalf("frame %d: direction %d, want %d (including local account/character alias)", tc.frame, d, tc.direction)
 		}
 	}
@@ -1246,7 +1699,7 @@ func TestSoulLinkerPlayerGlowsAndKaiteStatus(t *testing.T) {
 	draw := func(now time.Time) reflect.Value {
 		frame := render.NewFrame(800, 600)
 		entry := scene.ActorDrawEntry{Actor: ctx.World.Player, WorldX: 10.5, WorldY: 20.5, Scale: 1, Shadow: 1}
-		m.drawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, .5, .6, .8, color.RGBA{100, 120, 200, 200}, render.BlendSourceOver, now)
+		m.actors().DrawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, .5, .6, .8, color.RGBA{100, 120, 200, 200}, render.BlendSourceOver, now)
 		commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
 		depthWriters := 0
 		for i := 0; i < commands.Len(); i++ {
@@ -1295,7 +1748,7 @@ func TestEskeFollowsMonsterOptionAndEndsOnClear(t *testing.T) {
 	if actor.Opt3State&db.Opt3Energycoat == 0 {
 		t.Fatal("Eske did not set the monster's native option bit")
 	}
-	if tint := actorStateTint(actor); tint != (color.RGBA{255, 255, 255, 255}) {
+	if tint := actors.ActorStateTint(actor); tint != (color.RGBA{255, 255, 255, 255}) {
 		t.Fatalf("Eske should not use the player's Energy Coat tint: %v", tint)
 	}
 	starts := m.effects().Active[0].Starts
@@ -1304,7 +1757,7 @@ func TestEskeFollowsMonsterOptionAndEndsOnClear(t *testing.T) {
 	draw := func(at time.Time) int {
 		frame := render.NewFrame(800, 600)
 		entry := scene.ActorDrawEntry{Actor: ctx.World.Actors[300], WorldX: 18.5, WorldY: 20.5}
-		m.drawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, 1, 1, 1, color.RGBA{255, 255, 255, 255}, render.BlendSourceOver, at)
+		m.actors().DrawActorSpriteWithEffects3D(ctx, frame, projection, entry, billboard, 1, 1, 1, color.RGBA{255, 255, 255, 255}, render.BlendSourceOver, at)
 		return reflect.ValueOf(frame).Elem().FieldByName("worldBillboards").Len()
 	}
 	if draw(starts.Add(time.Second)) != 11 {
@@ -1319,7 +1772,7 @@ func TestEskeFollowsMonsterOptionAndEndsOnClear(t *testing.T) {
 	}
 	// The same option bit on a player still means Energy Coat, not Eske.
 	ctx.World.Player.Opt3State = db.Opt3Energycoat
-	if actorStateTint(ctx.World.Player) == (color.RGBA{255, 255, 255, 255}) {
+	if actors.ActorStateTint(ctx.World.Player) == (color.RGBA{255, 255, 255, 255}) {
 		t.Fatal("monster Eske changed player Energy Coat tint")
 	}
 }
@@ -1378,13 +1831,13 @@ func TestSoulLinkAuraFollowsStatusAndKeepsPlayerColors(t *testing.T) {
 		if count != 1 {
 			t.Fatalf("statusFirst=%v: %d auras", statusFirst, count)
 		}
-		if actorStateTint(ctx.World.Player) != (color.RGBA{255, 255, 255, 255}) {
+		if actors.ActorStateTint(ctx.World.Player) != (color.RGBA{255, 255, 255, 255}) {
 			t.Fatal("Soul Link must preserve base sprite color")
 		}
 		frame := render.NewFrame(800, 600)
 		billboard := &scene.Billboard{Image: render.NewImage(64, 64), AnchorX: 32, AnchorY: 60}
 		entry := scene.ActorDrawEntry{Actor: ctx.World.Player, WorldX: 10.5, WorldY: 20.5}
-		m.drawActorSpriteWithEffects3D(ctx, frame, testutil.Projection(800, 600, 10.5, 20.5, 0), entry, billboard, 1, 1, 1, color.RGBA{255, 255, 255, 255}, render.BlendSourceOver, start.Add(time.Minute))
+		m.actors().DrawActorSpriteWithEffects3D(ctx, frame, testutil.Projection(800, 600, 10.5, 20.5, 0), entry, billboard, 1, 1, 1, color.RGBA{255, 255, 255, 255}, render.BlendSourceOver, start.Add(time.Minute))
 		commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
 		if commands.Len() != 3 {
 			t.Fatalf("want body and two silhouettes, got %d", commands.Len())
@@ -1417,7 +1870,7 @@ func TestEswooShrinksUntilServerClearsIt(t *testing.T) {
 					age  time.Duration
 					size float64
 				}{{0, 1}, {45 * db.EffectFrameDuration, .5}, {time.Minute, .5}} {
-					if got := m.actorBodySizeMultiplier(300, e.Starts.Add(tc.age)); math.Abs(got-tc.size) > 1e-8 {
+					if got := m.actors().ActorBodySizeMultiplier(300, e.Starts.Add(tc.age)); math.Abs(got-tc.size) > 1e-8 {
 						t.Fatalf("Eswoo size at %v = %v", tc.age, got)
 					}
 				}
@@ -1426,16 +1879,16 @@ func TestEswooShrinksUntilServerClearsIt(t *testing.T) {
 		if count != 1 {
 			t.Fatalf("snapshotFirst=%v: %d shrink effects", snapshotFirst, count)
 		}
-		if tint := actorStateTint(ctx.World.Actors[300]); tint != (color.RGBA{255, 255, 255, 255}) {
+		if tint := actors.ActorStateTint(ctx.World.Actors[300]); tint != (color.RGBA{255, 255, 255, 255}) {
 			t.Fatalf("monster got Overthrust tint: %v", tint)
 		}
 		m.handleNetworkPacket(ctx, testutil.NpcEffectUpdatePacket(300, 0), time.Now())
 		for _, e := range m.effects().Active {
 			if e.EffectID == effects.BabyBodyBack {
-				if got := m.actorBodySizeMultiplier(300, e.Starts); got != .5 {
+				if got := m.actors().ActorBodySizeMultiplier(300, e.Starts); got != .5 {
 					t.Fatalf("return starts at %v", got)
 				}
-				if got := m.actorBodySizeMultiplier(300, e.Starts.Add(15*db.EffectFrameDuration)); got != 1 {
+				if got := m.actors().ActorBodySizeMultiplier(300, e.Starts.Add(15*db.EffectFrameDuration)); got != 1 {
 					t.Fatalf("return ends at %v", got)
 				}
 			}
@@ -1443,7 +1896,7 @@ func TestEswooShrinksUntilServerClearsIt(t *testing.T) {
 		if !m.effects().HasActive(effects.BabyBodyBack, 300, time.Now()) {
 			t.Fatal("missing return animation")
 		}
-		m.removeActorEffectStateEffects(300)
+		m.actors().RemoveActorEffectStateEffects(300)
 		if m.effects().HasActive(effects.BabyBodyBack, 300, time.Now()) {
 			t.Fatal("size effect survived actor leaving")
 		}
@@ -1507,7 +1960,7 @@ func TestStarGladiatorWarmthStatusAndSkillPackets(t *testing.T) {
 		if len(m.effects().Active) != 3 || m.effects().Active[2].EffectID != effects.Hated2 || m.effects().Active[2].BuffParticles == nil || len(m.scheduledSounds) != 1 || m.scheduledSounds[0].at.Sub(m.effects().Active[2].Starts) != 10*db.EffectFrameDuration {
 			t.Fatal("Warmth release must restart its state effects, add red particles, and delay the sound ten ticks")
 		}
-		anim := m.actorAnims[100]
+		anim := m.actorSystem.ActorAnims[100]
 		if anim.ActionFamily != sprites.ActionPCSkill || anim.FixedMotion != 3 || !anim.HasFixedMotion || anim.Duration != time.Second {
 			t.Fatalf("Warmth release pose: %+v", anim)
 		}
@@ -1540,9 +1993,9 @@ func TestFusionPresentationDoesNotAdvanceUnrelatedAnimations(t *testing.T) {
 				Duration:     time.Second,
 				Next:         &scene.ActorAnimation{ActionFamily: scene.SpriteActionIdle, Loop: true},
 			}
-			m.actorAnims = map[uint32]scene.ActorAnimation{actor.ID: anim}
-			m.starFusionHeight(actor, now)
-			if got := m.actorAnims[actor.ID]; !reflect.DeepEqual(got, anim) {
+			m.actorSystem.ActorAnims = map[uint32]scene.ActorAnimation{actor.ID: anim}
+			m.actors().StarFusionHeight(actor, now)
+			if got := m.actorSystem.ActorAnims[actor.ID]; !reflect.DeepEqual(got, anim) {
 				t.Fatal("Fusion presentation advanced a non-flying actor's animation queue")
 			}
 		})
@@ -1603,18 +2056,18 @@ func TestTaekwonReadyPosesBelongToSkillPackets(t *testing.T) {
 				m.applyStatusEffectChange(ctx, network.StatusEffectChange{ActorID: 2000000, StatusID: status, Active: active})
 			}
 		}
-		if len(m.actorAnims)+len(m.effects().Active) != 0 {
+		if len(m.actorSystem.ActorAnims)+len(m.effects().Active) != 0 {
 			t.Fatal("stance status packets must only update the status icons")
 		}
 		m.applySkillNoDamageNotify(ctx, network.SkillNoDamageNotify{SkillID: tc.skill, SourceID: 2000000, TargetID: 2000000, Result: 1})
-		anim := m.actorAnims[100]
+		anim := m.actorSystem.ActorAnims[100]
 		if anim.ActionFamily != tc.family || !anim.HasFixedMotion || anim.FixedMotion != tc.frame || anim.Play || anim.Duration != 2*time.Second {
 			t.Fatalf("skill %d ready animation: %+v", tc.skill, anim)
 		}
 		if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != effects.TaeReady {
 			t.Fatalf("skill %d must flash blue: %+v", tc.skill, m.effects().Active)
 		}
-		if _, ok := m.actorAnimation(100, anim.Started.Add(2*time.Second)); ok {
+		if _, ok := m.actors().ActorAnimation(100, anim.Started.Add(2*time.Second)); ok {
 			t.Fatal("ready pose did not expire")
 		}
 	}
@@ -1697,39 +2150,6 @@ func TestWizardProjectilesAndSight(t *testing.T) {
 		if got != want {
 			t.Fatalf("Sightrasher tick %d: %d sprites, want %d", tick, got, want)
 		}
-	}
-}
-
-func TestApplyLocalActorLookChangeUpdatesSelectedCharacter(t *testing.T) {
-	sessionState := &session.Session{
-		AccountID: 100,
-		CharID:    200,
-		Selected:  session.Character{ID: 200, Job: 0, Hair: 1},
-		Characters: []session.Character{
-			{ID: 200, Job: 0, Hair: 1},
-		},
-	}
-	ctx := client.Context{
-		Session: sessionState,
-		World:   worldstate.New(),
-	}
-	look := network.ActorLookChange{
-		ID:    200,
-		Type:  2,
-		Value: uint32(2101)<<16 | 1201,
-	}
-
-	if !applyActorLookChange(ctx, look) {
-		t.Fatal("local look change should request player sprite reload")
-	}
-	if sessionState.Selected.Weapon != 1201 || sessionState.Selected.Shield != 2101 {
-		t.Fatalf("selected appearance = weapon %d shield %d", sessionState.Selected.Weapon, sessionState.Selected.Shield)
-	}
-	if sessionState.Characters[0].Weapon != 1201 || sessionState.Characters[0].Shield != 2101 {
-		t.Fatalf("character appearance = weapon %d shield %d", sessionState.Characters[0].Weapon, sessionState.Characters[0].Shield)
-	}
-	if ctx.World.Player.Weapon != 1201 || ctx.World.Player.Shield != 2101 {
-		t.Fatalf("world player appearance = weapon %d shield %d", ctx.World.Player.Weapon, ctx.World.Player.Shield)
 	}
 }
 
@@ -1897,7 +2317,7 @@ func TestApplyTrickDeadStatusHoldsDeathPose(t *testing.T) {
 		ActorID:  2000000,
 		Active:   true,
 	})
-	anim, ok := mode.actorAnimation(150000, time.Now())
+	anim, ok := mode.actors().ActorAnimation(150000, time.Now())
 	if !ok || anim.ActionFamily != sprites.ActionPCDeath || !anim.HoldFinal {
 		t.Fatalf("trick dead animation = %+v ok=%t, want held death pose", anim, ok)
 	}
@@ -1907,7 +2327,7 @@ func TestApplyTrickDeadStatusHoldsDeathPose(t *testing.T) {
 		ActorID:  2000000,
 		Active:   false,
 	})
-	anim, ok = mode.actorAnimation(150000, time.Now())
+	anim, ok = mode.actors().ActorAnimation(150000, time.Now())
 	if !ok || anim.ActionFamily != scene.SpriteActionIdle || anim.HoldFinal {
 		t.Fatalf("trick dead inactive animation = %+v ok=%t, want idle", anim, ok)
 	}
@@ -1929,8 +2349,8 @@ func TestTrickDeadSkillDoesNotStartDefaultSkillAction(t *testing.T) {
 		TargetID: 2000000,
 		Result:   1,
 	})
-	if len(mode.actorAnims) != 0 {
-		t.Fatalf("trick dead skill animation = %+v, want none before status", mode.actorAnims)
+	if len(mode.actorSystem.ActorAnims) != 0 {
+		t.Fatalf("trick dead skill animation = %+v, want none before status", mode.actorSystem.ActorAnims)
 	}
 }
 
@@ -1950,36 +2370,8 @@ func TestBackSlideSkillDoesNotStartDefaultSkillAction(t *testing.T) {
 		TargetID: 2000000,
 		Result:   1,
 	})
-	if len(mode.actorAnims) != 0 {
-		t.Fatalf("back slide skill animation = %+v, want none before jump packet", mode.actorAnims)
-	}
-}
-
-func TestApplyActorJumpPositionMovesLocalPlayer(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Dir: 4, Moving: true}
-	sessionState := &session.Session{AccountID: 2000000, PlayerX: 10, PlayerY: 20}
-	ctx := client.Context{Session: sessionState, World: world}
-
-	applyActorJumpPosition(ctx, network.ActorJumpPosition{ID: 2000000, X: 7, Y: 20})
-
-	if world.Player.X != 7 || world.Player.Y != 20 || world.Player.Moving {
-		t.Fatalf("player after jump = %+v, want stopped at 7,20", world.Player)
-	}
-	if sessionState.PlayerX != 7 || sessionState.PlayerY != 20 {
-		t.Fatalf("session position = %d,%d, want 7,20", sessionState.PlayerX, sessionState.PlayerY)
-	}
-}
-
-func TestApplyMapAcceptEnterMarksAdminPlayer(t *testing.T) {
-	world := worldstate.New()
-	sessionState := &session.Session{AccountID: 2000000, CharID: 150000, AdminList: []uint32{2000000}}
-	ctx := client.Context{Session: sessionState, World: world}
-
-	applyMapAcceptEnter(ctx, network.MapAcceptEnter{X: 10, Y: 20, Dir: 4})
-
-	if !world.Player.IsAdmin {
-		t.Fatalf("world player admin state = false")
+	if len(mode.actorSystem.ActorAnims) != 0 {
+		t.Fatalf("back slide skill animation = %+v, want none before jump packet", mode.actorSystem.ActorAnims)
 	}
 }
 
@@ -2012,12 +2404,12 @@ func TestApplyMapAcceptEnterResetsWorldForChangedSelectedCharacter(t *testing.T)
 	}
 	ctx := client.Context{Session: sessionState, World: world}
 
-	applyMapAcceptEnter(ctx, network.MapAcceptEnter{X: 20, Y: 30, Dir: 3})
+	actors.ApplyMapAcceptEnter(ctx, network.MapAcceptEnter{X: 20, Y: 30, Dir: 3})
 
 	if world.Player.ID != 150001 || world.Player.Name != "Wizard" || world.Player.Job != db.JobWizard || world.Player.Weapon != 1601 {
 		t.Fatalf("world player identity/appearance = %+v", world.Player)
 	}
-	if world.Player.HasCart || world.Player.CartNum != 0 || world.Player.EffectState&actorEffectCartMask != 0 {
+	if world.Player.HasCart || world.Player.CartNum != 0 || world.Player.EffectState&actors.ActorEffectCartMask != 0 {
 		t.Fatalf("old cart state leaked into selected character: %+v", world.Player)
 	}
 	if world.Player.Opt3State != 0 {
@@ -2052,7 +2444,7 @@ func TestApplyMapAcceptEnterKeepsWorldStateForSameCharacter(t *testing.T) {
 	}
 	ctx := client.Context{Session: sessionState, World: world}
 
-	applyMapAcceptEnter(ctx, network.MapAcceptEnter{X: 20, Y: 30, Dir: 3})
+	actors.ApplyMapAcceptEnter(ctx, network.MapAcceptEnter{X: 20, Y: 30, Dir: 3})
 
 	if !world.Player.HasCartState || !world.Player.HasCart || world.Player.CartNum != 4 || world.Player.EffectState&db.EffectStateCart4 == 0 {
 		t.Fatalf("same-character cart state was not preserved: %+v", world.Player)
@@ -2086,9 +2478,9 @@ func TestApplyMapAcceptEnterResetsWorldForCharacterSelectReentry(t *testing.T) {
 	}
 	ctx := client.Context{Session: sessionState, World: world}
 
-	applyMapAcceptEnter(ctx, network.MapAcceptEnter{X: 20, Y: 30, Dir: 3})
+	actors.ApplyMapAcceptEnter(ctx, network.MapAcceptEnter{X: 20, Y: 30, Dir: 3})
 
-	if world.Player.HasCart || world.Player.CartNum != 0 || world.Player.EffectState&actorEffectCartMask != 0 {
+	if world.Player.HasCart || world.Player.CartNum != 0 || world.Player.EffectState&actors.ActorEffectCartMask != 0 {
 		t.Fatalf("cart state leaked through character-select re-entry: %+v", world.Player)
 	}
 	if world.Player.Opt3State != 0 {
@@ -2128,7 +2520,7 @@ func TestApplyPushCartStatusTracksLocalAndRemoteActors(t *testing.T) {
 		HealthState: 0,
 		EffectState: 0,
 	})
-	if !world.Player.HasCartState || world.Player.HasCart || world.Player.CartNum != 0 || world.Player.EffectState&actorEffectCartMask != 0 {
+	if !world.Player.HasCartState || world.Player.HasCart || world.Player.CartNum != 0 || world.Player.EffectState&actors.ActorEffectCartMask != 0 {
 		t.Fatalf("local cart state after actor state refresh = %+v", world.Player)
 	}
 	mode.applyActorStateChange(ctx, network.ActorStateChange{
@@ -2159,7 +2551,7 @@ func TestApplyPushCartStatusTracksLocalAndRemoteActors(t *testing.T) {
 		EffectState: 0,
 	})
 	remote = world.Actors[110000001]
-	if !remote.HasCartState || remote.HasCart || remote.CartNum != 0 || remote.EffectState&actorEffectCartMask != 0 {
+	if !remote.HasCartState || remote.HasCart || remote.CartNum != 0 || remote.EffectState&actors.ActorEffectCartMask != 0 {
 		t.Fatalf("remote cart state after actor state refresh = %+v", remote)
 	}
 
@@ -2169,7 +2561,7 @@ func TestApplyPushCartStatusTracksLocalAndRemoteActors(t *testing.T) {
 		Active:   false,
 	})
 	remote = world.Actors[110000001]
-	if !remote.HasCartState || remote.HasCart || remote.EffectState&actorEffectCartMask != 0 {
+	if !remote.HasCartState || remote.HasCart || remote.EffectState&actors.ActorEffectCartMask != 0 {
 		t.Fatalf("inactive remote cart state = %+v", remote)
 	}
 }
@@ -2221,34 +2613,6 @@ func TestApplyActorStateChangeSyncsSelectedWeddingOption(t *testing.T) {
 	}
 }
 
-func TestActorCartStateFromEffectUsesReferenceCartNumbers(t *testing.T) {
-	actor := worldstate.Actor{Job: 5, EffectState: db.EffectStateCart3}
-	hasCart, cartNum := actorCartState(actor)
-	if !hasCart || cartNum != 3 {
-		t.Fatalf("cart from effect = %t, %d", hasCart, cartNum)
-	}
-	actor = worldstate.Actor{Job: 23, EffectState: db.EffectStateCart5}
-	hasCart, cartNum = actorCartState(actor)
-	if !hasCart || cartNum != 0 {
-		t.Fatalf("super novice cart from effect = %t, %d", hasCart, cartNum)
-	}
-}
-
-func TestActorHasFalconUsesReferenceEffectBitAndJobs(t *testing.T) {
-	if !actorHasFalcon(worldstate.Actor{Job: db.JobHunter, EffectState: db.EffectStateFalcon}) {
-		t.Fatal("hunter falcon bit should create a falcon")
-	}
-	if !actorHasFalcon(worldstate.Actor{Job: db.JobHunterH, EffectState: db.EffectStateFalcon}) {
-		t.Fatal("sniper falcon bit should create a falcon")
-	}
-	if actorHasFalcon(worldstate.Actor{Job: db.JobKnight, EffectState: db.EffectStateFalcon}) {
-		t.Fatal("non-hunter falcon bit should not create a falcon sprite")
-	}
-	if actorHasFalcon(worldstate.Actor{Job: db.JobHunter}) {
-		t.Fatal("hunter without falcon bit should not create a falcon")
-	}
-}
-
 func TestFalconStateFollowsAsIndependentEntity(t *testing.T) {
 	mode := &WorldMode{}
 	start := time.Unix(100, 0)
@@ -2262,61 +2626,33 @@ func TestFalconStateFollowsAsIndependentEntity(t *testing.T) {
 		Speed:       150,
 	}
 
-	falcon := mode.updateFalconState(actor, start)
+	falcon := mode.actors().UpdateFalconState(actor, start)
 	if falcon == nil {
 		t.Fatal("falcon state was not created")
 	}
-	if falcon.x != 10 || falcon.y != 20 || falcon.moving {
-		t.Fatalf("initial falcon = x %.2f y %.2f moving=%t, want owner cell and idle", falcon.x, falcon.y, falcon.moving)
+	if falcon.X != 10 || falcon.Y != 20 || falcon.Moving {
+		t.Fatalf("initial falcon = x %.2f y %.2f moving=%t, want owner cell and idle", falcon.X, falcon.Y, falcon.Moving)
 	}
 
 	actor.X = 13
-	falcon = mode.updateFalconState(actor, start.Add(falconRetargetInterval+time.Millisecond))
-	if falcon == nil || !falcon.moving {
+	falcon = mode.actors().UpdateFalconState(actor, start.Add(actors.FalconRetargetInterval+time.Millisecond))
+	if falcon == nil || !falcon.Moving {
 		t.Fatalf("falcon = %+v, want independent follow movement", falcon)
 	}
-	if falcon.moveSpeedMS != 100 {
-		t.Fatalf("falcon speed = %d, want owner speed - 50", falcon.moveSpeedMS)
+	if falcon.MoveSpeedMS != 100 {
+		t.Fatalf("falcon speed = %d, want owner speed - 50", falcon.MoveSpeedMS)
 	}
-	if len(falcon.path) == 0 {
+	if len(falcon.Path) == 0 {
 		t.Fatal("falcon follow path is empty")
 	}
-	end := falcon.path[len(falcon.path)-1]
+	end := falcon.Path[len(falcon.Path)-1]
 	if end.X != 12 || end.Y != 20 {
 		t.Fatalf("falcon follow endpoint = %d,%d, want to stop one cell from owner", end.X, end.Y)
 	}
 
-	falcon.advance(start.Add(falconRetargetInterval + 50*time.Millisecond))
-	if falcon.x <= 10 || falcon.x >= 13 {
-		t.Fatalf("falcon x = %.2f, want independent position between old position and owner", falcon.x)
-	}
-}
-
-func TestFalconFollowUsesRobrowserRangeFloor(t *testing.T) {
-	if got := falconFollowDistance(11.9, 20, 10, 20); got != 1 {
-		t.Fatalf("falcon follow distance = %d, want floored euclidean distance", got)
-	}
-	path := falconFollowPath(10, 20, 12, 21, falconStopRange)
-	end := path[len(path)-1]
-	if end.X != 11 || end.Y != 21 {
-		t.Fatalf("diagonal-ish falcon endpoint = %d,%d, want floor(distance) <= 1 stop", end.X, end.Y)
-	}
-}
-
-func TestFalconSpriteStateUsesIdleGlideAction(t *testing.T) {
-	falcon := &falconRenderState{direction: 3, moving: true}
-	state := falcon.spriteState(45)
-	if state.ActionFamily != scene.SpriteActionIdle || !state.LoopIdle {
-		t.Fatalf("falcon sprite state = %+v, want looping idle glide action", state)
-	}
-	if state.ActionFamily == scene.SpriteActionWalk {
-		t.Fatal("falcon follow should not use character walk action")
-	}
-
-	falcon.attacking = true
-	state = falcon.spriteState(45)
-	if state.ActionFamily != scene.SpriteActionWalk {
-		t.Fatalf("falcon attack sprite state = %+v, want walk action like robr", state)
+	falcon.Advance(start.Add(actors.FalconRetargetInterval + 50*time.Millisecond))
+	if falcon.X <= 10 || falcon.X >= 13 {
+		t.Fatalf("falcon x = %.2f, want independent position between old position and owner", falcon.X)
 	}
 }
 
@@ -2344,14 +2680,14 @@ func TestFalconNoDamageSkillAttackUsesRobrowserOvershoot(t *testing.T) {
 		TargetID: 300,
 		Result:   1,
 	})
-	falcon := mode.falcons[150006]
-	if falcon == nil || !falcon.attacking {
+	falcon := mode.actorSystem.Falcons[150006]
+	if falcon == nil || !falcon.Attacking {
 		t.Fatalf("falcon = %+v, want attacking state", falcon)
 	}
-	if falcon.moveSpeedMS != falconAttackMoveSpeedMS {
-		t.Fatalf("falcon attack speed = %d, want %d", falcon.moveSpeedMS, falconAttackMoveSpeedMS)
+	if falcon.MoveSpeedMS != actors.FalconAttackMoveSpeedMS {
+		t.Fatalf("falcon attack speed = %d, want %d", falcon.MoveSpeedMS, actors.FalconAttackMoveSpeedMS)
 	}
-	end := falcon.path[len(falcon.path)-1]
+	end := falcon.Path[len(falcon.Path)-1]
 	if end.X != 17 || end.Y != 20 {
 		t.Fatalf("falcon attack endpoint = %d,%d, want robr overshoot past target", end.X, end.Y)
 	}
@@ -2380,11 +2716,11 @@ func TestFalconActorActionSkillAttackForFalconAssault(t *testing.T) {
 		SourceID: 200,
 		TargetID: 300,
 	})
-	falcon := mode.falcons[200]
-	if falcon == nil || !falcon.attacking {
+	falcon := mode.actorSystem.Falcons[200]
+	if falcon == nil || !falcon.Attacking {
 		t.Fatalf("falcon = %+v, want Falcon Assault attack state", falcon)
 	}
-	end := falcon.path[len(falcon.path)-1]
+	end := falcon.Path[len(falcon.Path)-1]
 	if end.X != 3 || end.Y != 14 {
 		t.Fatalf("falcon assault endpoint = %d,%d, want robr diagonal overshoot", end.X, end.Y)
 	}
@@ -2413,15 +2749,15 @@ func TestFalconDetectingWaitsForGroundSkill(t *testing.T) {
 		X:        12,
 		Y:        22,
 	})
-	if mode.falcons[150006] != nil {
+	if mode.actorSystem.Falcons[150006] != nil {
 		t.Fatal("Detecting must not launch its falcon before the cast completes")
 	}
 	mode.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: db.SkillHTDetecting, X: 12, Y: 22})
-	falcon := mode.falcons[150006]
-	if falcon == nil || !falcon.attacking {
+	falcon := mode.actorSystem.Falcons[150006]
+	if falcon == nil || !falcon.Attacking {
 		t.Fatalf("falcon = %+v, want Detecting attack even with zero cast delay", falcon)
 	}
-	end := falcon.path[len(falcon.path)-1]
+	end := falcon.Path[len(falcon.Path)-1]
 	if end.X != 17 || end.Y != 27 {
 		t.Fatalf("detecting endpoint = %d,%d, want robr ground overshoot", end.X, end.Y)
 	}
@@ -2429,17 +2765,17 @@ func TestFalconDetectingWaitsForGroundSkill(t *testing.T) {
 
 func TestFalconAttackReturnsToFollowTarget(t *testing.T) {
 	start := time.Unix(100, 0)
-	state := &falconRenderState{
-		x:           10,
-		y:           20,
-		direction:   4,
-		moveSpeedMS: 100,
-		hasTarget:   true,
-		targetX:     10,
-		targetY:     20,
+	state := &actors.FalconRenderState{
+		X:           10,
+		Y:           20,
+		Direction:   4,
+		MoveSpeedMS: 100,
+		HasTarget:   true,
+		TargetX:     10,
+		TargetY:     20,
 	}
-	state.startAttack(12, 20, start)
-	mode := &WorldMode{falcons: map[uint32]*falconRenderState{150006: state}}
+	state.StartAttack(12, 20, start)
+	mode := &WorldMode{actorSystem: actors.System{Falcons: map[uint32]*actors.FalconRenderState{150006: state}}}
 	actor := worldstate.Actor{
 		ID:          150006,
 		Job:         db.JobHunter,
@@ -2449,14 +2785,14 @@ func TestFalconAttackReturnsToFollowTarget(t *testing.T) {
 		Speed:       150,
 	}
 
-	mode.updateFalconState(actor, start.Add(falconAttackReturnDelay+time.Millisecond))
-	if state.attacking {
+	mode.actors().UpdateFalconState(actor, start.Add(actors.FalconAttackReturnDelay+time.Millisecond))
+	if state.Attacking {
 		t.Fatal("falcon should leave attacking state after robr return delay")
 	}
-	if state.moveSpeedMS != falconAttackMoveSpeedMS {
-		t.Fatalf("return speed = %d, want attack speed retained like robr", state.moveSpeedMS)
+	if state.MoveSpeedMS != actors.FalconAttackMoveSpeedMS {
+		t.Fatalf("return speed = %d, want attack speed retained like robr", state.MoveSpeedMS)
 	}
-	end := state.path[len(state.path)-1]
+	end := state.Path[len(state.Path)-1]
 	if end.X != 10 || end.Y != 20 {
 		t.Fatalf("return endpoint = %d,%d, want last follow target", end.X, end.Y)
 	}
@@ -2479,11 +2815,9 @@ func TestDrawSceneModelsAndActorsRunsFalconPass(t *testing.T) {
 		Resources: &res.Manager{},
 		World:     world,
 	}
-	mode := &WorldMode{
-		falconViews: map[int]*scene.SpriteView{
-			db.JobHunter: {},
-		},
-	}
+	mode := &WorldMode{actorSystem: actors.System{FalconViews: map[int]*scene.SpriteView{
+		db.JobHunter: {},
+	}}}
 	screen := render.NewFrame(800, 600)
 	projection := testutil.Projection(800, 600, scene.CellCenter(209), scene.CellCenter(220), 0)
 
@@ -2491,7 +2825,7 @@ func TestDrawSceneModelsAndActorsRunsFalconPass(t *testing.T) {
 	if len(actors) == 0 {
 		t.Fatal("no actor entries collected")
 	}
-	if _, ok := mode.falcons[150006]; !ok {
+	if _, ok := mode.actorSystem.Falcons[150006]; !ok {
 		t.Fatal("mixed scene draw path did not run falcon pass")
 	}
 }
@@ -2517,11 +2851,11 @@ func TestCollectSceneActorEntriesUsesSelectedCharacterCartOption(t *testing.T) {
 	screen := render.NewFrame(800, 600)
 	projection := testutil.Projection(800, 600, scene.CellCenter(10), scene.CellCenter(20), 0)
 
-	entries := mode.collectSceneActorEntries(screen, ctx, projection)
+	entries := mode.actors().CollectSceneActorEntries(screen, ctx, projection)
 	if len(entries) == 0 {
 		t.Fatal("no scene actor entries collected")
 	}
-	if hasCart, cartNum := actorCartState(entries[0].Actor); !hasCart || cartNum != 1 {
+	if hasCart, cartNum := actors.ActorCartState(entries[0].Actor); !hasCart || cartNum != 1 {
 		t.Fatalf("local cart from selected character option = has %t num %d actor %+v", hasCart, cartNum, entries[0].Actor)
 	}
 	if !entries[0].Actor.IsAdmin || !world.Player.IsAdmin {
@@ -2556,7 +2890,7 @@ func TestCollectSceneActorEntriesMergesSelectedCharacterFalconOption(t *testing.
 	screen := render.NewFrame(800, 600)
 	projection := testutil.Projection(800, 600, scene.CellCenter(10), scene.CellCenter(20), 0)
 
-	entries := mode.collectSceneActorEntries(screen, ctx, projection)
+	entries := mode.actors().CollectSceneActorEntries(screen, ctx, projection)
 	if len(entries) == 0 {
 		t.Fatal("no scene actor entries collected")
 	}
@@ -2595,7 +2929,7 @@ func TestCollectSceneActorEntriesMergesSelectedCharacterWeddingOption(t *testing
 	screen := render.NewFrame(800, 600)
 	projection := testutil.Projection(800, 600, scene.CellCenter(10), scene.CellCenter(20), 0)
 
-	entries := mode.collectSceneActorEntries(screen, ctx, projection)
+	entries := mode.actors().CollectSceneActorEntries(screen, ctx, projection)
 	if len(entries) == 0 {
 		t.Fatal("no scene actor entries collected")
 	}
@@ -2607,35 +2941,6 @@ func TestCollectSceneActorEntriesMergesSelectedCharacterWeddingOption(t *testing
 	}
 	if entries[0].Actor.Job != db.JobMarried {
 		t.Fatalf("entry visual job = %d, want married job %d", entries[0].Actor.Job, db.JobMarried)
-	}
-}
-
-func TestCartOffsetBillboardAppliesReferencePixelOffset(t *testing.T) {
-	base := &scene.Billboard{AnchorX: 100, AnchorY: 200}
-	dx, dy := cartSpriteOffset(2)
-	got := cartOffsetBillboard(base, dx, dy)
-	if got == base {
-		t.Fatal("cart offset should copy billboard")
-	}
-	if got.AnchorX != 60 || got.AnchorY != 200 {
-		t.Fatalf("offset billboard anchor = %.0f, %.0f", got.AnchorX, got.AnchorY)
-	}
-	if base.AnchorX != 100 || base.AnchorY != 200 {
-		t.Fatalf("base billboard mutated = %.0f, %.0f", base.AnchorX, base.AnchorY)
-	}
-}
-
-func TestCartDirectionOffsetBillboardPlacesShadowAtCart(t *testing.T) {
-	base := &scene.Billboard{AnchorX: 100, AnchorY: 200}
-	got := cartDirectionOffsetBillboard(base, 5)
-	if got == base {
-		t.Fatal("cart shadow offset should copy billboard")
-	}
-	if got.AnchorX != 130 || got.AnchorY != 190 {
-		t.Fatalf("cart shadow anchor = %.0f, %.0f, want 130, 190", got.AnchorX, got.AnchorY)
-	}
-	if base.AnchorX != 100 || base.AnchorY != 200 {
-		t.Fatalf("base shadow billboard mutated = %.0f, %.0f", base.AnchorX, base.AnchorY)
 	}
 }
 
@@ -2662,7 +2967,7 @@ func TestDrawActorCartShadowUsesLoadedShadowSprite(t *testing.T) {
 		Images:     make(map[scene.SpriteFrameKey]*render.Image),
 		Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
-	mode := &WorldMode{shadowView: shadowView}
+	mode := &WorldMode{actorSystem: actors.System{ShadowView: shadowView}}
 	entry := scene.ActorDrawEntry{
 		Actor: worldstate.Actor{
 			ID:           300,
@@ -2680,11 +2985,11 @@ func TestDrawActorCartShadowUsesLoadedShadowSprite(t *testing.T) {
 		ShadowScale: 1,
 	}
 	projection := testutil.Projection(800, 600, entry.WorldX, entry.WorldY, 0)
-	if !mode.drawActorCartShadow3D(render.NewFrame(800, 600), client.Context{}, projection, entry, 0, time.Now()) {
+	if !mode.actors().DrawActorCartShadow3D(render.NewFrame(800, 600), client.Context{}, projection, entry, 0, time.Now()) {
 		t.Fatal("cart shadow was not drawn")
 	}
 	entry.Actor.HasCart = false
-	if mode.drawActorCartShadow3D(render.NewFrame(800, 600), client.Context{}, projection, entry, 0, time.Now()) {
+	if mode.actors().DrawActorCartShadow3D(render.NewFrame(800, 600), client.Context{}, projection, entry, 0, time.Now()) {
 		t.Fatal("cart shadow drawn without a cart")
 	}
 }
@@ -2709,7 +3014,7 @@ func TestApplyActorStateChangeTracksRemoteActorRenderState(t *testing.T) {
 	if len(mode.effects().Active) != 1 || mode.effects().Active[0].EffectID != effects.Ruwach || mode.effects().Active[0].ActorID != 110000001 {
 		t.Fatalf("actor state effects = %+v, want Ruwach", mode.effects().Active)
 	}
-	state := mode.nonPCSpriteState(actor, time.Now())
+	state := mode.actors().NonPCSpriteState(actor, time.Now())
 	if state.ActionFamily != scene.SpriteActionIdle || !state.HasPlay || state.Play || !state.HasFixedMotion || state.FixedMotion != 0 {
 		t.Fatalf("frozen non-pc sprite state = %+v", state)
 	}
@@ -2806,17 +3111,6 @@ func TestActorVanishRemovesActorEffectStateEffects(t *testing.T) {
 	}
 }
 
-func TestActorStateTintMatchesReferenceBodyAndHealthTints(t *testing.T) {
-	tint := actorStateTint(worldstate.Actor{
-		BodyState:   db.BodyStateFreeze,
-		HealthState: db.HealthStateBlind,
-		HasState:    true,
-	})
-	if tint.R != 0 || tint.G != 20 || tint.B != 40 || tint.A != 255 {
-		t.Fatalf("tint = %+v, want frozen blue darkened by blind", tint)
-	}
-}
-
 func TestEnergyCoatStatusSetsActorOpt3StateAndTint(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
@@ -2833,7 +3127,7 @@ func TestEnergyCoatStatusSetsActorOpt3StateAndTint(t *testing.T) {
 	if world.Player.Opt3State&db.Opt3Energycoat == 0 {
 		t.Fatalf("opt3 state = 0x%08X, want energy coat bit", world.Player.Opt3State)
 	}
-	tint := actorStateTint(world.Player)
+	tint := actors.ActorStateTint(world.Player)
 	if tint.R != 127 || tint.G != 127 || tint.B != 216 || tint.A != 255 {
 		t.Fatalf("energy coat tint = %+v, want robr OPT3 tint", tint)
 	}
@@ -2867,7 +3161,7 @@ func TestTwoHandQuickenStatusUsesOpt3WithoutSightEffect(t *testing.T) {
 	if world.Player.EffectState&db.EffectStateSight != 0 {
 		t.Fatalf("effect state = 0x%08X, want no Sight bit from quicken", world.Player.EffectState)
 	}
-	if tint := actorStateTint(world.Player); tint.B != 0 {
+	if tint := actors.ActorStateTint(world.Player); tint.B != 0 {
 		t.Fatalf("quicken tint = %+v, want robr OPT3 quicken blue channel removed", tint)
 	}
 	if len(mode.effects().Active) != 0 {
@@ -2945,7 +3239,7 @@ func TestCollectSceneActorEntriesPreservesLocalOpt3State(t *testing.T) {
 	projection := testutil.Projection(800, 600, 10, 20, 0)
 	mode := &WorldMode{}
 
-	entries := mode.collectSceneActorEntries(screen, ctx, projection)
+	entries := mode.actors().CollectSceneActorEntries(screen, ctx, projection)
 	if len(entries) == 0 {
 		t.Fatal("no actor entries collected")
 	}
@@ -2954,68 +3248,6 @@ func TestCollectSceneActorEntriesPreservesLocalOpt3State(t *testing.T) {
 	}
 	if entries[0].Actor.EffectState&db.EffectStateCart1 == 0 {
 		t.Fatalf("entry effect state = 0x%08X, want cart option merged", entries[0].Actor.EffectState)
-	}
-}
-
-func TestVisibleStatusIconIDsAreKnownAndSorted(t *testing.T) {
-	active := map[uint16]session.StatusEffect{
-		99:           {ID: 99},
-		12:           {ID: 12},
-		10:           {ID: 10},
-		db.StatusSit: {ID: db.StatusSit},
-	}
-	ids := gameui.VisibleStatusIconIDs(active)
-	if !reflect.DeepEqual(ids, []uint16{10, 12}) {
-		t.Fatalf("ids = %+v", ids)
-	}
-}
-
-func TestApplyRemoteActorLookChangeUpdatesWorldActor(t *testing.T) {
-	world := worldstate.New()
-	world.UpsertActor(worldstate.Actor{ID: 300, Job: 0, Head: 1, Appearance: true})
-	ctx := client.Context{
-		Session: &session.Session{AccountID: 100, CharID: 200},
-		World:   world,
-	}
-
-	if applyActorLookChange(ctx, network.ActorLookChange{ID: 300, Type: 4, Value: 7}) {
-		t.Fatal("remote look change should not request local player sprite reload")
-	}
-	actor := world.Actors[300]
-	if actor.HeadTop != 7 {
-		t.Fatalf("remote head top = %d, want 7", actor.HeadTop)
-	}
-}
-
-func TestDirectionFromDeltaUsesRathenaDirectionOrder(t *testing.T) {
-	cases := []struct {
-		name string
-		toX  int
-		toY  int
-		want int
-	}{
-		{name: "north", toX: 10, toY: 11, want: 0},
-		{name: "northwest", toX: 9, toY: 11, want: 1},
-		{name: "west", toX: 9, toY: 10, want: 2},
-		{name: "southwest", toX: 9, toY: 9, want: 3},
-		{name: "south", toX: 10, toY: 9, want: 4},
-		{name: "southeast", toX: 11, toY: 9, want: 5},
-		{name: "east", toX: 11, toY: 10, want: 6},
-		{name: "northeast", toX: 11, toY: 11, want: 7},
-		{name: "long mostly north", toX: 11, toY: 20, want: 0},
-		{name: "long mostly west", toX: 0, toY: 11, want: 2},
-		{name: "long mostly south", toX: 11, toY: 0, want: 4},
-		{name: "long mostly east", toX: 20, toY: 11, want: 6},
-	}
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := directionFromDelta(10, 10, tt.toX, tt.toY, 6); got != tt.want {
-				t.Fatalf("directionFromDelta = %d, want %d", got, tt.want)
-			}
-		})
-	}
-	if got := directionFromDelta(10, 10, 10, 10, -1); got != 7 {
-		t.Fatalf("stationary fallback = %d, want 7", got)
 	}
 }
 
@@ -3052,78 +3284,6 @@ func TestResolveTurnOnlyDirectionRotatesBodyForWideTurn(t *testing.T) {
 	}
 	if head != 2 || body != 6 {
 		t.Fatalf("wide right turn = head %d body %d, want head 2 body 6", head, body)
-	}
-}
-
-func TestActorBillboardScreenScaleUsesProjectedReferenceHeight(t *testing.T) {
-	if scene.ActorBillboardWorldHeightUnit != 5 {
-		t.Fatalf("actor billboard world height = %.1f, want 5.0", scene.ActorBillboardWorldHeightUnit)
-	}
-
-	projection := testutil.Projection(800, 600, 10.5, 20.5, 5)
-
-	scale := scene.ActorBillboardScreenScale(projection, 10.5, 20.5, 5)
-	if math.Abs(scale-1.04) > 0.01 {
-		t.Fatalf("camera billboard scale = %.3f, want about 1.04 at reference client default zoom", scale)
-	}
-}
-
-func TestActorBillboardScreenScaleDoesNotChangeWithCameraPitch(t *testing.T) {
-	const (
-		width  = 800
-		height = 600
-		x      = 10.5
-		y      = 20.5
-		z      = 5
-	)
-	want := scene.ActorBillboardScreenScale(scene.NewProjection(width, height, x, y, z, 0, scene.CameraPitch(), 125), x, y, z)
-	for _, pitch := range []float64{scene.DefaultCameraMinPitch, 215, 235, scene.DefaultCameraMaxPitch} {
-		projection := scene.NewProjection(width, height, x, y, z, 0, pitch, 125)
-		if got := scene.ActorBillboardScreenScale(projection, x, y, z); math.Abs(got-want) > 0.000001 {
-			t.Fatalf("actor scale at pitch %.1f = %.6f, want %.6f", pitch, got, want)
-		}
-	}
-}
-
-func TestActorBillboardScreenScaleFollowsZoomAndPerspectiveDepth(t *testing.T) {
-	const (
-		width  = 800
-		height = 600
-		x      = 10.5
-		y      = 20.5
-		z      = 5
-	)
-	zoomedIn := scene.ActorBillboardScreenScale(scene.NewProjection(width, height, x, y, z, 0, 235, scene.DefaultCameraMinZoom), x, y, z)
-	zoomedOut := scene.ActorBillboardScreenScale(scene.NewProjection(width, height, x, y, z, 0, 235, scene.DefaultCameraMaxZoom), x, y, z)
-	if zoomedIn <= zoomedOut {
-		t.Fatalf("actor scale did not follow zoom: zoomed in %.6f, zoomed out %.6f", zoomedIn, zoomedOut)
-	}
-
-	nearer := scene.ActorBillboardScreenScale(scene.NewProjection(width, height, x, y, z, 0, 235, 125), x, y-5, z)
-	farther := scene.ActorBillboardScreenScale(scene.NewProjection(width, height, x, y, z, 0, 235, 125), x, y+5, z)
-	if nearer <= farther {
-		t.Fatalf("actor scale did not follow perspective depth: nearer %.6f, farther %.6f", nearer, farther)
-	}
-}
-
-func TestActorAnchorOutsideViewportKeepsBodyVisibleBelowScreen(t *testing.T) {
-	if actorAnchorOutsideViewport(400, 600+150, 800, 600, 1) {
-		t.Fatal("actor should remain visible while its body can still overlap the bottom edge")
-	}
-	if !actorAnchorOutsideViewport(400, 600+260, 800, 600, 1) {
-		t.Fatal("actor should be culled after the whole billboard is beyond the bottom edge")
-	}
-}
-
-func TestActorViewportCullMarginsScaleWithZoom(t *testing.T) {
-	_, _, _, bottom1 := actorViewportCullMargins(1)
-	_, _, _, bottom2 := actorViewportCullMargins(2)
-	if bottom2 <= bottom1 {
-		t.Fatalf("bottom margin did not scale: %.1f <= %.1f", bottom2, bottom1)
-	}
-	left, right, top, bottom := actorViewportCullMargins(0)
-	if left <= 0 || right <= 0 || top <= 0 || bottom <= 0 {
-		t.Fatalf("invalid fallback margins: %.1f %.1f %.1f %.1f", left, right, top, bottom)
 	}
 }
 
@@ -3264,7 +3424,7 @@ func TestCursorMagnetOffsetFollowsTargetSnapSetting(t *testing.T) {
 	}
 	ctx.Session.SnapTargets = true
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(11), scene.CellCenter(20), 0)
-	targetX, targetY := actorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
+	targetX, targetY := actors.ActorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
 	inputState.SetMousePosition(int(math.Round(targetX))+7, int(math.Round(targetY))+3)
 	wantDX := float64(inputState.MouseX) - targetX
 	wantDY := float64(inputState.MouseY) - targetY
@@ -3315,7 +3475,7 @@ func TestCursorMagnetOffsetSnapsTargetSkillToSelf(t *testing.T) {
 	}
 
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(10), scene.CellCenter(20), 0)
-	targetX, targetY := actorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
+	targetX, targetY := actors.ActorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
 	inputState.SetMousePosition(int(math.Round(targetX))+7, int(math.Round(targetY))+3)
 	wantDX := float64(inputState.MouseX) - targetX
 	wantDY := float64(inputState.MouseY) - targetY
@@ -3357,7 +3517,7 @@ func TestCursorMagnetOffsetSnapsTargetSkillToHomunculus(t *testing.T) {
 	}
 
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(11), scene.CellCenter(20), 0)
-	targetX, targetY := actorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
+	targetX, targetY := actors.ActorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
 	inputState.SetMousePosition(int(math.Round(targetX))+7, int(math.Round(targetY))+3)
 	wantDX := float64(inputState.MouseX) - targetX
 	wantDY := float64(inputState.MouseY) - targetY
@@ -3439,34 +3599,4 @@ func isLevel99AuraEffect(effectID int) bool {
 		}
 	}
 	return false
-}
-
-func TestWalkingSpriteStateIgnoresReadyFightAnimation(t *testing.T) {
-	state := sprites.State{
-		ActionFamily: scene.SpriteActionWalk,
-		Moving:       true,
-		Loop:         true,
-	}
-
-	if applyActorAnimationToSpriteState(&state, scene.ActorAnimation{ActionFamily: sprites.ActionPCReadyFight, Loop: true}, true) {
-		t.Fatal("ready fight should not override walking state")
-	}
-	if state.ActionFamily != scene.SpriteActionWalk || !state.Moving {
-		t.Fatalf("state = %+v, want still walking", state)
-	}
-
-	if !applyActorAnimationToSpriteState(&state, scene.ActorAnimation{ActionFamily: sprites.ActionPCDeath}, true) {
-		t.Fatal("death should override walking state")
-	}
-	if state.ActionFamily != sprites.ActionPCDeath || state.Moving {
-		t.Fatalf("death state = %+v", state)
-	}
-
-	nonPC := sprites.State{ActionFamily: scene.SpriteActionWalk, Moving: true, Loop: true}
-	if !applyActorAnimationToSpriteState(&nonPC, scene.ActorAnimation{ActionFamily: sprites.ActionNonPCDeath}, false) {
-		t.Fatal("non-pc death should override walking state")
-	}
-	if nonPC.ActionFamily != sprites.ActionNonPCDeath || nonPC.Moving {
-		t.Fatalf("non-pc death state = %+v", nonPC)
-	}
 }

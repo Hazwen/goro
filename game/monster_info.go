@@ -7,6 +7,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
@@ -91,7 +92,7 @@ func monsterInfoDisplayName(ctx client.Context, actor worldstate.Actor, matched 
 	}
 	if ctx.Resources != nil {
 		if resourceName, ok := ctx.Resources.NonPCResourceName(int(class)); ok {
-			if name := displayNameFromResource(resourceName); name != "" {
+			if name := actors.DisplayNameFromResource(resourceName); name != "" {
 				return name
 			}
 		}

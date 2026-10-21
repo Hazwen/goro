@@ -8,6 +8,7 @@ import (
 	"github.com/gogpu/ui/primitives"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
@@ -1095,22 +1096,22 @@ func TestApplyActorActionNotifySchedulesAttackAndHitAnimations(t *testing.T) {
 		Action:      0,
 	})
 
-	sourceAnim, ok := mode.actorAnims[150000]
+	sourceAnim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("local character animation missing")
 	}
 	if sourceAnim.ActionFamily != sprites.ActionPCAttack3 {
 		t.Fatalf("source action = %d, want %d", sourceAnim.ActionFamily, sprites.ActionPCAttack3)
 	}
-	earlyAnim, ok := mode.actorAnimation(150000, sourceAnim.Started.Add(sourceAnim.Duration-time.Millisecond))
+	earlyAnim, ok := mode.actors().ActorAnimation(150000, sourceAnim.Started.Add(sourceAnim.Duration-time.Millisecond))
 	if !ok || earlyAnim.ActionFamily != sprites.ActionPCAttack3 {
 		t.Fatalf("early source animation = %+v ok=%t, want attack until it finishes", earlyAnim, ok)
 	}
-	readyAnim, ok := mode.actorAnimation(150000, sourceAnim.Started.Add(sourceAnim.Duration))
+	readyAnim, ok := mode.actors().ActorAnimation(150000, sourceAnim.Started.Add(sourceAnim.Duration))
 	if !ok || readyAnim.ActionFamily != sprites.ActionPCReadyFight || !readyAnim.Loop {
 		t.Fatalf("post-attack animation = %+v ok=%t, want looping READYFIGHT after attack", readyAnim, ok)
 	}
-	targetAnim, ok := mode.actorAnims[300]
+	targetAnim, ok := mode.actorSystem.ActorAnims[300]
 	if !ok {
 		t.Fatal("target animation missing")
 	}
@@ -1120,7 +1121,7 @@ func TestApplyActorActionNotifySchedulesAttackAndHitAnimations(t *testing.T) {
 	if targetAnim.Started.Sub(sourceAnim.Started) != 580*time.Millisecond {
 		t.Fatalf("hit delay = %s, want 580ms", targetAnim.Started.Sub(sourceAnim.Started))
 	}
-	if world.Dir != directionFromDelta(10, 20, 11, 20, 4) {
+	if world.Dir != actors.DirectionFromDelta(10, 20, 11, 20, 4) {
 		t.Fatalf("player dir = %d", world.Dir)
 	}
 	if len(mode.damageFloaters) != 1 || !mode.damageFloaters[0].starts.Equal(targetAnim.Started) {
@@ -1139,7 +1140,7 @@ func TestApplyActorActionNotifySchedulesAttackAndHitAnimations(t *testing.T) {
 
 	applySelfMoveAck(ctx, network.SelfMoveAck{FromX: 10, FromY: 20, ToX: 12, ToY: 20})
 	mode.clearLocalActorAction(ctx)
-	if anim, ok := mode.actorAnimation(150000, time.Now()); ok {
+	if anim, ok := mode.actors().ActorAnimation(150000, time.Now()); ok {
 		t.Fatalf("post-move animation = %+v, want cleared", anim)
 	}
 }
@@ -1176,7 +1177,7 @@ func TestApplyActorActionNotifyAddsCriticalNormalHitEffect(t *testing.T) {
 		Action:      10,
 	})
 
-	targetAnim, ok := mode.actorAnims[300]
+	targetAnim, ok := mode.actorSystem.ActorAnims[300]
 	if !ok {
 		t.Fatal("target animation missing")
 	}
@@ -1233,7 +1234,7 @@ func TestApplyActorActionNotifyAddsBashHitEffect(t *testing.T) {
 	if effect.EffectID != effects.BashHit || effect.ActorID != 300 || effect.X != 11 || effect.Y != 20 {
 		t.Fatalf("effect = %+v", effect)
 	}
-	if delay := effect.Starts.Sub(mode.actorAnims[150000].Started); delay != 580*time.Millisecond {
+	if delay := effect.Starts.Sub(mode.actorSystem.ActorAnims[150000].Started); delay != 580*time.Millisecond {
 		t.Fatalf("effect delay = %s, want 580ms", delay)
 	}
 }
@@ -1274,7 +1275,7 @@ func TestApplyActorActionNotifyChainsPlayerHurtToReadyFight(t *testing.T) {
 		Action:      0,
 	})
 
-	hurtAnim, ok := mode.actorAnims[300]
+	hurtAnim, ok := mode.actorSystem.ActorAnims[300]
 	if !ok {
 		t.Fatal("target hurt animation missing")
 	}
@@ -1292,7 +1293,7 @@ func TestApplyActorActionNotifyChainsPlayerHurtToReadyFight(t *testing.T) {
 	if actor.X == 15 {
 		t.Fatalf("target stopped at destination, want interpolated hit position: %+v", actor)
 	}
-	readyAnim, ok := mode.actorAnimation(300, hurtAnim.Started.Add(hurtAnim.Duration))
+	readyAnim, ok := mode.actors().ActorAnimation(300, hurtAnim.Started.Add(hurtAnim.Duration))
 	if !ok || readyAnim.ActionFamily != sprites.ActionPCReadyFight || !readyAnim.Loop {
 		t.Fatalf("post-hurt animation = %+v ok=%t, want looping READYFIGHT", readyAnim, ok)
 	}
@@ -1336,7 +1337,7 @@ func TestApplyActorActionNotifyStopsLocalPlayerMovementOnHit(t *testing.T) {
 		Action:      0,
 	})
 
-	hurtAnim, ok := mode.actorAnims[150000]
+	hurtAnim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("local hurt animation missing")
 	}
@@ -1432,7 +1433,7 @@ func TestApplyActorActionNotifyResumesFocusedLocalWalkAfterHurt(t *testing.T) {
 		Action:      0,
 	})
 
-	hurtAnim, ok := mode.actorAnims[150000]
+	hurtAnim, ok := mode.actorSystem.ActorAnims[150000]
 	if !ok {
 		t.Fatal("local hurt animation missing")
 	}
@@ -1451,10 +1452,10 @@ func TestApplyActorActionNotifyResumesFocusedLocalWalkAfterHurt(t *testing.T) {
 		t.Fatalf("local player resumed target = %d,%d, want 15,20", world.Player.ToX, world.Player.ToY)
 	}
 	afterWalk := world.Player.MoveStarted.Add(world.Player.MoveDuration).Add(time.Millisecond)
-	if anim, ok := mode.actorAnimation(150000, afterWalk); ok {
+	if anim, ok := mode.actors().ActorAnimation(150000, afterWalk); ok {
 		t.Fatalf("local player animation after resumed walk = %+v, want idle/no stale READYFIGHT", anim)
 	}
-	if anim, ok := mode.actorAnimation(2000000, afterWalk); ok {
+	if anim, ok := mode.actors().ActorAnimation(2000000, afterWalk); ok {
 		t.Fatalf("local account animation after resumed walk = %+v, want idle/no stale READYFIGHT", anim)
 	}
 }
@@ -1462,14 +1463,14 @@ func TestApplyActorActionNotifyResumesFocusedLocalWalkAfterHurt(t *testing.T) {
 func TestMovingActorPacketClearsReadyFightAction(t *testing.T) {
 	world := worldstate.New()
 	world.UpsertActor(worldstate.Actor{ID: 300, X: 10, Y: 20, Job: 1, Speed: 150})
-	mode := &WorldMode{actorAnims: map[uint32]scene.ActorAnimation{
+	mode := &WorldMode{actorSystem: actors.System{ActorAnims: map[uint32]scene.ActorAnimation{
 		300: {
 			ActionFamily: sprites.ActionPCReadyFight,
 			Loop:         true,
 			Play:         true,
 			HasPlay:      true,
 		},
-	}}
+	}}}
 	ctx := client.Context{World: world}
 
 	mode.upsertNetworkActor(ctx, network.ActorEntry{
@@ -1486,7 +1487,7 @@ func TestMovingActorPacketClearsReadyFightAction(t *testing.T) {
 		Speed:      150,
 	})
 
-	if anim, ok := mode.actorAnims[300]; ok {
+	if anim, ok := mode.actorSystem.ActorAnims[300]; ok {
 		t.Fatalf("moving actor animation = %+v, want movement to replace stale READYFIGHT", anim)
 	}
 	if actor := world.Actors[300]; !actor.Moving || actor.FromX != 10 || actor.ToX != 15 {
@@ -1526,7 +1527,7 @@ func TestSetActorActionStopsMovingActor(t *testing.T) {
 
 func TestActorAnimationHonorsDelayedNextAction(t *testing.T) {
 	started := time.Now()
-	mode := &WorldMode{actorAnims: map[uint32]scene.ActorAnimation{
+	mode := &WorldMode{actorSystem: actors.System{ActorAnims: map[uint32]scene.ActorAnimation{
 		300: {
 			ActionFamily: sprites.ActionPCSkill,
 			Started:      started,
@@ -1539,12 +1540,12 @@ func TestActorAnimationHonorsDelayedNextAction(t *testing.T) {
 				HasPlay:      true,
 			},
 		},
-	}}
+	}}}
 
-	if anim, ok := mode.actorAnimation(300, started.Add(125*time.Millisecond)); ok {
+	if anim, ok := mode.actors().ActorAnimation(300, started.Add(125*time.Millisecond)); ok {
 		t.Fatalf("scene.ActorAnimation before delayed next = %+v, want inactive gap", anim)
 	}
-	anim, ok := mode.actorAnimation(300, started.Add(150*time.Millisecond))
+	anim, ok := mode.actors().ActorAnimation(300, started.Add(150*time.Millisecond))
 	if !ok || anim.ActionFamily != sprites.ActionPCReadyFight || !anim.Loop {
 		t.Fatalf("scene.ActorAnimation delayed next = %+v ok=%t, want ready fight loop", anim, ok)
 	}

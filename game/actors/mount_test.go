@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"testing"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
-	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/session"
@@ -40,7 +39,7 @@ func TestLocalPlayerVisualCharacterKeepsSessionJobUnchanged(t *testing.T) {
 		World:   worldstate.New(),
 	}
 
-	visual := localPlayerVisualCharacter(ctx)
+	visual := LocalPlayerVisualCharacter(ctx)
 	if visual.Job != db.JobKnight2 {
 		t.Fatalf("visual character job = %d, want mounted knight %d", visual.Job, db.JobKnight2)
 	}
@@ -52,7 +51,7 @@ func TestLocalPlayerVisualCharacterKeepsSessionJobUnchanged(t *testing.T) {
 func TestCharacterWithVisualJobUsesWeddingOptionWithoutMutatingBaseJob(t *testing.T) {
 	character := session.Character{ID: 200, Job: db.JobWizard, Option: db.EffectStateWedding}
 
-	visual := characterWithVisualJob(character)
+	visual := CharacterWithVisualJob(character)
 	if visual.Job != db.JobMarried {
 		t.Fatalf("visual character job = %d, want married job %d", visual.Job, db.JobMarried)
 	}
@@ -72,7 +71,7 @@ func TestAppendActorDrawEntryUsesMountedVisualJob(t *testing.T) {
 	}
 	projection := testutil.Projection(800, 600, 10.5, 20.5, 0)
 
-	entries := appendActorDrawEntry(nil, world, projection, actor, false, time.Now(), 800, 600)
+	entries := AppendActorDrawEntry(nil, world, projection, actor, false, time.Now(), 800, 600)
 	if len(entries) != 1 {
 		t.Fatalf("entries = %d, want 1", len(entries))
 	}
@@ -95,7 +94,7 @@ func TestAppendActorDrawEntryUsesWeddingVisualJob(t *testing.T) {
 	}
 	projection := testutil.Projection(800, 600, 10.5, 20.5, 0)
 
-	entries := appendActorDrawEntry(nil, world, projection, actor, false, time.Now(), 800, 600)
+	entries := AppendActorDrawEntry(nil, world, projection, actor, false, time.Now(), 800, 600)
 	if len(entries) != 1 {
 		t.Fatalf("entries = %d, want 1", len(entries))
 	}
@@ -126,41 +125,13 @@ func TestRemoteBabyDrawEntryUsesBabyScale(t *testing.T) {
 		Y:          20,
 		Appearance: true,
 	}
-	adult := appendActorDrawEntry(nil, world, projection, baseActor, false, time.Now(), 800, 600)
+	adult := AppendActorDrawEntry(nil, world, projection, baseActor, false, time.Now(), 800, 600)
 	baseActor.Job = db.JobNoviceB
-	baby := appendActorDrawEntry(nil, world, projection, baseActor, false, time.Now(), 800, 600)
+	baby := AppendActorDrawEntry(nil, world, projection, baseActor, false, time.Now(), 800, 600)
 	if len(adult) != 1 || len(baby) != 1 {
 		t.Fatalf("draw entries adult=%d baby=%d, want one each", len(adult), len(baby))
 	}
 	if got, want := baby[0].Scale, adult[0].Scale*scene.BabyPlayerBodyScale; got != want {
 		t.Fatalf("remote baby scale = %v, want %v", got, want)
-	}
-}
-
-func TestBodySizeEffectUsesAbsoluteScaleForBaby(t *testing.T) {
-	starts := time.Unix(10, 0)
-	mode := WorldMode{effectSystem: effects.System{Active: []effects.Instance{{
-		EffectID: effects.BabyBody,
-		ActorID:  42,
-		Starts:   starts,
-		Expires:  starts.Add(300 * time.Millisecond),
-		Duration: 300 * time.Millisecond,
-	}}}}
-	ctx := client.Context{}
-	actor := worldstate.Actor{ID: 42, Job: db.JobNoviceB}
-	baseScale := 10.0 * scene.BabyPlayerBodyScale
-
-	for _, tc := range []struct {
-		name string
-		at   time.Duration
-		want float64
-	}{
-		{"start", 0, 8},
-		{"middle", 150 * time.Millisecond, 6.5},
-		{"end", 300 * time.Millisecond, 5},
-	} {
-		if got := mode.playerRenderScale(ctx, actor, baseScale, starts.Add(tc.at)); got != tc.want {
-			t.Fatalf("baby effect scale at %s = %v, want %v", tc.name, got, tc.want)
-		}
 	}
 }

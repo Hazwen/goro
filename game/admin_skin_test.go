@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -20,17 +21,17 @@ func TestAdminSkinLookupUsesClientInfoAdminList(t *testing.T) {
 		World:   worldstate.New(),
 	}
 
-	if !localPlayerIsAdmin(ctx) {
+	if !actors.LocalPlayerIsAdmin(ctx) {
 		t.Fatal("local player account ID was not recognized as admin")
 	}
-	if !actorIsAdmin(ctx, 2000003) {
+	if !actors.ActorIsAdmin(ctx, 2000003) {
 		t.Fatal("remote admin ID was not recognized")
 	}
-	if actorIsAdmin(ctx, 2000004) {
+	if actors.ActorIsAdmin(ctx, 2000004) {
 		t.Fatal("non-admin actor was recognized as admin")
 	}
 
-	upsertNetworkActor(ctx, network.ActorEntry{ID: 2000003, Job: 0, Sex: 1, Appearance: true})
+	actors.UpsertNetworkActor(ctx, network.ActorEntry{ID: 2000003, Job: 0, Sex: 1, Appearance: true})
 	actor := ctx.World.Actors[2000003]
 	if !actor.IsAdmin {
 		t.Fatalf("network actor was not marked admin: %+v", actor)

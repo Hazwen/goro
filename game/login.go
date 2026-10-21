@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kivutar/goro/game/npc"
-
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/login"
+	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/game/sprites"
@@ -31,7 +31,7 @@ func (m *LoginMode) bindings() login.Bindings {
 			return applyLoginWorldPacket(ctx, pkt, &m.console)
 		},
 		EnterMap: func(ctx client.Context, enter network.MapAcceptEnter) {
-			applyMapAcceptEnter(ctx, enter)
+			actors.ApplyMapAcceptEnter(ctx, enter)
 			sendLessEffectPreference(ctx)
 		},
 		ChangeMap: applyLoginMapChange,
@@ -90,7 +90,7 @@ func (m *LoginMode) controlScriptUI(ctx client.Context, action string) bool {
 }
 
 func loginCharacterPreview(ctx client.Context, character session.Character, direction int) *scene.Billboard {
-	character = characterWithVisualJob(character)
+	character = actors.CharacterWithVisualJob(character)
 	view, status := sprites.LoadPlayer(ctx.Resources, character, ctx.Session.Sex, false)
 	if view == nil {
 		glog.Debugf("login sprite resources char_id=%d name=%s job=%d %s", character.ID, character.Name, character.Job, status)
@@ -205,7 +205,7 @@ func applyLoginWorldPacket(ctx client.Context, pkt network.Packet, console *game
 	if entry, ok, err := network.ParseActorEntry(pkt); err != nil {
 		return true, fmt.Errorf("parse actor entry: %w", err)
 	} else if ok {
-		upsertNetworkActor(ctx, entry)
+		actors.UpsertNetworkActor(ctx, entry)
 		return true, nil
 	}
 	return false, nil
@@ -239,7 +239,7 @@ func applyLoginActorBootstrapPacket(ctx client.Context, pkt network.Packet) (boo
 	if spheres, ok, err := network.ParseSpiritSphereCount(pkt); err != nil {
 		return true, fmt.Errorf("parse spirit spheres: %w", err)
 	} else if ok {
-		applySpiritSphereCount(ctx, spheres)
+		actors.ApplySpiritSphereCount(ctx, spheres)
 		return true, nil
 	}
 	if change, ok, err := network.ParseNPCSpriteChange(pkt); err != nil {
@@ -251,13 +251,13 @@ func applyLoginActorBootstrapPacket(ctx client.Context, pkt network.Packet) (boo
 	if look, ok, err := network.ParseActorLookChange(pkt); err != nil {
 		return true, fmt.Errorf("parse actor look change: %w", err)
 	} else if ok {
-		applyActorLookChange(ctx, look)
+		actors.ApplyActorLookChange(ctx, look)
 		return true, nil
 	}
 	if state, ok, err := network.ParseActorStateChange(pkt); err != nil {
 		return true, fmt.Errorf("parse actor state change: %w", err)
 	} else if ok {
-		applyActorStateSnapshot(ctx, state)
+		actors.ApplyActorStateSnapshot(ctx, state)
 		return true, nil
 	}
 	return false, nil
@@ -317,7 +317,7 @@ func applyLoginMapChange(ctx client.Context, change network.MapChange) {
 	ctx.World.ResetMapProperty()
 	ctx.World.MapName = change.MapName
 	ctx.Session.Zone.MapName = change.MapName
-	resetWorldForSelectedCharacterIfNeeded(ctx)
-	applyWarpPosition(ctx, change.X, change.Y)
+	actors.ResetWorldForSelectedCharacterIfNeeded(ctx)
+	actors.ApplyWarpPosition(ctx, change.X, change.Y)
 	ctx.Session.Playing = true
 }

@@ -1,18 +1,15 @@
 package game
 
 import (
-	"image/color"
 	"time"
 
 	"github.com/kivutar/goro/client"
-	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
-	worldstate "github.com/kivutar/goro/world"
 )
 
 func (m *WorldMode) effects() *effects.System {
@@ -54,16 +51,6 @@ func (m *WorldMode) EffectCameraYaw(ctx client.Context) float64 {
 
 func (m *WorldMode) EffectSpriteTexture(image *render.Image) *render.Image {
 	return m.spriteTexture(image)
-}
-
-func (m *WorldMode) starFusionHeight(actor worldstate.Actor, now time.Time) float64 {
-	active := false
-	job := scene.ActorVisualJob(actor)
-	if job == db.JobStar2 || job == db.JobStar2B {
-		anim, ok := m.actorAnimation(actor.ID, now)
-		active = ok && anim.ActionFamily != scene.SpriteActionIdle && anim.ActionFamily != scene.SpriteActionWalk
-	}
-	return m.effects().FusionHeight(actor, now, active)
 }
 
 func (m *WorldMode) spriteTexture(src *render.Image) *render.Image {
@@ -114,10 +101,4 @@ func (m *WorldMode) applyMVPNotify(ctx client.Context, notify network.MVPNotify)
 	if m.effects().Add(ctx, effects.Mvp, notify.AID) {
 		glog.Debugf("mvp effect actor=%d effect=%d", notify.AID, effects.Mvp)
 	}
-}
-
-// Body effects reuse the composed sprite, including its appearance and scale.
-// They never mutate the cached image or the actor's authoritative position.
-func (m *WorldMode) drawActorSpriteWithEffects3D(ctx client.Context, screen *render.Frame, projection scene.Projection, entry scene.ActorDrawEntry, billboard *scene.Billboard, scale, visibility, shadow float64, tint color.RGBA, blend render.Blend, now time.Time) {
-	m.effects().DrawActor(ctx, screen, projection, entry, billboard, scale, visibility, shadow, tint, blend, now, m.starFusionHeight(entry.Actor, now))
 }

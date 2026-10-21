@@ -1,81 +1,24 @@
-package game
+package actors
 
 import (
-	"fmt"
 	"image/color"
 	"math"
 	"time"
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
-	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
-	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
-	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
 )
 
-func (m *WorldMode) applyActorStateChange(ctx client.Context, change network.ActorStateChange) {
-	oldVisualJob := localPlayerVisualJob(ctx)
-	oldState, local, ok := applyActorStateSnapshot(ctx, change)
-	if !ok {
-		return
-	}
-	m.applyActorEffectStateEffects(ctx, change.ID, oldState, change.EffectState)
-	m.syncActorSpiritEffects(ctx, change.ID)
-	if (oldState^change.EffectState)&db.EffectStateHide != 0 {
-		m.effects().Add(ctx, effects.SummonSlave, change.ID)
-		actor, _, _ := scene.ActorForCombatID(ctx, change.ID)
-		if change.EffectState&db.EffectStateHide != 0 && actor.Job != db.JobNinja {
-			m.effects().Add(ctx, effects.BashBegin, change.ID)
-		}
-	}
-	if change.EffectState&scene.ActorStealthMask != 0 {
-		m.effects().RemoveLevel99AuraEffects(change.ID)
-		delete(m.speechBubbles, change.ID)
-		if local {
-			m.effects().RemoveLevel99AuraEffects(scene.LocalSkillTarget(ctx))
-			delete(m.speechBubbles, scene.LocalSkillTarget(ctx))
-		}
-	}
-	if local {
-		if !skills.LocalStealthAllowsSkill(ctx, 0) {
-			m.cancelAttackIntent()
-		}
-		if ctx.PlayerHasEffectState(db.EffectStateHide) {
-			m.pendingPickup = pickupIntent{}
-		}
-		if !skills.LocalStealthAllowsSkill(ctx, m.skillSystem.Pending.Skill.ID) {
-			m.skillSystem.Pending = skills.PendingTarget{}
-		}
-		if newVisualJob := localPlayerVisualJob(ctx); newVisualJob != oldVisualJob {
-			m.reloadPlayerSpriteView(ctx, fmt.Sprintf("state effect=0x%08X", change.EffectState))
-		}
-		glog.Debugf("actor state local id=%d body=%d health=0x%04X effect=0x%08X", change.ID, change.BodyState, change.HealthState, change.EffectState)
-		return
-	}
-	if change.EffectState&scene.ActorStealthMask != 0 {
-		if m.pendingAttack.targetID == change.ID || m.lockedAttackID == change.ID {
-			m.cancelAttackIntent()
-		}
-		if m.skillSystem.Pending.TargetID == change.ID {
-			m.skillSystem.Pending = skills.PendingTarget{}
-		}
-		if m.attackFocusID == change.ID {
-			m.clearAttackFocus()
-		}
-	}
-	glog.Debugf("actor state id=%d body=%d health=0x%04X effect=0x%08X", change.ID, change.BodyState, change.HealthState, change.EffectState)
-}
-
 // applyActorStateSnapshot updates state shared by the login and world modes.
 // Rendering transitions remain the responsibility of WorldMode.
-func applyActorStateSnapshot(ctx client.Context, change network.ActorStateChange) (oldState uint32, local, ok bool) {
+func ApplyActorStateSnapshot(ctx client.Context, change network.ActorStateChange) (oldState uint32, local, ok bool) {
 	if change.ID == 0 || ctx.World == nil {
 		return 0, false, false
 	}
@@ -91,75 +34,8 @@ func applyActorStateSnapshot(ctx client.Context, change network.ActorStateChange
 	}
 	oldState = actor.EffectState
 	setActorRenderState(&actor, change.BodyState, change.HealthState, change.EffectState)
-	upsertActor(ctx, actor)
+	UpsertActor(ctx, actor)
 	return oldState, false, true
-}
-
-func (m *WorldMode) applyActorBladeStop(ctx client.Context, blade network.ActorBladeStop) {
-	if blade.SourceID == 0 || blade.TargetID == 0 || ctx.World == nil {
-		return
-	}
-	m.applyActorBladeStopSide(ctx, blade.SourceID, blade.TargetID, blade.Active, true)
-	m.applyActorBladeStopSide(ctx, blade.TargetID, blade.SourceID, blade.Active, false)
-	glog.Debugf("actor blade stop src=%d target=%d active=%t", blade.SourceID, blade.TargetID, blade.Active)
-}
-
-func (m *WorldMode) applyActorBladeStopSide(ctx client.Context, actorID, lookID uint32, active, caster bool) {
-	actor, ok, local := scene.ActorForCombatID(ctx, actorID)
-	if !ok {
-		return
-	}
-	now := time.Now()
-	anim := scene.ActorAnimation{ActionFamily: scene.SpriteActionIdle, Started: now, Play: true, HasPlay: true}
-	if active {
-		// Freeze the victim's current frame, before stopping movement or turning.
-		state := m.nonPCSpriteState(actor, now)
-		if actor.Sitting {
-			state.ActionFamily = scene.SpriteActionSit
-		}
-		started := now
-		if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || companion.IsMercenary(actor) {
-			state.LoopIdle = false
-			state.HeadTurn, state.HeadDir = true, actor.HeadDir
-			if view := m.humanoidSpriteViewForActor(ctx, actor); view != nil {
-				started = view.Started
-			}
-		} else if view := m.nonPCSpriteView(ctx, actor); view != nil {
-			started = view.Started
-		}
-		anim.ActionFamily = state.ActionFamily
-		anim.FixedMotion = state.FixedMotion
-		renderActor := actor
-		renderActor.Dir = sprites.DirectionForCamera(actor.Dir, scene.CameraYawForMap(ctx))
-		if action, ok := m.actorResolvedAction(ctx, renderActor, state.ActionFamily); ok {
-			anim.FixedMotion = sprites.BodyMotionForState(action, state, started, now)
-		}
-		if caster && res.HasPlayerJobToken(scene.ActorVisualJob(actor)) {
-			anim.ActionFamily = sprites.ActionPCSkill
-			anim.FixedMotion = 4
-		}
-		anim.Play = false
-		anim.HasFixedMotion = true
-		anim.HoldFinal = true
-		actor.Opt3State |= db.Opt3Bladestop
-	} else {
-		actor.Opt3State &^= db.Opt3Bladestop
-	}
-	target, targetOK, _ := scene.ActorForCombatID(ctx, lookID)
-	if targetOK {
-		actor.Dir = directionFromDelta(actor.X, actor.Y, target.X, target.Y, actor.Dir)
-	}
-	if local {
-		ctx.World.Player.Opt3State = actor.Opt3State
-		ctx.World.Player.Dir = actor.Dir
-		ctx.World.Dir = actor.Dir
-	} else {
-		ctx.World.Actors[actor.ID] = actor
-	}
-	if active {
-		m.stopActorMovementAt(ctx, actorID, now)
-	}
-	m.setCombatActorAction(ctx, actorID, anim)
 }
 
 func setActorRenderState(actor *worldstate.Actor, bodyState, healthState uint16, effectState uint32) {
@@ -190,7 +66,7 @@ func applyActorBodyState(actor worldstate.Actor, state *sprites.State) {
 	}
 }
 
-func actorStateTint(actor worldstate.Actor) color.RGBA {
+func ActorStateTint(actor worldstate.Actor) color.RGBA {
 	r, g, b, a := 1.0, 1.0, 1.0, 1.0
 	switch actor.BodyState {
 	case db.BodyStateStone:
@@ -247,27 +123,27 @@ func actorOpt3StateTint(opt3State uint32) (float64, float64, float64, float64) {
 	return r, g, b, a
 }
 
-func (m *WorldMode) actorRenderTint(actor worldstate.Actor, now time.Time) color.RGBA {
-	return m.actorBodyColorTint(actor.ID, actorStateTint(actor), now)
+func (m *System) actorRenderTint(actor worldstate.Actor, now time.Time) color.RGBA {
+	return m.ActorBodyColorTint(actor.ID, ActorStateTint(actor), now)
 }
 
-func (m *WorldMode) playerRenderTint(ctx client.Context, actor worldstate.Actor, now time.Time) color.RGBA {
+func (m *System) playerRenderTint(ctx client.Context, actor worldstate.Actor, now time.Time) color.RGBA {
 	tint := m.actorRenderTint(actor, now)
 	if ctx.Session == nil {
 		return tint
 	}
 	if ctx.Session.AccountID != actor.ID {
-		tint = m.actorBodyColorTint(ctx.Session.AccountID, tint, now)
+		tint = m.ActorBodyColorTint(ctx.Session.AccountID, tint, now)
 	}
 	if ctx.Session.CharID != actor.ID && ctx.Session.CharID != ctx.Session.AccountID {
-		tint = m.actorBodyColorTint(ctx.Session.CharID, tint, now)
+		tint = m.ActorBodyColorTint(ctx.Session.CharID, tint, now)
 	}
 	return tint
 }
 
-func (m *WorldMode) actorRenderBlend(actorID uint32, now time.Time) render.Blend {
+func (m *System) ActorRenderBlend(actorID uint32, now time.Time) render.Blend {
 	if actorID != 0 {
-		for _, effect := range m.effects().Active {
+		for _, effect := range m.bindings.Effects.Active {
 			if effect.ActorID != actorID || now.Before(effect.Starts) || effect.Expired(now) {
 				continue
 			}
@@ -280,23 +156,23 @@ func (m *WorldMode) actorRenderBlend(actorID uint32, now time.Time) render.Blend
 	return render.BlendSourceOver
 }
 
-func (m *WorldMode) playerRenderBlend(ctx client.Context, actor worldstate.Actor, now time.Time) render.Blend {
+func (m *System) playerRenderBlend(ctx client.Context, actor worldstate.Actor, now time.Time) render.Blend {
 	if ctx.Session != nil {
 		for _, id := range []uint32{ctx.Session.AccountID, ctx.Session.CharID} {
-			if blend := m.actorRenderBlend(id, now); blend != render.BlendSourceOver {
+			if blend := m.ActorRenderBlend(id, now); blend != render.BlendSourceOver {
 				return blend
 			}
 		}
 	}
-	return m.actorRenderBlend(actor.ID, now)
+	return m.ActorRenderBlend(actor.ID, now)
 }
 
-func (m *WorldMode) actorBodyColorTint(actorID uint32, tint color.RGBA, now time.Time) color.RGBA {
+func (m *System) ActorBodyColorTint(actorID uint32, tint color.RGBA, now time.Time) color.RGBA {
 	if actorID == 0 {
 		return tint
 	}
 	base := tint
-	for _, effect := range m.effects().Active {
+	for _, effect := range m.bindings.Effects.Active {
 		if effect.ActorID != actorID || now.Before(effect.Starts) || effect.Expired(now) {
 			continue
 		}
@@ -369,11 +245,11 @@ func mixTintChannel(from, to uint8, alpha float64) uint8 {
 	return uint8(scene.ClampFloat(value, 0, 255))
 }
 
-func (m *WorldMode) actorRenderScale(actorID uint32, baseScale float64, now time.Time) float64 {
-	return baseScale * m.actorBodySizeMultiplier(actorID, now)
+func (m *System) actorRenderScale(actorID uint32, baseScale float64, now time.Time) float64 {
+	return baseScale * m.ActorBodySizeMultiplier(actorID, now)
 }
 
-func (m *WorldMode) playerRenderScale(ctx client.Context, actor worldstate.Actor, baseScale float64, now time.Time) float64 {
+func (m *System) PlayerRenderScale(ctx client.Context, actor worldstate.Actor, baseScale float64, now time.Time) float64 {
 	if scale := m.playerBodyRenderScale(actor.ID, actor.Job, baseScale, now); scale != baseScale {
 		return scale
 	}
@@ -393,7 +269,7 @@ func (m *WorldMode) playerRenderScale(ctx client.Context, actor worldstate.Actor
 	return baseScale
 }
 
-func (m *WorldMode) playerBodyRenderScale(actorID uint32, job int16, baseScale float64, now time.Time) float64 {
+func (m *System) playerBodyRenderScale(actorID uint32, job int16, baseScale float64, now time.Time) float64 {
 	bodyScale := playerBodyScaleForJob(job)
 	multiplier := m.actorBodySizeMultiplierFrom(actorID, now, bodyScale)
 	if multiplier == bodyScale {
@@ -402,17 +278,17 @@ func (m *WorldMode) playerBodyRenderScale(actorID uint32, job int16, baseScale f
 	return baseScale / bodyScale * multiplier
 }
 
-func (m *WorldMode) actorBodySizeMultiplier(actorID uint32, now time.Time) float64 {
+func (m *System) ActorBodySizeMultiplier(actorID uint32, now time.Time) float64 {
 	return m.actorBodySizeMultiplierFrom(actorID, now, 1)
 }
 
-func (m *WorldMode) actorBodySizeMultiplierFrom(actorID uint32, now time.Time, baseMultiplier float64) float64 {
+func (m *System) actorBodySizeMultiplierFrom(actorID uint32, now time.Time, baseMultiplier float64) float64 {
 	if actorID == 0 {
 		return baseMultiplier
 	}
 	multiplier := baseMultiplier
 	var latest time.Time
-	for _, effect := range m.effects().Active {
+	for _, effect := range m.bindings.Effects.Active {
 		if effect.ActorID != actorID || now.Before(effect.Starts) || effect.Expired(now) {
 			continue
 		}

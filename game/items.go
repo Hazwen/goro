@@ -10,6 +10,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
@@ -273,7 +274,7 @@ func (m *WorldMode) facePlayerTowardItem(ctx client.Context, item worldstate.Flo
 		return
 	}
 	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
-	dir := directionFromDelta(playerX, playerY, item.X, item.Y, ctx.World.Dir)
+	dir := actors.DirectionFromDelta(playerX, playerY, item.X, item.Y, ctx.World.Dir)
 	ctx.World.Player.Dir = dir
 	ctx.World.Dir = dir
 	if ctx.Session != nil {
@@ -349,7 +350,7 @@ func (m *WorldMode) collectSceneItemEntries(screen *render.Frame, ctx client.Con
 			worldZ:      z,
 			groundZ:     groundZ,
 			scale:       scale,
-			shadow:      actorShadowFactor(ctx.World, x, y),
+			shadow:      actors.ActorShadowFactor(ctx.World, x, y),
 			shadowScale: shadowScale,
 			shadowDepth: projection.Depth(worldX, worldY, groundZ+scene.ActorShadowTerrainLift),
 			// Sort by the billboard's upper extent, as actors are. Sorting only
@@ -372,10 +373,10 @@ func groundItemBillboardSortDepth(projection scene.Projection, x, y, z float64) 
 }
 
 func (m *WorldMode) drawGroundItemShadowEntry3D(screen *render.Frame, projection scene.Projection, entry sceneItemDrawEntry) bool {
-	if m.shadowView == nil || m.shadowViewMiss || entry.shadowScale <= 0 {
+	if m.actorSystem.ShadowView == nil || m.actorSystem.ShadowViewMiss || entry.shadowScale <= 0 {
 		return false
 	}
-	billboard, ok := sprites.FixedBillboard(m.shadowView)
+	billboard, ok := sprites.FixedBillboard(m.actorSystem.ShadowView)
 	if !ok {
 		return false
 	}
@@ -405,7 +406,7 @@ func groundItemShadowBillboard(billboard *scene.Billboard) *scene.Billboard {
 
 func (m *WorldMode) drawGroundItemEntry3D(screen *render.Frame, projection scene.Projection, entry sceneItemDrawEntry) {
 	if entry.billboard != nil {
-		m.drawSpriteBillboardAlpha3D(screen, projection, entry.billboard, entry.worldX, entry.worldY, entry.worldZ, entry.scale, 1, 1)
+		m.actors().DrawSpriteBillboardAlpha3D(screen, projection, entry.billboard, entry.worldX, entry.worldY, entry.worldZ, entry.scale, 1, 1)
 		return
 	}
 	m.drawFallbackGroundItemMarker(screen, entry)
@@ -453,7 +454,7 @@ func clickedGroundItem(ctx client.Context, projection scene.Projection, mouseX, 
 }
 
 func pointInGroundItemPickBounds(mouseX, mouseY, centerX, centerY, scale float64) bool {
-	scale = normalizePickScale(scale)
+	scale = actors.NormalizePickScale(scale)
 	left := centerX - 18*scale
 	right := centerX + 18*scale
 	top := centerY - 30*scale
@@ -462,7 +463,7 @@ func pointInGroundItemPickBounds(mouseX, mouseY, centerX, centerY, scale float64
 }
 
 func groundItemPickBoundsCenter(centerX, centerY, scale float64) (float64, float64) {
-	scale = normalizePickScale(scale)
+	scale = actors.NormalizePickScale(scale)
 	top := centerY - 30*scale
 	bottom := centerY + 10*scale
 	return centerX, (top + bottom) / 2

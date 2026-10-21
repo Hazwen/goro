@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"image/color"
@@ -16,33 +16,33 @@ import (
 )
 
 const (
-	actorPersistentEffectOptionMask = actorEffectCartMask | db.EffectStateFalcon | db.EffectStateWedding
+	actorPersistentEffectOptionMask = ActorEffectCartMask | db.EffectStateFalcon | db.EffectStateWedding
 	falconGlideHeight               = 5.0
 	falconFollowRange               = 2
 	falconStopRange                 = 1
-	falconRetargetInterval          = time.Second
-	falconAttackMoveSpeedMS         = 35
-	falconAttackReturnDelay         = 432 * time.Millisecond
+	FalconRetargetInterval          = time.Second
+	FalconAttackMoveSpeedMS         = 35
+	FalconAttackReturnDelay         = 432 * time.Millisecond
 	falconAttackOvershoot           = 5
 )
 
-type falconRenderState struct {
-	x            float64
-	y            float64
-	direction    int
-	path         []worldstate.WalkStep
-	moveStarted  time.Time
-	moveDuration time.Duration
-	moveSpeedMS  int
-	moveStartX   float64
-	moveStartY   float64
-	moving       bool
-	hasTarget    bool
-	targetX      int
-	targetY      int
-	lastWalkTick time.Time
-	attacking    bool
-	returnAt     time.Time
+type FalconRenderState struct {
+	X            float64
+	Y            float64
+	Direction    int
+	Path         []worldstate.WalkStep
+	MoveStarted  time.Time
+	MoveDuration time.Duration
+	MoveSpeedMS  int
+	MoveStartX   float64
+	MoveStartY   float64
+	Moving       bool
+	HasTarget    bool
+	TargetX      int
+	TargetY      int
+	LastWalkTick time.Time
+	Attacking    bool
+	ReturnAt     time.Time
 }
 
 func actorHasFalcon(actor worldstate.Actor) bool {
@@ -87,7 +87,7 @@ func falconSkillAttacksGround(skillID uint16) bool {
 	return skillID == db.SkillHTDetecting
 }
 
-func (m *WorldMode) applyFalconStatus(ctx client.Context, change network.StatusEffectChange) {
+func (m *System) ApplyFalconStatus(ctx client.Context, change network.StatusEffectChange) {
 	if change.StatusID != db.StatusFalcon || ctx.World == nil {
 		return
 	}
@@ -118,14 +118,14 @@ func (m *WorldMode) applyFalconStatus(ctx client.Context, change network.StatusE
 		glog.Debugf("actor falcon status local actor=%d active=%t", id, change.Active)
 		return
 	}
-	upsertActor(ctx, actor)
+	UpsertActor(ctx, actor)
 	if !change.Active {
 		m.removeFalconState(id)
 	}
 	glog.Debugf("actor falcon status actor=%d active=%t", id, change.Active)
 }
 
-func (m *WorldMode) applyFalconSkillNoDamageNotify(ctx client.Context, notify network.SkillNoDamageNotify, now time.Time) {
+func (m *System) ApplyFalconSkillNoDamageNotify(ctx client.Context, notify network.SkillNoDamageNotify, now time.Time) {
 	if !falconSkillAttacksTarget(notify.SkillID) {
 		return
 	}
@@ -134,10 +134,10 @@ func (m *WorldMode) applyFalconSkillNoDamageNotify(ctx client.Context, notify ne
 		return
 	}
 	targetX, targetY := scene.ActorRenderPosition(target, now)
-	m.startFalconAttackAt(ctx, notify.SourceID, int(targetX), int(targetY), now)
+	m.StartFalconAttackAt(ctx, notify.SourceID, int(targetX), int(targetY), now)
 }
 
-func (m *WorldMode) applyFalconActorActionNotify(ctx client.Context, action network.ActorActionNotify, now time.Time) {
+func (m *System) ApplyFalconActorActionNotify(ctx client.Context, action network.ActorActionNotify, now time.Time) {
 	if !falconSkillAttacksTarget(action.SkillID) {
 		return
 	}
@@ -146,17 +146,17 @@ func (m *WorldMode) applyFalconActorActionNotify(ctx client.Context, action netw
 		return
 	}
 	targetX, targetY := scene.ActorRenderPosition(target, now)
-	m.startFalconAttackAt(ctx, action.SourceID, int(targetX), int(targetY), now)
+	m.StartFalconAttackAt(ctx, action.SourceID, int(targetX), int(targetY), now)
 }
 
-func (m *WorldMode) applyFalconGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify, now time.Time) {
+func (m *System) ApplyFalconGroundSkillNotify(ctx client.Context, notify network.GroundSkillNotify, now time.Time) {
 	if !falconSkillAttacksGround(notify.SkillID) {
 		return
 	}
-	m.startFalconAttackAt(ctx, notify.SourceID, int(notify.X), int(notify.Y), now)
+	m.StartFalconAttackAt(ctx, notify.SourceID, int(notify.X), int(notify.Y), now)
 }
 
-func (m *WorldMode) startFalconAttackAt(ctx client.Context, sourceID uint32, targetX, targetY int, now time.Time) bool {
+func (m *System) StartFalconAttackAt(ctx client.Context, sourceID uint32, targetX, targetY int, now time.Time) bool {
 	source, ok, local := scene.ActorForCombatID(ctx, sourceID)
 	if !ok {
 		return false
@@ -168,11 +168,11 @@ func (m *WorldMode) startFalconAttackAt(ctx client.Context, sourceID uint32, tar
 	if source.ID == 0 || !actorHasFalcon(source) {
 		return false
 	}
-	falcon := m.updateFalconState(source, now)
+	falcon := m.UpdateFalconState(source, now)
 	if falcon == nil {
 		return false
 	}
-	falcon.startAttack(targetX, targetY, now)
+	falcon.StartAttack(targetX, targetY, now)
 	return true
 }
 
@@ -226,43 +226,43 @@ func setSelectedCharacterOptionBit(ctx client.Context, bit uint32, active bool) 
 	}
 }
 
-func (m *WorldMode) removeFalconState(ownerID uint32) {
-	if m.falcons == nil || ownerID == 0 {
+func (m *System) removeFalconState(ownerID uint32) {
+	if m.Falcons == nil || ownerID == 0 {
 		return
 	}
-	delete(m.falcons, ownerID)
+	delete(m.Falcons, ownerID)
 }
 
-func (m *WorldMode) falconSpriteView(ctx client.Context, job int) *scene.SpriteView {
+func (m *System) falconSpriteView(ctx client.Context, job int) *scene.SpriteView {
 	if ctx.Resources == nil {
 		return nil
 	}
-	if m.falconViews == nil {
-		m.falconViews = make(map[int]*scene.SpriteView)
+	if m.FalconViews == nil {
+		m.FalconViews = make(map[int]*scene.SpriteView)
 	}
-	if m.falconViewMiss == nil {
-		m.falconViewMiss = make(map[int]struct{})
+	if m.FalconViewMiss == nil {
+		m.FalconViewMiss = make(map[int]struct{})
 	}
-	if view, ok := m.falconViews[job]; ok {
+	if view, ok := m.FalconViews[job]; ok {
 		return view
 	}
-	if _, miss := m.falconViewMiss[job]; miss {
+	if _, miss := m.FalconViewMiss[job]; miss {
 		return nil
 	}
 	view, status := sprites.LoadFalcon(ctx.Resources, job)
 	if view == nil {
-		m.falconViewMiss[job] = struct{}{}
+		m.FalconViewMiss[job] = struct{}{}
 		glog.Warnf("falcon sprite unavailable job=%d: %s", job, status)
 		return nil
 	}
-	m.falconViews[job] = view
+	m.FalconViews[job] = view
 	if status != "" {
 		glog.Debugf("falcon sprite resources job=%d %s", job, status)
 	}
 	return view
 }
 
-func (m *WorldMode) drawSceneActorFalcons(screen *render.Frame, ctx client.Context, projection scene.Projection, entries []scene.ActorDrawEntry) {
+func (m *System) DrawSceneActorFalcons(screen *render.Frame, ctx client.Context, projection scene.Projection, entries []scene.ActorDrawEntry) {
 	if len(entries) == 0 {
 		m.pruneFalconStates(nil)
 		return
@@ -280,19 +280,19 @@ func (m *WorldMode) drawSceneActorFalcons(screen *render.Frame, ctx client.Conte
 	m.pruneFalconStates(activeOwners)
 }
 
-func (m *WorldMode) pruneFalconStates(activeOwners map[uint32]struct{}) {
-	if m.falcons == nil {
+func (m *System) pruneFalconStates(activeOwners map[uint32]struct{}) {
+	if m.Falcons == nil {
 		return
 	}
-	for ownerID := range m.falcons {
+	for ownerID := range m.Falcons {
 		if _, ok := activeOwners[ownerID]; ok {
 			continue
 		}
-		delete(m.falcons, ownerID)
+		delete(m.Falcons, ownerID)
 	}
 }
 
-func (m *WorldMode) drawActorFalcon3D(screen *render.Frame, ctx client.Context, projection scene.Projection, actor worldstate.Actor, cameraYaw float64, alpha float64, now time.Time) bool {
+func (m *System) drawActorFalcon3D(screen *render.Frame, ctx client.Context, projection scene.Projection, actor worldstate.Actor, cameraYaw float64, alpha float64, now time.Time) bool {
 	if ctx.World == nil || !actorHasFalcon(actor) {
 		return false
 	}
@@ -300,7 +300,7 @@ func (m *WorldMode) drawActorFalcon3D(screen *render.Frame, ctx client.Context, 
 	if view == nil {
 		return false
 	}
-	falcon := m.updateFalconState(actor, now)
+	falcon := m.UpdateFalconState(actor, now)
 	if falcon == nil {
 		return false
 	}
@@ -309,141 +309,141 @@ func (m *WorldMode) drawActorFalcon3D(screen *render.Frame, ctx client.Context, 
 	if !ok {
 		return false
 	}
-	terrainZ := scene.TerrainHeightAt(ctx.World, falcon.x, falcon.y)
-	worldX, worldY := cellWorldAnchor(falcon.x, falcon.y)
+	terrainZ := scene.TerrainHeightAt(ctx.World, falcon.X, falcon.Y)
+	worldX, worldY := cellWorldAnchor(falcon.X, falcon.Y)
 	worldZ := terrainZ + falconGlideHeight
 	scale := scene.ActorBillboardScreenScale(projection, worldX, worldY, worldZ)
-	shadow := actorShadowFactor(ctx.World, falcon.x, falcon.y)
-	m.drawActorSpriteBillboardTintAlpha3D(screen, projection, billboard, worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, render.BlendSourceOver)
+	shadow := ActorShadowFactor(ctx.World, falcon.X, falcon.Y)
+	m.DrawActorSpriteBillboardTintAlpha3D(screen, projection, billboard, worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, render.BlendSourceOver)
 	return true
 }
 
-func (m *WorldMode) updateFalconState(actor worldstate.Actor, now time.Time) *falconRenderState {
+func (m *System) UpdateFalconState(actor worldstate.Actor, now time.Time) *FalconRenderState {
 	if actor.ID == 0 {
 		return nil
 	}
-	if m.falcons == nil {
-		m.falcons = make(map[uint32]*falconRenderState)
+	if m.Falcons == nil {
+		m.Falcons = make(map[uint32]*FalconRenderState)
 	}
 	ownerX, ownerY := scene.ActorRenderPosition(actor, now)
-	state := m.falcons[actor.ID]
+	state := m.Falcons[actor.ID]
 	if state == nil {
 		targetX, targetY := falconFollowTargetCell(ownerX, ownerY)
-		state = &falconRenderState{
-			x:           ownerX,
-			y:           ownerY,
-			direction:   actor.Dir,
-			moveSpeedMS: falconMoveSpeedMS(actor.Speed),
-			hasTarget:   true,
-			targetX:     targetX,
-			targetY:     targetY,
+		state = &FalconRenderState{
+			X:           ownerX,
+			Y:           ownerY,
+			Direction:   actor.Dir,
+			MoveSpeedMS: falconMoveSpeedMS(actor.Speed),
+			HasTarget:   true,
+			TargetX:     targetX,
+			TargetY:     targetY,
 		}
-		m.falcons[actor.ID] = state
+		m.Falcons[actor.ID] = state
 		return state
 	}
-	state.advance(now)
-	if state.attacking {
-		if !state.returnAt.IsZero() && !now.Before(state.returnAt) {
-			state.attacking = false
-			if state.hasTarget {
-				state.startPathTo(state.targetX, state.targetY, 0, now)
+	state.Advance(now)
+	if state.Attacking {
+		if !state.ReturnAt.IsZero() && !now.Before(state.ReturnAt) {
+			state.Attacking = false
+			if state.HasTarget {
+				state.startPathTo(state.TargetX, state.TargetY, 0, now)
 			}
 		}
 		return state
 	}
-	if falconFollowDistance(ownerX, ownerY, state.x, state.y) < falconFollowRange {
+	if falconFollowDistance(ownerX, ownerY, state.X, state.Y) < falconFollowRange {
 		return state
 	}
 	targetX, targetY := falconFollowTargetCell(ownerX, ownerY)
-	targetChanged := !state.hasTarget || state.targetX != targetX || state.targetY != targetY
+	targetChanged := !state.HasTarget || state.TargetX != targetX || state.TargetY != targetY
 	if !targetChanged {
 		return state
 	}
-	if !state.lastWalkTick.IsZero() && state.lastWalkTick.Add(falconRetargetInterval).After(now) {
+	if !state.LastWalkTick.IsZero() && state.LastWalkTick.Add(FalconRetargetInterval).After(now) {
 		return state
 	}
-	state.moveSpeedMS = falconMoveSpeedMS(actor.Speed)
+	state.MoveSpeedMS = falconMoveSpeedMS(actor.Speed)
 	state.startFollow(targetX, targetY, now)
 	return state
 }
 
-func (state *falconRenderState) advance(now time.Time) {
-	if state == nil || !state.moving || len(state.path) < 2 {
+func (state *FalconRenderState) Advance(now time.Time) {
+	if state == nil || !state.Moving || len(state.Path) < 2 {
 		return
 	}
-	elapsed := now.Sub(state.moveStarted)
-	if state.moveDuration <= 0 || elapsed >= state.moveDuration {
-		last := state.path[len(state.path)-1]
-		state.x = float64(last.X)
-		state.y = float64(last.Y)
-		state.moving = false
-		state.path = nil
+	elapsed := now.Sub(state.MoveStarted)
+	if state.MoveDuration <= 0 || elapsed >= state.MoveDuration {
+		last := state.Path[len(state.Path)-1]
+		state.X = float64(last.X)
+		state.Y = float64(last.Y)
+		state.Moving = false
+		state.Path = nil
 		return
 	}
-	state.x, state.y = scene.RenderPathPositionWithSpeed(state.path, elapsed, state.moveSpeedMS, state.moveStartX, state.moveStartY, true)
-	fromX, fromY, toX, toY := scene.RenderPathSegmentWithSpeed(state.path, elapsed, state.moveSpeedMS, state.moveStartX, state.moveStartY, true)
-	state.direction = scene.DirectionFromFloatDelta(fromX, fromY, toX, toY, state.direction)
+	state.X, state.Y = scene.RenderPathPositionWithSpeed(state.Path, elapsed, state.MoveSpeedMS, state.MoveStartX, state.MoveStartY, true)
+	fromX, fromY, toX, toY := scene.RenderPathSegmentWithSpeed(state.Path, elapsed, state.MoveSpeedMS, state.MoveStartX, state.MoveStartY, true)
+	state.Direction = scene.DirectionFromFloatDelta(fromX, fromY, toX, toY, state.Direction)
 }
 
-func (state *falconRenderState) startFollow(targetX, targetY int, now time.Time) {
+func (state *FalconRenderState) startFollow(targetX, targetY int, now time.Time) {
 	if state == nil {
 		return
 	}
-	state.hasTarget = true
-	state.targetX = targetX
-	state.targetY = targetY
-	state.lastWalkTick = now
+	state.HasTarget = true
+	state.TargetX = targetX
+	state.TargetY = targetY
+	state.LastWalkTick = now
 	state.startPathTo(targetX, targetY, falconStopRange, now)
 }
 
-func (state *falconRenderState) startAttack(targetX, targetY int, now time.Time) {
+func (state *FalconRenderState) StartAttack(targetX, targetY int, now time.Time) {
 	if state == nil {
 		return
 	}
-	state.advance(now)
-	overX, overY := falconOvershootTarget(state.x, state.y, targetX, targetY)
-	state.attacking = true
-	state.returnAt = now.Add(falconAttackReturnDelay)
-	state.moveSpeedMS = falconAttackMoveSpeedMS
+	state.Advance(now)
+	overX, overY := falconOvershootTarget(state.X, state.Y, targetX, targetY)
+	state.Attacking = true
+	state.ReturnAt = now.Add(FalconAttackReturnDelay)
+	state.MoveSpeedMS = FalconAttackMoveSpeedMS
 	state.startPathTo(overX, overY, 0, now)
 }
 
-func (state *falconRenderState) startPathTo(targetX, targetY int, stopRange int, now time.Time) {
+func (state *FalconRenderState) startPathTo(targetX, targetY int, stopRange int, now time.Time) {
 	if state == nil {
 		return
 	}
-	fromX, fromY := falconFollowTargetCell(state.x, state.y)
+	fromX, fromY := falconFollowTargetCell(state.X, state.Y)
 	path := falconFollowPath(fromX, fromY, targetX, targetY, stopRange)
 	if len(path) < 2 {
-		state.moving = false
-		state.path = nil
+		state.Moving = false
+		state.Path = nil
 		return
 	}
-	state.path = path
-	state.moveStarted = now
-	state.moveStartX = state.x
-	state.moveStartY = state.y
-	state.moveDuration = actorMovementDurationFromWithSpeed(path, fromX, fromY, path[len(path)-1].X, path[len(path)-1].Y, state.moveSpeedMS, state.moveStartX, state.moveStartY, true)
-	state.moving = state.moveDuration > 0
-	if state.moving {
-		state.direction = directionFromDelta(fromX, fromY, path[1].X, path[1].Y, state.direction)
+	state.Path = path
+	state.MoveStarted = now
+	state.MoveStartX = state.X
+	state.MoveStartY = state.Y
+	state.MoveDuration = ActorMovementDurationFromWithSpeed(path, fromX, fromY, path[len(path)-1].X, path[len(path)-1].Y, state.MoveSpeedMS, state.MoveStartX, state.MoveStartY, true)
+	state.Moving = state.MoveDuration > 0
+	if state.Moving {
+		state.Direction = DirectionFromDelta(fromX, fromY, path[1].X, path[1].Y, state.Direction)
 	}
 }
 
-func (state *falconRenderState) spriteState(cameraYaw float64) sprites.State {
+func (state *FalconRenderState) spriteState(cameraYaw float64) sprites.State {
 	if state == nil {
 		return sprites.State{}
 	}
 	sprite := sprites.State{
 		ActionFamily: scene.SpriteActionIdle,
-		Direction:    state.direction,
+		Direction:    state.Direction,
 		CameraYaw:    cameraYaw,
 		LoopIdle:     true,
-		Moving:       state.moving,
-		MoveSpeedMS:  state.moveSpeedMS,
+		Moving:       state.Moving,
+		MoveSpeedMS:  state.MoveSpeedMS,
 		Loop:         true,
 	}
-	if state.attacking {
+	if state.Attacking {
 		sprite.ActionFamily = scene.SpriteActionWalk
 	}
 	return sprite
@@ -491,8 +491,8 @@ func falconFollowPath(fromX, fromY, targetX, targetY, stopRange int) []worldstat
 	path := []worldstate.WalkStep{{X: fromX, Y: fromY}}
 	x, y := fromX, fromY
 	for steps := 0; steps < 256 && !falconWithinRange(x, y, targetX, targetY, stopRange); steps++ {
-		dx := signInt(targetX - x)
-		dy := signInt(targetY - y)
+		dx := SignInt(targetX - x)
+		dy := SignInt(targetY - y)
 		if dx == 0 && dy == 0 {
 			break
 		}
@@ -507,7 +507,7 @@ func falconWithinRange(x, y, targetX, targetY, stopRange int) bool {
 	return int(math.Floor(math.Hypot(float64(targetX-x), float64(targetY-y)))) <= stopRange
 }
 
-func signInt(value int) int {
+func SignInt(value int) int {
 	switch {
 	case value > 0:
 		return 1

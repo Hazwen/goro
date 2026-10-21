@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ import (
 
 const gr2ModelWorldScale = 0.2
 
-type gr2ModelView struct {
+type GR2ModelView struct {
 	geometry       *res.GR2Geometry
 	textures       []*render.Image
 	emblemTextures map[int]struct{}
@@ -29,7 +29,7 @@ type gr2ModelView struct {
 	started        time.Time
 }
 
-func (m *WorldMode) nonPCActorHasGR2Model(ctx client.Context, actor worldstate.Actor) bool {
+func (m *System) nonPCActorHasGR2Model(ctx client.Context, actor worldstate.Actor) bool {
 	if ctx.Resources == nil {
 		return false
 	}
@@ -37,39 +37,39 @@ func (m *WorldMode) nonPCActorHasGR2Model(ctx client.Context, actor worldstate.A
 	return ok && res.IsGR2ResourceName(resourceName)
 }
 
-func (m *WorldMode) drawNonPCGR2Model3D(screen *render.Frame, ctx client.Context, entry scene.ActorDrawEntry, shadow float64) bool {
+func (m *System) drawNonPCGR2Model3D(screen *render.Frame, ctx client.Context, entry scene.ActorDrawEntry, shadow float64) bool {
 	actor := entry.Actor
-	view := m.nonPCGR2ModelView(ctx, actor)
+	view := m.NonPCGR2ModelView(ctx, actor)
 	if view == nil || view.geometry == nil || len(view.geometry.Vertices) == 0 {
 		return false
 	}
 	now := time.Now()
-	state := m.nonPCSpriteState(actor, now)
+	state := m.NonPCSpriteState(actor, now)
 	palette := view.paletteForActor(actor, state, now)
-	scale := gr2ModelWorldScale * m.actorBodySizeMultiplier(actor.ID, now)
+	scale := gr2ModelWorldScale * m.ActorBodySizeMultiplier(actor.ID, now)
 	matrix := gr2ActorModelMatrix(entry.WorldX, entry.WorldY, entry.WorldZ, actor.Dir, scale)
-	lighting := m.mapScene.Lighting(nil)
+	lighting := m.bindings.Map.Lighting(nil)
 	if ctx.World != nil {
-		lighting = m.mapScene.Lighting(ctx.World.RSW)
+		lighting = m.bindings.Map.Lighting(ctx.World.RSW)
 	}
 	tint := entry.Stealth.Tint(m.actorRenderTint(actor, now))
 	alpha := m.actorVisualAlpha(actor.ID, now)
 	if alpha <= 0 {
 		return true
 	}
-	if m.mapScene.WhitePixel == nil {
-		m.mapScene.WhitePixel = render.NewImage(1, 1)
-		m.mapScene.WhitePixel.Fill(color.White)
+	if m.bindings.Map.WhitePixel == nil {
+		m.bindings.Map.WhitePixel = render.NewImage(1, 1)
+		m.bindings.Map.WhitePixel.Fill(color.White)
 	}
 	options := gr2ModelDrawOptions()
-	options.Blend = entry.Stealth.Blend(m.actorRenderBlend(actor.ID, now))
+	options.Blend = entry.Stealth.Blend(m.ActorRenderBlend(actor.ID, now))
 	if options.Blend == render.BlendLighter {
 		options.DepthWrite = false
 	}
 	for _, batch := range view.geometry.Batches {
 		texture := m.gr2BatchTexture(ctx, actor, view, batch.TextureIndex)
 		if texture == nil {
-			texture = m.mapScene.WhitePixel
+			texture = m.bindings.Map.WhitePixel
 		}
 		bounds := texture.Bounds()
 		textureWidth := float32(bounds.Dx())
@@ -96,30 +96,30 @@ func (m *WorldMode) drawNonPCGR2Model3D(screen *render.Frame, ctx client.Context
 	return true
 }
 
-func (m *WorldMode) gr2BatchTexture(ctx client.Context, actor worldstate.Actor, view *gr2ModelView, index int) *render.Image {
+func (m *System) gr2BatchTexture(ctx client.Context, actor worldstate.Actor, view *GR2ModelView, index int) *render.Image {
 	if view == nil || index < 0 || index >= len(view.textures) {
 		return nil
 	}
 	if _, ok := view.emblemTextures[index]; ok {
-		if emblem := m.social().GuildFlagEmblem(ctx, actor); emblem != nil {
+		if emblem := m.bindings.Social.GuildFlagEmblem(ctx, actor); emblem != nil {
 			return emblem
 		}
 	}
 	return view.textures[index]
 }
 
-func (m *WorldMode) nonPCGR2ModelView(ctx client.Context, actor worldstate.Actor) *gr2ModelView {
+func (m *System) NonPCGR2ModelView(ctx client.Context, actor worldstate.Actor) *GR2ModelView {
 	if ctx.Config.Headless {
 		return nil
 	}
 	job := int(actor.Job)
-	if _, ok := m.gr2ModelMiss[job]; ok {
+	if _, ok := m.GR2ModelMiss[job]; ok {
 		return nil
 	}
-	if m.gr2Models == nil {
-		m.gr2Models = make(map[int]*gr2ModelView)
+	if m.GR2Models == nil {
+		m.GR2Models = make(map[int]*GR2ModelView)
 	}
-	if view, ok := m.gr2Models[job]; ok {
+	if view, ok := m.GR2Models[job]; ok {
 		return view
 	}
 	if ctx.Resources == nil {
@@ -131,19 +131,19 @@ func (m *WorldMode) nonPCGR2ModelView(ctx client.Context, actor worldstate.Actor
 	}
 	loaded, status := loadGR2ModelView(ctx.Resources, resourceName)
 	if loaded == nil {
-		if m.gr2ModelMiss == nil {
-			m.gr2ModelMiss = make(map[int]struct{})
+		if m.GR2ModelMiss == nil {
+			m.GR2ModelMiss = make(map[int]struct{})
 		}
-		m.gr2ModelMiss[job] = struct{}{}
+		m.GR2ModelMiss[job] = struct{}{}
 		glog.Warnf("gr2 model unavailable id=%d job=%d resource=%s: %s", actor.ID, job, resourceName, status)
 		return nil
 	}
-	m.gr2Models[job] = loaded
+	m.GR2Models[job] = loaded
 	glog.Debugf("gr2 model resources id=%d job=%d resource=%s %s", actor.ID, job, resourceName, status)
 	return loaded
 }
 
-func loadGR2ModelView(manager *res.Manager, resourceName string) (*gr2ModelView, string) {
+func loadGR2ModelView(manager *res.Manager, resourceName string) (*GR2ModelView, string) {
 	data, source, err := readFirstResource(manager, res.GR2ModelResourceCandidates(resourceName))
 	if err != nil {
 		return nil, "model=missing"
@@ -179,7 +179,7 @@ func loadGR2ModelView(manager *res.Manager, resourceName string) (*gr2ModelView,
 		textures[i] = render.NewImageFromImage(img)
 		loadedTextures++
 	}
-	return &gr2ModelView{
+	return &GR2ModelView{
 		geometry:       geometry,
 		textures:       textures,
 		emblemTextures: emblemTextures,

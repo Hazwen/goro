@@ -6,10 +6,10 @@ import (
 	"math"
 	"time"
 
-	"github.com/kivutar/goro/game/npc"
-
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
@@ -180,7 +180,7 @@ func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Pro
 		return cursorActionTarget
 	}
 	if m.pendingPetCapture.active {
-		actor, ok := clickedSkillTarget(ctx, projection, petCaptureTargetSkill(), mouseX, mouseY, now, m.actorDeaths)
+		actor, ok := clickedSkillTarget(ctx, projection, petCaptureTargetSkill(), mouseX, mouseY, now, m.actorSystem.ActorDeaths)
 		if ok && (!cursorSnapTargets(ctx) || m.cursorActorSnapEligible(ctx, projection, actor, now)) {
 			return cursorActionTarget2
 		}
@@ -195,11 +195,11 @@ func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Pro
 	if item, ok := clickedGroundItem(ctx, projection, mouseX, mouseY, now); ok && (!cursorSnapItems(ctx) || cursorGroundItemSnapEligible(ctx, projection, item, now)) {
 		return cursorActionPick
 	}
-	if actor, ok := hoveredCursorActor(ctx, projection, mouseX, mouseY, now, m.actorDeaths); ok {
+	if actor, ok := hoveredCursorActor(ctx, projection, mouseX, mouseY, now, m.actorSystem.ActorDeaths); ok {
 		switch {
 		case npc.IsWarpActor(actor):
 			return cursorActionWarp
-		case actorCanBeAttackClicked(ctx, actor):
+		case actors.ActorCanBeAttackClicked(ctx, actor):
 			if !cursorSnapTargets(ctx) || m.cursorActorSnapEligible(ctx, projection, actor, now) {
 				return cursorActionAttack
 			}
@@ -240,7 +240,7 @@ func (m *WorldMode) cursorMagnetOffset(ctx client.Context, projection scene.Proj
 		if !cursorSnapTargets(ctx) {
 			return 0, 0
 		}
-		actor, ok := clickedAttackTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths)
+		actor, ok := clickedAttackTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorSystem.ActorDeaths)
 		if !ok {
 			return 0, 0
 		}
@@ -320,7 +320,7 @@ func (m *WorldMode) cursorActorMagnetTarget(ctx client.Context, projection scene
 	if targetX, targetY, ok := m.cursorActorSpriteCenter(ctx, projection, actor, point, scale, now); ok {
 		return targetX, targetY, scale, true
 	}
-	targetX, targetY := actorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
+	targetX, targetY := actors.ActorPickBoundsCenter(float64(point.X), float64(point.Y), scale)
 	return targetX, targetY, scale, true
 }
 
@@ -351,25 +351,25 @@ func pointInCursorSnapDistance(mouseX, mouseY, centerX, centerY, radius float64)
 }
 
 func actorCursorSnapRadius(scale float64) float64 {
-	scale = normalizePickScale(scale)
+	scale = actors.NormalizePickScale(scale)
 	halfWidth := 44 * scale * cursorSnapTriggerScale
 	halfHeight := (float64(scene.HumanoidBillboardAnchorY) + 20) / 2 * scale * cursorSnapTriggerScale
 	return math.Hypot(halfWidth, halfHeight)
 }
 
 func groundItemCursorSnapRadius(scale float64) float64 {
-	scale = normalizePickScale(scale)
+	scale = actors.NormalizePickScale(scale)
 	halfWidth := 18 * scale * cursorSnapTriggerScale
 	halfHeight := 20 * scale * cursorSnapTriggerScale
 	return math.Hypot(halfWidth, halfHeight)
 }
 
 func (m *WorldMode) cursorActorSpriteCenter(ctx client.Context, projection scene.Projection, actor world.Actor, point scene.Point2, scale float64, now time.Time) (float64, float64, bool) {
-	view := m.nonPCSpriteView(ctx, actor)
+	view := m.actors().NonPCSpriteView(ctx, actor)
 	if view == nil {
 		return 0, 0, false
 	}
-	state := m.nonPCSpriteState(actor, now)
+	state := m.actors().NonPCSpriteState(actor, now)
 	state.CameraYaw = projection.CameraYaw
 	billboard, ok := sprites.BillboardForState(view, state, now)
 	if !ok {
@@ -386,7 +386,7 @@ func spriteBillboardScreenCenter(billboard *scene.Billboard, point scene.Point2,
 	if bounds.Empty() {
 		return 0, 0, false
 	}
-	scale = normalizePickScale(scale)
+	scale = actors.NormalizePickScale(scale)
 	x := float64(point.X) + (float64(bounds.Dx())/2-billboard.AnchorX)*scale
 	y := float64(point.Y) + (float64(bounds.Dy())/2-billboard.AnchorY)*scale
 	return x, y, true
@@ -452,7 +452,7 @@ func hoveredCursorActor(ctx client.Context, projection scene.Projection, mouseX,
 		terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
 		point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 		scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
-		if !pointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
+		if !actors.PointInActorPickBounds(float64(mouseX), float64(mouseY), float64(point.X), float64(point.Y), scale) {
 			continue
 		}
 		dx := float64(point.X) - float64(mouseX)

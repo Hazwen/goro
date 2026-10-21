@@ -14,6 +14,7 @@ import (
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/social"
@@ -152,8 +153,8 @@ func TestSiegeGuildEmblemEligibilityAndPosition(t *testing.T) {
 		t.Fatal("cloaked actor qualified for a siege emblem")
 	}
 	entry.Actor.EffectState = 0
-	x, y := siegeGuildEmblemPosition(entry.ScreenX, actorSpriteTopY(entry.ScreenY, entry.Scale), 24)
-	if x != 88 || y != actorSpriteTopY(200, 1)-28 {
+	x, y := siegeGuildEmblemPosition(entry.ScreenX, actors.ActorSpriteTopY(entry.ScreenY, entry.Scale), 24)
+	if x != 88 || y != actors.ActorSpriteTopY(200, 1)-28 {
 		t.Fatalf("siege emblem position = %.0f,%.0f", x, y)
 	}
 }
@@ -276,8 +277,8 @@ func TestHandleChatMessageRoutesToOpenChatRoomOnly(t *testing.T) {
 	if lines[0] != "Kivutar : hello" {
 		t.Fatalf("chat room line = %q", lines[0])
 	}
-	if len(mode.speechBubbles) != 0 {
-		t.Fatalf("speech bubbles = %d, want 0", len(mode.speechBubbles))
+	if len(mode.actorSystem.SpeechBubbles) != 0 {
+		t.Fatalf("speech bubbles = %d, want 0", len(mode.actorSystem.SpeechBubbles))
 	}
 }
 

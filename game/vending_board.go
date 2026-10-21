@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/render"
@@ -22,7 +23,7 @@ func (m *WorldMode) drawVendingBoardLabels(screen *render.Frame, ctx client.Cont
 			continue
 		}
 		label := scene.SanitizeActorName(entry.Actor.VendingName)
-		labelY := actorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
+		labelY := actors.ActorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
 		drawBoardLabel(screen, entry.Actor.VendingName, entry.ScreenX, labelY, icon)
 	}
 }
@@ -34,7 +35,7 @@ func (m *WorldMode) drawChatRoomBoardLabels(screen *render.Frame, ctx client.Con
 		}
 		label := chatRoomBoardLabel(entry.Actor)
 		icon := m.chatRoomBoardIcon(ctx.Resources, entry.Actor.ChatRoomPublic)
-		labelY := actorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
+		labelY := actors.ActorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
 		if social.ActorHasVending(entry.Actor) {
 			vendingLabel := scene.SanitizeActorName(entry.Actor.VendingName)
 			labelY -= boardLabelHeight(vendingLabel) + boardLabelGap
@@ -193,7 +194,7 @@ func (m *WorldMode) hoveredVendingBoard(ctx client.Context, projection scene.Pro
 	bestDistance := math.Inf(1)
 	var best worldstate.Actor
 	for _, actor := range ctx.World.Actors {
-		if _, dead := m.actorDeaths[actor.ID]; dead {
+		if _, dead := m.actorSystem.ActorDeaths[actor.ID]; dead {
 			continue
 		}
 		if actor.ID == 0 || scene.IsLocalActor(ctx, actor.ID) || !social.ActorHasVending(actor) {
@@ -221,7 +222,7 @@ func (m *WorldMode) hoveredChatRoomBoard(ctx client.Context, projection scene.Pr
 	bestDistance := math.Inf(1)
 	var best worldstate.Actor
 	for _, actor := range ctx.World.Actors {
-		if _, dead := m.actorDeaths[actor.ID]; dead {
+		if _, dead := m.actorSystem.ActorDeaths[actor.ID]; dead {
 			continue
 		}
 		if actor.ID == 0 || scene.IsLocalActor(ctx, actor.ID) || !social.ActorHasChatRoom(actor) {
@@ -251,7 +252,7 @@ func vendingBoardActorBounds(ctx client.Context, projection scene.Projection, ac
 	terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
 	point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
-	topY := actorSpriteTopY(float64(point.Y), scale) - boardLabelGap - boardLabelHeight(label)
+	topY := actors.ActorSpriteTopY(float64(point.Y), scale) - boardLabelGap - boardLabelHeight(label)
 	return boardLabelBounds(label, float64(point.X), topY)
 }
 
@@ -264,7 +265,7 @@ func (m *WorldMode) chatRoomBoardActorBounds(ctx client.Context, projection scen
 	terrainZ := scene.TerrainHeightAt(ctx.World, actorX, actorY)
 	point := projection.Project(scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
 	scale := scene.ActorBillboardScreenScale(projection, scene.CellCenter(actorX), scene.CellCenter(actorY), terrainZ)
-	topY := actorSpriteTopY(float64(point.Y), scale) - boardLabelGap - boardLabelHeight(label)
+	topY := actors.ActorSpriteTopY(float64(point.Y), scale) - boardLabelGap - boardLabelHeight(label)
 	if social.ActorHasVending(actor) {
 		topY -= boardLabelHeight(actor.VendingName) + boardLabelGap
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
@@ -98,12 +99,12 @@ func (m *WorldMode) drawEquipmentPreview(screen previewRenderTarget, ctx client.
 	if screen == nil || width <= 0 || height <= 0 {
 		return
 	}
-	view := m.playerView
+	view := m.actorSystem.PlayerView
 	if view == nil && ctx.Resources != nil && ctx.Session != nil {
-		loaded, _ := sprites.LoadPlayer(ctx.Resources, localPlayerVisualCharacter(ctx), ctx.Session.Sex, localPlayerIsAdmin(ctx))
+		loaded, _ := sprites.LoadPlayer(ctx.Resources, actors.LocalPlayerVisualCharacter(ctx), ctx.Session.Sex, actors.LocalPlayerIsAdmin(ctx))
 		view = loaded
 		if loaded != nil {
-			m.playerView = loaded
+			m.actorSystem.PlayerView = loaded
 		}
 	}
 	m.drawHumanoidPreview(screen, view, x, y, width, height)
@@ -174,7 +175,7 @@ func (m *WorldMode) monsterInfoPreviewImage(ctx client.Context, class uint16, wi
 		HasObjectType: true,
 		ObjectType:    scene.ActorObjectTypeMob,
 	}
-	view := m.nonPCSpriteView(ctx, actor)
+	view := m.actors().NonPCSpriteView(ctx, actor)
 	state := sprites.State{
 		ActionFamily:   scene.SpriteActionIdle,
 		Direction:      4,

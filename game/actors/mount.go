@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"github.com/kivutar/goro/client"
@@ -14,7 +14,7 @@ func actorWithVisualJob(actor worldstate.Actor) worldstate.Actor {
 	return actor
 }
 
-func characterWithVisualJob(character session.Character) session.Character {
+func CharacterWithVisualJob(character session.Character) session.Character {
 	return characterWithVisualJobForEffectState(character, character.Option)
 }
 
@@ -23,7 +23,7 @@ func characterWithVisualJobForEffectState(character session.Character, effectSta
 	return character
 }
 
-func localPlayerVisualCharacter(ctx client.Context) session.Character {
+func LocalPlayerVisualCharacter(ctx client.Context) session.Character {
 	if ctx.Session == nil {
 		return session.Character{}
 	}
@@ -37,24 +37,24 @@ func localPlayerVisualCharacter(ctx client.Context) session.Character {
 	return characterWithVisualJobForEffectState(character, effectState)
 }
 
-func localPlayerVisualJob(ctx client.Context) int {
+func LocalPlayerVisualJob(ctx client.Context) int {
 	if ctx.Session == nil {
 		return 0
 	}
-	return int(localPlayerVisualCharacter(ctx).Job)
+	return int(LocalPlayerVisualCharacter(ctx).Job)
 }
 
-func (m *WorldMode) reloadPlayerSpriteView(ctx client.Context, reason string) {
+func (m *System) ReloadPlayerSpriteView(ctx client.Context, reason string) {
 	if ctx.Config.Headless || ctx.Session == nil || ctx.Resources == nil {
 		return
 	}
-	character := localPlayerVisualCharacter(ctx)
-	view, status := sprites.LoadPlayer(ctx.Resources, character, ctx.Session.Sex, localPlayerIsAdmin(ctx))
+	character := LocalPlayerVisualCharacter(ctx)
+	view, status := sprites.LoadPlayer(ctx.Resources, character, ctx.Session.Sex, LocalPlayerIsAdmin(ctx))
 	if view != nil {
-		m.playerView = view
+		m.PlayerView = view
 		glog.Debugf("player sprite reloaded reason=%s visual_job=%d %s", reason, character.Job, status)
 		return
 	}
 	glog.Warnf("player sprite reload failed reason=%s visual_job=%d: %s", reason, character.Job, status)
-	m.playerView = nil
+	m.PlayerView = nil
 }

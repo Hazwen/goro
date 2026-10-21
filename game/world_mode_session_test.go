@@ -12,12 +12,12 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/kivutar/goro/game/npc"
-
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	maps "github.com/kivutar/goro/game/map"
+	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/input"
@@ -30,7 +30,7 @@ import (
 )
 
 func actorDisplayName(ctx client.Context, actor worldstate.Actor, isPlayer bool) string {
-	labels := actorDisplayLabels(ctx, actor, isPlayer)
+	labels := actors.ActorDisplayLabels(ctx, actor, isPlayer)
 	if len(labels) == 0 {
 		return ""
 	}
@@ -38,7 +38,7 @@ func actorDisplayName(ctx client.Context, actor worldstate.Actor, isPlayer bool)
 }
 
 func (m *WorldMode) hoveredActorDisplayName(ctx client.Context, actor worldstate.Actor, now time.Time) string {
-	labels := m.hoveredActorDisplayLabels(ctx, actor, now)
+	labels := m.actors().HoveredActorDisplayLabels(ctx, actor, now)
 	if len(labels) == 0 {
 		return ""
 	}
@@ -53,7 +53,7 @@ func TestApplyActorNameAckUpdatesWorldActor(t *testing.T) {
 		World:   world,
 	}
 
-	applyActorNameAck(ctx, network.ActorNameAck{ID: 300, Name: "Guide#prontera", PartyName: "Adventurers", GuildName: "Knights"})
+	actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: 300, Name: "Guide#prontera", PartyName: "Adventurers", GuildName: "Knights"})
 
 	if got := world.Actors[300].Name; got != "Guide" {
 		t.Fatalf("actor name = %q, want Guide", got)
@@ -73,7 +73,7 @@ func TestApplyActorNameAckUpdatesLocalPlayer(t *testing.T) {
 		World:   world,
 	}
 
-	applyActorNameAck(ctx, network.ActorNameAck{ID: 200, Name: "Kivutar", PartyName: "Adventurers", GuildName: "Goro"})
+	actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: 200, Name: "Kivutar", PartyName: "Adventurers", GuildName: "Goro"})
 
 	if got := world.Player.Name; got != "Kivutar" {
 		t.Fatalf("player name = %q, want Kivutar", got)
@@ -94,7 +94,7 @@ func TestApplyActorNameAckPreservesLocalGuildOnEmptyNameAck(t *testing.T) {
 		World:   world,
 	}
 
-	applyActorNameAck(ctx, network.ActorNameAck{ID: 200, Name: "Kivutar"})
+	actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: 200, Name: "Kivutar"})
 
 	if got := world.Player.GuildName; got != "Goro" {
 		t.Fatalf("player guild = %q, want Goro", got)
@@ -109,7 +109,7 @@ func TestApplyActorNameAckClearsGuildStateFromAuthoritativeEmptyGuildName(t *tes
 	w := &worldstate.World{Player: worldstate.Actor{ID: 200, GuildID: 9, GuildName: "Goro", EmblemVersion: 4}}
 	ctx := client.Context{Session: s, World: w}
 
-	applyActorNameAck(ctx, network.ActorNameAck{ID: 200, Name: "Kivutar", HasGuildName: true})
+	actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: 200, Name: "Kivutar", HasGuildName: true})
 
 	if w.Player.GuildID != 0 || w.Player.GuildName != "" || w.Player.EmblemVersion != 0 {
 		t.Fatalf("player guild state = %+v, want cleared", w.Player)
@@ -127,7 +127,7 @@ func TestApplyActorNameAckClearsRemotePartyName(t *testing.T) {
 		World:   world,
 	}
 
-	applyActorNameAck(ctx, network.ActorNameAck{ID: 300, Name: "Alice"})
+	actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: 300, Name: "Alice"})
 
 	if got := world.Actors[300].PartyName; got != "" {
 		t.Fatalf("actor party = %q, want cleared", got)
@@ -139,7 +139,7 @@ func TestApplyActorNameAckClearsRemoteGuildFromAuthoritativeEmptyName(t *testing
 	world.UpsertActor(worldstate.Actor{ID: 300, Name: "Alice", GuildID: 9, GuildName: "Goro", EmblemVersion: 4})
 	ctx := client.Context{Session: &session.Session{AccountID: 100, CharID: 200}, World: world}
 
-	applyActorNameAck(ctx, network.ActorNameAck{ID: 300, Name: "Alice", HasGuildName: true})
+	actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: 300, Name: "Alice", HasGuildName: true})
 
 	if actor := world.Actors[300]; actor.GuildID != 0 || actor.GuildName != "" || actor.EmblemVersion != 0 {
 		t.Fatalf("remote actor guild state = %+v, want cleared", actor)
@@ -468,17 +468,17 @@ func TestActorDisplayNameIncludesPartyName(t *testing.T) {
 func TestActorDisplayLabelsIncludeGuildNameOnSecondLine(t *testing.T) {
 	ctx := client.Context{Session: &session.Session{CharID: 200, Selected: session.Character{ID: 200, Name: "Kivutar"}}}
 
-	labels := actorDisplayLabels(ctx, worldstate.Actor{Name: "Player", GuildName: "Knights"}, true)
+	labels := actors.ActorDisplayLabels(ctx, worldstate.Actor{Name: "Player", GuildName: "Knights"}, true)
 	if len(labels) != 2 || labels[0] != "Kivutar" || labels[1] != "Knights" {
 		t.Fatalf("local labels = %#v, want Kivutar / Knights", labels)
 	}
 
-	labels = actorDisplayLabels(ctx, worldstate.Actor{ID: 300, Name: "Alice", GuildName: "Knights", HasObjectType: true, ObjectType: scene.ActorObjectTypePC}, false)
+	labels = actors.ActorDisplayLabels(ctx, worldstate.Actor{ID: 300, Name: "Alice", GuildName: "Knights", HasObjectType: true, ObjectType: scene.ActorObjectTypePC}, false)
 	if len(labels) != 2 || labels[0] != "Alice" || labels[1] != "Knights" {
 		t.Fatalf("actor labels = %#v, want Alice / Knights", labels)
 	}
 
-	labels = actorDisplayLabels(ctx, worldstate.Actor{Name: "Poring", GuildName: "Knights", HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}, false)
+	labels = actors.ActorDisplayLabels(ctx, worldstate.Actor{Name: "Poring", GuildName: "Knights", HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}, false)
 	if len(labels) != 1 || labels[0] != "Poring" {
 		t.Fatalf("mob labels = %#v, want Poring only", labels)
 	}
@@ -486,10 +486,10 @@ func TestActorDisplayLabelsIncludeGuildNameOnSecondLine(t *testing.T) {
 
 func TestActorNameLabelColorUsesYellowForAdmin(t *testing.T) {
 	want := color.RGBA{R: 255, G: 255, B: 0, A: 255}
-	if got := actorNameLabelColor(worldstate.Actor{IsAdmin: true}, true); got != want {
+	if got := actors.ActorNameLabelColor(worldstate.Actor{IsAdmin: true}, true); got != want {
 		t.Fatalf("local admin label color = %+v, want %+v", got, want)
 	}
-	if got := actorNameLabelColor(worldstate.Actor{IsAdmin: true}, false); got != want {
+	if got := actors.ActorNameLabelColor(worldstate.Actor{IsAdmin: true}, false); got != want {
 		t.Fatalf("remote admin label color = %+v, want %+v", got, want)
 	}
 }
@@ -653,7 +653,7 @@ func TestHoverActorServerNameLookupIncludesCompanions(t *testing.T) {
 		{HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
 		{HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary},
 	} {
-		if !shouldUseServerNameForHoverActor(actor) {
+		if !actors.ShouldUseServerNameForHoverActor(actor) {
 			t.Fatalf("companion actor should request server name: %+v", actor)
 		}
 	}
@@ -1253,11 +1253,11 @@ func TestSpriteUpscalingChangesTextureWithoutMovingBillboard(t *testing.T) {
 		m := &WorldMode{mapScene: maps.System{UpscaleTextures: true}}
 		defer m.Leave()
 		base := &scene.Billboard{Image: render.NewImage(31, 23), AnchorX: 12.5, AnchorY: 19}
-		billboard := cartOffsetBillboard(base, 7, -3)
+		billboard := actors.CartOffsetBillboard(base, 7, -3)
 		projection := testutil.Projection(800, 600, 10.5, 20.5, 3)
 		draw := func() reflect.Value {
 			frame := render.NewFrame(800, 600)
-			m.drawActorSpriteBillboardTintAlpha3D(frame, projection, billboard, 10.5, 20.5, 3, 1.7, 0.6, 0.8, color.RGBA{R: 90, G: 160, B: 255, A: 200}, render.BlendSourceOver)
+			m.actors().DrawActorSpriteBillboardTintAlpha3D(frame, projection, billboard, 10.5, 20.5, 3, 1.7, 0.6, 0.8, color.RGBA{R: 90, G: 160, B: 255, A: 200}, render.BlendSourceOver)
 			commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
 			if commands.Len() != 1 {
 				t.Fatal("missing billboard command")

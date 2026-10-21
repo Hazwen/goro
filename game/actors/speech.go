@@ -1,4 +1,4 @@
-package game
+package actors
 
 import (
 	"strings"
@@ -17,13 +17,13 @@ const (
 	speechBubbleMaxWidth     = 220
 )
 
-type speechBubble struct {
-	text    string
-	expires time.Time
-	ground  *[2]int
+type SpeechBubble struct {
+	Text    string
+	Expires time.Time
+	Ground  *[2]int
 }
 
-func (m *WorldMode) applySpeechBubble(ctx client.Context, chat network.ChatMessage, now time.Time) {
+func (m *System) ApplySpeechBubble(ctx client.Context, chat network.ChatMessage, now time.Time) {
 	if ctx.Config.Headless {
 		return
 	}
@@ -31,7 +31,7 @@ func (m *WorldMode) applySpeechBubble(ctx client.Context, chat network.ChatMessa
 		return
 	}
 	text := speechBubbleText(chat.Text)
-	x, y, onTrap := m.skills().SkillUnitModelCell(chat.GID)
+	x, y, onTrap := m.bindings.Skills.SkillUnitModelCell(chat.GID)
 	if onTrap {
 		text = strings.TrimSpace(chat.Text)
 	}
@@ -42,8 +42,8 @@ func (m *WorldMode) applySpeechBubble(ctx client.Context, chat network.ChatMessa
 	if len(actorIDs) == 0 {
 		return
 	}
-	if m.speechBubbles == nil {
-		m.speechBubbles = make(map[uint32]speechBubble)
+	if m.SpeechBubbles == nil {
+		m.SpeechBubbles = make(map[uint32]SpeechBubble)
 	}
 	duration := speechBubbleBaseDuration + time.Duration(len([]rune(text)))*speechBubblePerRune
 	if duration > speechBubbleMaxDuration {
@@ -53,12 +53,12 @@ func (m *WorldMode) applySpeechBubble(ctx client.Context, chat network.ChatMessa
 		if actorID == 0 {
 			continue
 		}
-		m.speechBubbles[actorID] = speechBubble{
-			text:    text,
-			expires: now.Add(duration),
+		m.SpeechBubbles[actorID] = SpeechBubble{
+			Text:    text,
+			Expires: now.Add(duration),
 		}
 		if onTrap {
-			m.speechBubbles[actorID] = speechBubble{text: text, expires: now.Add(5 * time.Second), ground: &[2]int{x, y}}
+			m.SpeechBubbles[actorID] = SpeechBubble{Text: text, Expires: now.Add(5 * time.Second), Ground: &[2]int{x, y}}
 		}
 	}
 }
@@ -105,33 +105,33 @@ func speechBubbleText(text string) string {
 
 const actorSpeechBubbleGap = 6.0
 
-func actorSpeechBubbleBottomY(baseY, scale float64) float64 {
-	return actorSpriteTopY(baseY, scale) - actorSpeechBubbleGap
+func ActorSpeechBubbleBottomY(baseY, scale float64) float64 {
+	return ActorSpriteTopY(baseY, scale) - actorSpeechBubbleGap
 }
 
-func (m *WorldMode) drawSpeechBubbles(screen *render.Frame, ctx client.Context, projection scene.Projection, entries []scene.ActorDrawEntry, now time.Time) {
-	if len(m.speechBubbles) == 0 {
+func (m *System) DrawSpeechBubbles(screen *render.Frame, ctx client.Context, projection scene.Projection, entries []scene.ActorDrawEntry, now time.Time) {
+	if len(m.SpeechBubbles) == 0 {
 		return
 	}
-	for id, bubble := range m.speechBubbles {
-		if now.After(bubble.expires) {
-			delete(m.speechBubbles, id)
-		} else if bubble.ground != nil {
-			x, y := float64(bubble.ground[0]), float64(bubble.ground[1])
+	for id, bubble := range m.SpeechBubbles {
+		if now.After(bubble.Expires) {
+			delete(m.SpeechBubbles, id)
+		} else if bubble.Ground != nil {
+			x, y := float64(bubble.Ground[0]), float64(bubble.Ground[1])
 			if p, ok := projection.ProjectPoint(scene.CellCenter(x), scene.CellCenter(y), scene.TerrainHeightAt(ctx.World, x, y)); ok {
-				render.DrawUISpeechBubble(screen, bubble.text, float64(p.X), float64(p.Y)-actorSpeechBubbleGap, speechBubbleMaxWidth)
+				render.DrawUISpeechBubble(screen, bubble.Text, float64(p.X), float64(p.Y)-actorSpeechBubbleGap, speechBubbleMaxWidth)
 			}
 		}
 	}
-	if len(m.speechBubbles) == 0 {
+	if len(m.SpeechBubbles) == 0 {
 		return
 	}
 	for _, entry := range entries {
-		bubble, ok := m.speechBubbles[entry.Actor.ID]
-		if !ok || strings.TrimSpace(bubble.text) == "" {
+		bubble, ok := m.SpeechBubbles[entry.Actor.ID]
+		if !ok || strings.TrimSpace(bubble.Text) == "" {
 			continue
 		}
-		bottomY := actorSpeechBubbleBottomY(entry.ScreenY, entry.Scale)
-		render.DrawUISpeechBubble(screen, bubble.text, entry.ScreenX, bottomY, speechBubbleMaxWidth)
+		bottomY := ActorSpeechBubbleBottomY(entry.ScreenY, entry.Scale)
+		render.DrawUISpeechBubble(screen, bubble.Text, entry.ScreenX, bottomY, speechBubbleMaxWidth)
 	}
 }
