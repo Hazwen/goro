@@ -9,6 +9,7 @@ import (
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/render"
@@ -105,7 +106,7 @@ func (s *roCursorState) ensureLoaded(ctx client.Context) {
 		return
 	}
 	s.loadTried = true
-	if view, status := loadCursorSpriteView(ctx.Resources); view != nil {
+	if view, status := sprites.LoadCursor(ctx.Resources); view != nil {
 		s.view = view
 	} else {
 		s.viewMiss = true
@@ -151,7 +152,7 @@ func (s *roCursorState) frameAt(action int, info cursorActionInfo, start, now ti
 	actionDef := s.view.Act.Actions[action]
 	delay := float64(actionDef.DelayMS) * info.delayMult
 	motion := scene.SpriteMotionIndexWithDelay(actionDef, start, now, true, delay)
-	return cursorFrameBillboard(s.view, action, motion, info.drawX, info.drawY)
+	return sprites.CursorFrameBillboard(s.view, action, motion, info.drawX, info.drawY)
 }
 
 func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Projection, now time.Time) int {
@@ -366,8 +367,8 @@ func (m *WorldMode) cursorActorSpriteCenter(ctx client.Context, projection scene
 		return 0, 0, false
 	}
 	state := m.nonPCSpriteState(actor, now)
-	state.cameraYaw = projection.CameraYaw
-	billboard, ok := singleSpriteBillboardForState(view, state, now)
+	state.CameraYaw = projection.CameraYaw
+	billboard, ok := sprites.BillboardForState(view, state, now)
 	if !ok {
 		return 0, 0, false
 	}

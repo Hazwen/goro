@@ -1,4 +1,4 @@
-package game
+package sprites
 
 import (
 	"os"
@@ -24,7 +24,7 @@ func BenchmarkRepeatedHumanoidAppearances(b *testing.B) {
 		}
 	})
 	load := func(head int) {
-		if view, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{job: 4, head: head, sex: 1}, "acolyte"); view == nil {
+		if view, status := LoadHumanoid(manager, Appearance{Job: 4, Head: head, Sex: 1}, "acolyte"); view == nil {
 			b.Fatal(status)
 		}
 	}

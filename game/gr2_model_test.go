@@ -6,6 +6,7 @@ import (
 
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/res"
 )
 
@@ -62,15 +63,15 @@ func TestGR2ActorModelMatrixPreservesFacingWithPositiveHeight(t *testing.T) {
 func TestGR2ActionForSpriteStateMatchesClassicStates(t *testing.T) {
 	tests := []struct {
 		name  string
-		state spriteState
+		state sprites.State
 		want  res.GR2Action
 	}{
-		{name: "stand", state: spriteState{actionFamily: scene.SpriteActionIdle}, want: res.GR2ActionStand},
-		{name: "move", state: spriteState{actionFamily: scene.SpriteActionWalk}, want: res.GR2ActionMove},
-		{name: "attack", state: spriteState{actionFamily: spriteActionNonPCAttack}, want: res.GR2ActionAttack},
-		{name: "skill", state: spriteState{actionFamily: spriteActionPCSkill}, want: res.GR2ActionAttack},
-		{name: "hurt", state: spriteState{actionFamily: spriteActionNonPCHurt}, want: res.GR2ActionDamage},
-		{name: "dead", state: spriteState{actionFamily: spriteActionNonPCDeath}, want: res.GR2ActionDead},
+		{name: "stand", state: sprites.State{ActionFamily: scene.SpriteActionIdle}, want: res.GR2ActionStand},
+		{name: "move", state: sprites.State{ActionFamily: scene.SpriteActionWalk}, want: res.GR2ActionMove},
+		{name: "attack", state: sprites.State{ActionFamily: sprites.ActionNonPCAttack}, want: res.GR2ActionAttack},
+		{name: "skill", state: sprites.State{ActionFamily: sprites.ActionPCSkill}, want: res.GR2ActionAttack},
+		{name: "hurt", state: sprites.State{ActionFamily: sprites.ActionNonPCHurt}, want: res.GR2ActionDamage},
+		{name: "dead", state: sprites.State{ActionFamily: sprites.ActionNonPCDeath}, want: res.GR2ActionDead},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -97,11 +98,11 @@ func TestStealthVisibilityAndPicking2008(t *testing.T) {
 
 func TestStealthDrawsShadowOrBlackBody(t *testing.T) {
 	sprite := &scene.SpriteView{
-		Spr:    &res.SPR{Frames: []res.SPRFrame{{Type: res.SPRFrameRGBA, Width: 8, Height: 8, Data: solidRGBAFrame(8, 8)}}},
+		Spr:    &res.SPR{Frames: []res.SPRFrame{{Type: res.SPRFrameRGBA, Width: 8, Height: 8, Data: testutil.SolidRGBAFrame(8, 8)}}},
 		Act:    &res.ACT{Actions: []res.ACTAction{{DelayMS: 100, Animations: []res.ACTAnimation{{Layers: []res.ACTLayer{{Index: 0, SPRType: res.SPRFrameRGBA, ScaleX: 1, ScaleY: 1, Color: [4]float32{1, 1, 1, 1}}}}}}}},
 		Images: make(map[scene.SpriteFrameKey]*render.Image), Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
-	mode := &WorldMode{shadowView: sprite, playerView: &humanoidSpriteView{body: sprite, billboards: make(map[humanoidBillboardKey]*scene.Billboard)}}
+	mode := &WorldMode{shadowView: sprite, playerView: &sprites.Humanoid{Body: sprite}}
 	ctx := stealthTestContext()
 	projection := testutil.Projection(800, 600, scene.CellCenter(10), scene.CellCenter(20), 0)
 	for _, tc := range []struct {

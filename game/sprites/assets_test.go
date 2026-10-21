@@ -1,4 +1,4 @@
-package game
+package sprites
 
 import (
 	"image/color"
@@ -67,22 +67,22 @@ func TestSharedSpriteResourcesKeepViewStateAndPalettesIndependent(t *testing.T) 
 
 func TestHumanoidViewsShareResourcesRealData(t *testing.T) {
 	manager := testutil.RealDataManager(t)
-	first, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{job: 4, head: 1, sex: 1}, "first")
+	first, status := LoadHumanoid(manager, Appearance{Job: 4, Head: 1, Sex: 1}, "first")
 	if first == nil {
 		t.Fatal(status)
 	}
-	second, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{job: 4, head: 2, sex: 1}, "second")
+	second, status := LoadHumanoid(manager, Appearance{Job: 4, Head: 2, Sex: 1}, "second")
 	if second == nil {
 		t.Fatal(status)
 	}
-	if first.body == second.body || first.body.Spr != second.body.Spr || first.body.Act != second.body.Act || first.imf != second.imf {
+	if first.Body == second.Body || first.Body.Spr != second.Body.Spr || first.Body.Act != second.Body.Act || first.imf != second.imf {
 		t.Fatal("different appearances did not share their common resources")
 	}
 	if first.head == nil || second.head == nil || first.head.Spr == second.head.Spr {
 		t.Fatal("different heads lost their own resources")
 	}
-	for _, view := range []*humanoidSpriteView{first, second} {
-		if _, ok := humanoidBillboardForState(view, spriteState{actionFamily: scene.SpriteActionIdle, direction: 0}, time.Now()); !ok {
+	for _, view := range []*Humanoid{first, second} {
+		if _, ok := HumanoidBillboard(view, State{ActionFamily: scene.SpriteActionIdle, Direction: 0}, time.Now()); !ok {
 			t.Fatal("shared resources could not render")
 		}
 	}
@@ -90,11 +90,11 @@ func TestHumanoidViewsShareResourcesRealData(t *testing.T) {
 
 func TestMonsterViewsShareUpgradedResourcesRealData(t *testing.T) {
 	manager := testutil.RealDataManager(t)
-	first, status := loadNonPCSpriteView(manager, 1002, "poring")
+	first, status := LoadNonPC(manager, 1002, "poring")
 	if first == nil || len(first.Act.Actions) < 40 {
 		t.Fatalf("richer monster resource missing: %s", status)
 	}
-	second, status := loadNonPCSpriteView(manager, 1002, "poring again")
+	second, status := LoadNonPC(manager, 1002, "poring again")
 	if second == nil || first == second || first.Act != second.Act || first.Spr != second.Spr {
 		t.Fatalf("upgraded monster resources not shared: %s", status)
 	}

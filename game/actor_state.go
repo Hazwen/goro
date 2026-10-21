@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -113,27 +114,27 @@ func (m *WorldMode) applyActorBladeStopSide(ctx client.Context, actorID, lookID 
 		// Freeze the victim's current frame, before stopping movement or turning.
 		state := m.nonPCSpriteState(actor, now)
 		if actor.Sitting {
-			state.actionFamily = scene.SpriteActionSit
+			state.ActionFamily = scene.SpriteActionSit
 		}
 		started := now
 		if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || companion.IsMercenary(actor) {
-			state.loopIdle = false
-			state.headTurn, state.headDir = true, actor.HeadDir
+			state.LoopIdle = false
+			state.HeadTurn, state.HeadDir = true, actor.HeadDir
 			if view := m.humanoidSpriteViewForActor(ctx, actor); view != nil {
-				started = view.started
+				started = view.Started
 			}
 		} else if view := m.nonPCSpriteView(ctx, actor); view != nil {
 			started = view.Started
 		}
-		anim.actionFamily = state.actionFamily
-		anim.fixedMotion = state.fixedMotion
+		anim.actionFamily = state.ActionFamily
+		anim.fixedMotion = state.FixedMotion
 		renderActor := actor
-		renderActor.Dir = spriteDirectionFromWorldDirForCamera(actor.Dir, scene.CameraYawForMap(ctx))
-		if action, ok := m.actorResolvedAction(ctx, renderActor, state.actionFamily); ok {
-			anim.fixedMotion = bodyMotionForState(action, state, started, now)
+		renderActor.Dir = sprites.DirectionForCamera(actor.Dir, scene.CameraYawForMap(ctx))
+		if action, ok := m.actorResolvedAction(ctx, renderActor, state.ActionFamily); ok {
+			anim.fixedMotion = sprites.BodyMotionForState(action, state, started, now)
 		}
 		if caster && res.HasPlayerJobToken(scene.ActorVisualJob(actor)) {
-			anim.actionFamily = spriteActionPCSkill
+			anim.actionFamily = sprites.ActionPCSkill
 			anim.fixedMotion = 4
 		}
 		anim.play = false
@@ -168,23 +169,23 @@ func setActorRenderState(actor *worldstate.Actor, bodyState, healthState uint16,
 	applyActorCartStateFromEffect(actor)
 }
 
-func applyActorBodyState(actor worldstate.Actor, state *spriteState) {
+func applyActorBodyState(actor worldstate.Actor, state *sprites.State) {
 	switch actor.BodyState {
 	case db.BodyStateFreeze:
-		state.actionFamily = freezeActionFamily(actor)
-		state.moving = false
-		state.loop = false
-		state.loopIdle = false
-		state.play = false
-		state.hasPlay = true
-		state.fixedMotion = 0
-		state.hasFixedMotion = true
+		state.ActionFamily = freezeActionFamily(actor)
+		state.Moving = false
+		state.Loop = false
+		state.LoopIdle = false
+		state.Play = false
+		state.HasPlay = true
+		state.FixedMotion = 0
+		state.HasFixedMotion = true
 	case db.BodyStateStone:
-		state.moving = false
-		state.loop = false
-		state.loopIdle = false
-		state.play = false
-		state.hasPlay = true
+		state.Moving = false
+		state.Loop = false
+		state.LoopIdle = false
+		state.Play = false
+		state.HasPlay = true
 	}
 }
 
@@ -462,7 +463,7 @@ func actorBodySizeTarget(effectID int) (targetSize float64, transition bool, ok 
 
 func freezeActionFamily(actor worldstate.Actor) int {
 	if res.HasPlayerJobToken(int(actor.Job)) {
-		return spriteActionPCFreeze2
+		return sprites.ActionPCFreeze2
 	}
 	return scene.SpriteActionIdle
 }

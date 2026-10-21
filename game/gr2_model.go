@@ -287,3 +287,13 @@ func gr2ModelDrawOptions() *render.DrawTrianglesOptions {
 	options.Blend = render.BlendSourceOver
 	return options
 }
+
+func readFirstResource(manager *res.Manager, candidates []string) ([]byte, string, error) {
+	for _, candidate := range candidates {
+		data, err := manager.ReadFile(candidate)
+		if err == nil {
+			return data, candidate, nil
+		}
+	}
+	return nil, "", fmt.Errorf("not found")
+}

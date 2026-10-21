@@ -7,6 +7,7 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -86,7 +87,7 @@ func (s skillActionSpec) actionFamilyForActorWithResources(manager *res.Manager,
 	}
 	mercenary := companion.IsMercenary(actor)
 	if !res.HasPlayerJobToken(scene.ActorVisualJob(actor)) && !mercenary {
-		return spriteActionNonPCAttack
+		return sprites.ActionNonPCAttack
 	}
 	switch s.action {
 	case skillActorActionIdle:
@@ -96,20 +97,20 @@ func (s skillActionSpec) actionFamilyForActorWithResources(manager *res.Manager,
 	case skillActorActionAttack:
 		return attackActionFamilyForActorWithResources(manager, actor)
 	case skillActorActionAttack1:
-		return spriteActionPCAttack1
+		return sprites.ActionPCAttack1
 	case skillActorActionAttack2:
-		return spriteActionPCAttack2
+		return sprites.ActionPCAttack2
 	case skillActorActionAttack3:
-		return spriteActionPCAttack3
+		return sprites.ActionPCAttack3
 	case skillActorActionPickup:
 		return scene.SpriteActionPickup
 	case skillActorActionReadyFight:
 		if mercenary {
-			return spriteActionPCSkill
+			return sprites.ActionPCSkill
 		}
-		return spriteActionPCReadyFight
+		return sprites.ActionPCReadyFight
 	default:
-		return spriteActionPCSkill
+		return sprites.ActionPCSkill
 	}
 }
 

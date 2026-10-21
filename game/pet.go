@@ -8,6 +8,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -436,14 +437,14 @@ func (m *WorldMode) startPetPerformance(ctx client.Context, id uint32, data uint
 	if !ok {
 		return
 	}
-	action := spriteActionNonPCPerf1
+	action := sprites.ActionNonPCPerf1
 	switch data {
 	case 2:
-		action = spriteActionNonPCPerf2
+		action = sprites.ActionNonPCPerf2
 	case 3:
-		action = spriteActionNonPCPerf3
+		action = sprites.ActionNonPCPerf3
 	case 4:
-		action = spriteActionNonPCSpecial
+		action = sprites.ActionNonPCSpecial
 	}
 	now := time.Now()
 	duration := m.actorActionDuration(ctx, actor, action, scene.DefaultAttackAnimationDuration)

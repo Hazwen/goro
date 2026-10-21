@@ -12,6 +12,7 @@ import (
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -900,7 +901,7 @@ func (m *WorldMode) drawActorShadowEntry(screen *render.Frame, ctx client.Contex
 		return
 	}
 	if !m.actorShadowSuppressed(entry.Actor, now) {
-		drawFixedSpriteShadowBillboard3D(screen, projection, m.shadowView, entry.WorldX, entry.WorldY, entry.WorldZ+scene.ActorShadowTerrainLift, scale, m.actorVisualAlpha(entry.Actor.ID, now), entry.Shadow)
+		sprites.DrawFixedShadow3D(screen, projection, m.shadowView, entry.WorldX, entry.WorldY, entry.WorldZ+scene.ActorShadowTerrainLift, scale, m.actorVisualAlpha(entry.Actor.ID, now), entry.Shadow)
 	}
 	m.drawActorCartShadow3D(screen, ctx, projection, entry, projection.CameraYaw, now)
 }
@@ -1352,59 +1353,59 @@ func (m *WorldMode) drawActorSprite3D(screen *render.Frame, ctx client.Context, 
 		return m.drawNonPCSprite3D(screen, ctx, projection, entry, cameraYaw, shadow)
 	}
 	weapon, shield := res.NormalizePlayerWeaponShield(int(actor.Weapon), int(actor.Shield))
-	key := actorSpriteKey{
-		job:         int(actor.Job),
-		head:        int(actor.Head),
-		sex:         actor.Sex,
-		admin:       actor.IsAdmin,
-		bodyPalette: int(actor.BodyPal),
-		headPalette: int(actor.HeadPal),
-		weapon:      weapon,
-		shield:      shield,
-		headTop:     int(actor.HeadTop),
-		headMid:     int(actor.HeadMid),
-		headLow:     int(actor.HeadLow),
+	key := sprites.Appearance{
+		Job:         int(actor.Job),
+		Head:        int(actor.Head),
+		Sex:         actor.Sex,
+		Admin:       actor.IsAdmin,
+		BodyPalette: int(actor.BodyPal),
+		HeadPalette: int(actor.HeadPal),
+		Weapon:      weapon,
+		Shield:      shield,
+		HeadTop:     int(actor.HeadTop),
+		HeadMid:     int(actor.HeadMid),
+		HeadLow:     int(actor.HeadLow),
 	}
 	if _, ok := m.actorViewMiss[key]; ok {
 		return false
 	}
 	view, ok := m.actorViews[key]
 	if !ok {
-		loaded, status := loadHumanoidSpriteViewWithAppearance(ctx.Resources, humanoidAppearance(key), "actor")
+		loaded, status := sprites.LoadHumanoid(ctx.Resources, key, "actor")
 		if loaded == nil {
 			m.actorViewMiss[key] = struct{}{}
-			glog.Warnf("actor sprite unavailable id=%d job=%d head=%d sex=%d: %s", actor.ID, key.job, key.head, key.sex, status)
+			glog.Warnf("actor sprite unavailable id=%d job=%d head=%d sex=%d: %s", actor.ID, key.Job, key.Head, key.Sex, status)
 			return false
 		}
 		m.actorViews[key] = loaded
 		view = loaded
-		glog.Debugf("actor sprite resources id=%d job=%d head=%d sex=%d %s", actor.ID, key.job, key.head, key.sex, status)
+		glog.Debugf("actor sprite resources id=%d job=%d head=%d sex=%d %s", actor.ID, key.Job, key.Head, key.Sex, status)
 	}
 	now := time.Now()
-	state := spriteState{
-		actionFamily: scene.SpriteActionIdle,
-		direction:    actor.Dir,
-		headDir:      actor.HeadDir,
-		headTurn:     true,
-		cameraYaw:    cameraYaw,
-		moving:       scene.ActorIsMovingAt(actor, now),
-		moveSpeedMS:  actor.Speed,
+	state := sprites.State{
+		ActionFamily: scene.SpriteActionIdle,
+		Direction:    actor.Dir,
+		HeadDir:      actor.HeadDir,
+		HeadTurn:     true,
+		CameraYaw:    cameraYaw,
+		Moving:       scene.ActorIsMovingAt(actor, now),
+		MoveSpeedMS:  actor.Speed,
 	}
-	if state.moving {
-		state.actionFamily = scene.SpriteActionWalk
-		state.loop = true
-		state.walkDistance = actorRenderWalkDistance(actor, now)
+	if state.Moving {
+		state.ActionFamily = scene.SpriteActionWalk
+		state.Loop = true
+		state.WalkDistance = actorRenderWalkDistance(actor, now)
 	} else if actor.Sitting {
-		state.actionFamily = scene.SpriteActionSit
+		state.ActionFamily = scene.SpriteActionSit
 	}
 	if anim, ok := m.actorAnimation(actor.ID, now); ok {
 		applyActorAnimationToSpriteState(&state, anim, true)
 	}
-	if !isDeathActionFamily(state.actionFamily) {
+	if !isDeathActionFamily(state.ActionFamily) {
 		applyActorBodyState(actor, &state)
 	}
-	state.separateEquipment = m.effects().LordKnightSeparateEquipment(ctx, actor, now)
-	billboard, ok := humanoidBillboardForState(view, state, now)
+	state.SeparateEquipment = m.effects().LordKnightSeparateEquipment(ctx, actor, now)
+	billboard, ok := sprites.HumanoidBillboard(view, state, now)
 	if !ok {
 		return false
 	}
@@ -1419,30 +1420,30 @@ func (m *WorldMode) drawMercenarySprite3D(screen *render.Frame, ctx client.Conte
 		return false
 	}
 	now := time.Now()
-	state := spriteState{
-		actionFamily: scene.SpriteActionIdle,
-		direction:    actor.Dir,
-		headDir:      actor.HeadDir,
-		headTurn:     true,
-		cameraYaw:    cameraYaw,
-		moving:       scene.ActorIsMovingAt(actor, now),
-		moveSpeedMS:  actor.Speed,
+	state := sprites.State{
+		ActionFamily: scene.SpriteActionIdle,
+		Direction:    actor.Dir,
+		HeadDir:      actor.HeadDir,
+		HeadTurn:     true,
+		CameraYaw:    cameraYaw,
+		Moving:       scene.ActorIsMovingAt(actor, now),
+		MoveSpeedMS:  actor.Speed,
 	}
-	if state.moving {
-		state.actionFamily = scene.SpriteActionWalk
-		state.loop = true
-		state.walkDistance = actorRenderWalkDistance(actor, now)
+	if state.Moving {
+		state.ActionFamily = scene.SpriteActionWalk
+		state.Loop = true
+		state.WalkDistance = actorRenderWalkDistance(actor, now)
 	} else if actor.Sitting {
-		state.actionFamily = scene.SpriteActionSit
+		state.ActionFamily = scene.SpriteActionSit
 	}
 	if anim, ok := m.actorAnimation(actor.ID, now); ok {
 		applyActorAnimationToSpriteState(&state, anim, true)
 	}
-	if !isDeathActionFamily(state.actionFamily) {
+	if !isDeathActionFamily(state.ActionFamily) {
 		applyActorBodyState(actor, &state)
 	}
-	state.separateEquipment = m.effects().LordKnightSeparateEquipment(ctx, actor, now)
-	billboard, ok := humanoidBillboardForState(view, state, now)
+	state.SeparateEquipment = m.effects().LordKnightSeparateEquipment(ctx, actor, now)
+	billboard, ok := sprites.HumanoidBillboard(view, state, now)
 	if !ok {
 		return false
 	}
@@ -1450,16 +1451,16 @@ func (m *WorldMode) drawMercenarySprite3D(screen *render.Frame, ctx client.Conte
 	return true
 }
 
-func (m *WorldMode) mercenaryHumanoidSpriteView(ctx client.Context, actor worldstate.Actor) *humanoidSpriteView {
+func (m *WorldMode) mercenaryHumanoidSpriteView(ctx client.Context, actor worldstate.Actor) *sprites.Humanoid {
 	if ctx.Config.Headless {
 		return nil
 	}
-	key := mercenarySpriteKeyForActor(actor)
+	key := sprites.MercenaryAppearanceForActor(actor)
 	if _, ok := m.mercenaryViewMiss[key]; ok {
 		return nil
 	}
 	if m.mercenaryViews == nil {
-		m.mercenaryViews = make(map[actorSpriteKey]*humanoidSpriteView)
+		m.mercenaryViews = make(map[sprites.Appearance]*sprites.Humanoid)
 	}
 	if view, ok := m.mercenaryViews[key]; ok {
 		return view
@@ -1467,17 +1468,17 @@ func (m *WorldMode) mercenaryHumanoidSpriteView(ctx client.Context, actor worlds
 	if ctx.Resources == nil {
 		return nil
 	}
-	loaded, status := loadMercenaryHumanoidSpriteView(ctx.Resources, humanoidAppearance(key), "mercenary")
+	loaded, status := sprites.LoadMercenary(ctx.Resources, key, "mercenary")
 	if loaded == nil {
 		if m.mercenaryViewMiss == nil {
-			m.mercenaryViewMiss = make(map[actorSpriteKey]struct{})
+			m.mercenaryViewMiss = make(map[sprites.Appearance]struct{})
 		}
 		m.mercenaryViewMiss[key] = struct{}{}
-		glog.Warnf("mercenary sprite unavailable id=%d job=%d head=%d sex=%d: %s", actor.ID, key.job, key.head, key.sex, status)
+		glog.Warnf("mercenary sprite unavailable id=%d job=%d head=%d sex=%d: %s", actor.ID, key.Job, key.Head, key.Sex, status)
 		return nil
 	}
 	m.mercenaryViews[key] = loaded
-	glog.Debugf("mercenary sprite resources id=%d job=%d head=%d sex=%d %s", actor.ID, key.job, key.head, key.sex, status)
+	glog.Debugf("mercenary sprite resources id=%d job=%d head=%d sex=%d %s", actor.ID, key.Job, key.Head, key.Sex, status)
 	return loaded
 }
 
@@ -1489,8 +1490,8 @@ func (m *WorldMode) drawNonPCSprite3D(screen *render.Frame, ctx client.Context, 
 	}
 	now := time.Now()
 	state := m.nonPCSpriteState(actor, now)
-	state.cameraYaw = cameraYaw
-	billboard, ok := singleSpriteBillboardForState(view, state, now)
+	state.CameraYaw = cameraYaw
+	billboard, ok := sprites.BillboardForState(view, state, now)
 	if !ok {
 		return false
 	}
@@ -1498,32 +1499,32 @@ func (m *WorldMode) drawNonPCSprite3D(screen *render.Frame, ctx client.Context, 
 	return true
 }
 
-func (m *WorldMode) nonPCSpriteState(actor worldstate.Actor, now time.Time) spriteState {
-	state := spriteState{
-		actionFamily: scene.SpriteActionIdle,
-		direction:    actor.Dir,
-		moving:       scene.ActorIsMovingAt(actor, now),
-		loopIdle:     true,
-		moveSpeedMS:  actor.Speed,
+func (m *WorldMode) nonPCSpriteState(actor worldstate.Actor, now time.Time) sprites.State {
+	state := sprites.State{
+		ActionFamily: scene.SpriteActionIdle,
+		Direction:    actor.Dir,
+		Moving:       scene.ActorIsMovingAt(actor, now),
+		LoopIdle:     true,
+		MoveSpeedMS:  actor.Speed,
 	}
-	if state.moving {
-		state.actionFamily = scene.SpriteActionWalk
-		state.loop = true
-		state.walkDistance = actorRenderWalkDistance(actor, now)
+	if state.Moving {
+		state.ActionFamily = scene.SpriteActionWalk
+		state.Loop = true
+		state.WalkDistance = actorRenderWalkDistance(actor, now)
 	}
 	if anim, ok := m.actorAnimation(actor.ID, now); ok {
 		if applyActorAnimationToSpriteState(&state, anim, false) {
-			state.loopIdle = false
+			state.LoopIdle = false
 		}
 	}
-	if !isDeathActionFamily(state.actionFamily) {
+	if !isDeathActionFamily(state.ActionFamily) {
 		applyActorBodyState(actor, &state)
 	}
 	return state
 }
 
 func isDeathActionFamily(actionFamily int) bool {
-	return actionFamily == spriteActionPCDeath || actionFamily == spriteActionNonPCDeath
+	return actionFamily == sprites.ActionPCDeath || actionFamily == sprites.ActionNonPCDeath
 }
 
 func (m *WorldMode) nonPCSpriteView(ctx client.Context, actor worldstate.Actor) *scene.SpriteView {
@@ -1544,7 +1545,7 @@ func (m *WorldMode) nonPCSpriteView(ctx client.Context, actor worldstate.Actor) 
 	if ctx.Resources == nil {
 		return nil
 	}
-	loaded, status := loadNonPCSpriteView(ctx.Resources, job, "nonpc")
+	loaded, status := sprites.LoadNonPC(ctx.Resources, job, "nonpc")
 	if loaded == nil {
 		if m.nonPCViewMiss == nil {
 			m.nonPCViewMiss = make(map[int]struct{})
@@ -1570,7 +1571,7 @@ func (m *WorldMode) petAccessorySpriteView(ctx client.Context, actor worldstate.
 	if _, miss := m.petAccessoryMiss[key]; miss {
 		return base
 	}
-	view, status := loadPetAccessorySpriteView(ctx.Resources, base, accessoryID, "pet accessory")
+	view, status := sprites.LoadPetAccessory(ctx.Resources, base, accessoryID, "pet accessory")
 	if view == nil {
 		if m.petAccessoryMiss == nil {
 			m.petAccessoryMiss = make(map[petAccessorySpriteKey]struct{})
@@ -1585,4 +1586,91 @@ func (m *WorldMode) petAccessorySpriteView(ctx client.Context, actor worldstate.
 	m.petAccessoryViews[key] = view
 	glog.Debugf("pet accessory sprite resources id=%d job=%d accessory=%d %s", actor.ID, actor.Job, accessoryID, status)
 	return view
+}
+
+type petAccessorySpriteKey struct {
+	job         int
+	accessoryID uint32
+}
+
+func (m *WorldMode) drawPlayerSprite3D(ctx client.Context, screen *render.Frame, projection scene.Projection, entry scene.ActorDrawEntry, direction int, cameraYaw float64, shadow float64, alpha float64) bool {
+	now := time.Now()
+	actor := entry.Actor
+	moving := scene.ActorIsMovingAt(actor, now)
+	state := sprites.State{
+		SeparateEquipment: m.effects().LordKnightSeparateEquipment(ctx, actor, now),
+		ActionFamily:      scene.SpriteActionIdle,
+		Direction:         direction,
+		HeadDir:           actor.HeadDir,
+		HeadTurn:          true,
+		CameraYaw:         cameraYaw,
+		Moving:            moving,
+		MoveSpeedMS:       actor.Speed,
+	}
+	if moving {
+		state.ActionFamily = scene.SpriteActionWalk
+		state.Loop = true
+		state.WalkDistance = actorRenderWalkDistance(actor, now)
+	} else if actor.Sitting {
+		state.ActionFamily = scene.SpriteActionSit
+	}
+	if ctx.Session != nil {
+		if anim, ok := m.actorAnimation(ctx.Session.CharID, now); ok {
+			applyActorAnimationToSpriteState(&state, anim, true)
+		} else if anim, ok := m.actorAnimation(ctx.Session.AccountID, now); ok {
+			applyActorAnimationToSpriteState(&state, anim, true)
+		}
+	}
+	if !isDeathActionFamily(state.ActionFamily) {
+		applyActorBodyState(actor, &state)
+	}
+	billboard, ok := sprites.HumanoidBillboard(m.playerView, state, now)
+	if !ok {
+		return false
+	}
+	m.drawActorSpriteWithEffects3D(ctx, screen, projection, entry, billboard, m.playerRenderScale(ctx, actor, entry.Scale, now), alpha, shadow, entry.Stealth.Tint(m.playerRenderTint(ctx, actor, now)), entry.Stealth.Blend(m.playerRenderBlend(ctx, actor, now)), now)
+	return true
+}
+
+func applyActorAnimationToSpriteState(state *sprites.State, anim actorAnimation, playerLike bool) bool {
+	if state == nil {
+		return false
+	}
+	if state.Moving && !actorAnimationOverridesWalk(anim, playerLike) {
+		return false
+	}
+	state.ActionFamily = anim.actionFamily
+	state.Started = anim.started
+	state.Loop = anim.loop
+	state.PingPong = anim.pingPong
+	state.Play = anim.play
+	state.HasPlay = anim.hasPlay
+	state.Length = anim.length
+	state.HasLength = anim.hasLength
+	state.FrameOffset = anim.frameOffset
+	state.HasFrameOffset = anim.hasFrameOffset
+	state.Moving = false
+	state.FixedMotion = anim.fixedMotion
+	state.HasFixedMotion = anim.hasFixedMotion
+	state.Speed = anim.speed
+	state.HasSpeed = anim.hasSpeed
+	return true
+}
+
+func actorAnimationOverridesWalk(anim actorAnimation, playerLike bool) bool {
+	if playerLike {
+		return anim.actionFamily == sprites.ActionPCDeath
+	}
+	return anim.actionFamily == sprites.ActionNonPCDeath
+}
+
+func (m *WorldMode) drawActorSpriteBillboardTintAlpha3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA, blend render.Blend) {
+	m.effects().DrawActorSpriteBillboard(screen, projection, billboard, worldX, worldY, worldZ, scale, alpha, shadow, tintColor, blend)
+}
+
+func (m *WorldMode) drawSpriteBillboardAlpha3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) {
+	options := scene.SpriteBillboardTriangleDrawOptions()
+	options.DepthWrite = true
+	options.Filter = render.FilterSprite
+	scene.DrawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, m.spriteTexture(billboard.Image), worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, options)
 }

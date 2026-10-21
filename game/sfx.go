@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
@@ -186,20 +187,20 @@ func (m *WorldMode) processNonPCMotionSound(ctx client.Context, actor worldstate
 		return
 	}
 	state := m.nonPCSpriteState(actor, now)
-	switch state.actionFamily {
-	case spriteActionNonPCAttack, spriteActionNonPCHurt:
+	switch state.ActionFamily {
+	case sprites.ActionNonPCAttack, sprites.ActionNonPCHurt:
 		return
 	}
-	_, action, ok := resolveSpriteAction(view.Act, state.actionFamily, state.direction)
+	_, action, ok := sprites.ResolveAction(view.Act, state.ActionFamily, state.Direction)
 	if !ok || len(action.Animations) == 0 {
 		return
 	}
-	motion := bodyMotionForState(action, state, view.Started, now)
+	motion := sprites.BodyMotionForState(action, state, view.Started, now)
 	if motion < 0 || motion >= len(action.Animations) {
 		return
 	}
 	soundIndex := action.Animations[motion].Sound
-	current := actorSoundFrame{actionFamily: state.actionFamily, motion: motion, soundIndex: soundIndex}
+	current := actorSoundFrame{actionFamily: state.ActionFamily, motion: motion, soundIndex: soundIndex}
 	if m.actorSoundFrames == nil {
 		m.actorSoundFrames = make(map[uint32]actorSoundFrame)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -93,10 +94,10 @@ func TestHiddenNPCRemainsInteractive(t *testing.T) {
 
 func TestHiddenWarpNPCDoesNotLoadPoringRealData(t *testing.T) {
 	manager := testutil.RealDataManager(t)
-	if view, status := loadNonPCSpriteView(manager, 139, "hidden warp NPC"); view != nil {
+	if view, status := sprites.LoadNonPC(manager, 139, "hidden warp NPC"); view != nil {
 		t.Fatalf("hidden warp NPC loaded a sprite: %s", status)
 	}
-	if view, status := loadNonPCSpriteView(manager, 1002, "Poring"); view == nil {
+	if view, status := sprites.LoadNonPC(manager, 1002, "Poring"); view == nil {
 		t.Fatalf("normal Poring failed to load: %s", status)
 	}
 }

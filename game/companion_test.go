@@ -10,6 +10,7 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -511,32 +512,32 @@ func TestMercenaryActionFamiliesUseGuildWeaponActions(t *testing.T) {
 	sword := worldstate.Actor{Job: 6037, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
 	mob := worldstate.Actor{Job: 1002, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 
-	if got := attackActionFamilyForActorWithResources(nil, archer); got != spriteActionPCAttack2 {
-		t.Fatalf("archer mercenary attack action = %d, want %d", got, spriteActionPCAttack2)
+	if got := attackActionFamilyForActorWithResources(nil, archer); got != sprites.ActionPCAttack2 {
+		t.Fatalf("archer mercenary attack action = %d, want %d", got, sprites.ActionPCAttack2)
 	}
-	if got := attackActionFamilyForActorWithResources(nil, lancer); got != spriteActionPCAttack3 {
-		t.Fatalf("lancer mercenary attack action = %d, want %d", got, spriteActionPCAttack3)
+	if got := attackActionFamilyForActorWithResources(nil, lancer); got != sprites.ActionPCAttack3 {
+		t.Fatalf("lancer mercenary attack action = %d, want %d", got, sprites.ActionPCAttack3)
 	}
-	if got := attackActionFamilyForActorWithResources(nil, sword); got != spriteActionPCAttack2 {
-		t.Fatalf("sword mercenary attack action = %d, want %d", got, spriteActionPCAttack2)
+	if got := attackActionFamilyForActorWithResources(nil, sword); got != sprites.ActionPCAttack2 {
+		t.Fatalf("sword mercenary attack action = %d, want %d", got, sprites.ActionPCAttack2)
 	}
-	if got := hurtActionFamilyForActor(archer); got != spriteActionPCHurt {
-		t.Fatalf("archer mercenary hurt action = %d, want %d", got, spriteActionPCHurt)
+	if got := hurtActionFamilyForActor(archer); got != sprites.ActionPCHurt {
+		t.Fatalf("archer mercenary hurt action = %d, want %d", got, sprites.ActionPCHurt)
 	}
-	if got := deathActionFamilyForActor(archer); got != spriteActionNonPCDeath {
-		t.Fatalf("archer mercenary death action = %d, want %d", got, spriteActionNonPCDeath)
+	if got := deathActionFamilyForActor(archer); got != sprites.ActionNonPCDeath {
+		t.Fatalf("archer mercenary death action = %d, want %d", got, sprites.ActionNonPCDeath)
 	}
-	if got := deathActionFamilyForActor(sword); got != spriteActionPCDeath {
-		t.Fatalf("sword mercenary death action = %d, want %d", got, spriteActionPCDeath)
+	if got := deathActionFamilyForActor(sword); got != sprites.ActionPCDeath {
+		t.Fatalf("sword mercenary death action = %d, want %d", got, sprites.ActionPCDeath)
 	}
-	if got := skillCastActionFamilyForActor(sword, 0); got != spriteActionPCSkill {
-		t.Fatalf("sword mercenary cast action = %d, want %d", got, spriteActionPCSkill)
+	if got := skillCastActionFamilyForActor(sword, 0); got != sprites.ActionPCSkill {
+		t.Fatalf("sword mercenary cast action = %d, want %d", got, sprites.ActionPCSkill)
 	}
-	if got := readyFightSkillActionSpec.actionFamilyForActorWithResources(nil, sword); got != spriteActionPCSkill {
-		t.Fatalf("sword mercenary readyfight skill action = %d, want %d", got, spriteActionPCSkill)
+	if got := readyFightSkillActionSpec.actionFamilyForActorWithResources(nil, sword); got != sprites.ActionPCSkill {
+		t.Fatalf("sword mercenary readyfight skill action = %d, want %d", got, sprites.ActionPCSkill)
 	}
-	if got := attackActionFamilyForActorWithResources(nil, mob); got != spriteActionNonPCAttack {
-		t.Fatalf("mob attack action = %d, want %d", got, spriteActionNonPCAttack)
+	if got := attackActionFamilyForActorWithResources(nil, mob); got != sprites.ActionNonPCAttack {
+		t.Fatalf("mob attack action = %d, want %d", got, sprites.ActionNonPCAttack)
 	}
 }
 
@@ -544,10 +545,10 @@ func TestMercenarySpriteKeyDerivesSexFromMercenaryResource(t *testing.T) {
 	archer := worldstate.Actor{Job: 6017, Sex: 1, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
 	sword := worldstate.Actor{Job: 6037, Sex: 0, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
 
-	if got := mercenarySpriteKeyForActor(archer).sex; got != 0 {
+	if got := sprites.MercenaryAppearanceForActor(archer).Sex; got != 0 {
 		t.Fatalf("archer mercenary sex = %d, want female resource sex 0", got)
 	}
-	if got := mercenarySpriteKeyForActor(sword).sex; got != 1 {
+	if got := sprites.MercenaryAppearanceForActor(sword).Sex; got != 1 {
 		t.Fatalf("sword mercenary sex = %d, want male resource sex 1", got)
 	}
 }
@@ -565,14 +566,14 @@ func TestMercenarySpriteKeyUsesGuildDefaultWeapon(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			actor := worldstate.Actor{Job: tc.job, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
-			if got := mercenarySpriteKeyForActor(actor).weapon; got != tc.want {
+			if got := sprites.MercenaryAppearanceForActor(actor).Weapon; got != tc.want {
 				t.Fatalf("default weapon = %d, want %d", got, tc.want)
 			}
 		})
 	}
 
 	actor := worldstate.Actor{Job: 6037, Weapon: 7, HasObjectType: true, ObjectType: scene.ActorObjectTypeMercenary}
-	if got := mercenarySpriteKeyForActor(actor).weapon; got != 7 {
+	if got := sprites.MercenaryAppearanceForActor(actor).Weapon; got != 7 {
 		t.Fatalf("explicit weapon = %d, want 7", got)
 	}
 }

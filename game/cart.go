@@ -7,6 +7,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -116,7 +117,7 @@ func cartDrawAfterActor(actor worldstate.Actor, cameraYaw float64) bool {
 }
 
 func cartSpriteDirection(actor worldstate.Actor, cameraYaw float64) int {
-	return spriteDirectionFromWorldDirForCamera(actor.Dir, cameraYaw)
+	return sprites.DirectionForCamera(actor.Dir, cameraYaw)
 }
 
 func cartSpriteOffset(direction int) (float64, float64) {
@@ -201,7 +202,7 @@ func (m *WorldMode) cartSpriteView(ctx client.Context, cartNum int) *scene.Sprit
 	if _, miss := m.cartViewMiss[cartNum]; miss {
 		return nil
 	}
-	view, status := loadCartSpriteView(ctx.Resources, cartNum)
+	view, status := sprites.LoadCart(ctx.Resources, cartNum)
 	if view == nil {
 		m.cartViewMiss[cartNum] = struct{}{}
 		glog.Warnf("cart sprite unavailable cart=%d: %s", cartNum, status)
@@ -228,25 +229,25 @@ func (m *WorldMode) drawActorCart3D(screen *render.Frame, ctx client.Context, pr
 		return false
 	}
 	now := time.Now()
-	state := spriteState{
-		actionFamily:   scene.SpriteActionIdle,
-		direction:      actor.Dir,
-		cameraYaw:      cameraYaw,
-		moving:         scene.ActorIsMovingAt(actor, now),
-		moveSpeedMS:    actor.Speed,
-		hasPlay:        true,
-		play:           false,
-		fixedMotion:    0,
-		hasFixedMotion: true,
+	state := sprites.State{
+		ActionFamily:   scene.SpriteActionIdle,
+		Direction:      actor.Dir,
+		CameraYaw:      cameraYaw,
+		Moving:         scene.ActorIsMovingAt(actor, now),
+		MoveSpeedMS:    actor.Speed,
+		HasPlay:        true,
+		Play:           false,
+		FixedMotion:    0,
+		HasFixedMotion: true,
 	}
-	if state.moving {
-		state.actionFamily = scene.SpriteActionWalk
-		state.loop = true
-		state.hasPlay = false
-		state.hasFixedMotion = false
-		state.walkDistance = actorRenderWalkDistance(actor, now)
+	if state.Moving {
+		state.ActionFamily = scene.SpriteActionWalk
+		state.Loop = true
+		state.HasPlay = false
+		state.HasFixedMotion = false
+		state.WalkDistance = actorRenderWalkDistance(actor, now)
 	}
-	billboard, ok := singleSpriteBillboardForState(view, state, now)
+	billboard, ok := sprites.BillboardForState(view, state, now)
 	if !ok {
 		return false
 	}
@@ -263,7 +264,7 @@ func (m *WorldMode) drawActorCartShadow3D(screen *render.Frame, ctx client.Conte
 	if hasCart, _ := actorCartState(actor); !hasCart {
 		return false
 	}
-	billboard, ok := fixedSpriteBillboard(m.shadowView)
+	billboard, ok := sprites.FixedBillboard(m.shadowView)
 	if !ok {
 		return false
 	}
@@ -272,5 +273,5 @@ func (m *WorldMode) drawActorCartShadow3D(screen *render.Frame, ctx client.Conte
 	if scale == 0 {
 		return false
 	}
-	return drawSpriteShadowBillboard3D(screen, projection, billboard, entry.WorldX, entry.WorldY, entry.WorldZ+scene.ActorShadowTerrainLift, scale, m.actorVisualAlpha(actor.ID, now), entry.Shadow)
+	return sprites.DrawShadow3D(screen, projection, billboard, entry.WorldX, entry.WorldY, entry.WorldZ+scene.ActorShadowTerrainLift, scale, m.actorVisualAlpha(actor.ID, now), entry.Shadow)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/game/weather"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -45,12 +46,12 @@ type WorldMode struct {
 	mapTextureUploads []*render.Image
 	mapUploadBatch    int
 	textureUpscaling  bool // Captured when loading the map; cached meshes keep matching UVs.
-	spriteUpscaler    *spriteUpscaler
+	spriteUpscaler    *sprites.Upscaler
 	textureMiss       map[string]struct{}
 	imageCache        map[string]image.Image
 	imageMiss         map[string]struct{}
 
-	playerView       *humanoidSpriteView
+	playerView       *sprites.Humanoid
 	shadowView       *scene.SpriteView
 	shadowViewMiss   bool
 	cartViews        map[int]*scene.SpriteView
@@ -77,10 +78,10 @@ type WorldMode struct {
 	itemViews        map[itemSpriteKey]*scene.SpriteView
 	itemViewMiss     map[itemSpriteKey]struct{}
 
-	actorViews        map[actorSpriteKey]*humanoidSpriteView
-	actorViewMiss     map[actorSpriteKey]struct{}
-	mercenaryViews    map[actorSpriteKey]*humanoidSpriteView
-	mercenaryViewMiss map[actorSpriteKey]struct{}
+	actorViews        map[sprites.Appearance]*sprites.Humanoid
+	actorViewMiss     map[sprites.Appearance]struct{}
+	mercenaryViews    map[sprites.Appearance]*sprites.Humanoid
+	mercenaryViewMiss map[sprites.Appearance]struct{}
 	nonPCViews        map[int]*scene.SpriteView
 	nonPCViewMiss     map[int]struct{}
 	gr2Models         map[int]*gr2ModelView
@@ -318,20 +319,6 @@ func (m *WorldMode) KeyboardShortcutsBlocked(ctx client.Context) bool {
 	return m.ui.KeyboardShortcutsBlocked(ctx)
 }
 
-type actorSpriteKey struct {
-	job         int
-	head        int
-	sex         byte
-	admin       bool
-	bodyPalette int
-	headPalette int
-	weapon      int
-	shield      int
-	headTop     int
-	headMid     int
-	headLow     int
-}
-
 type pickupIntent struct {
 	itemID  uint32
 	expires time.Time
@@ -447,10 +434,10 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.itemViewMiss = make(map[itemSpriteKey]struct{})
 	m.effects().EffectViews = make(map[string]*scene.SpriteView)
 	m.effects().EffectViewMiss = make(map[string]struct{})
-	m.actorViews = make(map[actorSpriteKey]*humanoidSpriteView)
-	m.actorViewMiss = make(map[actorSpriteKey]struct{})
-	m.mercenaryViews = make(map[actorSpriteKey]*humanoidSpriteView)
-	m.mercenaryViewMiss = make(map[actorSpriteKey]struct{})
+	m.actorViews = make(map[sprites.Appearance]*sprites.Humanoid)
+	m.actorViewMiss = make(map[sprites.Appearance]struct{})
+	m.mercenaryViews = make(map[sprites.Appearance]*sprites.Humanoid)
+	m.mercenaryViewMiss = make(map[sprites.Appearance]struct{})
 	m.nonPCViews = make(map[int]*scene.SpriteView)
 	m.nonPCViewMiss = make(map[int]struct{})
 	m.gr2Models = make(map[int]*gr2ModelView)
@@ -510,13 +497,13 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	playerStatus := ""
 	character := ctx.Session.SelectedCharacter()
 	visualCharacter := localPlayerVisualCharacter(ctx)
-	if view, status := loadPlayerHumanoidSpriteView(ctx.Resources, visualCharacter, ctx.Session.Sex, localPlayerIsAdmin(ctx)); view != nil {
+	if view, status := sprites.LoadPlayer(ctx.Resources, visualCharacter, ctx.Session.Sex, localPlayerIsAdmin(ctx)); view != nil {
 		m.playerView = view
 		playerStatus = status
 	} else {
 		playerStatus = status
 	}
-	if view, status := loadActorShadowSpriteView(ctx.Resources); view != nil {
+	if view, status := sprites.LoadShadow(ctx.Resources); view != nil {
 		m.shadowView = view
 		if status != "" {
 			playerStatus += " " + status
@@ -530,7 +517,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.falconViews = make(map[int]*scene.SpriteView)
 	m.falconViewMiss = make(map[int]struct{})
 	m.falcons = make(map[uint32]*falconRenderState)
-	if view, status := loadCursorSpriteView(ctx.Resources); view != nil {
+	if view, status := sprites.LoadCursor(ctx.Resources); view != nil {
 		m.cursorView = view
 		if status != "" {
 			playerStatus += " " + status

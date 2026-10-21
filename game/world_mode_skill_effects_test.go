@@ -15,6 +15,7 @@ import (
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -39,9 +40,9 @@ func TestAcolyteCastAuraAndPoses(t *testing.T) {
 		if !m.effects().HasActive(effects.BeginSpell6, 2000000, time.Now()) || m.effects().HasActive(effects.BeginSpell, 2000000, time.Now()) {
 			t.Fatalf("skill %d: native cast aura must follow the holy property", skill)
 		}
-		pose := spriteActionPCReadyFight
+		pose := sprites.ActionPCReadyFight
 		if skill == db.SkillALIncagi {
-			pose = spriteActionPCSkill
+			pose = sprites.ActionPCSkill
 		} else if skill == db.SkillALBlessing {
 			pose = scene.SpriteActionIdle
 		}
@@ -385,7 +386,7 @@ func TestBlacksmithHammerFallAndCastPoses(t *testing.T) {
 	}
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillBSHammerfall, SourceID: 2000000, X: 15, Y: 20})
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillBSHammerfall, SourceID: 2000000, X: 15, Y: 20})
-	if len(m.effects().Active) != 2 || m.actorAnims[2000000].actionFamily != spriteActionPCSkill {
+	if len(m.effects().Active) != 2 || m.actorAnims[2000000].actionFamily != sprites.ActionPCSkill {
 		t.Fatal("each Hammer Fall must play its release pose and create a fresh ground impact")
 	}
 	for _, e := range m.effects().Active {
@@ -547,12 +548,12 @@ func TestChampionEffectsRenderWithNativeAssets(t *testing.T) {
 	start := time.Unix(100, 0)
 	projection := testutil.Projection(800, 600, 12, 20, 0)
 	for _, sex := range []uint8{0, 1} {
-		view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false)
+		view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
 		if view == nil {
 			t.Fatalf("Champion sprite missing: %s", status)
 		}
 		for dir := 0; dir < 8; dir++ {
-			_, action, ok := resolveSpriteAction(view.body.Act, spriteActionPCSkill, dir)
+			_, action, ok := sprites.ResolveAction(view.Body.Act, sprites.ActionPCSkill, dir)
 			if !ok || len(action.Animations) <= 4 {
 				t.Fatal("Champion is missing the fixed skill poses")
 			}
@@ -735,11 +736,11 @@ func TestGunslingerNativePosesAndCasting(t *testing.T) {
 		family      int
 		duration    time.Duration
 	}{
-		{500, 4, 5, spriteActionPCSkill, 500 * time.Millisecond},
-		{501, 0, 3, spriteActionPCSkill, time.Second}, {504, 0, 3, spriteActionPCSkill, time.Second},
-		{505, 0, 3, spriteActionPCSkill, time.Second}, {506, 0, 3, spriteActionPCSkill, time.Second},
-		{516, 0, 3, spriteActionPCSkill, time.Second}, {517, 0, 3, spriteActionPCSkill, time.Second},
-		{508, 0, 2, spriteActionPCAttack1, 500 * time.Millisecond}, {521, 0, 2, spriteActionPCAttack1, 500 * time.Millisecond},
+		{500, 4, 5, sprites.ActionPCSkill, 500 * time.Millisecond},
+		{501, 0, 3, sprites.ActionPCSkill, time.Second}, {504, 0, 3, sprites.ActionPCSkill, time.Second},
+		{505, 0, 3, sprites.ActionPCSkill, time.Second}, {506, 0, 3, sprites.ActionPCSkill, time.Second},
+		{516, 0, 3, sprites.ActionPCSkill, time.Second}, {517, 0, 3, sprites.ActionPCSkill, time.Second},
+		{508, 0, 2, sprites.ActionPCAttack1, 500 * time.Millisecond}, {521, 0, 2, sprites.ActionPCAttack1, 500 * time.Millisecond},
 	} {
 		for _, seed := range []int64{0, 1} {
 			anim := skillAction(tc.skill).actorAnimationForActorWithResources(nil, ctx.World.Player, time.Unix(100, seed), time.Second)
@@ -775,9 +776,9 @@ func TestGunslingerNativePosesAndCasting(t *testing.T) {
 		now := time.Unix(100, 0)
 		m.startSkillSourceCastAnimation(ctx, 2000000, id, 2*time.Second, now)
 		a := m.actorAnims[2000000]
-		family, frame := spriteActionPCSkill, 1
+		family, frame := sprites.ActionPCSkill, 1
 		if id >= 518 {
-			family, frame = spriteActionPCAttack1, 0
+			family, frame = sprites.ActionPCAttack1, 0
 		}
 		if a.actionFamily != family || !a.hasFixedMotion || a.fixedMotion != frame || a.duration != 500*time.Millisecond {
 			t.Fatalf("skill %d cast pose %+v", id, a)
@@ -888,13 +889,13 @@ func TestGunslingerSpriteDelayAndGroundLoops(t *testing.T) {
 	ctx.Session.Selected.Job = db.JobGunslinger
 	ctx.Session.Selected.Weapon = 0
 	for _, sex := range []uint8{0, 1} {
-		view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false)
+		view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
 		if view == nil {
 			t.Fatalf("Gunslinger sprite missing: %s", status)
 		}
 		for direction := 0; direction < 8; direction++ {
-			for family, minFrames := range map[int]int{spriteActionPCSkill: 6, spriteActionPCAttack1: 3} {
-				_, action, ok := resolveSpriteAction(view.body.Act, family, direction)
+			for family, minFrames := range map[int]int{sprites.ActionPCSkill: 6, sprites.ActionPCAttack1: 3} {
+				_, action, ok := sprites.ResolveAction(view.Body.Act, family, direction)
 				if !ok || len(action.Animations) < minFrames {
 					t.Fatalf("missing Gunslinger pose sex=%d direction=%d family=%d", sex, direction, family)
 				}
@@ -1486,8 +1487,8 @@ func TestBladeStopCapturesVictimsPlayingFrame(t *testing.T) {
 		actions[i] = res.ACTAction{DelayMS: 100, Animations: make([]res.ACTAnimation, 4)}
 	}
 	started := time.Now().Add(-150 * time.Millisecond)
-	m := &WorldMode{playerView: &humanoidSpriteView{body: &scene.SpriteView{Act: &res.ACT{Actions: actions}}, started: started}}
-	m.setCombatActorAction(ctx, 2000000, actorAnimation{actionFamily: spriteActionPCAttack1, started: started, play: true, hasPlay: true, duration: time.Second})
+	m := &WorldMode{playerView: &sprites.Humanoid{Body: &scene.SpriteView{Act: &res.ACT{Actions: actions}}, Started: started}}
+	m.setCombatActorAction(ctx, 2000000, actorAnimation{actionFamily: sprites.ActionPCAttack1, started: started, play: true, hasPlay: true, duration: time.Second})
 	m.applyActorBladeStop(ctx, network.ActorBladeStop{SourceID: 300, TargetID: 2000000, Active: true})
 	anim := m.actorAnims[150000]
 	want := scene.MinInt(3, int(anim.started.Sub(started)/(100*time.Millisecond)))
@@ -1548,12 +1549,12 @@ func TestNinjaNativeAssetsAndRendering(t *testing.T) {
 	ctx.World.Player.Job, ctx.Session.Selected.Job = db.JobNinja, db.JobNinja
 	ctx.World.Player.Weapon, ctx.Session.Selected.Weapon = 0, 0
 	for _, sex := range []uint8{0, 1} {
-		view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false)
+		view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
 		if view == nil {
 			t.Fatalf("missing Ninja sprite: %s", status)
 		}
 		for direction := 0; direction < 8; direction++ {
-			_, action, ok := resolveSpriteAction(view.body.Act, spriteActionPCSkill, direction)
+			_, action, ok := sprites.ResolveAction(view.Body.Act, sprites.ActionPCSkill, direction)
 			if !ok || len(action.Animations) < 6 {
 				t.Fatalf("Ninja sex %d direction %d lacks native skill poses", sex, direction)
 			}
@@ -1593,12 +1594,12 @@ func TestNinjaNativeAssetsAndRendering(t *testing.T) {
 
 func TestMagicCrasherBlendReachesActorDraws(t *testing.T) {
 	sprite := &scene.SpriteView{
-		Spr:    &res.SPR{Frames: []res.SPRFrame{{Type: res.SPRFrameRGBA, Width: 8, Height: 8, Data: solidRGBAFrame(8, 8)}}},
+		Spr:    &res.SPR{Frames: []res.SPRFrame{{Type: res.SPRFrameRGBA, Width: 8, Height: 8, Data: testutil.SolidRGBAFrame(8, 8)}}},
 		Act:    &res.ACT{Actions: []res.ACTAction{{DelayMS: 100, Animations: []res.ACTAnimation{{Layers: []res.ACTLayer{{Index: 0, SPRType: res.SPRFrameRGBA, ScaleX: 1, ScaleY: 1, Color: [4]float32{1, 1, 1, 1}}}}}}}},
 		Images: make(map[scene.SpriteFrameKey]*render.Image), Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
 	mode := &WorldMode{
-		playerView: &humanoidSpriteView{body: sprite, billboards: make(map[humanoidBillboardKey]*scene.Billboard)},
+		playerView: &sprites.Humanoid{Body: sprite},
 		nonPCViews: map[int]*scene.SpriteView{1002: sprite},
 	}
 	world := worldstate.New()
@@ -1664,7 +1665,7 @@ func TestPriestCasting(t *testing.T) {
 		if !m.effects().HasActive(aura, 2000000, time.Now()) {
 			t.Fatalf("skill %d: wrong cast aura", skill)
 		}
-		pose := spriteActionPCReadyFight
+		pose := sprites.ActionPCReadyFight
 		if skill == db.SkillPRRedemptio {
 			pose = scene.SpriteActionIdle
 		}
@@ -1680,13 +1681,13 @@ func TestProfessorClientAssets(t *testing.T) {
 	ctx.World.Player.Job, ctx.Session.Selected.Job = db.JobSageH, db.JobSageH
 	start := time.Unix(100, 0)
 	for _, sex := range []uint8{0, 1} {
-		view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false)
-		if view == nil || !strings.Contains(view.body.ActSource, res.PlayerJobToken(db.JobSageH)) {
+		view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
+		if view == nil || !strings.Contains(view.Body.ActSource, res.PlayerJobToken(db.JobSageH)) {
 			t.Fatalf("must load the Professor body without fallback: %s", status)
 		}
 		for dir := 0; dir < 8; dir++ {
-			for _, family := range []int{spriteActionPCReadyFight, spriteActionPCSkill} {
-				if _, a, ok := resolveSpriteAction(view.body.Act, family, dir); !ok || len(a.Animations) == 0 {
+			for _, family := range []int{sprites.ActionPCReadyFight, sprites.ActionPCSkill} {
+				if _, a, ok := sprites.ResolveAction(view.Body.Act, family, dir); !ok || len(a.Animations) == 0 {
 					t.Fatal("Professor casting/release ACT is missing")
 				}
 			}
@@ -1699,7 +1700,7 @@ func TestProfessorClientAssets(t *testing.T) {
 		if skill == 404 {
 			aura = 16
 		}
-		if m.actorAnims[2000000].actionFamily != spriteActionPCReadyFight || len(m.effects().Active) != 3 || m.effects().Active[2].EffectID != aura {
+		if m.actorAnims[2000000].actionFamily != sprites.ActionPCReadyFight || len(m.effects().Active) != 3 || m.effects().Active[2].EffectID != aura {
 			t.Fatalf("skill %d needs casting aura %d and the ready pose", skill, aura)
 		}
 	}
@@ -2291,13 +2292,13 @@ func TestStalkerClientAssets(t *testing.T) {
 	ctx.Resources = testutil.RealDataManager(t)
 	ctx.World.Player.Job, ctx.Session.Selected.Job = db.JobRogueH, db.JobRogueH
 	for _, sex := range []uint8{0, 1} {
-		view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false)
+		view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
 		if view == nil {
 			t.Fatalf("Stalker sprite missing: %s", status)
 		}
 		for dir := 0; dir < 8; dir++ {
-			for _, family := range []int{scene.SpriteActionIdle, spriteActionPCReadyFight, spriteActionPCSkill} {
-				if _, action, ok := resolveSpriteAction(view.body.Act, family, dir); !ok || len(action.Animations) == 0 {
+			for _, family := range []int{scene.SpriteActionIdle, sprites.ActionPCReadyFight, sprites.ActionPCSkill} {
+				if _, action, ok := sprites.ResolveAction(view.Body.Act, family, dir); !ok || len(action.Animations) == 0 {
 					t.Fatal("Stalker casting/release ACT missing")
 				}
 			}
@@ -2430,7 +2431,7 @@ func TestStarGladiatorNativeAssetsAndGeometry(t *testing.T) {
 	}
 	ctx.Session.Selected.Job = db.JobStar2
 	for _, sex := range []uint8{0, 1} {
-		if view, message := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false); view == nil {
+		if view, message := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false); view == nil {
 			t.Fatal(message)
 		}
 	}
@@ -2464,16 +2465,16 @@ func TestTaekwonEffectsRenderWithNativeAssets(t *testing.T) {
 		ctx.World.Player.Job, ctx.Session.Selected.Job = job, job
 		ctx.World.Player.Weapon, ctx.Session.Selected.Weapon = 0, 0
 		for _, sex := range []uint8{0, 1} {
-			view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false)
+			view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
 			if view == nil {
 				t.Fatalf("job %d sprite missing: %s", job, status)
 			}
-			for _, pose := range []struct{ family, motion int }{{spriteActionPCSkill, 5}, {spriteActionPCAttack1, 4}, {spriteActionPCAttack2, 8}, {spriteActionPCAttack3, 7}, {scene.SpriteActionPickup, 1}, {scene.SpriteActionWalk, 5}} {
-				if job == db.JobLinker && pose.family == spriteActionPCAttack2 {
+			for _, pose := range []struct{ family, motion int }{{sprites.ActionPCSkill, 5}, {sprites.ActionPCAttack1, 4}, {sprites.ActionPCAttack2, 8}, {sprites.ActionPCAttack3, 7}, {scene.SpriteActionPickup, 1}, {scene.SpriteActionWalk, 5}} {
+				if job == db.JobLinker && pose.family == sprites.ActionPCAttack2 {
 					continue // Soul Linkers cannot learn Heel Drop.
 				}
 				for dir := 0; dir < 8; dir++ {
-					_, action, ok := resolveSpriteAction(view.body.Act, pose.family, dir)
+					_, action, ok := sprites.ResolveAction(view.Body.Act, pose.family, dir)
 					if !ok || len(action.Animations) <= pose.motion {
 						t.Fatalf("job %d sex %d family %d direction %d lacks motion %d", job, sex, pose.family, dir, pose.motion)
 					}
@@ -2680,11 +2681,11 @@ func TestWizardMeteorKeepsReleasePose(t *testing.T) {
 	for i := range actions {
 		actions[i].Animations = make([]res.ACTAnimation, 4)
 	}
-	m := &WorldMode{playerView: &humanoidSpriteView{body: &scene.SpriteView{Act: &res.ACT{Actions: actions}}}}
+	m := &WorldMode{playerView: &sprites.Humanoid{Body: &scene.SpriteView{Act: &res.ACT{Actions: actions}}}}
 	for _, x := range []uint16{5, 30} {
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillWZMeteor, SourceID: 2000000, X: x, Y: 20})
 		anim := m.actorAnims[100]
-		if ctx.World.Player.Dir != 3 || anim.actionFamily != spriteActionPCSkill || anim.play || !anim.hasFixedMotion || anim.fixedMotion != 3 {
+		if ctx.World.Player.Dir != 3 || anim.actionFamily != sprites.ActionPCSkill || anim.play || !anim.hasFixedMotion || anim.fixedMotion != 3 {
 			t.Fatal("Meteor must hold the last skill frame without turning toward each impact")
 		}
 	}
@@ -3913,7 +3914,7 @@ func TestSkillCastNotifyAddsDurationAura(t *testing.T) {
 	if !ok {
 		t.Fatal("cast animation missing")
 	}
-	if anim.actionFamily != spriteActionPCReadyFight || anim.duration != 2500*time.Millisecond || anim.hasFixedMotion {
+	if anim.actionFamily != sprites.ActionPCReadyFight || anim.duration != 2500*time.Millisecond || anim.hasFixedMotion {
 		t.Fatalf("cast animation = %+v", anim)
 	}
 	if world.Dir != directionFromDelta(10, 20, 12, 20, 4) {
@@ -3989,7 +3990,7 @@ func TestSkillResultAnimationReplacesCastStance(t *testing.T) {
 	ctx := client.Context{Session: &session.Session{AccountID: 2000000, CharID: 150000}, World: world}
 
 	mode.applySkillCastNotify(ctx, network.SkillCastNotify{SourceID: 2000000, TargetID: 1100, SkillID: 28, DelayTime: 1200})
-	if anim, ok := mode.actorAnims[150000]; !ok || anim.actionFamily != spriteActionPCReadyFight {
+	if anim, ok := mode.actorAnims[150000]; !ok || anim.actionFamily != sprites.ActionPCReadyFight {
 		t.Fatalf("cast stance animation = %+v ok=%t", anim, ok)
 	}
 
@@ -3998,7 +3999,7 @@ func TestSkillResultAnimationReplacesCastStance(t *testing.T) {
 	if !ok {
 		t.Fatal("skill result animation missing")
 	}
-	if anim.actionFamily != spriteActionPCSkill || anim.hasFixedMotion {
+	if anim.actionFamily != sprites.ActionPCSkill || anim.hasFixedMotion {
 		t.Fatalf("skill result animation = %+v, want delivery skill action", anim)
 	}
 }
@@ -4505,7 +4506,7 @@ func TestImportedSkillActionFallback(t *testing.T) {
 		t.Fatalf("AC_SHOWER must use the supplied attack duration: %+v", shower)
 	}
 	merchant := worldstate.Actor{Job: 5}
-	if action := skillAction(db.SkillMCCartrevolution).actionFamilyForActorWithResources(nil, merchant); action != spriteActionPCSkill {
+	if action := skillAction(db.SkillMCCartrevolution).actionFamilyForActorWithResources(nil, merchant); action != sprites.ActionPCSkill {
 		t.Fatalf("MC_CARTREVOLUTION action = %d, want SKILL", action)
 	}
 	counter := skillAction(db.SkillKNAutocounter)

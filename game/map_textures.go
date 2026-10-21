@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 )
@@ -27,7 +28,7 @@ func (m *WorldMode) releaseMapTextures() {
 	}
 	m.graffiti = nil
 	if m.spriteUpscaler != nil {
-		close(m.spriteUpscaler.stop)
+		m.spriteUpscaler.Close()
 		m.spriteUpscaler = nil
 	}
 	m.mapImages.Release()
@@ -107,4 +108,14 @@ func (m *WorldMode) prepareMapTextureUploads(screen *render.Frame) bool {
 		bytes += size
 	}
 	return m.mapUploadBatch > 0
+}
+
+func (m *WorldMode) spriteTexture(src *render.Image) *render.Image {
+	if !m.textureUpscaling || src == nil {
+		return src
+	}
+	if m.spriteUpscaler == nil {
+		m.spriteUpscaler = sprites.NewUpscaler()
+	}
+	return m.spriteUpscaler.Texture(src, m.ownMapImage)
 }

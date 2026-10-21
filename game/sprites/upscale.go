@@ -1,4 +1,4 @@
-package game
+package sprites
 
 import (
 	"image"
@@ -10,7 +10,7 @@ import (
 // Sprite frames arrive during play. One worker and a bounded queue keep xBR
 // off the render thread; a busy queue leaves the original visible until a later
 // draw can enqueue it. The cache shares results across actors and anchor offsets.
-type spriteUpscaler struct {
+type Upscaler struct {
 	queue chan *spriteUpscaleJob
 	stop  chan struct{}
 	cache map[*render.Image]*spriteUpscaleJob
@@ -22,8 +22,8 @@ type spriteUpscaleJob struct {
 	image  *render.Image // Adopted by the map on the game/render thread.
 }
 
-func newSpriteUpscaler() *spriteUpscaler {
-	s := &spriteUpscaler{
+func NewUpscaler() *Upscaler {
+	s := &Upscaler{
 		queue: make(chan *spriteUpscaleJob, 8),
 		stop:  make(chan struct{}),
 		cache: make(map[*render.Image]*spriteUpscaleJob),
@@ -32,7 +32,7 @@ func newSpriteUpscaler() *spriteUpscaler {
 	return s
 }
 
-func (s *spriteUpscaler) run() {
+func (s *Upscaler) run() {
 	for {
 		// Check cancellation before taking another queued frame on map changes.
 		select {
@@ -57,18 +57,13 @@ func upscaleSpriteImage(src *render.Image) *render.Image {
 	return render.NewImageFromStraightAlpha(render.UpscaleTexture2x(straight))
 }
 
-func (m *WorldMode) spriteTexture(src *render.Image) *render.Image {
-	if !m.textureUpscaling || src == nil {
-		return src
-	}
-	if m.spriteUpscaler == nil {
-		m.spriteUpscaler = newSpriteUpscaler()
-	}
-	s := m.spriteUpscaler
+// Texture returns the original until the worker finishes. adopt registers a
+// completed image with its owner on the game/render thread.
+func (s *Upscaler) Texture(src *render.Image, adopt func(*render.Image) *render.Image) *render.Image {
 	if job := s.cache[src]; job != nil {
 		if job.image == nil {
 			if ready := job.ready.Load(); ready != nil {
-				job.image = m.ownMapImage(ready)
+				job.image = adopt(ready)
 			}
 		}
 		if job.image != nil {
@@ -83,4 +78,16 @@ func (m *WorldMode) spriteTexture(src *render.Image) *render.Image {
 		}
 	}
 	return src
+}
+
+// Close stops taking work. The owner releases images already adopted by Texture.
+func (s *Upscaler) Close() {
+	if s == nil {
+		return
+	}
+	select {
+	case <-s.stop:
+	default:
+		close(s.stop)
+	}
 }

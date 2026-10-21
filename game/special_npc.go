@@ -7,6 +7,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -37,7 +38,7 @@ func normalizeSpecialNPCActorName(name string) string {
 }
 
 func actorJobHasSpecialNoShadow(job int) bool {
-	if actorJobHasNoSprite(job) {
+	if sprites.JobHasNoSprite(job) {
 		return true
 	}
 	switch job {

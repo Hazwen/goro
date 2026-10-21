@@ -13,6 +13,7 @@ import (
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -72,7 +73,7 @@ func firstActionSoundMotion(action res.ACTAction) int {
 	return -1
 }
 
-func (m *WorldMode) humanoidSpriteViewForActor(ctx client.Context, actor world.Actor) *humanoidSpriteView {
+func (m *WorldMode) humanoidSpriteViewForActor(ctx client.Context, actor world.Actor) *sprites.Humanoid {
 	if scene.IsLocalActor(ctx, actor.ID) {
 		return m.playerView
 	}
@@ -81,18 +82,18 @@ func (m *WorldMode) humanoidSpriteViewForActor(ctx client.Context, actor world.A
 	}
 	actor = actorWithVisualJob(actor)
 	weapon, shield := res.NormalizePlayerWeaponShield(int(actor.Weapon), int(actor.Shield))
-	key := actorSpriteKey{
-		job:         int(actor.Job),
-		head:        int(actor.Head),
-		sex:         actor.Sex,
-		admin:       actor.IsAdmin,
-		bodyPalette: int(actor.BodyPal),
-		headPalette: int(actor.HeadPal),
-		weapon:      weapon,
-		shield:      shield,
-		headTop:     int(actor.HeadTop),
-		headMid:     int(actor.HeadMid),
-		headLow:     int(actor.HeadLow),
+	key := sprites.Appearance{
+		Job:         int(actor.Job),
+		Head:        int(actor.Head),
+		Sex:         actor.Sex,
+		Admin:       actor.IsAdmin,
+		BodyPalette: int(actor.BodyPal),
+		HeadPalette: int(actor.HeadPal),
+		Weapon:      weapon,
+		Shield:      shield,
+		HeadTop:     int(actor.HeadTop),
+		HeadMid:     int(actor.HeadMid),
+		HeadLow:     int(actor.HeadLow),
 	}
 	return m.actorViews[key]
 }
@@ -102,17 +103,17 @@ func (m *WorldMode) nonPCResolvedAction(ctx client.Context, actor world.Actor, a
 	if view == nil {
 		return res.ACTAction{}, false
 	}
-	_, action, ok := resolveSpriteAction(view.Act, actionFamily, actor.Dir)
+	_, action, ok := sprites.ResolveAction(view.Act, actionFamily, actor.Dir)
 	return action, ok
 }
 
 func (m *WorldMode) actorResolvedAction(ctx client.Context, actor world.Actor, actionFamily int) (res.ACTAction, bool) {
 	if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || companion.IsMercenary(actor) {
 		view := m.humanoidSpriteViewForActor(ctx, actor)
-		if view == nil || view.body == nil {
+		if view == nil || view.Body == nil {
 			return res.ACTAction{}, false
 		}
-		_, action, ok := resolveSpriteAction(view.body.Act, actionFamily, actor.Dir)
+		_, action, ok := sprites.ResolveAction(view.Body.Act, actionFamily, actor.Dir)
 		return action, ok
 	}
 	return m.nonPCResolvedAction(ctx, actor, actionFamily)
@@ -140,10 +141,10 @@ func (m *WorldMode) nonPCActionACT(ctx client.Context, actor world.Actor) *res.A
 func (m *WorldMode) actorActionACT(ctx client.Context, actor world.Actor) *res.ACT {
 	if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || companion.IsMercenary(actor) {
 		view := m.humanoidSpriteViewForActor(ctx, actor)
-		if view == nil || view.body == nil {
+		if view == nil || view.Body == nil {
 			return nil
 		}
-		return view.body.Act
+		return view.Body.Act
 	}
 	return m.nonPCActionACT(ctx, actor)
 }
@@ -486,7 +487,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 		source.Dir = directionFromDelta(source.X, source.Y, target.X, target.Y, source.Dir)
 	}
 	attackDuration := combatDuration(action.SourceSpeed, scene.DefaultAttackAnimationDuration)
-	attackFamily := spriteActionNonPCAttack
+	attackFamily := sprites.ActionNonPCAttack
 	if sourceOK {
 		attackFamily = skillActionFamilyForActorWithResources(ctx.Resources, source, action.SkillID)
 	}
@@ -1183,7 +1184,7 @@ func actorActionResetsWalk(anim actorAnimation) bool {
 }
 
 func (m *WorldMode) actorActionShouldResumeWalk(ctx client.Context, id uint32, anim actorAnimation) bool {
-	if anim.actionFamily != spriteActionPCHurt && anim.actionFamily != spriteActionNonPCHurt {
+	if anim.actionFamily != sprites.ActionPCHurt && anim.actionFamily != sprites.ActionNonPCHurt {
 		return false
 	}
 	return scene.IsLocalActor(ctx, id) && m.hasCombatFocus()
@@ -1204,7 +1205,7 @@ func cloneActorAnimation(anim *actorAnimation) *actorAnimation {
 
 func readyFightAnimation(started time.Time) *actorAnimation {
 	return &actorAnimation{
-		actionFamily: spriteActionPCReadyFight,
+		actionFamily: sprites.ActionPCReadyFight,
 		started:      started,
 		loop:         true,
 		play:         true,
@@ -1238,10 +1239,10 @@ func (m *WorldMode) clearActorAction(ctx client.Context, id uint32) {
 }
 
 func (m *WorldMode) actorActionAnimationIsDeath(ctx client.Context, id uint32, anim actorAnimation) bool {
-	if anim.actionFamily == spriteActionPCDeath {
+	if anim.actionFamily == sprites.ActionPCDeath {
 		return true
 	}
-	if anim.actionFamily != spriteActionNonPCDeath {
+	if anim.actionFamily != sprites.ActionNonPCDeath {
 		return false
 	}
 	actor, ok, local := scene.ActorForCombatID(ctx, id)
@@ -1349,7 +1350,7 @@ func (m *WorldMode) clearActorDeathAnimation(id uint32) {
 	if !ok {
 		return
 	}
-	if anim.actionFamily != spriteActionPCDeath && anim.actionFamily != spriteActionNonPCDeath {
+	if anim.actionFamily != sprites.ActionPCDeath && anim.actionFamily != sprites.ActionNonPCDeath {
 		return
 	}
 	delete(m.actorAnims, id)
@@ -1404,14 +1405,14 @@ func attackActionFamilyForActorWithResources(manager *res.Manager, actor world.A
 		}
 		switch db.PlayerWeaponAction(job, actor.Sex, weapon) {
 		case db.PlayerWeaponActionAttack2:
-			return spriteActionPCAttack2
+			return sprites.ActionPCAttack2
 		case db.PlayerWeaponActionAttack3:
-			return spriteActionPCAttack3
+			return sprites.ActionPCAttack3
 		default:
-			return spriteActionPCAttack1
+			return sprites.ActionPCAttack1
 		}
 	}
-	return spriteActionNonPCAttack
+	return sprites.ActionNonPCAttack
 }
 
 func skillActionFamilyForActorWithResources(manager *res.Manager, actor world.Actor, skillID uint16) int {
@@ -1423,13 +1424,13 @@ func skillActionFamilyForActorWithResources(manager *res.Manager, actor world.Ac
 
 func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	if companion.IsMercenary(actor) {
-		return spriteActionPCSkill
+		return sprites.ActionPCSkill
 	}
 	if !res.HasPlayerJobToken(int(actor.Job)) {
-		return spriteActionNonPCAttack
+		return sprites.ActionNonPCAttack
 	}
 	if skillID == db.SkillSNSharpshooting || skillID == db.SkillCGArrowvulcan {
-		return spriteActionPCAttack3
+		return sprites.ActionPCAttack3
 	}
 	if skillID == db.SkillTFPickstone {
 		return scene.SpriteActionPickup
@@ -1441,18 +1442,18 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	case db.SkillAMPotionpitcher, db.SkillAMAcidterror, db.SkillAMCpWeapon, db.SkillAMCpShield, db.SkillAMCpArmor, db.SkillAMCpHelm, db.SkillAMCannibalize, db.SkillAMCallhomun, db.SkillAMRest, db.SkillAMResurrecthomun:
 		return scene.SpriteActionIdle
 	case db.SkillAMBerserkpitcher, db.SkillCRSlimpitcher, db.SkillCRAciddemonstration:
-		return spriteActionPCAttack1
+		return sprites.ActionPCAttack1
 	case db.SkillCRFullprotection, db.SkillSTChasewalk, db.SkillSTPreserve:
 		return scene.SpriteActionIdle
 	case db.SkillTKSevenwind, db.SkillTKMission:
 		return scene.SpriteActionIdle
 	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3, db.SkillChSoulcollect, db.SkillMOCallspirits, db.SkillMOKitranslation:
-		return spriteActionPCSkill
+		return sprites.ActionPCSkill
 	}
 	if skillID == db.SkillALIncagi {
-		return spriteActionPCSkill
+		return sprites.ActionPCSkill
 	}
-	return spriteActionPCReadyFight
+	return sprites.ActionPCReadyFight
 }
 
 func skillTargetUsesHitReaction(action network.ActorActionNotify, sourceLocal, targetLocal bool) bool {
@@ -1464,25 +1465,25 @@ func skillTargetUsesHitReaction(action network.ActorActionNotify, sourceLocal, t
 
 func hurtActionFamilyForActor(actor world.Actor) int {
 	if companion.IsMercenary(actor) {
-		return spriteActionPCHurt
+		return sprites.ActionPCHurt
 	}
 	if res.HasPlayerJobToken(int(actor.Job)) {
-		return spriteActionPCHurt
+		return sprites.ActionPCHurt
 	}
-	return spriteActionNonPCHurt
+	return sprites.ActionNonPCHurt
 }
 
 func deathActionFamilyForActor(actor world.Actor) int {
 	if companion.IsMercenary(actor) {
 		if companion.MercenaryUsesArcherActions(actor.Job) {
-			return spriteActionNonPCDeath
+			return sprites.ActionNonPCDeath
 		}
-		return spriteActionPCDeath
+		return sprites.ActionPCDeath
 	}
 	if res.HasPlayerJobToken(int(actor.Job)) {
-		return spriteActionPCDeath
+		return sprites.ActionPCDeath
 	}
-	return spriteActionNonPCDeath
+	return sprites.ActionNonPCDeath
 }
 
 func actionHasHitReaction(action network.ActorActionNotify) bool {
@@ -1797,17 +1798,17 @@ func (m *WorldMode) drawDamageFloaters(screen *render.Frame, ctx client.Context,
 		screenScale := scene.ActorBillboardScreenScale(projection, worldX, worldY, terrainZ)
 		if floater.kind == damageFloaterMiss {
 			if billboard, ok := m.damageMessageBillboard(ctx, 0, 0); ok {
-				drawSpriteBillboardTintAlphaOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift, screenScale*scale, alpha, 1, floaterColor)
+				sprites.DrawOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift, screenScale*scale, alpha, 1, floaterColor)
 				continue
 			}
 		}
 		if floater.kind == damageFloaterCritical {
 			if billboard, ok := m.damageMessageBillboard(ctx, 2, 0); ok {
-				drawSpriteBillboardTintAlphaOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift+0.05, screenScale*scale*0.6, alpha, 1, color.RGBA{R: 168, G: 168, B: 168, A: 255})
+				sprites.DrawOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift+0.05, screenScale*scale*0.6, alpha, 1, color.RGBA{R: 168, G: 168, B: 168, A: 255})
 			}
 		}
 		if billboard, ok := m.damageNumberBillboard(ctx, floater.text); ok {
-			drawSpriteBillboardTintAlphaOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift, screenScale*scale, alpha, 1, floaterColor)
+			sprites.DrawOverlay3D(screen, projection, billboard, worldX, worldY, terrainZ+zLift, screenScale*scale, alpha, 1, floaterColor)
 			continue
 		}
 		point := projection.Project(worldX, worldY, terrainZ+zLift)
@@ -2350,14 +2351,14 @@ func localPlayerLifeForDisplay(ctx client.Context) (actorLife, bool) {
 func mercenaryAttackActionFamily(job int, sex byte, weapon int) int {
 	weapon = companion.MercenaryWeaponForAppearance(job, weapon)
 	if weapon <= 0 {
-		return spriteActionPCAttack1
+		return sprites.ActionPCAttack1
 	}
 	switch db.PlayerWeaponAction(companion.MercenaryWeaponBaseJob(job), companion.MercenarySexForJob(job, sex), weapon) {
 	case db.PlayerWeaponActionAttack2:
-		return spriteActionPCAttack2
+		return sprites.ActionPCAttack2
 	case db.PlayerWeaponActionAttack3:
-		return spriteActionPCAttack3
+		return sprites.ActionPCAttack3
 	default:
-		return spriteActionPCAttack1
+		return sprites.ActionPCAttack1
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -242,9 +243,9 @@ func TestBardNativeAnimationFrames(t *testing.T) {
 		for i, frame := range tc.frames {
 			now := start.Add(time.Duration(i)*10*db.EffectFrameDuration + time.Millisecond)
 			anim, _ := m.actorAnimation(2000000, now)
-			state := spriteState{}
+			state := sprites.State{}
 			applyActorAnimationToSpriteState(&state, anim, true)
-			if got := bodyMotionForState(action, state, start, now); got != frame {
+			if got := sprites.BodyMotionForState(action, state, start, now); got != frame {
 				t.Fatalf("skill %d tick %d: motion %d, want %d", tc.skill, i, got, frame)
 			}
 		}
@@ -273,8 +274,8 @@ func TestGypsySkillAnimationsWithClientAssets(t *testing.T) {
 	ctx.Resources = testutil.RealDataManager(t)
 	ctx.World.Player.Job, ctx.World.Player.Weapon, ctx.World.Player.Sex = db.JobDancerH, 1950, 0 // Rope
 	ctx.Session.Selected.Job, ctx.Session.Selected.Weapon = db.JobDancerH, 1950
-	view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, 0, false)
-	if view == nil || !strings.Contains(view.body.ActSource, res.PlayerJobToken(db.JobDancerH)) {
+	view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, 0, false)
+	if view == nil || !strings.Contains(view.Body.ActSource, res.PlayerJobToken(db.JobDancerH)) {
 		t.Fatalf("must load the Gypsy body, without a Novice fallback: %s", status)
 	}
 	m := &WorldMode{playerView: view}
@@ -283,32 +284,32 @@ func TestGypsySkillAnimationsWithClientAssets(t *testing.T) {
 		a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillCGArrowvulcan, SourceSpeed: 500, HitCount: 9, Damage: 100}
 		m.applyActorActionNotify(ctx, a)
 		anim := m.actorAnims[a.SourceID]
-		if anim.actionFamily != spriteActionPCAttack3 || anim.next == nil || anim.next.actionFamily != spriteActionPCAttack2 {
+		if anim.actionFamily != sprites.ActionPCAttack3 || anim.next == nil || anim.next.actionFamily != sprites.ActionPCAttack2 {
 			t.Fatal("Gypsy must shoot with ACT 88, then use her whip attack for additional hits")
 		}
 		for _, step := range []actorAnimation{anim, *anim.next, *anim.next.next} {
-			index, action, ok := resolveSpriteAction(view.body.Act, step.actionFamily, direction)
+			index, action, ok := sprites.ResolveAction(view.Body.Act, step.actionFamily, direction)
 			if !ok || index/8 != step.actionFamily || step.hasFixedMotion && step.fixedMotion >= len(action.Animations) {
 				t.Fatal("Gypsy attack must use its requested action and frame without fallback")
 			}
-			state := spriteState{direction: direction}
+			state := sprites.State{Direction: direction}
 			applyActorAnimationToSpriteState(&state, step, true)
-			billboard, ok := humanoidBillboardForState(view, state, step.started)
+			billboard, ok := sprites.HumanoidBillboard(view, state, step.started)
 			if !ok || billboard == nil || billboard.Image == nil {
 				t.Fatalf("Gypsy attack failed to render for direction %d", direction)
 			}
 		}
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillCGHermode, SourceID: a.SourceID})
 		dance := m.actorAnims[a.SourceID]
-		_, action, ok := resolveSpriteAction(view.body.Act, spriteActionPCSkill, direction)
+		_, action, ok := sprites.ResolveAction(view.Body.Act, sprites.ActionPCSkill, direction)
 		if !ok || len(action.Animations) < 4 || !dance.pingPong {
 			t.Fatal("Gypsy must have the complete three-frame dance, without falling back to another action")
 		}
-		state := spriteState{direction: direction}
+		state := sprites.State{Direction: direction}
 		applyActorAnimationToSpriteState(&state, dance, true)
 		for i, want := range []int{1, 2, 3, 2, 1} {
 			at := dance.started.Add(time.Duration(i) * dance.speed)
-			if got := bodyMotionForState(action, state, dance.started, at); got != want {
+			if got := sprites.BodyMotionForState(action, state, dance.started, at); got != want {
 				t.Fatalf("Gypsy dance frame %d: got %d, want %d", i, got, want)
 			}
 		}
@@ -361,27 +362,27 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 	start := time.Unix(100, 0)
 	for _, sex := range []uint8{0, 1} {
 		ctx.World.Player.Sex = sex
-		view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false)
-		if view == nil || !strings.Contains(view.body.ActSource, res.PlayerJobToken(db.JobAlchemistH)) {
+		view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
+		if view == nil || !strings.Contains(view.Body.ActSource, res.PlayerJobToken(db.JobAlchemistH)) {
 			t.Fatalf("must load the Creator body without a Novice fallback: %s", status)
 		}
 		m := &WorldMode{playerView: view}
 		for _, skill := range []uint16{db.SkillCRSlimpitcher, db.SkillCRAciddemonstration} {
 			m.startSkillSourceCastAnimation(ctx, 2000000, skill, 3*time.Second, start)
 			anim := m.actorAnims[2000000]
-			if anim.actionFamily != spriteActionPCAttack1 || anim.duration != time.Second || anim.speed != 10*db.EffectFrameDuration || anim.length != 5 || anim.loop {
+			if anim.actionFamily != sprites.ActionPCAttack1 || anim.duration != time.Second || anim.speed != 10*db.EffectFrameDuration || anim.length != 5 || anim.loop {
 				t.Fatal("Creator throw must use the finite native five-frame ACT 40 sequence")
 			}
 			for direction := 0; direction < 8; direction++ {
-				index, action, ok := resolveSpriteAction(view.body.Act, spriteActionPCAttack1, direction)
-				if !ok || index/8 != spriteActionPCAttack1 || len(action.Animations) < 5 {
+				index, action, ok := sprites.ResolveAction(view.Body.Act, sprites.ActionPCAttack1, direction)
+				if !ok || index/8 != sprites.ActionPCAttack1 || len(action.Animations) < 5 {
 					t.Fatal("Creator body lacks its full throwing sequence")
 				}
-				state := spriteState{direction: direction}
+				state := sprites.State{Direction: direction}
 				applyActorAnimationToSpriteState(&state, anim, true)
 				for i, want := range []int{0, 1, 2, 3, 4, 4} {
 					at := start.Add(time.Duration(i)*anim.speed + time.Millisecond)
-					if got := bodyMotionForState(action, state, start, at); got != want {
+					if got := sprites.BodyMotionForState(action, state, start, at); got != want {
 						t.Fatalf("throw step %d: got frame %d, want %d", i, got, want)
 					}
 				}
@@ -395,10 +396,10 @@ func TestCreatorCastAnimationsWithClientAssets(t *testing.T) {
 		skill      uint16
 		pose, aura int
 	}{
-		{db.SkillCRSlimpitcher, spriteActionPCAttack1, effects.BeginSpell2},
-		{db.SkillCRAciddemonstration, spriteActionPCAttack1, effects.BeginSpell2},
+		{db.SkillCRSlimpitcher, sprites.ActionPCAttack1, effects.BeginSpell2},
+		{db.SkillCRAciddemonstration, sprites.ActionPCAttack1, effects.BeginSpell2},
 		{db.SkillCRFullprotection, scene.SpriteActionIdle, effects.BeginSpell2},
-		{db.SkillCRCultivation, spriteActionPCReadyFight, effects.BashBegin},
+		{db.SkillCRCultivation, sprites.ActionPCReadyFight, effects.BashBegin},
 	} {
 		m := &WorldMode{}
 		m.startSkillSourceCastAnimation(ctx, 2000000, tc.skill, time.Second, start)
@@ -451,21 +452,21 @@ func TestHighWizardClientAssets(t *testing.T) {
 	ctx.World.Player.Job, ctx.Session.Selected.Job = db.JobWizardH, db.JobWizardH
 	start := time.Unix(100, 0)
 	for _, sex := range []uint8{0, 1} {
-		view, status := loadPlayerHumanoidSpriteView(ctx.Resources, ctx.Session.Selected, sex, false)
-		if view == nil || !strings.Contains(view.body.ActSource, res.PlayerJobToken(db.JobWizardH)) {
+		view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
+		if view == nil || !strings.Contains(view.Body.ActSource, res.PlayerJobToken(db.JobWizardH)) {
 			t.Fatalf("must load the High Wizard body without fallback: %s", status)
 		}
 		m := &WorldMode{playerView: view}
 		m.startSkillNoDamageSourceAnimation(ctx, network.SkillNoDamageNotify{SkillID: db.SkillHWSouldrain, SourceID: 2000000, TargetID: 300}, start)
 		for dir := 0; dir < 8; dir++ {
-			_, action, ok := resolveSpriteAction(view.body.Act, 11, dir)
+			_, action, ok := sprites.ResolveAction(view.Body.Act, 11, dir)
 			if !ok || len(action.Animations) < 4 {
 				t.Fatal("High Wizard lacks Soul Drain's forced ACT sequence")
 			}
-			state := spriteState{direction: dir}
+			state := sprites.State{Direction: dir}
 			applyActorAnimationToSpriteState(&state, m.actorAnims[2000000], true)
 			for tick, want := range []int{0, 1, 2, 3, 3, 3} {
-				if got := bodyMotionForState(action, state, start, start.Add(time.Duration(tick)*10*db.EffectFrameDuration+time.Millisecond)); got != want {
+				if got := sprites.BodyMotionForState(action, state, start, start.Add(time.Duration(tick)*10*db.EffectFrameDuration+time.Millisecond)); got != want {
 					t.Fatalf("Soul Drain frame %d: got %d, want %d", tick, got, want)
 				}
 			}
@@ -675,48 +676,7 @@ func TestLordKnightRealAssets(t *testing.T) {
 			t.Fatalf("effect %d sound timing", tc.id)
 		}
 	}
-	view, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{
-		job: db.JobKnightH, head: 1, sex: 1, weapon: int(db.WeaponSword), shield: 1,
-	}, "test")
-	if view == nil {
-		t.Fatal(status)
-	}
-	// Separating blend groups must preserve the original IMF order and anchors.
-	for _, imf := range []*res.IMF{view.imf, nil} {
-		copy := *view
-		copy.imf = imf
-		copy.billboards = make(map[humanoidBillboardKey]*scene.Billboard)
-		for direction := 0; direction < 8; direction++ {
-			state := spriteState{actionFamily: spriteActionPCAttack2, direction: direction, hasFixedMotion: true, fixedMotion: 2}
-			whole, ok := humanoidBillboardForState(&copy, state, start)
-			if !ok {
-				t.Fatal("missing Lord Knight attack")
-			}
-			state.separateEquipment = true
-			split, ok := humanoidBillboardForState(&copy, state, start)
-			if !ok || len(split.Parts) == 0 {
-				t.Fatal("missing split Lord Knight")
-			}
-			got, want := render.NewImage(512, 512), render.NewImage(512, 512)
-			draw := func(target *render.Image, b *scene.Billboard) {
-				options := &render.DrawImageOptions{}
-				options.GeoM.Translate(256-b.AnchorX, 256-b.AnchorY)
-				target.DrawImage(b.Image, options)
-			}
-			draw(want, whole)
-			for _, part := range split.Parts {
-				draw(got, part)
-			}
-			for i, channel := range want.RGBA().Pix {
-				if scene.AbsInt(int(channel)-int(got.RGBA().Pix[i])) > 2 {
-					t.Fatalf("split layers changed composition: direction=%d imf=%t byte=%d", direction, imf != nil, i)
-				}
-			}
-			if again, _ := humanoidBillboardForState(&copy, state, start); again != split {
-				t.Fatal("split sprite was not cached")
-			}
-		}
-	}
+
 }
 
 func TestMageSpriteSequencesAndSightLifetime(t *testing.T) {
@@ -958,9 +918,9 @@ func TestMonkTwoFrameSkillsKeepTheirOriginalTiming(t *testing.T) {
 				if !active {
 					t.Fatalf("skill %d ended at %s with source speed %d", skillID, tc.elapsed, sourceSpeed)
 				}
-				state := spriteState{}
+				state := sprites.State{}
 				applyActorAnimationToSpriteState(&state, anim, true)
-				if frame := bodyMotionForState(action, state, started, started.Add(tc.elapsed)); frame != tc.frame {
+				if frame := sprites.BodyMotionForState(action, state, started, started.Add(tc.elapsed)); frame != tc.frame {
 					t.Fatalf("skill %d at %s: frame=%d, want %d", skillID, tc.elapsed, frame, tc.frame)
 				}
 			}
@@ -975,12 +935,12 @@ func TestBladeStopFreezesAndReleasesBothActors(t *testing.T) {
 	ctx := testutil.MonkEffectContext()
 	m := &WorldMode{}
 	now := time.Now()
-	m.setActorAction(ctx, 300, actorAnimation{actionFamily: spriteActionPCAttack1, started: now, fixedMotion: 2, hasFixedMotion: true})
+	m.setActorAction(ctx, 300, actorAnimation{actionFamily: sprites.ActionPCAttack1, started: now, fixedMotion: 2, hasFixedMotion: true})
 	m.applyActorBladeStop(ctx, network.ActorBladeStop{SourceID: 2000000, TargetID: 300, Active: true})
-	if anim := m.actorAnims[150000]; anim.actionFamily != spriteActionPCSkill || anim.fixedMotion != 4 || anim.play {
+	if anim := m.actorAnims[150000]; anim.actionFamily != sprites.ActionPCSkill || anim.fixedMotion != 4 || anim.play {
 		t.Fatalf("caster pose = %+v", anim)
 	}
-	if anim := m.actorAnims[300]; anim.actionFamily != spriteActionPCAttack1 || anim.play || !anim.hasFixedMotion || anim.fixedMotion != 2 {
+	if anim := m.actorAnims[300]; anim.actionFamily != sprites.ActionPCAttack1 || anim.play || !anim.hasFixedMotion || anim.fixedMotion != 2 {
 		t.Fatalf("victim was put in another animation: %+v", anim)
 	}
 	for _, id := range []uint32{2000000, 300} {
@@ -1546,7 +1506,7 @@ func TestStarGladiatorWarmthStatusAndSkillPackets(t *testing.T) {
 			t.Fatal("Warmth release must restart its state effects, add red particles, and delay the sound ten ticks")
 		}
 		anim := m.actorAnims[100]
-		if anim.actionFamily != spriteActionPCSkill || anim.fixedMotion != 3 || !anim.hasFixedMotion || anim.duration != time.Second {
+		if anim.actionFamily != sprites.ActionPCSkill || anim.fixedMotion != 3 || !anim.hasFixedMotion || anim.duration != time.Second {
 			t.Fatalf("Warmth release pose: %+v", anim)
 		}
 		m.applyStatusEffectChange(ctx, network.StatusEffectChange{StatusID: status, Active: false})
@@ -1573,7 +1533,7 @@ func TestFusionPresentationDoesNotAdvanceUnrelatedAnimations(t *testing.T) {
 				actor.EffectState = 0
 			}
 			anim := actorAnimation{
-				actionFamily: spriteActionPCSkill,
+				actionFamily: sprites.ActionPCSkill,
 				started:      now.Add(-2 * time.Second),
 				duration:     time.Second,
 				next:         &actorAnimation{actionFamily: scene.SpriteActionIdle, loop: true},
@@ -1629,10 +1589,10 @@ func TestTaekwonReadyPosesBelongToSkillPackets(t *testing.T) {
 		skill, status uint16
 		family, frame int
 	}{
-		{412, db.StatusStormkickOn, spriteActionPCSkill, 0},
-		{414, db.StatusDownkickOn, spriteActionPCSkill, 2},
-		{416, db.StatusTurnkickOn, spriteActionPCSkill, 3},
-		{418, db.StatusCounterOn, spriteActionPCSkill, 4},
+		{412, db.StatusStormkickOn, sprites.ActionPCSkill, 0},
+		{414, db.StatusDownkickOn, sprites.ActionPCSkill, 2},
+		{416, db.StatusTurnkickOn, sprites.ActionPCSkill, 3},
+		{418, db.StatusCounterOn, sprites.ActionPCSkill, 4},
 		{420, db.StatusDodgeOn, scene.SpriteActionPickup, 1},
 	} {
 		m := &WorldMode{}
@@ -1936,7 +1896,7 @@ func TestApplyTrickDeadStatusHoldsDeathPose(t *testing.T) {
 		Active:   true,
 	})
 	anim, ok := mode.actorAnimation(150000, time.Now())
-	if !ok || anim.actionFamily != spriteActionPCDeath || !anim.holdFinal {
+	if !ok || anim.actionFamily != sprites.ActionPCDeath || !anim.holdFinal {
 		t.Fatalf("trick dead animation = %+v ok=%t, want held death pose", anim, ok)
 	}
 
@@ -2344,16 +2304,16 @@ func TestFalconFollowUsesRobrowserRangeFloor(t *testing.T) {
 func TestFalconSpriteStateUsesIdleGlideAction(t *testing.T) {
 	falcon := &falconRenderState{direction: 3, moving: true}
 	state := falcon.spriteState(45)
-	if state.actionFamily != scene.SpriteActionIdle || !state.loopIdle {
+	if state.ActionFamily != scene.SpriteActionIdle || !state.LoopIdle {
 		t.Fatalf("falcon sprite state = %+v, want looping idle glide action", state)
 	}
-	if state.actionFamily == scene.SpriteActionWalk {
+	if state.ActionFamily == scene.SpriteActionWalk {
 		t.Fatal("falcon follow should not use character walk action")
 	}
 
 	falcon.attacking = true
 	state = falcon.spriteState(45)
-	if state.actionFamily != scene.SpriteActionWalk {
+	if state.ActionFamily != scene.SpriteActionWalk {
 		t.Fatalf("falcon attack sprite state = %+v, want walk action like robr", state)
 	}
 }
@@ -2685,7 +2645,7 @@ func TestDrawActorCartShadowUsesLoadedShadowSprite(t *testing.T) {
 				Type:   res.SPRFrameRGBA,
 				Width:  16,
 				Height: 8,
-				Data:   solidRGBAFrame(16, 8),
+				Data:   testutil.SolidRGBAFrame(16, 8),
 			}},
 		},
 		Act: &res.ACT{Actions: []res.ACTAction{{
@@ -2748,7 +2708,7 @@ func TestApplyActorStateChangeTracksRemoteActorRenderState(t *testing.T) {
 		t.Fatalf("actor state effects = %+v, want Ruwach", mode.effects().Active)
 	}
 	state := mode.nonPCSpriteState(actor, time.Now())
-	if state.actionFamily != scene.SpriteActionIdle || !state.hasPlay || state.play || !state.hasFixedMotion || state.fixedMotion != 0 {
+	if state.ActionFamily != scene.SpriteActionIdle || !state.HasPlay || state.Play || !state.HasFixedMotion || state.FixedMotion != 0 {
 		t.Fatalf("frozen non-pc sprite state = %+v", state)
 	}
 
@@ -3475,4 +3435,34 @@ func isLevel99AuraEffect(effectID int) bool {
 		}
 	}
 	return false
+}
+
+func TestWalkingSpriteStateIgnoresReadyFightAnimation(t *testing.T) {
+	state := sprites.State{
+		ActionFamily: scene.SpriteActionWalk,
+		Moving:       true,
+		Loop:         true,
+	}
+
+	if applyActorAnimationToSpriteState(&state, actorAnimation{actionFamily: sprites.ActionPCReadyFight, loop: true}, true) {
+		t.Fatal("ready fight should not override walking state")
+	}
+	if state.ActionFamily != scene.SpriteActionWalk || !state.Moving {
+		t.Fatalf("state = %+v, want still walking", state)
+	}
+
+	if !applyActorAnimationToSpriteState(&state, actorAnimation{actionFamily: sprites.ActionPCDeath}, true) {
+		t.Fatal("death should override walking state")
+	}
+	if state.ActionFamily != sprites.ActionPCDeath || state.Moving {
+		t.Fatalf("death state = %+v", state)
+	}
+
+	nonPC := sprites.State{ActionFamily: scene.SpriteActionWalk, Moving: true, Loop: true}
+	if !applyActorAnimationToSpriteState(&nonPC, actorAnimation{actionFamily: sprites.ActionNonPCDeath}, false) {
+		t.Fatal("non-pc death should override walking state")
+	}
+	if nonPC.ActionFamily != sprites.ActionNonPCDeath || nonPC.Moving {
+		t.Fatalf("non-pc death state = %+v", nonPC)
+	}
 }

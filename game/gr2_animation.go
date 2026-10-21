@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -164,15 +165,15 @@ func (c *gr2AnimationClip) skinningPalette(pose *gr2SkeletonPose, t float64) []s
 	return pose.palette(local)
 }
 
-func gr2ActionForSpriteState(state spriteState) res.GR2Action {
-	switch state.actionFamily {
+func gr2ActionForSpriteState(state sprites.State) res.GR2Action {
+	switch state.ActionFamily {
 	case scene.SpriteActionWalk:
 		return res.GR2ActionMove
-	case spriteActionNonPCAttack, spriteActionPCAttack1, spriteActionPCAttack2, spriteActionPCAttack3, spriteActionPCSkill:
+	case sprites.ActionNonPCAttack, sprites.ActionPCAttack1, sprites.ActionPCAttack2, sprites.ActionPCAttack3, sprites.ActionPCSkill:
 		return res.GR2ActionAttack
-	case spriteActionNonPCHurt, spriteActionPCHurt:
+	case sprites.ActionNonPCHurt, sprites.ActionPCHurt:
 		return res.GR2ActionDamage
-	case spriteActionNonPCDeath, spriteActionPCDeath:
+	case sprites.ActionNonPCDeath, sprites.ActionPCDeath:
 		return res.GR2ActionDead
 	default:
 		return res.GR2ActionStand
@@ -180,11 +181,11 @@ func gr2ActionForSpriteState(state spriteState) res.GR2Action {
 }
 
 func gr2ActionForActionFamily(actionFamily int) (res.GR2Action, bool) {
-	action := gr2ActionForSpriteState(spriteState{actionFamily: actionFamily})
+	action := gr2ActionForSpriteState(sprites.State{ActionFamily: actionFamily})
 	return action, action != res.GR2ActionStand
 }
 
-func (v *gr2ModelView) paletteForActor(actor worldstate.Actor, state spriteState, now time.Time) []scene.Mat4 {
+func (v *gr2ModelView) paletteForActor(actor worldstate.Actor, state sprites.State, now time.Time) []scene.Mat4 {
 	if v == nil || v.pose == nil {
 		return nil
 	}
@@ -192,8 +193,8 @@ func (v *gr2ModelView) paletteForActor(actor worldstate.Actor, state spriteState
 	start := v.started
 	if action == res.GR2ActionMove && !actor.MoveStarted.IsZero() {
 		start = actor.MoveStarted
-	} else if action != res.GR2ActionStand && !state.started.IsZero() {
-		start = state.started
+	} else if action != res.GR2ActionStand && !state.Started.IsZero() {
+		start = state.Started
 	}
 	if v.clip(action) == nil {
 		action = res.GR2ActionStand

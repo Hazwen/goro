@@ -15,6 +15,7 @@ import (
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -30,9 +31,9 @@ func TestAlchemistCastAndGroundOwnership(t *testing.T) {
 		skill        uint16
 		pose, effect int
 	}{
-		{db.SkillAMPharmacy, spriteActionPCReadyFight, effects.BashBegin},
-		{db.SkillAMDemonstration, spriteActionPCReadyFight, effects.BashBegin},
-		{db.SkillAMSpheremine, spriteActionPCReadyFight, effects.BashBegin},
+		{db.SkillAMPharmacy, sprites.ActionPCReadyFight, effects.BashBegin},
+		{db.SkillAMDemonstration, sprites.ActionPCReadyFight, effects.BashBegin},
+		{db.SkillAMSpheremine, sprites.ActionPCReadyFight, effects.BashBegin},
 		{db.SkillAMAcidterror, scene.SpriteActionIdle, effects.BeginSpell2},
 		{db.SkillAMPotionpitcher, scene.SpriteActionIdle, effects.BeginSpell2},
 		{db.SkillAMCannibalize, scene.SpriteActionIdle, effects.BeginSpell2},
@@ -43,10 +44,10 @@ func TestAlchemistCastAndGroundOwnership(t *testing.T) {
 		{db.SkillAMCallhomun, scene.SpriteActionIdle, effects.CoupleCasting},
 		{db.SkillAMRest, scene.SpriteActionIdle, effects.CoupleCasting},
 		{db.SkillAMResurrecthomun, scene.SpriteActionIdle, effects.CoupleCasting},
-		{db.SkillAMBerserkpitcher, spriteActionPCAttack1, effects.BeginSpell2},
-		{db.SkillAMTwilight1, spriteActionPCSkill, effects.Twilight1},
-		{db.SkillAMTwilight2, spriteActionPCSkill, effects.Twilight2},
-		{db.SkillAMTwilight3, spriteActionPCSkill, effects.Twilight3},
+		{db.SkillAMBerserkpitcher, sprites.ActionPCAttack1, effects.BeginSpell2},
+		{db.SkillAMTwilight1, sprites.ActionPCSkill, effects.Twilight1},
+		{db.SkillAMTwilight2, sprites.ActionPCSkill, effects.Twilight2},
+		{db.SkillAMTwilight3, sprites.ActionPCSkill, effects.Twilight3},
 	} {
 		m := &WorldMode{}
 		m.startSkillSourceCastAnimation(ctx, 2000000, tc.skill, 3*time.Second, start)
@@ -381,7 +382,7 @@ func TestDancerWinkAndClientAssets(t *testing.T) {
 	start := time.Now()
 	m.startSkillSourceCastAnimation(ctx, n.SourceID, n.SkillID, time.Second, start)
 	m.addSkillCastEffects(ctx, n.SkillID, 0, n.SourceID, n.TargetID, 0, 0, time.Second, start, "test")
-	if anim := m.actorAnims[n.SourceID]; !anim.loop || !anim.pingPong || anim.actionFamily != spriteActionPCSkill {
+	if anim := m.actorAnims[n.SourceID]; !anim.loop || !anim.pingPong || anim.actionFamily != sprites.ActionPCSkill {
 		t.Fatal("Wink must dance during its cast")
 	}
 	if len(m.effects().Active) != 2 {
@@ -479,7 +480,7 @@ func TestHighWizardDamageAndGroundPackets(t *testing.T) {
 	}
 	m := &WorldMode{}
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SourceID: 2000000, SkillID: db.SkillHWGanbantein, X: 22, Y: 21})
-	if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != 223 || m.effects().Active[0].X != 22 || m.effects().Active[0].ActorID != 0 || m.actorAnims[2000000].actionFamily != spriteActionPCSkill || len(m.scheduledSounds) != 1 || m.scheduledSounds[0].positioned {
+	if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != 223 || m.effects().Active[0].X != 22 || m.effects().Active[0].ActorID != 0 || m.actorAnims[2000000].actionFamily != sprites.ActionPCSkill || len(m.scheduledSounds) != 1 || m.scheduledSounds[0].positioned {
 		t.Fatal("Ganbantein needs its ground rings, skill pose and centered sound")
 	}
 	m = &WorldMode{}
@@ -759,7 +760,7 @@ func TestProfessorGroundUnits(t *testing.T) {
 	}{{404, 182, 405}, {405, 183, 404}} {
 		m := &WorldMode{}
 		m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: tc.skill, SourceID: 2000000, X: 14, Y: 20, Level: 1})
-		if len(m.effects().Active) != 0 || len(m.scheduledSounds) != 0 || m.actorAnims[2000000].actionFamily != spriteActionPCSkill {
+		if len(m.effects().Active) != 0 || len(m.scheduledSounds) != 0 || m.actorAnims[2000000].actionFamily != sprites.ActionPCSkill {
 			t.Fatal("ground notification must animate the caster without duplicating the unit's effect")
 		}
 		m.applySkillUnitEntry(ctx, network.SkillUnitEntry{ID: 900, UnitID: tc.unit, X: 14, Y: 20, Visible: true})
@@ -948,7 +949,7 @@ func TestPneumaGroundSkillAndUnitDoNotDuplicate(t *testing.T) {
 		if effect.EffectID != effects.Pneuma || effect.ActorID != unit.ID || !effect.Persistent || effect.X != 12 || effect.Y != 23 {
 			t.Fatal("Pneuma must belong to its ground unit")
 		}
-		if mode.actorAnims[2000000].actionFamily != spriteActionPCSkill {
+		if mode.actorAnims[2000000].actionFamily != sprites.ActionPCSkill {
 			t.Fatal("Pneuma release must animate its caster")
 		}
 		mode.applySkillUnitDisappear(network.SkillUnitDisappear{ID: unit.ID})
@@ -1602,7 +1603,7 @@ func TestSkillNoDamageNotifyEndureUsesReadyFightAction(t *testing.T) {
 	if !ok {
 		t.Fatal("source animation missing")
 	}
-	if anim.actionFamily != spriteActionPCReadyFight || anim.hasFixedMotion {
+	if anim.actionFamily != sprites.ActionPCReadyFight || anim.hasFixedMotion {
 		t.Fatalf("source animation = %+v, want reference client READYFIGHT action", anim)
 	}
 	if len(mode.effects().Active) != 1 || mode.effects().Active[0].EffectID != effects.Endure {
@@ -1629,7 +1630,7 @@ func TestSkillNoDamageNotifyAddsHealEffect(t *testing.T) {
 	if !ok {
 		t.Fatal("source cast animation missing")
 	}
-	if anim.actionFamily != spriteActionPCSkill || anim.hasFixedMotion {
+	if anim.actionFamily != sprites.ActionPCSkill || anim.hasFixedMotion {
 		t.Fatalf("source animation = %+v, want reference client DEFAULT skill action", anim)
 	}
 }
@@ -1667,7 +1668,7 @@ func TestActorActionNotifyHealUsesCastAndOffensiveHealEffect(t *testing.T) {
 	if !ok {
 		t.Fatal("source animation missing")
 	}
-	if anim.actionFamily != spriteActionPCSkill || anim.hasFixedMotion {
+	if anim.actionFamily != sprites.ActionPCSkill || anim.hasFixedMotion {
 		t.Fatalf("source animation = %+v, want reference client DEFAULT skill action", anim)
 	}
 	found := false
@@ -1715,7 +1716,7 @@ func TestActorActionNotifyBashUsesRobrowserWeaponAttackOverride(t *testing.T) {
 	if !ok {
 		t.Fatal("source animation missing")
 	}
-	if anim.actionFamily != spriteActionPCAttack2 {
+	if anim.actionFamily != sprites.ActionPCAttack2 {
 		t.Fatalf("source animation = %+v, want reference client weapon attack override", anim)
 	}
 }
@@ -1745,7 +1746,7 @@ func TestActorActionNotifyHealDoesNotOverwriteLocalCastWithHurt(t *testing.T) {
 	if !ok {
 		t.Fatal("source animation missing")
 	}
-	if anim.actionFamily != spriteActionPCSkill || anim.hasFixedMotion {
+	if anim.actionFamily != sprites.ActionPCSkill || anim.hasFixedMotion {
 		t.Fatalf("source animation = %+v, want reference client DEFAULT skill action", anim)
 	}
 	if len(mode.effects().Active) != 3 || mode.effects().Active[0].EffectID != effects.HealOffensive || mode.effects().Active[1].EffectID != effects.Hit1 || mode.effects().Active[2].EffectID != effects.BashHit {

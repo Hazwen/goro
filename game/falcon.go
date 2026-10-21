@@ -8,6 +8,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -248,7 +249,7 @@ func (m *WorldMode) falconSpriteView(ctx client.Context, job int) *scene.SpriteV
 	if _, miss := m.falconViewMiss[job]; miss {
 		return nil
 	}
-	view, status := loadFalconSpriteView(ctx.Resources, job)
+	view, status := sprites.LoadFalcon(ctx.Resources, job)
 	if view == nil {
 		m.falconViewMiss[job] = struct{}{}
 		glog.Warnf("falcon sprite unavailable job=%d: %s", job, status)
@@ -304,7 +305,7 @@ func (m *WorldMode) drawActorFalcon3D(screen *render.Frame, ctx client.Context, 
 		return false
 	}
 	state := falcon.spriteState(cameraYaw)
-	billboard, ok := singleSpriteBillboardForState(view, state, now)
+	billboard, ok := sprites.BillboardForState(view, state, now)
 	if !ok {
 		return false
 	}
@@ -429,21 +430,21 @@ func (state *falconRenderState) startPathTo(targetX, targetY int, stopRange int,
 	}
 }
 
-func (state *falconRenderState) spriteState(cameraYaw float64) spriteState {
+func (state *falconRenderState) spriteState(cameraYaw float64) sprites.State {
 	if state == nil {
-		return spriteState{}
+		return sprites.State{}
 	}
-	sprite := spriteState{
-		actionFamily: scene.SpriteActionIdle,
-		direction:    state.direction,
-		cameraYaw:    cameraYaw,
-		loopIdle:     true,
-		moving:       state.moving,
-		moveSpeedMS:  state.moveSpeedMS,
-		loop:         true,
+	sprite := sprites.State{
+		ActionFamily: scene.SpriteActionIdle,
+		Direction:    state.direction,
+		CameraYaw:    cameraYaw,
+		LoopIdle:     true,
+		Moving:       state.moving,
+		MoveSpeedMS:  state.moveSpeedMS,
+		Loop:         true,
 	}
 	if state.attacking {
-		sprite.actionFamily = scene.SpriteActionWalk
+		sprite.ActionFamily = scene.SpriteActionWalk
 	}
 	return sprite
 }

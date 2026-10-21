@@ -7,6 +7,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -87,13 +88,13 @@ func (m *LoginMode) controlScriptUI(ctx client.Context, action string) bool {
 
 func loginCharacterPreview(ctx client.Context, character session.Character, direction int) *scene.Billboard {
 	character = characterWithVisualJob(character)
-	view, status := loadPlayerHumanoidSpriteView(ctx.Resources, character, ctx.Session.Sex, false)
+	view, status := sprites.LoadPlayer(ctx.Resources, character, ctx.Session.Sex, false)
 	if view == nil {
 		glog.Debugf("login sprite resources char_id=%d name=%s job=%d %s", character.ID, character.Name, character.Job, status)
 		return nil
 	}
 	now := time.Now()
-	billboard, _ := humanoidBillboardForState(view, spriteState{actionFamily: scene.SpriteActionIdle, direction: direction, started: now, loopIdle: true}, now)
+	billboard, _ := sprites.HumanoidBillboard(view, sprites.State{ActionFamily: scene.SpriteActionIdle, Direction: direction, Started: now, LoopIdle: true}, now)
 	return billboard
 }
 

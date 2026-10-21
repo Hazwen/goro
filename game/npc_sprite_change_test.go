@@ -10,6 +10,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -89,7 +90,7 @@ func TestNPCSpriteChangeHandlesHiddenClasses(t *testing.T) {
 	for _, job := range []uint32{139, 111, 1002} {
 		mode.handleNetworkPacket(ctx, npcSpriteChangeTestPacket(300, job, 1), time.Now())
 		actor := ctx.World.Actors[300]
-		if uint32(actor.Job) != job || actorJobHasNoSprite(int(actor.Job)) != (job != 1002) {
+		if uint32(actor.Job) != job || sprites.JobHasNoSprite(int(actor.Job)) != (job != 1002) {
 			t.Fatalf("class %d: %+v", job, actor)
 		}
 	}
@@ -136,7 +137,7 @@ func TestPupaTransformationsSwitchSpritesRealData(t *testing.T) {
 			t.Fatalf("actor %d did not become Creamy: %+v", id, actor)
 		}
 		state := mode.nonPCSpriteState(actor, time.Now())
-		if state.actionFamily != scene.SpriteActionWalk || !state.moving {
+		if state.ActionFamily != scene.SpriteActionWalk || !state.Moving {
 			t.Fatalf("Creamy lost movement: %+v", state)
 		}
 	}

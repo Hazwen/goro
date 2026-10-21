@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
@@ -1099,23 +1100,23 @@ func TestApplyActorActionNotifySchedulesAttackAndHitAnimations(t *testing.T) {
 	if !ok {
 		t.Fatal("local character animation missing")
 	}
-	if sourceAnim.actionFamily != spriteActionPCAttack3 {
-		t.Fatalf("source action = %d, want %d", sourceAnim.actionFamily, spriteActionPCAttack3)
+	if sourceAnim.actionFamily != sprites.ActionPCAttack3 {
+		t.Fatalf("source action = %d, want %d", sourceAnim.actionFamily, sprites.ActionPCAttack3)
 	}
 	earlyAnim, ok := mode.actorAnimation(150000, sourceAnim.started.Add(sourceAnim.duration-time.Millisecond))
-	if !ok || earlyAnim.actionFamily != spriteActionPCAttack3 {
+	if !ok || earlyAnim.actionFamily != sprites.ActionPCAttack3 {
 		t.Fatalf("early source animation = %+v ok=%t, want attack until it finishes", earlyAnim, ok)
 	}
 	readyAnim, ok := mode.actorAnimation(150000, sourceAnim.started.Add(sourceAnim.duration))
-	if !ok || readyAnim.actionFamily != spriteActionPCReadyFight || !readyAnim.loop {
+	if !ok || readyAnim.actionFamily != sprites.ActionPCReadyFight || !readyAnim.loop {
 		t.Fatalf("post-attack animation = %+v ok=%t, want looping READYFIGHT after attack", readyAnim, ok)
 	}
 	targetAnim, ok := mode.actorAnims[300]
 	if !ok {
 		t.Fatal("target animation missing")
 	}
-	if targetAnim.actionFamily != spriteActionNonPCHurt {
-		t.Fatalf("target action = %d, want %d", targetAnim.actionFamily, spriteActionNonPCHurt)
+	if targetAnim.actionFamily != sprites.ActionNonPCHurt {
+		t.Fatalf("target action = %d, want %d", targetAnim.actionFamily, sprites.ActionNonPCHurt)
 	}
 	if targetAnim.started.Sub(sourceAnim.started) != 580*time.Millisecond {
 		t.Fatalf("hit delay = %s, want 580ms", targetAnim.started.Sub(sourceAnim.started))
@@ -1278,8 +1279,8 @@ func TestApplyActorActionNotifyChainsPlayerHurtToReadyFight(t *testing.T) {
 	if !ok {
 		t.Fatal("target hurt animation missing")
 	}
-	if hurtAnim.actionFamily != spriteActionPCHurt {
-		t.Fatalf("target action = %d, want %d", hurtAnim.actionFamily, spriteActionPCHurt)
+	if hurtAnim.actionFamily != sprites.ActionPCHurt {
+		t.Fatalf("target action = %d, want %d", hurtAnim.actionFamily, sprites.ActionPCHurt)
 	}
 	if actor := world.Actors[300]; !actor.Moving {
 		t.Fatal("target should keep moving before scheduled hit time")
@@ -1293,7 +1294,7 @@ func TestApplyActorActionNotifyChainsPlayerHurtToReadyFight(t *testing.T) {
 		t.Fatalf("target stopped at destination, want interpolated hit position: %+v", actor)
 	}
 	readyAnim, ok := mode.actorAnimation(300, hurtAnim.started.Add(hurtAnim.duration))
-	if !ok || readyAnim.actionFamily != spriteActionPCReadyFight || !readyAnim.loop {
+	if !ok || readyAnim.actionFamily != sprites.ActionPCReadyFight || !readyAnim.loop {
 		t.Fatalf("post-hurt animation = %+v ok=%t, want looping READYFIGHT", readyAnim, ok)
 	}
 }
@@ -1464,7 +1465,7 @@ func TestMovingActorPacketClearsReadyFightAction(t *testing.T) {
 	world.UpsertActor(worldstate.Actor{ID: 300, X: 10, Y: 20, Job: 1, Speed: 150})
 	mode := &WorldMode{actorAnims: map[uint32]actorAnimation{
 		300: {
-			actionFamily: spriteActionPCReadyFight,
+			actionFamily: sprites.ActionPCReadyFight,
 			loop:         true,
 			play:         true,
 			hasPlay:      true,
@@ -1513,7 +1514,7 @@ func TestSetActorActionStopsMovingActor(t *testing.T) {
 	mode := &WorldMode{}
 	ctx := client.Context{World: world}
 
-	mode.startCombatAnimation(ctx, 300, spriteActionPCAttack2, time.Now(), scene.DefaultAttackAnimationDuration)
+	mode.startCombatAnimation(ctx, 300, sprites.ActionPCAttack2, time.Now(), scene.DefaultAttackAnimationDuration)
 
 	actor := world.Actors[300]
 	if actor.Moving || actor.MovePath != nil {
@@ -1528,11 +1529,11 @@ func TestActorAnimationHonorsDelayedNextAction(t *testing.T) {
 	started := time.Now()
 	mode := &WorldMode{actorAnims: map[uint32]actorAnimation{
 		300: {
-			actionFamily: spriteActionPCSkill,
+			actionFamily: sprites.ActionPCSkill,
 			started:      started,
 			duration:     100 * time.Millisecond,
 			next: &actorAnimation{
-				actionFamily: spriteActionPCReadyFight,
+				actionFamily: sprites.ActionPCReadyFight,
 				startDelay:   50 * time.Millisecond,
 				loop:         true,
 				play:         true,
@@ -1545,7 +1546,7 @@ func TestActorAnimationHonorsDelayedNextAction(t *testing.T) {
 		t.Fatalf("actorAnimation before delayed next = %+v, want inactive gap", anim)
 	}
 	anim, ok := mode.actorAnimation(300, started.Add(150*time.Millisecond))
-	if !ok || anim.actionFamily != spriteActionPCReadyFight || !anim.loop {
+	if !ok || anim.actionFamily != sprites.ActionPCReadyFight || !anim.loop {
 		t.Fatalf("actorAnimation delayed next = %+v ok=%t, want ready fight loop", anim, ok)
 	}
 	if got := anim.started.Sub(started); got != 150*time.Millisecond {
@@ -1561,26 +1562,26 @@ func TestBodyMotionHonorsRobrowserActionMetadata(t *testing.T) {
 		},
 	}
 	started := time.Now()
-	state := spriteState{
-		started:        started,
-		actionFamily:   spriteActionPCSkill,
-		frameOffset:    1,
-		hasFrameOffset: true,
-		length:         3,
-		hasLength:      true,
-		speed:          50 * time.Millisecond,
-		hasSpeed:       true,
+	state := sprites.State{
+		Started:        started,
+		ActionFamily:   sprites.ActionPCSkill,
+		FrameOffset:    1,
+		HasFrameOffset: true,
+		Length:         3,
+		HasLength:      true,
+		Speed:          50 * time.Millisecond,
+		HasSpeed:       true,
 	}
 
-	if got := bodyMotionForState(action, state, started, started.Add(25*time.Millisecond)); got != 1 {
+	if got := sprites.BodyMotionForState(action, state, started, started.Add(25*time.Millisecond)); got != 1 {
 		t.Fatalf("initial offset motion = %d, want 1", got)
 	}
-	if got := bodyMotionForState(action, state, started, started.Add(125*time.Millisecond)); got != 3 {
+	if got := sprites.BodyMotionForState(action, state, started, started.Add(125*time.Millisecond)); got != 3 {
 		t.Fatalf("length-limited motion = %d, want 3", got)
 	}
-	state.play = false
-	state.hasPlay = true
-	if got := bodyMotionForState(action, state, started, started.Add(time.Second)); got != 1 {
+	state.Play = false
+	state.HasPlay = true
+	if got := sprites.BodyMotionForState(action, state, started, started.Add(time.Second)); got != 1 {
 		t.Fatalf("play=false motion = %d, want fixed frame offset 1", got)
 	}
 }

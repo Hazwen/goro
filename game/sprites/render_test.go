@@ -1,4 +1,4 @@
-package game
+package sprites
 
 import (
 	"image/color"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
@@ -95,7 +96,7 @@ func TestSpriteDirectionFromWorldDirShowsBackForNorth(t *testing.T) {
 		-1: 5,
 	}
 	for input, want := range cases {
-		if got := spriteDirectionFromWorldDirForCamera(input, 0); got != want {
+		if got := DirectionForCamera(input, 0); got != want {
 			t.Fatalf("spriteDirectionFromWorldDirForCamera(%d, 0) = %d, want %d", input, got, want)
 		}
 	}
@@ -117,7 +118,7 @@ func TestSpriteDirectionFromWorldDirAccountsForCameraYaw(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := spriteDirectionFromWorldDirForCamera(tt.direction, tt.cameraYaw); got != tt.want {
+			if got := DirectionForCamera(tt.direction, tt.cameraYaw); got != tt.want {
 				t.Fatalf("spriteDirectionFromWorldDirForCamera(%d, %.1f) = %d, want %d", tt.direction, tt.cameraYaw, got, tt.want)
 			}
 		})
@@ -127,7 +128,7 @@ func TestSpriteDirectionFromWorldDirAccountsForCameraYaw(t *testing.T) {
 func TestResolveSpriteActionPrefersFamilyAndDirection(t *testing.T) {
 	act := &res.ACT{Actions: make([]res.ACTAction, 16)}
 	act.Actions[11] = res.ACTAction{Animations: []res.ACTAnimation{{}}, DelayMS: 100}
-	index, _, ok := resolveSpriteAction(act, scene.SpriteActionWalk, 3)
+	index, _, ok := ResolveAction(act, scene.SpriteActionWalk, 3)
 	if !ok {
 		t.Fatal("expected action")
 	}
@@ -139,7 +140,7 @@ func TestResolveSpriteActionPrefersFamilyAndDirection(t *testing.T) {
 func TestResolveSpriteActionFallsBackToFamilyBase(t *testing.T) {
 	act := &res.ACT{Actions: make([]res.ACTAction, 16)}
 	act.Actions[8] = res.ACTAction{Animations: []res.ACTAnimation{{}}, DelayMS: 100}
-	index, _, ok := resolveSpriteAction(act, scene.SpriteActionWalk, 4)
+	index, _, ok := ResolveAction(act, scene.SpriteActionWalk, 4)
 	if !ok {
 		t.Fatal("expected action")
 	}
@@ -153,7 +154,7 @@ func TestResolveSpriteActionUsesDirectionForEightActionSprites(t *testing.T) {
 	for i := range act.Actions {
 		act.Actions[i] = res.ACTAction{Animations: []res.ACTAnimation{{}}, DelayMS: 100}
 	}
-	index, _, ok := resolveSpriteAction(act, scene.SpriteActionWalk, 5)
+	index, _, ok := ResolveAction(act, scene.SpriteActionWalk, 5)
 	if !ok {
 		t.Fatal("expected action")
 	}
@@ -164,13 +165,13 @@ func TestResolveSpriteActionUsesDirectionForEightActionSprites(t *testing.T) {
 
 func TestResolveSpriteActionUsesDirectIndexForCompactNonPCAct(t *testing.T) {
 	act := &res.ACT{Actions: make([]res.ACTAction, 5)}
-	act.Actions[spriteActionNonPCAttack] = res.ACTAction{Animations: []res.ACTAnimation{{}}, DelayMS: 100}
-	index, _, ok := resolveSpriteAction(act, spriteActionNonPCAttack, 4)
+	act.Actions[ActionNonPCAttack] = res.ACTAction{Animations: []res.ACTAnimation{{}}, DelayMS: 100}
+	index, _, ok := ResolveAction(act, ActionNonPCAttack, 4)
 	if !ok {
 		t.Fatal("expected action")
 	}
-	if index != spriteActionNonPCAttack {
-		t.Fatalf("index = %d, want %d", index, spriteActionNonPCAttack)
+	if index != ActionNonPCAttack {
+		t.Fatalf("index = %d, want %d", index, ActionNonPCAttack)
 	}
 }
 
@@ -211,7 +212,7 @@ func TestGR2ResourcesDoNotUseSpriteFallbacks(t *testing.T) {
 func TestNoSpriteNPCJobsDoNotLoadFallbackSprite(t *testing.T) {
 	manager := &res.Manager{}
 	for _, job := range []int{scene.ActorJobWarpPortal, scene.ActorJobWarpPortalActive, scene.ActorJobWarpPortalWaiting, scene.ActorJobHiddenNPC, scene.ActorJobHiddenWarpNPC, scene.ActorJobClearNPC} {
-		if view, status := loadNonPCSpriteView(manager, job, "nonpc"); view != nil || !strings.HasSuffix(status, " no-sprite") {
+		if view, status := LoadNonPC(manager, job, "nonpc"); view != nil || !strings.HasSuffix(status, " no-sprite") {
 			t.Fatalf("job %d attempted to load a sprite: %s", job, status)
 		}
 	}
@@ -219,20 +220,20 @@ func TestNoSpriteNPCJobsDoNotLoadFallbackSprite(t *testing.T) {
 
 func TestPoringDeathActionRealData(t *testing.T) {
 	manager := testutil.RealDataManager(t)
-	view, status := loadNonPCSpriteView(manager, 1002, "poring")
+	view, status := LoadNonPC(manager, 1002, "poring")
 	if view == nil {
 		t.Fatalf("Poring sprite failed: %s", status)
 	}
 	if len(view.Act.Actions) < 40 {
 		t.Fatalf("Poring ACT was not upgraded: actions=%d status=%s", len(view.Act.Actions), status)
 	}
-	index, action, ok := resolveSpriteAction(view.Act, spriteActionNonPCDeath, 0)
+	index, action, ok := ResolveAction(view.Act, ActionNonPCDeath, 0)
 	if !ok {
 		t.Fatalf("Poring death action missing: %s", status)
 	}
 	t.Logf("Poring death action index=%d frames=%d delay=%.1f source=%s status=%s", index, len(action.Animations), action.DelayMS, view.ActSource, status)
-	if index != spriteActionNonPCDeath*8 {
-		t.Fatalf("Poring death action index=%d, want %d", index, spriteActionNonPCDeath*8)
+	if index != ActionNonPCDeath*8 {
+		t.Fatalf("Poring death action index=%d, want %d", index, ActionNonPCDeath*8)
 	}
 	if len(action.Animations) < 2 {
 		t.Fatalf("Poring death frames=%d, want animated death", len(action.Animations))
@@ -259,7 +260,7 @@ func TestSpriteMotionIndexUsesActionDelay(t *testing.T) {
 		DelayMS:    100,
 	}
 	started := time.Unix(0, 0)
-	got := spriteMotionIndex(action, started, started.Add(250*time.Millisecond), true)
+	got := MotionIndex(action, started, started.Add(250*time.Millisecond), true)
 	if got != 2 {
 		t.Fatalf("motion index = %d, want 2", got)
 	}
@@ -270,7 +271,7 @@ func TestHumanoidIdleUsesFirstBodyMotion(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	got := bodyMotionForState(action, spriteState{actionFamily: scene.SpriteActionIdle}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
+	got := BodyMotionForState(action, State{ActionFamily: scene.SpriteActionIdle}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
 	if got != 0 {
 		t.Fatalf("idle body motion = %d, want 0", got)
 	}
@@ -281,7 +282,7 @@ func TestNonPCIdleBodyMotionAnimates(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	got := bodyMotionForState(action, spriteState{actionFamily: scene.SpriteActionIdle, loopIdle: true}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
+	got := BodyMotionForState(action, State{ActionFamily: scene.SpriteActionIdle, LoopIdle: true}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
 	if got != 2 {
 		t.Fatalf("nonpc idle body motion = %d, want 2", got)
 	}
@@ -292,7 +293,7 @@ func TestHumanoidWalkBodyMotionAnimates(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	got := bodyMotionForState(action, spriteState{actionFamily: scene.SpriteActionWalk}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
+	got := BodyMotionForState(action, State{ActionFamily: scene.SpriteActionWalk}, time.Unix(0, 0), time.Unix(0, 0).Add(250*time.Millisecond))
 	if got != 2 {
 		t.Fatalf("walk body motion = %d, want 2", got)
 	}
@@ -304,11 +305,11 @@ func TestHumanoidWalkBodyMotionScalesWithMoveSpeed(t *testing.T) {
 		DelayMS:    150,
 	}
 	started := time.Unix(0, 0)
-	state := spriteState{actionFamily: scene.SpriteActionWalk, moveSpeedMS: 400}
-	if got := bodyMotionForState(action, state, started, started.Add(399*time.Millisecond)); got != 0 {
+	state := State{ActionFamily: scene.SpriteActionWalk, MoveSpeedMS: 400}
+	if got := BodyMotionForState(action, state, started, started.Add(399*time.Millisecond)); got != 0 {
 		t.Fatalf("walk body motion before slow step = %d, want 0", got)
 	}
-	if got := bodyMotionForState(action, state, started, started.Add(400*time.Millisecond)); got != 1 {
+	if got := BodyMotionForState(action, state, started, started.Add(400*time.Millisecond)); got != 1 {
 		t.Fatalf("walk body motion after slow step = %d, want 1", got)
 	}
 }
@@ -319,39 +320,9 @@ func TestWalkBodyMotionUsesDistancePhase(t *testing.T) {
 		DelayMS:    150,
 	}
 	started := time.Unix(0, 0)
-	state := spriteState{actionFamily: scene.SpriteActionWalk, moveSpeedMS: 400, walkDistance: 1}
-	if got := bodyMotionForState(action, state, started, started.Add(399*time.Millisecond)); got != 1 {
+	state := State{ActionFamily: scene.SpriteActionWalk, MoveSpeedMS: 400, WalkDistance: 1}
+	if got := BodyMotionForState(action, state, started, started.Add(399*time.Millisecond)); got != 1 {
 		t.Fatalf("walk body motion = %d, want distance-driven 1", got)
-	}
-}
-
-func TestWalkingSpriteStateIgnoresReadyFightAnimation(t *testing.T) {
-	state := spriteState{
-		actionFamily: scene.SpriteActionWalk,
-		moving:       true,
-		loop:         true,
-	}
-
-	if applyActorAnimationToSpriteState(&state, actorAnimation{actionFamily: spriteActionPCReadyFight, loop: true}, true) {
-		t.Fatal("ready fight should not override walking state")
-	}
-	if state.actionFamily != scene.SpriteActionWalk || !state.moving {
-		t.Fatalf("state = %+v, want still walking", state)
-	}
-
-	if !applyActorAnimationToSpriteState(&state, actorAnimation{actionFamily: spriteActionPCDeath}, true) {
-		t.Fatal("death should override walking state")
-	}
-	if state.actionFamily != spriteActionPCDeath || state.moving {
-		t.Fatalf("death state = %+v", state)
-	}
-
-	nonPC := spriteState{actionFamily: scene.SpriteActionWalk, moving: true, loop: true}
-	if !applyActorAnimationToSpriteState(&nonPC, actorAnimation{actionFamily: spriteActionNonPCDeath}, false) {
-		t.Fatal("non-pc death should override walking state")
-	}
-	if nonPC.actionFamily != spriteActionNonPCDeath || nonPC.moving {
-		t.Fatalf("non-pc death state = %+v", nonPC)
 	}
 }
 
@@ -361,11 +332,11 @@ func TestTransientBodyMotionPlaysOnceFromStateStart(t *testing.T) {
 		DelayMS:    100,
 	}
 	started := time.Unix(10, 0)
-	got := bodyMotionForState(action, spriteState{actionFamily: spriteActionPCAttack2, started: started}, time.Unix(0, 0), started.Add(250*time.Millisecond))
+	got := BodyMotionForState(action, State{ActionFamily: ActionPCAttack2, Started: started}, time.Unix(0, 0), started.Add(250*time.Millisecond))
 	if got != 2 {
 		t.Fatalf("attack body motion = %d, want 2", got)
 	}
-	got = bodyMotionForState(action, spriteState{actionFamily: spriteActionPCAttack2, started: started}, time.Unix(0, 0), started.Add(500*time.Millisecond))
+	got = BodyMotionForState(action, State{ActionFamily: ActionPCAttack2, Started: started}, time.Unix(0, 0), started.Add(500*time.Millisecond))
 	if got != 2 {
 		t.Fatalf("finished attack body motion = %d, want final frame 2", got)
 	}
@@ -390,10 +361,10 @@ func TestHumanoidIdleHeadMotionDoesNotCycle(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	if got := selectHeadMotion(spriteState{actionFamily: scene.SpriteActionIdle}, 2, action); got != 0 {
+	if got := selectHeadMotion(State{ActionFamily: scene.SpriteActionIdle}, 2, action); got != 0 {
 		t.Fatalf("idle head motion = %d, want 0", got)
 	}
-	if got := selectHeadMotion(spriteState{actionFamily: scene.SpriteActionIdle, headDir: 2, headTurn: true}, 0, action); got != 2 {
+	if got := selectHeadMotion(State{ActionFamily: scene.SpriteActionIdle, HeadDir: 2, HeadTurn: true}, 0, action); got != 2 {
 		t.Fatalf("idle turned head motion = %d, want 2", got)
 	}
 }
@@ -403,7 +374,7 @@ func TestHumanoidWalkHeadMotionFollowsBodyMotion(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	if got := selectHeadMotion(spriteState{actionFamily: scene.SpriteActionWalk}, 2, action); got != 2 {
+	if got := selectHeadMotion(State{ActionFamily: scene.SpriteActionWalk}, 2, action); got != 2 {
 		t.Fatalf("walk head motion = %d, want 2", got)
 	}
 }
@@ -413,7 +384,7 @@ func TestHumanoidTransientHeadMotionFollowsBodyMotion(t *testing.T) {
 		Animations: []res.ACTAnimation{{}, {}, {}},
 		DelayMS:    100,
 	}
-	if got := selectHeadMotion(spriteState{actionFamily: spriteActionPCAttack2}, 2, action); got != 2 {
+	if got := selectHeadMotion(State{ActionFamily: ActionPCAttack2}, 2, action); got != 2 {
 		t.Fatalf("attack head motion = %d, want 2", got)
 	}
 }
@@ -515,37 +486,37 @@ func TestDebugPlayerSpriteBillboard(t *testing.T) {
 	}
 	manager := testutil.RealDataManager(t)
 	for _, sex := range []byte{0, 1} {
-		view, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{head: 1, sex: sex}, "debug player")
+		view, status := LoadHumanoid(manager, Appearance{Head: 1, Sex: sex}, "debug player")
 		if view == nil {
 			t.Logf("sex=%d load failed: %s", sex, status)
 			continue
 		}
-		billboard, ok := humanoidBillboardForState(view, spriteState{actionFamily: scene.SpriteActionIdle, direction: 0}, time.Now())
+		billboard, ok := HumanoidBillboard(view, State{ActionFamily: scene.SpriteActionIdle, Direction: 0}, time.Now())
 		if !ok {
 			t.Logf("sex=%d billboard failed: %s", sex, status)
 			continue
 		}
-		bodyIndex, bodyAction, ok := resolveSpriteAction(view.body.Act, scene.SpriteActionIdle, 0)
+		bodyIndex, bodyAction, ok := ResolveAction(view.Body.Act, scene.SpriteActionIdle, 0)
 		if !ok {
 			t.Fatalf("sex=%d missing body action", sex)
 		}
-		minX, minY, maxX, maxY := spriteAnimationBounds(view.body, bodyAction.Animations[0], scene.HumanoidBillboardAnchorX, scene.HumanoidBillboardAnchorY, 0, 0)
+		minX, minY, maxX, maxY := spriteAnimationBounds(view.Body, bodyAction.Animations[0], scene.HumanoidBillboardAnchorX, scene.HumanoidBillboardAnchorY, 0, 0)
 		t.Logf("sex=%d %s action=%d bounds=(%.1f,%.1f)-(%.1f,%.1f) anchor=(%.0f,%.0f) image=%dx%d", sex, status, bodyIndex, minX, minY, maxX, maxY, billboard.AnchorX, billboard.AnchorY, scene.HumanoidBillboardWidth, scene.HumanoidBillboardHeight)
 	}
 }
 
 func TestPlayerSpriteCompositionIncludesHeadWithWeapon(t *testing.T) {
 	manager := testutil.RealDataManager(t)
-	view, status := loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{
-		job:    0,
-		head:   1,
-		sex:    0,
-		weapon: 1201,
+	view, status := LoadHumanoid(manager, Appearance{
+		Job:    0,
+		Head:   1,
+		Sex:    0,
+		Weapon: 1201,
 	}, "debug player")
 	if view == nil {
 		t.Skipf("debug player unavailable: %s", status)
 	}
-	bodyActionIndex, bodyAction, ok := resolveSpriteAction(view.body.Act, scene.SpriteActionIdle, 0)
+	bodyActionIndex, bodyAction, ok := ResolveAction(view.Body.Act, scene.SpriteActionIdle, 0)
 	if !ok {
 		t.Fatalf("body action missing: %s", status)
 	}
@@ -591,28 +562,28 @@ func TestMercenaryHumanoidSpriteCompositionRealWhenConfigured(t *testing.T) {
 		death  int
 		attack int
 	}{
-		{name: "archer", job: 6017, sex: 1, death: spriteActionNonPCDeath, attack: spriteActionPCAttack2},
-		{name: "lancer", job: 6027, sex: 0, death: spriteActionPCDeath, attack: spriteActionPCAttack3},
-		{name: "sword", job: 6037, sex: 0, death: spriteActionPCDeath, attack: spriteActionPCAttack2},
+		{name: "archer", job: 6017, sex: 1, death: ActionNonPCDeath, attack: ActionPCAttack2},
+		{name: "lancer", job: 6027, sex: 0, death: ActionPCDeath, attack: ActionPCAttack3},
+		{name: "sword", job: 6037, sex: 0, death: ActionPCDeath, attack: ActionPCAttack2},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			view, status := loadMercenaryHumanoidSpriteView(manager, humanoidAppearance{job: tc.job, head: 1, sex: tc.sex}, "mercenary")
+			view, status := LoadMercenary(manager, Appearance{Job: tc.job, Head: 1, Sex: tc.sex}, "mercenary")
 			if view == nil {
 				t.Skipf("mercenary sprite unavailable: %s", status)
 			}
-			if view.body == nil || view.head == nil {
-				t.Fatalf("mercenary view body=%t head=%t status=%s", view.body != nil, view.head != nil, status)
+			if view.Body == nil || view.head == nil {
+				t.Fatalf("mercenary view body=%t head=%t status=%s", view.Body != nil, view.head != nil, status)
 			}
-			for _, action := range []int{tc.attack, spriteActionPCHurt, tc.death} {
-				if _, _, ok := resolveSpriteAction(view.body.Act, action, 0); !ok {
+			for _, action := range []int{tc.attack, ActionPCHurt, tc.death} {
+				if _, _, ok := ResolveAction(view.Body.Act, action, 0); !ok {
 					t.Fatalf("missing body action=%d status=%s", action, status)
 				}
 			}
-			if _, ok := humanoidBillboardForState(view, spriteState{actionFamily: tc.attack, direction: 0}, time.Now()); !ok {
+			if _, ok := HumanoidBillboard(view, State{ActionFamily: tc.attack, Direction: 0}, time.Now()); !ok {
 				t.Fatalf("attack billboard unavailable status=%s", status)
 			}
-			if _, ok := humanoidBillboardForState(view, spriteState{actionFamily: tc.death, direction: 0}, time.Now()); !ok {
+			if _, ok := HumanoidBillboard(view, State{ActionFamily: tc.death, Direction: 0}, time.Now()); !ok {
 				t.Fatalf("death billboard unavailable action=%d status=%s", tc.death, status)
 			}
 		})
@@ -622,31 +593,32 @@ func TestMercenaryHumanoidSpriteCompositionRealWhenConfigured(t *testing.T) {
 func TestMercenaryAttackBillboardDoesNotClipRealWhenConfigured(t *testing.T) {
 	manager := testutil.RealDataManager(t)
 	for _, tc := range []struct {
-		name string
-		job  int
-		sex  byte
+		name   string
+		job    int
+		sex    byte
+		attack int
 	}{
-		{name: "archer", job: 6017, sex: 0},
-		{name: "lancer", job: 6027, sex: 1},
-		{name: "sword", job: 6037, sex: 1},
+		{name: "archer", job: 6017, sex: 0, attack: ActionPCAttack2},
+		{name: "lancer", job: 6027, sex: 1, attack: ActionPCAttack3},
+		{name: "sword", job: 6037, sex: 1, attack: ActionPCAttack2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			view, status := loadMercenaryHumanoidSpriteView(manager, humanoidAppearance{job: tc.job, head: 1, sex: tc.sex}, "mercenary")
+			view, status := LoadMercenary(manager, Appearance{Job: tc.job, Head: 1, Sex: tc.sex}, "mercenary")
 			if view == nil {
 				t.Skipf("mercenary sprite unavailable: %s", status)
 			}
-			actionFamily := mercenaryAttackActionFamily(tc.job, tc.sex, 0)
-			renderDirection := spriteDirectionFromWorldDirForCamera(0, 0)
-			_, action, ok := resolveSpriteAction(view.body.Act, actionFamily, renderDirection)
+			actionFamily := tc.attack
+			renderDirection := DirectionForCamera(0, 0)
+			_, action, ok := ResolveAction(view.Body.Act, actionFamily, renderDirection)
 			if !ok {
 				t.Fatalf("mercenary attack action missing: %s", status)
 			}
 			for motion := range action.Animations {
-				billboard, ok := humanoidBillboardForState(view, spriteState{
-					actionFamily:   actionFamily,
-					direction:      0,
-					fixedMotion:    motion,
-					hasFixedMotion: true,
+				billboard, ok := HumanoidBillboard(view, State{
+					ActionFamily:   actionFamily,
+					Direction:      0,
+					FixedMotion:    motion,
+					HasFixedMotion: true,
 				}, time.Now())
 				if !ok {
 					t.Fatalf("attack motion %d billboard unavailable: %s", motion, status)
@@ -667,25 +639,26 @@ func TestMercenaryAttackBillboardDoesNotClipRealWhenConfigured(t *testing.T) {
 func TestMercenaryAttackBillboardIncludesDefaultWeaponRealWhenConfigured(t *testing.T) {
 	manager := testutil.RealDataManager(t)
 	for _, tc := range []struct {
-		name string
-		job  int
-		sex  byte
+		name   string
+		job    int
+		sex    byte
+		attack int
 	}{
-		{name: "archer", job: 6017, sex: 0},
-		{name: "lancer", job: 6027, sex: 1},
-		{name: "sword", job: 6037, sex: 1},
+		{name: "archer", job: 6017, sex: 0, attack: ActionPCAttack2},
+		{name: "lancer", job: 6027, sex: 1, attack: ActionPCAttack3},
+		{name: "sword", job: 6037, sex: 1, attack: ActionPCAttack2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			view, status := loadMercenaryHumanoidSpriteView(manager, humanoidAppearance{job: tc.job, head: 1, sex: tc.sex}, "mercenary")
+			view, status := LoadMercenary(manager, Appearance{Job: tc.job, Head: 1, Sex: tc.sex}, "mercenary")
 			if view == nil {
 				t.Skipf("mercenary sprite unavailable: %s", status)
 			}
 			if view.weapon == nil {
 				t.Fatalf("mercenary default weapon unavailable: %s", status)
 			}
-			actionFamily := mercenaryAttackActionFamily(tc.job, tc.sex, 0)
-			renderDirection := spriteDirectionFromWorldDirForCamera(0, 0)
-			bodyActionIndex, action, ok := resolveSpriteAction(view.body.Act, actionFamily, renderDirection)
+			actionFamily := tc.attack
+			renderDirection := DirectionForCamera(0, 0)
+			bodyActionIndex, action, ok := ResolveAction(view.Body.Act, actionFamily, renderDirection)
 			if !ok {
 				t.Fatalf("mercenary attack action missing: %s", status)
 			}
@@ -696,21 +669,21 @@ func TestMercenaryAttackBillboardIncludesDefaultWeaponRealWhenConfigured(t *test
 			changed := false
 			expectedVisible := false
 			for motion := range action.Animations {
-				state := spriteState{
-					actionFamily:   actionFamily,
-					direction:      0,
-					fixedMotion:    motion,
-					hasFixedMotion: true,
+				state := State{
+					ActionFamily:   actionFamily,
+					Direction:      0,
+					FixedMotion:    motion,
+					HasFixedMotion: true,
 				}
-				withWeapon, ok := humanoidBillboardForState(view, state, time.Now())
+				withWeapon, ok := HumanoidBillboard(view, state, time.Now())
 				if !ok {
 					t.Fatalf("mercenary attack billboard unavailable with weapon: %s", status)
 				}
-				withoutWeapon, ok := humanoidBillboardForState(&withoutWeaponView, state, time.Now())
+				withoutWeapon, ok := HumanoidBillboard(&withoutWeaponView, state, time.Now())
 				if !ok {
 					t.Fatalf("mercenary attack billboard unavailable without weapon: %s", status)
 				}
-				if overlayMotionHasVisibleLayer(view.weapon, view.body, bodyActionIndex, motion) || overlayMotionHasVisibleLayer(view.weaponLight, view.body, bodyActionIndex, motion) {
+				if overlayMotionHasVisibleLayer(view.weapon, view.Body, bodyActionIndex, motion) || overlayMotionHasVisibleLayer(view.weaponLight, view.Body, bodyActionIndex, motion) {
 					expectedVisible = true
 				}
 				if imageRGBAFingerprint(withWeapon.Image) != imageRGBAFingerprint(withoutWeapon.Image) {
@@ -743,7 +716,7 @@ func TestMercenaryUsesDedicatedWeaponOverlayRealWhenConfigured(t *testing.T) {
 		{name: "sword", job: 6037, sex: 1, weaponPath: `data\sprite\인간족\용병\검용병_검.spr`, lightPath: `data\sprite\인간족\용병\검용병_검_검광.spr`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			view, status := loadMercenaryHumanoidSpriteView(manager, humanoidAppearance{job: tc.job, head: 1, sex: tc.sex}, "mercenary")
+			view, status := LoadMercenary(manager, Appearance{Job: tc.job, Head: 1, Sex: tc.sex}, "mercenary")
 			if view == nil {
 				t.Skipf("mercenary sprite unavailable: %s", status)
 			}
@@ -771,7 +744,7 @@ func TestComposeSingleSpriteBillboardUsesAnimationBounds(t *testing.T) {
 				Type:   res.SPRFrameRGBA,
 				Width:  20,
 				Height: 60,
-				Data:   solidRGBAFrame(20, 60),
+				Data:   testutil.SolidRGBAFrame(20, 60),
 			}},
 		},
 		Act:        &res.ACT{},
@@ -808,7 +781,7 @@ func TestCursorFrameBillboardUsesCompositionAnchorAsHotspot(t *testing.T) {
 				Type:   res.SPRFrameRGBA,
 				Width:  18,
 				Height: 24,
-				Data:   solidRGBAFrame(18, 24),
+				Data:   testutil.SolidRGBAFrame(18, 24),
 			}},
 		},
 		Act: &res.ACT{Actions: []res.ACTAction{{
@@ -826,7 +799,7 @@ func TestCursorFrameBillboardUsesCompositionAnchorAsHotspot(t *testing.T) {
 		Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
 
-	billboard, ok := cursorFrameBillboard(view, 0, 0, 20, 24)
+	billboard, ok := CursorFrameBillboard(view, 0, 0, 20, 24)
 	if !ok {
 		t.Fatal("expected cursor billboard")
 	}
@@ -849,7 +822,7 @@ func TestCursorFrameBillboardDoesNotClipTallTargetCursor(t *testing.T) {
 				Type:   res.SPRFrameRGBA,
 				Width:  32,
 				Height: 64,
-				Data:   solidRGBAFrame(32, 64),
+				Data:   testutil.SolidRGBAFrame(32, 64),
 			}},
 		},
 		Act: &res.ACT{Actions: []res.ACTAction{{
@@ -867,7 +840,7 @@ func TestCursorFrameBillboardDoesNotClipTallTargetCursor(t *testing.T) {
 		Billboards: make(map[scene.SpriteBillboardKey]*scene.Billboard),
 	}
 
-	billboard, ok := cursorFrameBillboard(view, 0, 0, 20, 50)
+	billboard, ok := CursorFrameBillboard(view, 0, 0, 20, 50)
 	if !ok {
 		t.Fatal("expected cursor billboard")
 	}
@@ -877,15 +850,6 @@ func TestCursorFrameBillboardDoesNotClipTallTargetCursor(t *testing.T) {
 	if got, want := billboard.AnchorY, 4.0; got != want {
 		t.Fatalf("cursor anchorY = %.1f, want %.1f", got, want)
 	}
-}
-
-func solidRGBAFrame(width, height int) []byte {
-	data := make([]byte, width*height*4)
-	for i := 0; i < len(data); i += 4 {
-		data[i+0] = 255
-		data[i+3] = 255
-	}
-	return data
 }
 
 func layerOrderContains(order [8]int, layer int) bool {
@@ -1017,4 +981,51 @@ func spriteLayerBounds(view *scene.SpriteView, layer res.ACTLayer, centerX, cent
 	halfW := width * scaleX / 2
 	halfH := height * scaleY / 2
 	return layerCenterX - halfW, layerCenterY - halfH, layerCenterX + halfW, layerCenterY + halfH
+}
+
+func TestSeparateEquipmentPreservesComposition(t *testing.T) {
+	manager := testutil.RealDataManager(t)
+	start := time.Unix(100, 0)
+	view, status := LoadHumanoid(manager, Appearance{
+		Job: db.JobKnightH, Head: 1, Sex: 1, Weapon: int(db.WeaponSword), Shield: 1,
+	}, "test")
+	if view == nil {
+		t.Fatal(status)
+	}
+	// Separating blend groups must preserve the original IMF order and anchors.
+	for _, imf := range []*res.IMF{view.imf, nil} {
+		copy := *view
+		copy.imf = imf
+		copy.billboards = make(map[humanoidBillboardKey]*scene.Billboard)
+		for direction := 0; direction < 8; direction++ {
+			state := State{ActionFamily: ActionPCAttack2, Direction: direction, HasFixedMotion: true, FixedMotion: 2}
+			whole, ok := HumanoidBillboard(&copy, state, start)
+			if !ok {
+				t.Fatal("missing Lord Knight attack")
+			}
+			state.SeparateEquipment = true
+			split, ok := HumanoidBillboard(&copy, state, start)
+			if !ok || len(split.Parts) == 0 {
+				t.Fatal("missing split Lord Knight")
+			}
+			got, want := render.NewImage(512, 512), render.NewImage(512, 512)
+			draw := func(target *render.Image, b *scene.Billboard) {
+				options := &render.DrawImageOptions{}
+				options.GeoM.Translate(256-b.AnchorX, 256-b.AnchorY)
+				target.DrawImage(b.Image, options)
+			}
+			draw(want, whole)
+			for _, part := range split.Parts {
+				draw(got, part)
+			}
+			for i, channel := range want.RGBA().Pix {
+				if scene.AbsInt(int(channel)-int(got.RGBA().Pix[i])) > 2 {
+					t.Fatalf("split layers changed composition: direction=%d imf=%t byte=%d", direction, imf != nil, i)
+				}
+			}
+			if again, _ := HumanoidBillboard(&copy, state, start); again != split {
+				t.Fatal("split sprite was not cached")
+			}
+		}
+	}
 }

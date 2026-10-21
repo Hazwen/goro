@@ -12,6 +12,7 @@ import (
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -274,7 +275,7 @@ func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify
 	}
 	if notify.SkillID == db.SkillHWSouldrain {
 		m.setCombatActorAction(ctx, notify.SourceID, actorAnimation{
-			actionFamily: spriteActionPCAttack3, started: now, duration: time.Second,
+			actionFamily: sprites.ActionPCAttack3, started: now, duration: time.Second,
 			play: true, hasPlay: true, length: 4, hasLength: true,
 			speed: 10 * db.EffectFrameDuration, hasSpeed: true,
 			keepMovement: true,
@@ -283,7 +284,7 @@ func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify
 	}
 	if notify.SkillID == db.SkillLKAurablade {
 		m.setCombatActorAction(ctx, notify.SourceID, actorAnimation{
-			actionFamily: spriteActionPCReadyFight, started: now, duration: time.Second,
+			actionFamily: sprites.ActionPCReadyFight, started: now, duration: time.Second,
 			play: true, hasPlay: true, length: 6, hasLength: true,
 			speed: 10 * db.EffectFrameDuration, hasSpeed: true,
 		})
@@ -454,7 +455,7 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 				// Each meteor holds the release pose instead of turning toward its impact.
 				spec = skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true}
 				actor.Dir = 0
-				if action, ok := m.actorResolvedAction(ctx, actor, spriteActionPCSkill); ok {
+				if action, ok := m.actorResolvedAction(ctx, actor, sprites.ActionPCSkill); ok {
 					spec.frame = max(0, len(action.Animations)-1)
 				}
 			}
@@ -1433,7 +1434,7 @@ func (m *WorldMode) stopPerformance(ctx client.Context, change network.StatusEff
 		ids = []uint32{ctx.Session.AccountID, ctx.Session.CharID}
 	}
 	for _, id := range ids {
-		if anim, ok := m.actorAnims[id]; ok && anim.loop && anim.actionFamily == spriteActionPCSkill && anim.hasFrameOffset && anim.frameOffset == 1 && anim.length == 3 {
+		if anim, ok := m.actorAnims[id]; ok && anim.loop && anim.actionFamily == sprites.ActionPCSkill && anim.hasFrameOffset && anim.frameOffset == 1 && anim.length == 3 {
 			m.clearActorAction(ctx, id)
 		}
 	}

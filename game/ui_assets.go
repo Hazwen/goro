@@ -9,6 +9,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
@@ -98,7 +99,7 @@ func (m *WorldMode) drawEquipmentPreview(screen previewRenderTarget, ctx client.
 	}
 	view := m.playerView
 	if view == nil && ctx.Resources != nil && ctx.Session != nil {
-		loaded, _ := loadPlayerHumanoidSpriteView(ctx.Resources, localPlayerVisualCharacter(ctx), ctx.Session.Sex, localPlayerIsAdmin(ctx))
+		loaded, _ := sprites.LoadPlayer(ctx.Resources, localPlayerVisualCharacter(ctx), ctx.Session.Sex, localPlayerIsAdmin(ctx))
 		view = loaded
 		if loaded != nil {
 			m.playerView = loaded
@@ -111,16 +112,16 @@ func (m *WorldMode) drawEquipmentPreviewForCharacter(screen previewRenderTarget,
 	if screen == nil || width <= 0 || height <= 0 || ctx.Resources == nil {
 		return
 	}
-	view, _ := loadPlayerHumanoidSpriteView(ctx.Resources, character, sex, false)
+	view, _ := sprites.LoadPlayer(ctx.Resources, character, sex, false)
 	m.drawHumanoidPreview(screen, view, x, y, width, height)
 }
 
-func (m *WorldMode) drawHumanoidPreview(screen previewRenderTarget, view *humanoidSpriteView, x, y, width, height int) {
-	state := spriteState{
-		actionFamily: scene.SpriteActionIdle,
-		direction:    4,
+func (m *WorldMode) drawHumanoidPreview(screen previewRenderTarget, view *sprites.Humanoid, x, y, width, height int) {
+	state := sprites.State{
+		ActionFamily: scene.SpriteActionIdle,
+		Direction:    4,
 	}
-	billboard, ok := humanoidBillboardForState(view, state, time.Now())
+	billboard, ok := sprites.HumanoidBillboard(view, state, time.Now())
 	if !ok || billboard == nil || billboard.Image == nil {
 		return
 	}
@@ -173,13 +174,13 @@ func (m *WorldMode) monsterInfoPreviewImage(ctx client.Context, class uint16, wi
 		ObjectType:    scene.ActorObjectTypeMob,
 	}
 	view := m.nonPCSpriteView(ctx, actor)
-	state := spriteState{
-		actionFamily:   scene.SpriteActionIdle,
-		direction:      4,
-		fixedMotion:    0,
-		hasFixedMotion: true,
+	state := sprites.State{
+		ActionFamily:   scene.SpriteActionIdle,
+		Direction:      4,
+		FixedMotion:    0,
+		HasFixedMotion: true,
 	}
-	billboard, ok := singleSpriteBillboardForState(view, state, time.Now())
+	billboard, ok := sprites.BillboardForState(view, state, time.Now())
 	if !ok {
 		return nil
 	}

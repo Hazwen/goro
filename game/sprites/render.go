@@ -1,4 +1,4 @@
-package game
+package sprites
 
 import (
 	"image"
@@ -6,28 +6,27 @@ import (
 	"math"
 	"time"
 
-	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 )
 
 const (
-	spriteActionNonPCAttack  = 2
-	spriteActionNonPCHurt    = 3
-	spriteActionNonPCDeath   = 4
-	spriteActionNonPCPerf1   = 5
-	spriteActionNonPCPerf2   = 6
-	spriteActionNonPCPerf3   = 7
-	spriteActionNonPCSpecial = 8
-	spriteActionPCReadyFight = 4
-	spriteActionPCAttack1    = 5
-	spriteActionPCHurt       = 6
-	spriteActionPCDeath      = 8
-	spriteActionPCFreeze2    = 9
-	spriteActionPCAttack2    = 10
-	spriteActionPCAttack3    = 11
-	spriteActionPCSkill      = 12
+	ActionNonPCAttack  = 2
+	ActionNonPCHurt    = 3
+	ActionNonPCDeath   = 4
+	ActionNonPCPerf1   = 5
+	ActionNonPCPerf2   = 6
+	ActionNonPCPerf3   = 7
+	ActionNonPCSpecial = 8
+	ActionPCReadyFight = 4
+	ActionPCAttack1    = 5
+	ActionPCHurt       = 6
+	ActionPCDeath      = 8
+	ActionPCFreeze2    = 9
+	ActionPCAttack2    = 10
+	ActionPCAttack3    = 11
+	ActionPCSkill      = 12
 )
 
 const (
@@ -50,13 +49,8 @@ const (
 	humanoidLayerCount
 )
 
-type petAccessorySpriteKey struct {
-	job         int
-	accessoryID uint32
-}
-
-type humanoidSpriteView struct {
-	body            *scene.SpriteView
+type Humanoid struct {
+	Body            *scene.SpriteView
 	head            *scene.SpriteView
 	accessoryBottom *scene.SpriteView
 	accessoryMid    *scene.SpriteView
@@ -67,21 +61,21 @@ type humanoidSpriteView struct {
 	imf             *res.IMF
 	imfSource       string
 	billboards      map[humanoidBillboardKey]*scene.Billboard
-	started         time.Time
+	Started         time.Time
 }
 
-type humanoidAppearance struct {
-	job         int
-	head        int
-	sex         byte
-	admin       bool
-	bodyPalette int
-	headPalette int
-	weapon      int
-	shield      int
-	headTop     int
-	headMid     int
-	headLow     int
+type Appearance struct {
+	Job         int
+	Head        int
+	Sex         byte
+	Admin       bool
+	BodyPalette int
+	HeadPalette int
+	Weapon      int
+	Shield      int
+	HeadTop     int
+	HeadMid     int
+	HeadLow     int
 }
 
 type humanoidBillboardKey struct {
@@ -93,117 +87,42 @@ type humanoidBillboardKey struct {
 	separateEquipment bool
 }
 
-type spriteState struct {
-	separateEquipment bool
+type State struct {
+	SeparateEquipment bool
 
-	actionFamily   int
-	direction      int
-	headDir        uint8
-	headTurn       bool
-	cameraYaw      float64
-	moving         bool
-	started        time.Time
-	loop           bool
-	pingPong       bool
-	loopIdle       bool
-	play           bool
-	hasPlay        bool
-	length         int
-	hasLength      bool
-	frameOffset    int
-	hasFrameOffset bool
-	fixedMotion    int
-	hasFixedMotion bool
-	speed          time.Duration
-	hasSpeed       bool
-	moveSpeedMS    int
-	walkDistance   float64
+	ActionFamily   int
+	Direction      int
+	HeadDir        uint8
+	HeadTurn       bool
+	CameraYaw      float64
+	Moving         bool
+	Started        time.Time
+	Loop           bool
+	PingPong       bool
+	LoopIdle       bool
+	Play           bool
+	HasPlay        bool
+	Length         int
+	HasLength      bool
+	FrameOffset    int
+	HasFrameOffset bool
+	FixedMotion    int
+	HasFixedMotion bool
+	Speed          time.Duration
+	HasSpeed       bool
+	MoveSpeedMS    int
+	WalkDistance   float64
 }
 
-func (m *WorldMode) drawPlayerSprite3D(ctx client.Context, screen *render.Frame, projection scene.Projection, entry scene.ActorDrawEntry, direction int, cameraYaw float64, shadow float64, alpha float64) bool {
-	now := time.Now()
-	actor := entry.Actor
-	moving := scene.ActorIsMovingAt(actor, now)
-	state := spriteState{
-		separateEquipment: m.effects().LordKnightSeparateEquipment(ctx, actor, now),
-		actionFamily:      scene.SpriteActionIdle,
-		direction:         direction,
-		headDir:           actor.HeadDir,
-		headTurn:          true,
-		cameraYaw:         cameraYaw,
-		moving:            moving,
-		moveSpeedMS:       actor.Speed,
-	}
-	if moving {
-		state.actionFamily = scene.SpriteActionWalk
-		state.loop = true
-		state.walkDistance = actorRenderWalkDistance(actor, now)
-	} else if actor.Sitting {
-		state.actionFamily = scene.SpriteActionSit
-	}
-	if ctx.Session != nil {
-		if anim, ok := m.actorAnimation(ctx.Session.CharID, now); ok {
-			applyActorAnimationToSpriteState(&state, anim, true)
-		} else if anim, ok := m.actorAnimation(ctx.Session.AccountID, now); ok {
-			applyActorAnimationToSpriteState(&state, anim, true)
-		}
-	}
-	if !isDeathActionFamily(state.actionFamily) {
-		applyActorBodyState(actor, &state)
-	}
-	billboard, ok := humanoidBillboardForState(m.playerView, state, now)
+func DrawFixedShadow3D(screen *render.Frame, projection scene.Projection, view *scene.SpriteView, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) bool {
+	billboard, ok := FixedBillboard(view)
 	if !ok {
 		return false
 	}
-	m.drawActorSpriteWithEffects3D(ctx, screen, projection, entry, billboard, m.playerRenderScale(ctx, actor, entry.Scale, now), alpha, shadow, entry.Stealth.Tint(m.playerRenderTint(ctx, actor, now)), entry.Stealth.Blend(m.playerRenderBlend(ctx, actor, now)), now)
-	return true
+	return DrawShadow3D(screen, projection, billboard, worldX, worldY, worldZ, scale, alpha, shadow)
 }
 
-func applyActorAnimationToSpriteState(state *spriteState, anim actorAnimation, playerLike bool) bool {
-	if state == nil {
-		return false
-	}
-	if state.moving && !actorAnimationOverridesWalk(anim, playerLike) {
-		return false
-	}
-	state.actionFamily = anim.actionFamily
-	state.started = anim.started
-	state.loop = anim.loop
-	state.pingPong = anim.pingPong
-	state.play = anim.play
-	state.hasPlay = anim.hasPlay
-	state.length = anim.length
-	state.hasLength = anim.hasLength
-	state.frameOffset = anim.frameOffset
-	state.hasFrameOffset = anim.hasFrameOffset
-	state.moving = false
-	state.fixedMotion = anim.fixedMotion
-	state.hasFixedMotion = anim.hasFixedMotion
-	state.speed = anim.speed
-	state.hasSpeed = anim.hasSpeed
-	return true
-}
-
-func actorAnimationOverridesWalk(anim actorAnimation, playerLike bool) bool {
-	if playerLike {
-		return anim.actionFamily == spriteActionPCDeath
-	}
-	return anim.actionFamily == spriteActionNonPCDeath
-}
-
-func (m *WorldMode) drawActorSpriteBillboardTintAlpha3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA, blend render.Blend) {
-	m.effects().DrawActorSpriteBillboard(screen, projection, billboard, worldX, worldY, worldZ, scale, alpha, shadow, tintColor, blend)
-}
-
-func drawFixedSpriteShadowBillboard3D(screen *render.Frame, projection scene.Projection, view *scene.SpriteView, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) bool {
-	billboard, ok := fixedSpriteBillboard(view)
-	if !ok {
-		return false
-	}
-	return drawSpriteShadowBillboard3D(screen, projection, billboard, worldX, worldY, worldZ, scale, alpha, shadow)
-}
-
-func drawSpriteShadowBillboard3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) bool {
+func DrawShadow3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) bool {
 	if billboard == nil {
 		return false
 	}
@@ -213,38 +132,31 @@ func drawSpriteShadowBillboard3D(screen *render.Frame, projection scene.Projecti
 	return true
 }
 
-func (m *WorldMode) drawSpriteBillboardAlpha3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64) {
-	options := scene.SpriteBillboardTriangleDrawOptions()
-	options.DepthWrite = true
-	options.Filter = render.FilterSprite
-	scene.DrawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, m.spriteTexture(billboard.Image), worldX, worldY, worldZ, scale, alpha, shadow, color.RGBA{R: 255, G: 255, B: 255, A: 255}, options)
-}
-
-func drawSpriteBillboardTintAlphaOverlay3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA) {
+func DrawOverlay3D(screen *render.Frame, projection scene.Projection, billboard *scene.Billboard, worldX, worldY, worldZ, scale float64, alpha float64, shadow float64, tintColor color.RGBA) {
 	scene.DrawSpriteBillboardTintAlpha3DWithOptions(screen, projection, billboard, billboard.Image, worldX, worldY, worldZ, scale, alpha, shadow, tintColor, &render.DrawTrianglesOptions{
 		Filter:  scene.SpriteDrawFilter(),
 		Address: render.AddressClampToZero,
 	})
 }
 
-func humanoidBillboardForState(view *humanoidSpriteView, state spriteState, now time.Time) (*scene.Billboard, bool) {
-	if view == nil || view.body == nil || view.body.Act == nil || view.body.Spr == nil {
+func HumanoidBillboard(view *Humanoid, state State, now time.Time) (*scene.Billboard, bool) {
+	if view == nil || view.Body == nil || view.Body.Act == nil || view.Body.Spr == nil {
 		return nil, false
 	}
-	state.direction = spriteDirectionFromWorldDirForCamera(state.direction, state.cameraYaw)
-	bodyActionIndex, bodyAction, ok := resolveSpriteAction(view.body.Act, state.actionFamily, state.direction)
+	state.Direction = DirectionForCamera(state.Direction, state.CameraYaw)
+	bodyActionIndex, bodyAction, ok := ResolveAction(view.Body.Act, state.ActionFamily, state.Direction)
 	if !ok || len(bodyAction.Animations) == 0 {
 		return nil, false
 	}
-	bodyMotion := bodyMotionForState(bodyAction, state, view.started, now)
+	bodyMotion := BodyMotionForState(bodyAction, state, view.Started, now)
 	headMotion := 0
 	if view.head != nil {
-		if _, headAction, headOK := resolveSpriteAction(view.head.Act, state.actionFamily, state.direction); headOK && len(headAction.Animations) > 0 {
+		if _, headAction, headOK := ResolveAction(view.head.Act, state.ActionFamily, state.Direction); headOK && len(headAction.Animations) > 0 {
 			headMotion = selectHeadMotion(state, bodyMotion, headAction)
 		}
 	}
 	key := humanoidBillboardKey{
-		separateEquipment: state.separateEquipment,
+		separateEquipment: state.SeparateEquipment,
 		actionFamily:      bodyActionIndex / 8,
 		direction:         bodyActionIndex % 8,
 		bodyMotion:        bodyMotion,
@@ -257,20 +169,23 @@ func humanoidBillboardForState(view *humanoidSpriteView, state spriteState, now 
 	if !ok {
 		return nil, false
 	}
+	if view.billboards == nil {
+		view.billboards = make(map[humanoidBillboardKey]*scene.Billboard)
+	}
 	view.billboards[key] = billboard
 	return billboard, true
 }
 
-func singleSpriteBillboardForState(view *scene.SpriteView, state spriteState, now time.Time) (*scene.Billboard, bool) {
+func BillboardForState(view *scene.SpriteView, state State, now time.Time) (*scene.Billboard, bool) {
 	if view == nil || view.Act == nil || view.Spr == nil {
 		return nil, false
 	}
-	state.direction = spriteDirectionFromWorldDirForCamera(state.direction, state.cameraYaw)
-	actionIndex, action, ok := resolveSpriteAction(view.Act, state.actionFamily, state.direction)
+	state.Direction = DirectionForCamera(state.Direction, state.CameraYaw)
+	actionIndex, action, ok := ResolveAction(view.Act, state.ActionFamily, state.Direction)
 	if !ok || len(action.Animations) == 0 {
 		return nil, false
 	}
-	motion := bodyMotionForState(action, state, view.Started, now)
+	motion := BodyMotionForState(action, state, view.Started, now)
 	key := scene.SpriteBillboardKey{ActionIndex: actionIndex, Motion: motion}
 	if billboard, ok := view.Billboards[key]; ok {
 		return billboard, true
@@ -286,7 +201,7 @@ func singleSpriteBillboardForState(view *scene.SpriteView, state spriteState, no
 	return billboard, true
 }
 
-func fixedSpriteBillboard(view *scene.SpriteView) (*scene.Billboard, bool) {
+func FixedBillboard(view *scene.SpriteView) (*scene.Billboard, bool) {
 	if view == nil || view.Act == nil || view.Spr == nil || len(view.Act.Actions) == 0 || len(view.Act.Actions[0].Animations) == 0 {
 		return nil, false
 	}
@@ -302,7 +217,7 @@ func fixedSpriteBillboard(view *scene.SpriteView) (*scene.Billboard, bool) {
 	return billboard, true
 }
 
-func cursorFrameBillboard(view *scene.SpriteView, actionIndex, motion int, anchorX, anchorY float64) (*scene.Billboard, bool) {
+func CursorFrameBillboard(view *scene.SpriteView, actionIndex, motion int, anchorX, anchorY float64) (*scene.Billboard, bool) {
 	if view == nil || view.Act == nil || view.Spr == nil || len(view.Act.Actions) == 0 {
 		return nil, false
 	}
@@ -339,7 +254,7 @@ func cursorFrameBillboard(view *scene.SpriteView, actionIndex, motion int, ancho
 	target := render.NewImage(width, height)
 	compositionAnchorX := anchorX - minX
 	compositionAnchorY := anchorY - minY
-	if !drawSpriteAnimation(target, view, anim, compositionAnchorX, compositionAnchorY, 0, 0) {
+	if !DrawAnimation(target, view, anim, compositionAnchorX, compositionAnchorY, 0, 0) {
 		return nil, false
 	}
 	billboard := &scene.Billboard{
@@ -351,7 +266,7 @@ func cursorFrameBillboard(view *scene.SpriteView, actionIndex, motion int, ancho
 	return billboard, true
 }
 
-func composeHumanoidBillboard(view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, separateEquipment bool) (*scene.Billboard, bool) {
+func composeHumanoidBillboard(view *Humanoid, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, separateEquipment bool) (*scene.Billboard, bool) {
 	if bodyMotion < 0 || bodyMotion >= len(bodyAction.Animations) {
 		return nil, false
 	}
@@ -458,14 +373,14 @@ func renderImageOpaqueBounds(source *render.Image) (int, int, int, int, bool) {
 	return minX - bounds.Min.X, minY - bounds.Min.Y, maxX - bounds.Min.X, maxY - bounds.Min.Y, true
 }
 
-func drawFallbackHumanoidLayers(target *render.Image, view *humanoidSpriteView, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, order []int) bool {
+func drawFallbackHumanoidLayers(target *render.Image, view *Humanoid, actionFamily, direction int, bodyAction res.ACTAction, bodyMotion, headMotion int, order []int) bool {
 	bodyAnim := bodyAction.Animations[bodyMotion]
 	actionIndex := actionFamily*8 + direction
 	drawn := false
 	for _, layer := range order {
 		switch layer {
 		case humanoidLayerBody:
-			drawn = drawSpriteAnimation(target, view.body, bodyAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, 0, 0) || drawn
+			drawn = DrawAnimation(target, view.Body, bodyAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, 0, 0) || drawn
 		case humanoidLayerHead:
 			drawn = drawFallbackHeadMotion(target, view, bodyAnim, actionIndex, headMotion) || drawn
 		case humanoidLayerAccessoryBottom:
@@ -475,17 +390,17 @@ func drawFallbackHumanoidLayers(target *render.Image, view *humanoidSpriteView, 
 		case humanoidLayerAccessoryTop:
 			drawn = drawAttachedAccessoryMotion(target, view.accessoryTop, view.head, bodyAnim, actionIndex, headMotion) || drawn
 		case humanoidLayerWeapon:
-			drawn = drawFallbackOverlayMotion(target, view.weapon, view.body, actionIndex, bodyMotion) || drawn
+			drawn = drawFallbackOverlayMotion(target, view.weapon, view.Body, actionIndex, bodyMotion) || drawn
 		case humanoidLayerWeaponLight:
-			drawn = drawFallbackOverlayMotion(target, view.weaponLight, view.body, actionIndex, bodyMotion) || drawn
+			drawn = drawFallbackOverlayMotion(target, view.weaponLight, view.Body, actionIndex, bodyMotion) || drawn
 		case humanoidLayerShield:
-			drawn = drawFallbackOverlayMotion(target, view.shield, view.body, actionIndex, bodyMotion) || drawn
+			drawn = drawFallbackOverlayMotion(target, view.shield, view.Body, actionIndex, bodyMotion) || drawn
 		}
 	}
 	return drawn
 }
 
-func drawFallbackHeadMotion(target *render.Image, view *humanoidSpriteView, bodyAnim res.ACTAnimation, actionIndex, headMotion int) bool {
+func drawFallbackHeadMotion(target *render.Image, view *Humanoid, bodyAnim res.ACTAnimation, actionIndex, headMotion int) bool {
 	if view.head == nil || view.head.Act == nil || view.head.Spr == nil {
 		return false
 	}
@@ -497,16 +412,16 @@ func drawFallbackHeadMotion(target *render.Image, view *humanoidSpriteView, body
 		return false
 	}
 	headPosX, headPosY := attachmentDelta(bodyAnim, headAnim)
-	return drawSpriteAnimation(target, view.head, headAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, headPosX, headPosY)
+	return DrawAnimation(target, view.head, headAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, headPosX, headPosY)
 }
 
-func drawPlayerIMFLayers(target *render.Image, view *humanoidSpriteView, actionIndex, bodyMotion, headMotion int, order []int) bool {
-	bodyAnim, bodyAnimOK := actionAnimation(view.body.Act, actionIndex, bodyMotion)
+func drawPlayerIMFLayers(target *render.Image, view *Humanoid, actionIndex, bodyMotion, headMotion int, order []int) bool {
+	bodyAnim, bodyAnimOK := actionAnimation(view.Body.Act, actionIndex, bodyMotion)
 	drawn := false
 	for _, layer := range order {
 		switch layer {
 		case humanoidLayerBody:
-			drawn = drawPlayerIMFLayer(target, view.body, view.imf, humanoidLayerBody, actionIndex, bodyMotion, nil) || drawn
+			drawn = drawPlayerIMFLayer(target, view.Body, view.imf, humanoidLayerBody, actionIndex, bodyMotion, nil) || drawn
 		case humanoidLayerHead:
 			if view.head == nil || view.head.Act == nil || view.head.Spr == nil {
 				continue
@@ -529,11 +444,11 @@ func drawPlayerIMFLayers(target *render.Image, view *humanoidSpriteView, actionI
 				drawn = drawAttachedAccessoryMotion(target, view.accessoryTop, view.head, bodyAnim, actionIndex, headMotion) || drawn
 			}
 		case humanoidLayerWeapon:
-			drawn = drawPlayerOverlayMotion(target, view.weapon, view.body, view.imf, humanoidLayerWeapon, actionIndex, bodyMotion) || drawn
+			drawn = drawPlayerOverlayMotion(target, view.weapon, view.Body, view.imf, humanoidLayerWeapon, actionIndex, bodyMotion) || drawn
 		case humanoidLayerWeaponLight:
-			drawn = drawPlayerOverlayMotion(target, view.weaponLight, view.body, view.imf, humanoidLayerWeaponLight, actionIndex, bodyMotion) || drawn
+			drawn = drawPlayerOverlayMotion(target, view.weaponLight, view.Body, view.imf, humanoidLayerWeaponLight, actionIndex, bodyMotion) || drawn
 		case humanoidLayerShield:
-			drawn = drawPlayerOverlayMotion(target, view.shield, view.body, view.imf, humanoidLayerShield, actionIndex, bodyMotion) || drawn
+			drawn = drawPlayerOverlayMotion(target, view.shield, view.Body, view.imf, humanoidLayerShield, actionIndex, bodyMotion) || drawn
 		}
 	}
 	return drawn
@@ -617,7 +532,7 @@ func drawAttachedAccessoryMotion(target *render.Image, accessory *scene.SpriteVi
 	}
 	headDX, headDY := attachmentDelta(bodyAnim, headAnim)
 	accessoryDX, accessoryDY := attachmentDelta(headAnim, accessoryAnim)
-	return drawSpriteAnimation(target, accessory, accessoryAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, headDX+accessoryDX, headDY+accessoryDY)
+	return DrawAnimation(target, accessory, accessoryAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, headDX+accessoryDX, headDY+accessoryDY)
 }
 
 func drawPlayerOverlayMotion(target *render.Image, overlay *scene.SpriteView, body *scene.SpriteView, imf *res.IMF, layerPriority, actionIndex, bodyMotion int) bool {
@@ -633,7 +548,7 @@ func drawPlayerOverlayMotion(target *render.Image, overlay *scene.SpriteView, bo
 		return false
 	}
 	pointX, pointY := imf.Point(layerPriority, actionIndex, bodyMotion)
-	return drawSpriteAnimation(target, overlay, overlayAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, pointX, pointY)
+	return DrawAnimation(target, overlay, overlayAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, pointX, pointY)
 }
 
 func drawFallbackOverlayMotion(target *render.Image, overlay *scene.SpriteView, body *scene.SpriteView, actionIndex, bodyMotion int) bool {
@@ -655,7 +570,7 @@ func drawFallbackOverlayMotion(target *render.Image, overlay *scene.SpriteView, 
 	if !ok {
 		return false
 	}
-	return drawSpriteAnimation(target, overlay, overlayAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, 0, 0)
+	return DrawAnimation(target, overlay, overlayAnim, humanoidCompositionAnchorX, humanoidCompositionAnchorY, 0, 0)
 }
 
 func resolveOverlayMotionIndex(overlayAct *res.ACT, bodyAct *res.ACT, actionIndex, bodyMotion int) int {
@@ -816,7 +731,7 @@ func ensureRenderLayerPresent(order [humanoidLayerCount]int, required int) [huma
 	return order
 }
 
-func resolveSpriteAction(act *res.ACT, actionFamily, direction int) (int, res.ACTAction, bool) {
+func ResolveAction(act *res.ACT, actionFamily, direction int) (int, res.ACTAction, bool) {
 	if act == nil || len(act.Actions) == 0 {
 		return 0, res.ACTAction{}, false
 	}
@@ -843,67 +758,67 @@ func resolveSpriteAction(act *res.ACT, actionFamily, direction int) (int, res.AC
 	return 0, res.ACTAction{}, false
 }
 
-func spriteMotionIndex(action res.ACTAction, started time.Time, now time.Time, loop bool) int {
+func MotionIndex(action res.ACTAction, started time.Time, now time.Time, loop bool) int {
 	return scene.SpriteMotionIndexWithDelay(action, started, now, loop, float64(action.DelayMS))
 }
 
-func bodyMotionForState(action res.ACTAction, state spriteState, started time.Time, now time.Time) int {
-	if state.hasFixedMotion && len(action.Animations) > 0 {
-		if state.fixedMotion >= len(action.Animations) {
+func BodyMotionForState(action res.ACTAction, state State, started time.Time, now time.Time) int {
+	if state.HasFixedMotion && len(action.Animations) > 0 {
+		if state.FixedMotion >= len(action.Animations) {
 			return len(action.Animations) - 1
 		}
-		return state.fixedMotion
+		return state.FixedMotion
 	}
-	if !state.started.IsZero() {
-		started = state.started
+	if !state.Started.IsZero() {
+		started = state.Started
 	}
 	delayMS := float64(action.DelayMS)
-	if state.hasSpeed && state.speed > 0 {
-		delayMS = float64(state.speed) / float64(time.Millisecond)
+	if state.HasSpeed && state.Speed > 0 {
+		delayMS = float64(state.Speed) / float64(time.Millisecond)
 	}
-	if state.hasPlay && !state.play {
-		if state.hasFrameOffset {
-			return scene.MinInt(scene.MaxInt(0, state.frameOffset), len(action.Animations)-1)
+	if state.HasPlay && !state.Play {
+		if state.HasFrameOffset {
+			return scene.MinInt(scene.MaxInt(0, state.FrameOffset), len(action.Animations)-1)
 		}
 		return 0
 	}
-	if state.actionFamily == scene.SpriteActionWalk && state.moveSpeedMS > 0 {
+	if state.ActionFamily == scene.SpriteActionWalk && state.MoveSpeedMS > 0 {
 		if delayMS <= 0 {
 			delayMS = 150
 		}
-		delayMS = delayMS * float64(state.moveSpeedMS) / 150
+		delayMS = delayMS * float64(state.MoveSpeedMS) / 150
 	}
-	if state.actionFamily == scene.SpriteActionWalk && state.walkDistance > 0 {
-		return walkMotionIndex(action, state.walkDistance)
+	if state.ActionFamily == scene.SpriteActionWalk && state.WalkDistance > 0 {
+		return walkMotionIndex(action, state.WalkDistance)
 	}
-	if state.headTurn && (state.actionFamily == scene.SpriteActionIdle || state.actionFamily == scene.SpriteActionSit) && int(state.headDir) < len(action.Animations) {
-		return int(state.headDir)
+	if state.HeadTurn && (state.ActionFamily == scene.SpriteActionIdle || state.ActionFamily == scene.SpriteActionSit) && int(state.HeadDir) < len(action.Animations) {
+		return int(state.HeadDir)
 	}
 	frameLimit := 0
-	if state.hasLength {
-		frameLimit = state.length
+	if state.HasLength {
+		frameLimit = state.Length
 	}
 	frameOffset := 0
-	if state.hasFrameOffset {
-		frameOffset = state.frameOffset
+	if state.HasFrameOffset {
+		frameOffset = state.FrameOffset
 	}
-	if state.pingPong && frameLimit > 1 {
+	if state.PingPong && frameLimit > 1 {
 		index := int(max(0, float64(now.Sub(started))/float64(time.Millisecond))/max(1, delayMS)) % (2*frameLimit - 2)
 		if index >= frameLimit {
 			index = 2*frameLimit - 2 - index
 		}
 		return scene.MinInt(frameOffset+index, len(action.Animations)-1)
 	}
-	if state.actionFamily == scene.SpriteActionWalk || state.loop {
+	if state.ActionFamily == scene.SpriteActionWalk || state.Loop {
 		return scene.SpriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
 	}
-	if state.actionFamily == scene.SpriteActionIdle && state.loopIdle {
+	if state.ActionFamily == scene.SpriteActionIdle && state.LoopIdle {
 		return scene.SpriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
 	}
-	if !state.started.IsZero() {
+	if !state.Started.IsZero() {
 		return scene.SpriteMotionIndexWithOptions(action, started, now, false, delayMS, frameLimit, frameOffset)
 	}
-	if state.actionFamily != scene.SpriteActionWalk {
+	if state.ActionFamily != scene.SpriteActionWalk {
 		return 0
 	}
 	return scene.SpriteMotionIndexWithOptions(action, started, now, true, delayMS, frameLimit, frameOffset)
@@ -926,17 +841,17 @@ func walkMotionIndex(action res.ACTAction, distance float64) int {
 	return motion % len(action.Animations)
 }
 
-func selectHeadMotion(state spriteState, bodyMotion int, headAction res.ACTAction) int {
+func selectHeadMotion(state State, bodyMotion int, headAction res.ACTAction) int {
 	if len(headAction.Animations) == 0 {
 		return 0
 	}
-	if state.headTurn && (state.actionFamily == scene.SpriteActionIdle || state.actionFamily == scene.SpriteActionSit) && int(state.headDir) < len(headAction.Animations) {
-		return int(state.headDir)
+	if state.HeadTurn && (state.ActionFamily == scene.SpriteActionIdle || state.ActionFamily == scene.SpriteActionSit) && int(state.HeadDir) < len(headAction.Animations) {
+		return int(state.HeadDir)
 	}
-	if state.actionFamily == scene.SpriteActionWalk && bodyMotion >= 0 && bodyMotion < len(headAction.Animations) {
+	if state.ActionFamily == scene.SpriteActionWalk && bodyMotion >= 0 && bodyMotion < len(headAction.Animations) {
 		return bodyMotion
 	}
-	if isTransientPCAction(state.actionFamily) && bodyMotion >= 0 && bodyMotion < len(headAction.Animations) {
+	if isTransientPCAction(state.ActionFamily) && bodyMotion >= 0 && bodyMotion < len(headAction.Animations) {
 		return bodyMotion
 	}
 	return 0
@@ -944,14 +859,14 @@ func selectHeadMotion(state spriteState, bodyMotion int, headAction res.ACTActio
 
 func isTransientPCAction(actionFamily int) bool {
 	switch actionFamily {
-	case scene.SpriteActionPickup, spriteActionPCReadyFight, spriteActionPCAttack1, spriteActionPCHurt, spriteActionPCDeath, spriteActionPCAttack2, spriteActionPCAttack3, spriteActionPCSkill:
+	case scene.SpriteActionPickup, ActionPCReadyFight, ActionPCAttack1, ActionPCHurt, ActionPCDeath, ActionPCAttack2, ActionPCAttack3, ActionPCSkill:
 		return true
 	default:
 		return false
 	}
 }
 
-func drawSpriteAnimation(target *render.Image, view *scene.SpriteView, anim res.ACTAnimation, anchorX, anchorY float64, posX, posY int32) bool {
+func DrawAnimation(target *render.Image, view *scene.SpriteView, anim res.ACTAnimation, anchorX, anchorY float64, posX, posY int32) bool {
 	return scene.DrawSpriteAnimationWithOptions(target, view, anim, anchorX, anchorY, posX, posY, false)
 }
 
@@ -985,7 +900,7 @@ func drawSpriteLayer(target *render.Image, img *render.Image, layer res.ACTLayer
 	scene.DrawSpriteLayerWithOptions(target, img, layer, centerX, centerY, false)
 }
 
-func spriteDirectionFromWorldDirForCamera(direction int, cameraYaw float64) int {
+func DirectionForCamera(direction int, cameraYaw float64) int {
 	yawSteps := int(math.Round(cameraYaw / 45))
 	return (4 - scene.NormalizeDirectionIndex(direction) + yawSteps) & 7
 }

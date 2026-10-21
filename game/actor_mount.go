@@ -3,6 +3,7 @@ package game
 import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -48,7 +49,7 @@ func (m *WorldMode) reloadPlayerSpriteView(ctx client.Context, reason string) {
 		return
 	}
 	character := localPlayerVisualCharacter(ctx)
-	view, status := loadPlayerHumanoidSpriteView(ctx.Resources, character, ctx.Session.Sex, localPlayerIsAdmin(ctx))
+	view, status := sprites.LoadPlayer(ctx.Resources, character, ctx.Session.Sex, localPlayerIsAdmin(ctx))
 	if view != nil {
 		m.playerView = view
 		glog.Debugf("player sprite reloaded reason=%s visual_job=%d %s", reason, character.Job, status)

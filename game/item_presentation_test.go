@@ -129,7 +129,7 @@ func TestDrawGroundItemShadowUsesSharedOriginalShadowSprite(t *testing.T) {
 				Type:   res.SPRFrameRGBA,
 				Width:  16,
 				Height: 8,
-				Data:   solidRGBAFrame(16, 8),
+				Data:   testutil.SolidRGBAFrame(16, 8),
 			}},
 		},
 		Act: &res.ACT{Actions: []res.ACTAction{{

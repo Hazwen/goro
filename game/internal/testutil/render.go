@@ -30,3 +30,12 @@ func GNDWithTopHeights(width, height int, fn func(x, y int) [4]float32) *res.GND
 	}
 	return gnd
 }
+
+func SolidRGBAFrame(width, height int) []byte {
+	data := make([]byte, width*height*4)
+	for i := 0; i < len(data); i += 4 {
+		data[i+0] = 255
+		data[i+3] = 255
+	}
+	return data
+}

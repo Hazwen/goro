@@ -1,4 +1,4 @@
-package game
+package sprites
 
 import (
 	"fmt"
@@ -13,25 +13,25 @@ import (
 	worldstate "github.com/kivutar/goro/world"
 )
 
-func loadPlayerHumanoidSpriteView(manager *res.Manager, character session.Character, sex byte, admin bool) (*humanoidSpriteView, string) {
+func LoadPlayer(manager *res.Manager, character session.Character, sex byte, admin bool) (*Humanoid, string) {
 	weapon, shield := res.NormalizePlayerWeaponShield(int(character.Weapon), int(character.Shield))
-	return loadHumanoidSpriteViewWithAppearance(manager, humanoidAppearance{
-		job:         int(character.Job),
-		head:        int(character.Hair),
-		sex:         sex,
-		admin:       admin,
-		bodyPalette: int(character.BodyPal),
-		headPalette: characterHeadPalette(character),
-		weapon:      weapon,
-		shield:      shield,
-		headTop:     int(character.HeadTop),
-		headMid:     int(character.HeadMid),
-		headLow:     int(character.HeadLow),
+	return LoadHumanoid(manager, Appearance{
+		Job:         int(character.Job),
+		Head:        int(character.Hair),
+		Sex:         sex,
+		Admin:       admin,
+		BodyPalette: int(character.BodyPal),
+		HeadPalette: characterHeadPalette(character),
+		Weapon:      weapon,
+		Shield:      shield,
+		HeadTop:     int(character.HeadTop),
+		HeadMid:     int(character.HeadMid),
+		HeadLow:     int(character.HeadLow),
 	}, "player")
 }
 
-func loadNonPCSpriteView(manager *res.Manager, job int, label string) (*scene.SpriteView, string) {
-	if actorJobHasNoSprite(job) {
+func LoadNonPC(manager *res.Manager, job int, label string) (*scene.SpriteView, string) {
+	if JobHasNoSprite(job) {
 		return nil, fmt.Sprintf("%s job=%d no-sprite", label, job)
 	}
 	resourceName, ok := manager.NonPCResourceName(job)
@@ -55,8 +55,8 @@ func loadNonPCSpriteView(manager *res.Manager, job int, label string) (*scene.Sp
 	return view, status
 }
 
-func actorJobHasNoSprite(job int) bool {
-	if isWarpActorJob(job) {
+func JobHasNoSprite(job int) bool {
+	if job == scene.ActorJobWarpPortal || job == scene.ActorJobWarpPortalActive || job == scene.ActorJobWarpPortalWaiting {
 		return true
 	}
 	return job == scene.ActorJobHiddenNPC || job == scene.ActorJobHiddenWarpNPC || job == scene.ActorJobClearNPC
@@ -73,21 +73,21 @@ func characterHeadPalette(character session.Character) int {
 	return int(character.HairColor)
 }
 
-func loadHumanoidSpriteViewWithAppearance(manager *res.Manager, appearance humanoidAppearance, label string) (*humanoidSpriteView, string) {
-	body, bodyStatus := loadBodySpriteView(manager, appearance.job, appearance.sex, appearance.bodyPalette, appearance.admin, label+" body")
+func LoadHumanoid(manager *res.Manager, appearance Appearance, label string) (*Humanoid, string) {
+	body, bodyStatus := loadBodySpriteView(manager, appearance.Job, appearance.Sex, appearance.BodyPalette, appearance.Admin, label+" body")
 	if body == nil {
 		return nil, bodyStatus
 	}
-	headView, headStatus := loadHeadSpriteView(manager, appearance.job, appearance.head, appearance.sex, appearance.headPalette, label+" head")
-	imf, imfSource, imfStatus := loadPlayerIMF(manager, appearance.job, appearance.sex)
-	accessoryBottom, accessoryBottomStatus := loadAccessorySpriteView(manager, appearance.job, appearance.head, appearance.sex, appearance.headLow, "", label+" accessory-bottom")
-	accessoryMid, accessoryMidStatus := loadAccessorySpriteView(manager, appearance.job, appearance.head, appearance.sex, appearance.headMid, "", label+" accessory-mid")
-	accessoryTop, accessoryTopStatus := loadAccessorySpriteView(manager, appearance.job, appearance.head, appearance.sex, appearance.headTop, "", label+" accessory-top")
-	weapon, weaponStatus := loadWeaponOverlaySpriteView(manager, appearance.job, appearance.sex, appearance.weapon, false, label+" weapon")
-	weaponLight, weaponLightStatus := loadWeaponOverlaySpriteView(manager, appearance.job, appearance.sex, appearance.weapon, true, label+" weapon-light")
-	shield, shieldStatus := loadShieldOverlaySpriteView(manager, appearance.job, appearance.sex, appearance.shield, label+" shield")
-	view := &humanoidSpriteView{
-		body:            body,
+	headView, headStatus := loadHeadSpriteView(manager, appearance.Job, appearance.Head, appearance.Sex, appearance.HeadPalette, label+" head")
+	imf, imfSource, imfStatus := loadPlayerIMF(manager, appearance.Job, appearance.Sex)
+	accessoryBottom, accessoryBottomStatus := loadAccessorySpriteView(manager, appearance.Job, appearance.Head, appearance.Sex, appearance.HeadLow, "", label+" accessory-bottom")
+	accessoryMid, accessoryMidStatus := loadAccessorySpriteView(manager, appearance.Job, appearance.Head, appearance.Sex, appearance.HeadMid, "", label+" accessory-mid")
+	accessoryTop, accessoryTopStatus := loadAccessorySpriteView(manager, appearance.Job, appearance.Head, appearance.Sex, appearance.HeadTop, "", label+" accessory-top")
+	weapon, weaponStatus := loadWeaponOverlaySpriteView(manager, appearance.Job, appearance.Sex, appearance.Weapon, false, label+" weapon")
+	weaponLight, weaponLightStatus := loadWeaponOverlaySpriteView(manager, appearance.Job, appearance.Sex, appearance.Weapon, true, label+" weapon-light")
+	shield, shieldStatus := loadShieldOverlaySpriteView(manager, appearance.Job, appearance.Sex, appearance.Shield, label+" shield")
+	view := &Humanoid{
+		Body:            body,
 		head:            headView,
 		accessoryBottom: accessoryBottom,
 		accessoryMid:    accessoryMid,
@@ -98,7 +98,7 @@ func loadHumanoidSpriteViewWithAppearance(manager *res.Manager, appearance human
 		imf:             imf,
 		imfSource:       imfSource,
 		billboards:      make(map[humanoidBillboardKey]*scene.Billboard),
-		started:         time.Now(),
+		Started:         time.Now(),
 	}
 	status := bodyStatus + " " + headStatus + imfStatus
 	for _, overlayStatus := range []string{accessoryBottomStatus, accessoryMidStatus, accessoryTopStatus, weaponStatus, weaponLightStatus, shieldStatus} {
@@ -109,26 +109,26 @@ func loadHumanoidSpriteViewWithAppearance(manager *res.Manager, appearance human
 	return view, status
 }
 
-func loadMercenaryHumanoidSpriteView(manager *res.Manager, appearance humanoidAppearance, label string) (*humanoidSpriteView, string) {
-	appearance.sex = companion.MercenarySexForJob(appearance.job, appearance.sex)
-	appearance.weapon = companion.MercenaryWeaponForAppearance(appearance.job, appearance.weapon)
+func LoadMercenary(manager *res.Manager, appearance Appearance, label string) (*Humanoid, string) {
+	appearance.Sex = companion.MercenarySexForJob(appearance.Job, appearance.Sex)
+	appearance.Weapon = companion.MercenaryWeaponForAppearance(appearance.Job, appearance.Weapon)
 	resourceName := ""
 	if manager != nil {
-		resourceName, _ = manager.NonPCResourceName(appearance.job)
+		resourceName, _ = manager.NonPCResourceName(appearance.Job)
 	}
-	body, bodyStatus := loadNonPCSpriteView(manager, appearance.job, label+" body")
+	body, bodyStatus := LoadNonPC(manager, appearance.Job, label+" body")
 	if body == nil {
 		return nil, bodyStatus
 	}
-	headView, headStatus := loadHeadSpriteView(manager, appearance.job, appearance.head, appearance.sex, appearance.headPalette, label+" head")
-	accessoryBottom, accessoryBottomStatus := loadAccessorySpriteView(manager, appearance.job, appearance.head, appearance.sex, appearance.headLow, "", label+" accessory-bottom")
-	accessoryMid, accessoryMidStatus := loadAccessorySpriteView(manager, appearance.job, appearance.head, appearance.sex, appearance.headMid, "", label+" accessory-mid")
-	accessoryTop, accessoryTopStatus := loadAccessorySpriteView(manager, appearance.job, appearance.head, appearance.sex, appearance.headTop, "", label+" accessory-top")
-	weapon, weaponStatus := loadMercenaryWeaponOverlaySpriteView(manager, resourceName, appearance.job, appearance.sex, appearance.weapon, false, label+" weapon")
-	weaponLight, weaponLightStatus := loadMercenaryWeaponOverlaySpriteView(manager, resourceName, appearance.job, appearance.sex, appearance.weapon, true, label+" weapon-light")
-	shield, shieldStatus := loadShieldOverlaySpriteView(manager, appearance.job, appearance.sex, appearance.shield, label+" shield")
-	view := &humanoidSpriteView{
-		body:            body,
+	headView, headStatus := loadHeadSpriteView(manager, appearance.Job, appearance.Head, appearance.Sex, appearance.HeadPalette, label+" head")
+	accessoryBottom, accessoryBottomStatus := loadAccessorySpriteView(manager, appearance.Job, appearance.Head, appearance.Sex, appearance.HeadLow, "", label+" accessory-bottom")
+	accessoryMid, accessoryMidStatus := loadAccessorySpriteView(manager, appearance.Job, appearance.Head, appearance.Sex, appearance.HeadMid, "", label+" accessory-mid")
+	accessoryTop, accessoryTopStatus := loadAccessorySpriteView(manager, appearance.Job, appearance.Head, appearance.Sex, appearance.HeadTop, "", label+" accessory-top")
+	weapon, weaponStatus := loadMercenaryWeaponOverlaySpriteView(manager, resourceName, appearance.Job, appearance.Sex, appearance.Weapon, false, label+" weapon")
+	weaponLight, weaponLightStatus := loadMercenaryWeaponOverlaySpriteView(manager, resourceName, appearance.Job, appearance.Sex, appearance.Weapon, true, label+" weapon-light")
+	shield, shieldStatus := loadShieldOverlaySpriteView(manager, appearance.Job, appearance.Sex, appearance.Shield, label+" shield")
+	view := &Humanoid{
+		Body:            body,
 		head:            headView,
 		accessoryBottom: accessoryBottom,
 		accessoryMid:    accessoryMid,
@@ -137,7 +137,7 @@ func loadMercenaryHumanoidSpriteView(manager *res.Manager, appearance humanoidAp
 		weaponLight:     weaponLight,
 		shield:          shield,
 		billboards:      make(map[humanoidBillboardKey]*scene.Billboard),
-		started:         time.Now(),
+		Started:         time.Now(),
 	}
 	status := bodyStatus + " " + headStatus
 	for _, overlayStatus := range []string{accessoryBottomStatus, accessoryMidStatus, accessoryTopStatus, weaponStatus, weaponLightStatus, shieldStatus} {
@@ -213,7 +213,7 @@ func loadShieldOverlaySpriteView(manager *res.Manager, job int, sex byte, shield
 	return scene.LoadSpriteView(manager, res.PlayerShieldOverlayResourceCandidates(job, sex, shield, "act"), res.PlayerShieldOverlayResourceCandidates(job, sex, shield, "spr"), nil, label)
 }
 
-func loadActorShadowSpriteView(manager *res.Manager) (*scene.SpriteView, string) {
+func LoadShadow(manager *res.Manager) (*scene.SpriteView, string) {
 	return scene.LoadSpriteView(manager,
 		[]string{"data\\sprite\\shadow.act", "data/sprite/shadow.act"},
 		[]string{"data\\sprite\\shadow.spr", "data/sprite/shadow.spr"},
@@ -222,7 +222,7 @@ func loadActorShadowSpriteView(manager *res.Manager) (*scene.SpriteView, string)
 	)
 }
 
-func loadCartSpriteView(manager *res.Manager, cartNum int) (*scene.SpriteView, string) {
+func LoadCart(manager *res.Manager, cartNum int) (*scene.SpriteView, string) {
 	return scene.LoadSpriteView(manager,
 		res.PlayerCartResourceCandidates(cartNum, "act"),
 		res.PlayerCartResourceCandidates(cartNum, "spr"),
@@ -231,7 +231,7 @@ func loadCartSpriteView(manager *res.Manager, cartNum int) (*scene.SpriteView, s
 	)
 }
 
-func loadFalconSpriteView(manager *res.Manager, job int) (*scene.SpriteView, string) {
+func LoadFalcon(manager *res.Manager, job int) (*scene.SpriteView, string) {
 	return scene.LoadSpriteView(manager,
 		res.PlayerFalconResourceCandidates(job, "act"),
 		res.PlayerFalconResourceCandidates(job, "spr"),
@@ -240,7 +240,7 @@ func loadFalconSpriteView(manager *res.Manager, job int) (*scene.SpriteView, str
 	)
 }
 
-func loadCursorSpriteView(manager *res.Manager) (*scene.SpriteView, string) {
+func LoadCursor(manager *res.Manager) (*scene.SpriteView, string) {
 	if manager == nil {
 		return nil, "no resource manager"
 	}
@@ -263,7 +263,7 @@ func loadPlayerIMF(manager *res.Manager, job int, sex byte) (*res.IMF, string, s
 	return imf, source, fmt.Sprintf(" imf=%s", source)
 }
 
-func loadPetAccessorySpriteView(manager *res.Manager, base *scene.SpriteView, accessoryID uint32, label string) (*scene.SpriteView, string) {
+func LoadPetAccessory(manager *res.Manager, base *scene.SpriteView, accessoryID uint32, label string) (*scene.SpriteView, string) {
 	if manager == nil || base == nil {
 		return nil, fmt.Sprintf("%s skipped: missing base sprite", label)
 	}
@@ -374,27 +374,17 @@ func actFitsSPR(act *res.ACT, spr *res.SPR) bool {
 	return true
 }
 
-func readFirstResource(manager *res.Manager, candidates []string) ([]byte, string, error) {
-	for _, candidate := range candidates {
-		data, err := manager.ReadFile(candidate)
-		if err == nil {
-			return data, candidate, nil
-		}
-	}
-	return nil, "", fmt.Errorf("not found")
-}
-
-func mercenarySpriteKeyForActor(actor worldstate.Actor) actorSpriteKey {
-	return actorSpriteKey{
-		job:         int(actor.Job),
-		head:        int(actor.Head),
-		sex:         companion.MercenarySexForJob(int(actor.Job), actor.Sex),
-		bodyPalette: int(actor.BodyPal),
-		headPalette: int(actor.HeadPal),
-		weapon:      companion.MercenaryWeaponForAppearance(int(actor.Job), int(actor.Weapon)),
-		shield:      int(actor.Shield),
-		headTop:     int(actor.HeadTop),
-		headMid:     int(actor.HeadMid),
-		headLow:     int(actor.HeadLow),
+func MercenaryAppearanceForActor(actor worldstate.Actor) Appearance {
+	return Appearance{
+		Job:         int(actor.Job),
+		Head:        int(actor.Head),
+		Sex:         companion.MercenarySexForJob(int(actor.Job), actor.Sex),
+		BodyPalette: int(actor.BodyPal),
+		HeadPalette: int(actor.HeadPal),
+		Weapon:      companion.MercenaryWeaponForAppearance(int(actor.Job), int(actor.Weapon)),
+		Shield:      int(actor.Shield),
+		HeadTop:     int(actor.HeadTop),
+		HeadMid:     int(actor.HeadMid),
+		HeadLow:     int(actor.HeadLow),
 	}
 }

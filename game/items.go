@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -373,11 +374,11 @@ func (m *WorldMode) drawGroundItemShadowEntry3D(screen *render.Frame, projection
 	if m.shadowView == nil || m.shadowViewMiss || entry.shadowScale <= 0 {
 		return false
 	}
-	billboard, ok := fixedSpriteBillboard(m.shadowView)
+	billboard, ok := sprites.FixedBillboard(m.shadowView)
 	if !ok {
 		return false
 	}
-	return drawSpriteShadowBillboard3D(
+	return sprites.DrawShadow3D(
 		screen,
 		projection,
 		groundItemShadowBillboard(billboard),
@@ -507,7 +508,7 @@ func (m *WorldMode) itemSpriteBillboard(manager *res.Manager, item worldstate.Fl
 		return nil
 	}
 	action := view.Act.Actions[0]
-	motion := spriteMotionIndex(action, item.DroppedAt, now, true)
+	motion := sprites.MotionIndex(action, item.DroppedAt, now, true)
 	key := scene.SpriteBillboardKey{ActionIndex: 0, Motion: motion}
 	if billboard, ok := view.Billboards[key]; ok {
 		return billboard
@@ -773,7 +774,7 @@ func (m *WorldMode) itemSpriteView(manager *res.Manager, itemID uint16, identifi
 
 func composeGroundItemBillboard(view *scene.SpriteView, anim res.ACTAnimation) (*scene.Billboard, bool) {
 	target := render.NewImage(itemBillboardWidth, itemBillboardHeight)
-	if !drawSpriteAnimation(target, view, anim, itemBillboardAnchorX, itemBillboardAnchorY, 0, 0) {
+	if !sprites.DrawAnimation(target, view, anim, itemBillboardAnchorX, itemBillboardAnchorY, 0, 0) {
 		return nil, false
 	}
 	return &scene.Billboard{
