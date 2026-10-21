@@ -7,6 +7,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/effects"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
@@ -211,14 +212,14 @@ func (m *WorldMode) drawSkillUnitRSMModels(screen *render.Frame, ctx client.Cont
 	if screen == nil || ctx.World == nil || ctx.World.GND == nil || ctx.Resources == nil || len(m.skillUnitModels) == 0 {
 		return
 	}
-	radius := rsmRenderRadius() * 2
+	radius := maps.RSMRenderRadius() * 2
 	for id, unit := range m.skillUnitModels {
 		worldX := scene.CellCenter(float64(unit.x))
 		worldY := scene.CellCenter(float64(unit.y))
 		if math.Abs(worldX-projection.PlayerX) > radius || math.Abs(worldY-projection.PlayerY) > radius {
 			continue
 		}
-		rsm := m.runtimeRSMModel(ctx.Resources, unit.modelPath)
+		rsm := m.mapScene.RuntimeRSMModel(ctx.Resources, unit.modelPath)
 		if rsm == nil {
 			rsm, unit.modelPath = m.runtimeSkillUnitFallbackRSMModel(ctx.Resources, unit)
 		}
@@ -226,34 +227,14 @@ func (m *WorldMode) drawSkillUnitRSMModels(screen *render.Frame, ctx client.Cont
 			continue
 		}
 		placement := skillUnitRSMPlacement(ctx.World, id, unit)
-		frame, _ := skillUnitRSMFrame(rsm, placement.model, unit, now)
-		m.drawAnimatedRSMPlacement(screen, ctx.Resources, ctx.World.RSW, rsm, placement, frame)
+		frame, _ := skillUnitRSMFrame(rsm, placement.Model, unit, now)
+		m.mapScene.DrawAnimatedRSMPlacement(screen, ctx.Resources, ctx.World.RSW, rsm, placement, frame)
 	}
-}
-
-func (m *WorldMode) runtimeRSMModel(manager *res.Manager, modelPath string) *res.RSM {
-	if manager == nil || modelPath == "" {
-		return nil
-	}
-	if m.runtimeRSMModels == nil {
-		m.runtimeRSMModels = make(map[string]*res.RSM)
-	}
-	if rsm, ok := m.runtimeRSMModels[modelPath]; ok {
-		return rsm
-	}
-	rsm, err := loadRSMModel(manager, modelPath)
-	if err != nil {
-		glog.Warnf("runtime rsm model unavailable model=%s: %v", modelPath, err)
-		m.runtimeRSMModels[modelPath] = nil
-		return nil
-	}
-	m.runtimeRSMModels[modelPath] = rsm
-	return rsm
 }
 
 func (m *WorldMode) runtimeSkillUnitFallbackRSMModel(manager *res.Manager, unit skillUnitModel) (*res.RSM, string) {
 	for _, modelPath := range unit.modelFallbacks {
-		rsm := m.runtimeRSMModel(manager, modelPath)
+		rsm := m.mapScene.RuntimeRSMModel(manager, modelPath)
 		if rsm != nil {
 			return rsm, modelPath
 		}
@@ -261,16 +242,16 @@ func (m *WorldMode) runtimeSkillUnitFallbackRSMModel(manager *res.Manager, unit 
 	return nil, ""
 }
 
-func skillUnitRSMPlacement(world *worldstate.World, id uint32, unit skillUnitModel) visibleRSMPlacement {
+func skillUnitRSMPlacement(world *worldstate.World, id uint32, unit skillUnitModel) maps.ModelPlacement {
 	baseX := scene.CellCenter(float64(unit.x))
 	baseY := scene.CellCenter(float64(unit.y))
 	scale := unit.scale
 	if scale == 0 {
 		scale = 1
 	}
-	return visibleRSMPlacement{
-		index: int(id),
-		model: res.RSWModel{
+	return maps.ModelPlacement{
+		Index: int(id),
+		Model: res.RSWModel{
 			Name:     "skill_unit",
 			Filename: unit.modelPath,
 			Position: res.RSWVector3{
@@ -278,19 +259,19 @@ func skillUnitRSMPlacement(world *worldstate.World, id uint32, unit skillUnitMod
 			},
 			Scale: res.RSWVector3{X: float32(scale), Y: float32(scale), Z: float32(scale)},
 		},
-		baseX: baseX,
-		baseY: baseY,
+		BaseX: baseX,
+		BaseY: baseY,
 	}
 }
 
 func skillUnitRSMFrame(rsm *res.RSM, placement res.RSWModel, unit skillUnitModel, now time.Time) (int, bool) {
 	if !unit.animationStarted.IsZero() {
-		last := max(3, 3+(rsmAnimationLength(rsm)-4)/100*100)
+		last := max(3, 3+(maps.RSMAnimationLength(rsm)-4)/100*100)
 		frame := 3 + max(0, int(now.Sub(unit.animationStarted)/db.EffectFrameDuration))*100
 		return min(frame, last), frame < last
 	}
 	if unit.hasFixedFrame {
 		return unit.fixedFrame, false
 	}
-	return rsmAnimationFrame(rsm, placement, now)
+	return maps.RSMAnimationFrame(rsm, placement, now)
 }

@@ -1,4 +1,4 @@
-package game
+package maps
 
 import (
 	"github.com/kivutar/goro/game/scene"
@@ -11,18 +11,18 @@ const rsmHorizontalDepthBiasLayers = 64
 
 const rsmHorizontalDepthBiasStep = scene.GroundDecalDepthBias / 256
 
-func worldOpaqueTriangleDrawOptions(filter render.Filter, address render.Address) *render.DrawTrianglesOptions {
+func WorldOpaqueTriangleDrawOptions(filter render.Filter, address render.Address) *render.DrawTrianglesOptions {
 	options := scene.TriangleDrawOptions(filter, address)
 	options.DepthWrite = true
 	return options
 }
 
 func groundTextureDrawOptions() *render.DrawTrianglesOptions {
-	return worldOpaqueTriangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
+	return WorldOpaqueTriangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
 }
 
 func rsmModelDrawOptions(filter render.Filter, address render.Address) *render.DrawTrianglesOptions {
-	options := worldOpaqueTriangleDrawOptions(filter, address)
+	options := WorldOpaqueTriangleDrawOptions(filter, address)
 	options.DepthBias = rsmModelDepthBias
 	return options
 }

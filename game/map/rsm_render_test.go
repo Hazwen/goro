@@ -1,4 +1,4 @@
-package game
+package maps
 
 import (
 	"image/color"
@@ -84,9 +84,9 @@ func TestRSMPlacementContextIncludesSelectedNodeAncestors(t *testing.T) {
 		},
 	}
 
-	world := &WorldMode{}
-	context, ok := world.rsmPlacementContext(rsm, &res.RSW{}, visibleRSMPlacement{
-		model: res.RSWModel{
+	world := &System{}
+	context, ok := world.rsmPlacementContext(rsm, &res.RSW{}, ModelPlacement{
+		Model: res.RSWModel{
 			NodeName: "child",
 			Scale:    res.RSWVector3{X: 1, Y: 1, Z: 1},
 		},
@@ -182,16 +182,16 @@ func TestAnimatedRSMPlacementClearsScratchBatches(t *testing.T) {
 			},
 		},
 	}
-	world := &WorldMode{}
+	world := &System{}
 	screen := render.NewFrame(320, 240)
 	screen.BeginFrame()
 
-	world.drawAnimatedRSMPlacement(screen, nil, &res.RSW{}, rsm, visibleRSMPlacement{
-		index: 3,
-		model: res.RSWModel{Scale: res.RSWVector3{X: 1, Y: 1, Z: 1}},
+	world.DrawAnimatedRSMPlacement(screen, nil, &res.RSW{}, rsm, ModelPlacement{
+		Index: 3,
+		Model: res.RSWModel{Scale: res.RSWVector3{X: 1, Y: 1, Z: 1}},
 	}, 0)
 
-	if world.whitePixel == nil {
+	if world.WhitePixel == nil {
 		t.Fatal("animated RSM draw did not use the fallback texture")
 	}
 	if len(world.rsmAnimScratch.batches) != 0 {
@@ -201,7 +201,7 @@ func TestAnimatedRSMPlacementClearsScratchBatches(t *testing.T) {
 		t.Fatal("scratch batches were not reused")
 	}
 	for i, batch := range world.rsmAnimScratch.batches[:cap(world.rsmAnimScratch.batches)] {
-		if batch.screen != nil || batch.texture != nil || batch.verts != nil || batch.indices != nil {
+		if batch.Screen != nil || batch.Texture != nil || batch.Verts != nil || batch.Indices != nil {
 			t.Fatalf("scratch batch %d retained frame data: %#v", i, batch)
 		}
 	}
@@ -218,7 +218,7 @@ func TestRSMInstanceMatrixUsesParsedRSWModelY(t *testing.T) {
 	}
 
 	matrix := buildRSMInstanceMatrix(rsm, placement, 110, 220, modelBounds{})
-	point := mat4TransformPoint(matrix, scene.Point3{})
+	point := scene.Mat4TransformPoint(matrix, scene.Point3{})
 	if point.Y != -7 {
 		t.Fatalf("instance y = %.1f, want -7", point.Y)
 	}
@@ -258,7 +258,7 @@ func TestRSMInstanceMatrixMirrorsVerticalBasisRotations(t *testing.T) {
 				Rotation: tt.rotation,
 				Scale:    res.RSWVector3{X: 1, Y: 1, Z: 1},
 			}, 0, 0, modelBounds{})
-			got := mat4TransformPoint(matrix, tt.point)
+			got := scene.Mat4TransformPoint(matrix, tt.point)
 			if math.Abs(got.X-tt.wantPoint.X) > 0.0001 || math.Abs(got.Y-tt.wantPoint.Y) > 0.0001 || math.Abs(got.Z-tt.wantPoint.Z) > 0.0001 {
 				t.Fatalf("point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.X, got.Y, got.Z, tt.wantPoint.X, tt.wantPoint.Y, tt.wantPoint.Z)
 			}
@@ -267,10 +267,10 @@ func TestRSMInstanceMatrixMirrorsVerticalBasisRotations(t *testing.T) {
 }
 
 func TestRSMFaceColorShadeNoneUsesDefaultModelNormal(t *testing.T) {
-	lighting := sceneLighting{
+	lighting := Lighting{
 		direction: scene.Point3{Y: -1},
-		diffuse:   scene.Point3{X: 1, Y: 1, Z: 1},
-		env:       scene.Point3{X: 1, Y: 1, Z: 1},
+		Diffuse:   scene.Point3{X: 1, Y: 1, Z: 1},
+		Env:       scene.Point3{X: 1, Y: 1, Z: 1},
 	}
 	triangleNormalWouldFaceAway := [3]scene.Point3{
 		{},
@@ -314,7 +314,7 @@ func TestRSMAnimationFrameLoopsOnMillisecondTick(t *testing.T) {
 		},
 	}
 
-	frame, animated := rsmAnimationFrame(rsm, res.RSWModel{AnimType: 2}, time.UnixMilli(1015))
+	frame, animated := RSMAnimationFrame(rsm, res.RSWModel{AnimType: 2}, time.UnixMilli(1015))
 	if !animated {
 		t.Fatal("model should be animated")
 	}
@@ -337,7 +337,7 @@ func TestRSMAnimationFrameIgnoresRSWAnimationSpeedLikeRobr(t *testing.T) {
 		},
 	}
 
-	frame, animated := rsmAnimationFrame(rsm, res.RSWModel{AnimType: 2, AnimSpeed: 0.7}, time.UnixMilli(160))
+	frame, animated := RSMAnimationFrame(rsm, res.RSWModel{AnimType: 2, AnimSpeed: 0.7}, time.UnixMilli(160))
 	if !animated {
 		t.Fatal("model should be animated")
 	}
@@ -345,7 +345,7 @@ func TestRSMAnimationFrameIgnoresRSWAnimationSpeedLikeRobr(t *testing.T) {
 		t.Fatalf("animation frame = %d, want 160", frame)
 	}
 
-	frame, animated = rsmAnimationFrame(rsm, res.RSWModel{AnimType: 2, AnimSpeed: 0.7}, time.UnixMilli(1000))
+	frame, animated = RSMAnimationFrame(rsm, res.RSWModel{AnimType: 2, AnimSpeed: 0.7}, time.UnixMilli(1000))
 	if !animated {
 		t.Fatal("model should be animated")
 	}
@@ -368,7 +368,7 @@ func TestRSMAnimationFrameAnimatesKeyframedModelsWithoutRSWAnimType(t *testing.T
 		},
 	}
 
-	frame, animated := rsmAnimationFrame(rsm, res.RSWModel{AnimType: 0}, time.UnixMilli(14))
+	frame, animated := RSMAnimationFrame(rsm, res.RSWModel{AnimType: 0}, time.UnixMilli(14))
 	if !animated {
 		t.Fatal("model should be animated")
 	}
@@ -379,7 +379,7 @@ func TestRSMAnimationFrameAnimatesKeyframedModelsWithoutRSWAnimType(t *testing.T
 
 func TestAnimatedRSMNodeMatricesRetainsOnlyLatestFramePerModel(t *testing.T) {
 	rsm := &res.RSM{Nodes: []res.RSMNode{{Name: "root"}}}
-	mode := &WorldMode{}
+	mode := &System{}
 
 	first := mode.animatedRSMNodeMatrices(rsm, 1)
 	first["cache-marker"] = scene.Mat4Identity()
@@ -403,7 +403,7 @@ func TestRSMFaceColorUsesModelAlpha(t *testing.T) {
 		scene.Point3{X: 0, Y: 0, Z: 0},
 		scene.Point3{X: 1, Y: 0, Z: 0},
 		scene.Point3{X: 0, Y: 0, Z: 1},
-		sceneLighting{})
+		Lighting{})
 	if got.A < 126 || got.A > 129 {
 		t.Fatalf("alpha = %d, want about 128", got.A)
 	}
@@ -426,7 +426,7 @@ func TestBuildRSMNodeMatricesSamplesAnimatedPositionAndScale(t *testing.T) {
 	}}
 
 	matrix := buildRSMNodeMatrices(rsm, 5)["root"]
-	got := mat4TransformPoint(matrix, scene.Point3{X: 1})
+	got := scene.Mat4TransformPoint(matrix, scene.Point3{X: 1})
 	want := scene.Point3{X: 7}
 	if math.Abs(got.X-want.X) > 0.0001 || math.Abs(got.Y-want.Y) > 0.0001 || math.Abs(got.Z-want.Z) > 0.0001 {
 		t.Fatalf("animated point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.X, got.Y, got.Z, want.X, want.Y, want.Z)
@@ -447,7 +447,7 @@ func TestBuildRSMNodeMatricesSlerpsAnimatedRotation(t *testing.T) {
 	}}
 
 	matrix := buildRSMNodeMatrices(rsm, 5)["root"]
-	got := mat4TransformPoint(matrix, scene.Point3{X: 1})
+	got := scene.Mat4TransformPoint(matrix, scene.Point3{X: 1})
 	want := scene.Point3{Y: 1}
 	if math.Abs(got.X-want.X) > 0.0001 || math.Abs(got.Y-want.Y) > 0.0001 || math.Abs(got.Z-want.Z) > 0.0001 {
 		t.Fatalf("animated rotation point = (%.3f, %.3f, %.3f), want (%.3f, %.3f, %.3f)", got.X, got.Y, got.Z, want.X, want.Y, want.Z)

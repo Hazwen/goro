@@ -8,6 +8,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/companion"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -382,7 +383,7 @@ func (c skillController) HandleClick(ctx client.Context, projection scene.Projec
 		return
 	}
 	if isGroundTargetSkill(skill) {
-		targetX, targetY, ok := clickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY)
+		targetX, targetY, ok := maps.ClickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY)
 		if !ok {
 			glog.Debugf("skill ground target miss skill=%d mouse=%d,%d", skill.ID, ctx.Input.MouseX, ctx.Input.MouseY)
 			return
@@ -401,7 +402,7 @@ func (c skillController) HandleClick(ctx client.Context, projection scene.Projec
 	}
 	actor, ok := c.mode.clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now)
 	if !ok {
-		if x, y, groundOK := clickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); groundOK {
+		if x, y, groundOK := maps.ClickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); groundOK {
 			glog.Debugf("skill target canceled by ground click skill=%d mouse=%d,%d target=%d,%d", skill.ID, ctx.Input.MouseX, ctx.Input.MouseY, x, y)
 			c.Cancel("ground-click")
 			return

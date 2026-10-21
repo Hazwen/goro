@@ -1309,14 +1309,14 @@ func TestSkillUnitRSMPlacementUsesCellCenterAndTerrainHeight(t *testing.T) {
 
 	placement := skillUnitRSMPlacement(world, 9205, unit)
 
-	if placement.baseX != 1.5 || placement.baseY != 1.5 {
-		t.Fatalf("base = %.1f,%.1f, want cell center 1.5,1.5", placement.baseX, placement.baseY)
+	if placement.BaseX != 1.5 || placement.BaseY != 1.5 {
+		t.Fatalf("base = %.1f,%.1f, want cell center 1.5,1.5", placement.BaseX, placement.BaseY)
 	}
-	if placement.model.Position.Y != 7 {
-		t.Fatalf("model y = %.1f, want terrain height 7", placement.model.Position.Y)
+	if placement.Model.Position.Y != 7 {
+		t.Fatalf("model y = %.1f, want terrain height 7", placement.Model.Position.Y)
 	}
-	if placement.model.Scale != (res.RSWVector3{X: 1, Y: 1, Z: 1}) {
-		t.Fatalf("scale = %+v, want 1,1,1", placement.model.Scale)
+	if placement.Model.Scale != (res.RSWVector3{X: 1, Y: 1, Z: 1}) {
+		t.Fatalf("scale = %+v, want 1,1,1", placement.Model.Scale)
 	}
 }
 
@@ -1327,8 +1327,8 @@ func TestTrapSkillUnitRSMPlacementUsesEffectScale(t *testing.T) {
 	placement := skillUnitRSMPlacement(world, 9206, unit)
 
 	want := res.RSWVector3{X: 0.15, Y: 0.15, Z: 0.15}
-	if placement.model.Scale != want {
-		t.Fatalf("scale = %+v, want skill-unit trap scale %+v", placement.model.Scale, want)
+	if placement.Model.Scale != want {
+		t.Fatalf("scale = %+v, want skill-unit trap scale %+v", placement.Model.Scale, want)
 	}
 }
 

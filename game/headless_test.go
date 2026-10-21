@@ -78,7 +78,7 @@ func TestHeadlessCombatKeepsStateWithoutVisuals(t *testing.T) {
 	if len(mode.effects().EffectViews) != 0 || len(mode.effects().EffectViewMiss) != 0 || len(mode.effects().StrEffects) != 0 || len(mode.effects().StrEffectMiss) != 0 {
 		t.Fatal("headless combat loaded or attempted to load effect assets")
 	}
-	if len(mode.textures) != 0 || len(mode.textureMiss) != 0 {
+	if len(mode.mapScene.Textures) != 0 || len(mode.mapScene.TextureMiss) != 0 {
 		t.Fatal("headless mode loaded or attempted to load textures")
 	}
 }

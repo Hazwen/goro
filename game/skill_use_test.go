@@ -13,6 +13,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/internal/testutil"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -169,14 +170,14 @@ func TestTeleportWaitsForMapChange(t *testing.T) {
 			if mode.ui.teleportModal.IsOpen() {
 				t.Fatal("Teleport destination dialog remained open")
 			}
-			if len(mode.effects().Active) != 0 || len(mode.scheduledSounds) != 0 || mode.mapFade.phase != mapFadeNone {
+			if len(mode.effects().Active) != 0 || len(mode.scheduledSounds) != 0 || mode.mapFade.Phase != maps.FadeNone {
 				t.Fatalf("Teleport played before map confirmation: effects=%+v sounds=%+v fade=%+v", mode.effects().Active, mode.scheduledSounds, mode.mapFade)
 			}
 
 			// Even after canceling, a later unrelated warp follows the same
 			// server-driven transition without a leftover Teleport effect.
 			_, stop := mode.handleNetworkPacket(ctx, testMapChangePacket("prontera", 100, 120), time.Now())
-			if !stop || mode.mapFade.phase != mapFadeOut || !mode.mapFade.hasChange {
+			if !stop || mode.mapFade.Phase != maps.FadeOut || !mode.mapFade.HasChange {
 				t.Fatalf("confirmed map change did not start the fade: stop=%t fade=%+v", stop, mode.mapFade)
 			}
 			if len(mode.effects().Active) != 0 || len(mode.scheduledSounds) != 0 {
@@ -256,7 +257,7 @@ func TestAutoRunTargetSkillStartsTargetSelection(t *testing.T) {
 func TestTextGroundSkillClickOpensPrompt(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(32, 32)
+	world.GAT = testutil.FlatWalkableGAT(32, 32)
 	inputState := input.NewState()
 	projection := testutil.Projection(1280, 720, scene.CellCenter(10), scene.CellCenter(20), 0)
 	point := projection.Project(scene.CellCenter(12), scene.CellCenter(20), 0)
@@ -290,7 +291,7 @@ func TestTextGroundSkillClickOpensPrompt(t *testing.T) {
 func TestMercenaryTargetSkillChasesFromMercenaryPosition(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 200, X: 24, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.UpsertActor(worldstate.Actor{
 		ID:            400,
 		X:             10,
@@ -330,7 +331,7 @@ func TestMercenaryTargetSkillChasesFromMercenaryPosition(t *testing.T) {
 func TestHealApproachesZombieWithoutWalkingAwayOnOtherAxis(t *testing.T) {
 	networkClient, serverConn := newBotTestConnection(t, 20080910)
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 200, Job: db.JobAcolyte, X: 20, Y: 20}
 	zombie := worldstate.Actor{
 		ID: 300, Job: 1015, X: 31, Y: 22,
@@ -374,7 +375,7 @@ func TestHealApproachesDiagonalZombiesWithinServerRange(t *testing.T) {
 		t.Run(fmt.Sprintf("offset_%d_%d", offset[0], offset[1]), func(t *testing.T) {
 			networkClient, serverConn := newBotTestConnection(t, 20080910)
 			world := worldstate.New()
-			world.GAT = flatWalkableGAT(64, 64)
+			world.GAT = testutil.FlatWalkableGAT(64, 64)
 			world.Player = worldstate.Actor{ID: 200, Job: db.JobAcolyte, X: 20, Y: 20}
 			zombie := worldstate.Actor{
 				ID: 300, Job: 1015, X: 20 + offset[0], Y: 20 + offset[1],
@@ -460,7 +461,7 @@ func TestSkillCasterRangeMatchesReference(t *testing.T) {
 func TestPendingHealRechecksCircularRangeBeforeCasting(t *testing.T) {
 	networkClient, serverConn := newBotTestConnection(t, 20080910)
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 200, X: 20, Y: 20}
 	// The zombie moved into a square corner after Heal was scheduled.
 	world.UpsertActor(worldstate.Actor{ID: 300, Job: 1015, X: 29, Y: 29})
@@ -487,7 +488,7 @@ func TestPendingHealRechecksCircularRangeBeforeCasting(t *testing.T) {
 func TestMercenaryTargetSkillUsesRawServerRange(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 200, X: 15, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.UpsertActor(worldstate.Actor{
 		ID:            400,
 		X:             10,

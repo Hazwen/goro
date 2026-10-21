@@ -15,6 +15,7 @@ import (
 	"github.com/gogpu/ui/uitest"
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -150,7 +151,7 @@ func TestMissingMapWarpRedirectsToLoginBeforeDrawing(t *testing.T) {
 	if !ok || manager.InLogin() {
 		t.Fatalf("valid map did not enter world mode: %T, inLogin=%v", manager.mode, manager.InLogin())
 	}
-	world.startMapFadeOut(network.MapChange{MapName: "new_1-1.gat", X: 1, Y: 1}, time.Now().Add(-mapFadeOutDuration))
+	world.startMapFadeOut(network.MapChange{MapName: "new_1-1.gat", X: 1, Y: 1}, time.Now().Add(-maps.FadeOutDuration))
 	if err := manager.Update(); err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +184,7 @@ func TestLoadGATPreservesReadErrors(t *testing.T) {
 	if _, err := os.ReadFile(path); err == nil {
 		t.Skip("current user can read files without read permission")
 	}
-	_, _, err := loadGAT(ctx.Resources, ctx.World.MapName)
+	_, _, err := maps.LoadGAT(ctx.Resources, ctx.World.MapName)
 	if !errors.Is(err, os.ErrPermission) {
 		t.Fatalf("loader replaced the read error: %v", err)
 	}
@@ -275,7 +276,7 @@ func TestLoadGATPrefersLooseCloneOverArchivedAlias(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = archive.Close() })
 	ctx.Resources.Archives = []*res.GRF{archive}
-	gat, path, err := loadGAT(ctx.Resources, "new_1-1.gat")
+	gat, path, err := maps.LoadGAT(ctx.Resources, "new_1-1.gat")
 	if err != nil {
 		t.Fatal(err)
 	}

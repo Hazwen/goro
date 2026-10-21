@@ -5,6 +5,7 @@ import (
 
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/internal/testutil"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/res"
 )
 
@@ -20,7 +21,7 @@ func TestLegacySkillUnitTrapRSMModelsLoadFromRealDataWhenConfigured(t *testing.T
 		var loadedPath string
 		paths := append([]string{spec.ModelPath}, spec.FallbackModelPaths...)
 		for _, modelPath := range paths {
-			loaded, err := loadRSMModel(manager, modelPath)
+			loaded, err := maps.LoadRSMModel(manager, modelPath)
 			if err != nil {
 				continue
 			}

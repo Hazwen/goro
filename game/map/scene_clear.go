@@ -1,4 +1,4 @@
-package game
+package maps
 
 import (
 	"image/color"
@@ -7,7 +7,7 @@ import (
 	"github.com/kivutar/goro/render"
 )
 
-func clearWorldScene(screen *render.Frame, mapName string) {
+func ClearWorldScene(screen *render.Frame, mapName string) {
 	screen.Fill(worldSceneClearColor(mapName))
 }
 

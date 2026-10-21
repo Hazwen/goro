@@ -1,4 +1,4 @@
-package game
+package maps
 
 import (
 	"image/color"
@@ -37,7 +37,7 @@ func TestMapEffectComponentUsesWorldSizedSpriteWithoutChangingPlacement(t *testi
 		PosY:       -0.2,
 		PosZ:       0.8,
 	}
-	got := mapEffectComponent(component)
+	got := MapEffectComponent(component)
 	if !got.WorldSizedSprite {
 		t.Fatalf("mapEffectComponent did not mark sprite as world sized: %+v", got)
 	}

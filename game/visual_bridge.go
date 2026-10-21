@@ -7,18 +7,19 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
 )
 
 func (m *WorldMode) effects() *effects.System {
-	if m.textures == nil {
-		m.textures = make(map[string]*render.Image)
+	if m.mapScene.Textures == nil {
+		m.mapScene.Textures = make(map[string]*render.Image)
 	}
-	if m.textureMiss == nil {
-		m.textureMiss = make(map[string]struct{})
+	if m.mapScene.TextureMiss == nil {
+		m.mapScene.TextureMiss = make(map[string]struct{})
 	}
-	m.effectSystem.Bind(m, m.textures, m.textureMiss)
+	m.effectSystem.Bind(m, m.mapScene.Textures, m.mapScene.TextureMiss)
 	return &m.effectSystem
 }
 
@@ -60,4 +61,14 @@ func (m *WorldMode) starFusionHeight(actor worldstate.Actor, now time.Time) floa
 		active = ok && anim.actionFamily != scene.SpriteActionIdle && anim.actionFamily != scene.SpriteActionWalk
 	}
 	return m.effects().FusionHeight(actor, now, active)
+}
+
+func (m *WorldMode) spriteTexture(src *render.Image) *render.Image {
+	if !m.mapScene.UpscaleTextures || src == nil {
+		return src
+	}
+	if m.spriteUpscaler == nil {
+		m.spriteUpscaler = sprites.NewUpscaler()
+	}
+	return m.spriteUpscaler.Texture(src, m.mapScene.Images.Own)
 }

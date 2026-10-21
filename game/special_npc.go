@@ -6,6 +6,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/effects"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/render"
@@ -66,7 +67,7 @@ func (m *WorldMode) drawPersistentWorldEffectAt(screen *render.Frame, ctx client
 	}
 	effect := persistentWorldEffectForActorEntry(effectID, entry, now)
 	for index, component := range spec.Components {
-		component = mapEffectComponent(component)
+		component = maps.MapEffectComponent(component)
 		duration := effects.WorldEffectComponentDuration(spec, component)
 		if component.Duration > 0 {
 			duration = component.Duration

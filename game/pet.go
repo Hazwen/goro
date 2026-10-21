@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
@@ -132,7 +133,7 @@ func (m *WorldMode) handlePetCaptureClick(ctx client.Context, projection scene.P
 	skill := petCaptureTargetSkill()
 	actor, ok := clickedSkillTarget(ctx, projection, skill, ctx.Input.MouseX, ctx.Input.MouseY, now, m.actorDeaths)
 	if !ok {
-		if x, y, groundOK := clickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); groundOK {
+		if x, y, groundOK := maps.ClickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); groundOK {
 			glog.Debugf("pet capture canceled by ground click mouse=%d,%d target=%d,%d", ctx.Input.MouseX, ctx.Input.MouseY, x, y)
 			m.cancelPetCapture("ground-click")
 			return true

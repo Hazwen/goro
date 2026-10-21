@@ -12,6 +12,7 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
@@ -1690,7 +1691,7 @@ func rangedAttackApproachCellFromTargetMatching(ctx client.Context, sourceX, sou
 		return 0, 0, false
 	}
 	attackRange = scene.MaxInt(1, attackRange)
-	source := pathPoint{x: sourceX, y: sourceY}
+	source := maps.PathPoint{X: sourceX, Y: sourceY}
 	type candidate struct {
 		x        int
 		y        int
@@ -1719,7 +1720,7 @@ func rangedAttackApproachCellFromTargetMatching(ctx client.Context, sourceX, sou
 			candidates = append(candidates, candidate{
 				x:        x,
 				y:        y,
-				walkCost: pathHeuristic(source, pathPoint{x: x, y: y}),
+				walkCost: maps.PathHeuristic(source, maps.PathPoint{X: x, Y: y}),
 			})
 		}
 	}
@@ -1763,7 +1764,7 @@ func walkTargetReachable(ctx client.Context, sourceX, sourceY, targetX, targetY 
 	if sourceX == targetX && sourceY == targetY {
 		return true
 	}
-	_, ok := findWalkPath(ctx.World.GAT, sourceX, sourceY, targetX, targetY)
+	_, ok := maps.FindWalkPath(ctx.World.GAT, sourceX, sourceY, targetX, targetY)
 	return ok
 }
 

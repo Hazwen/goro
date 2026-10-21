@@ -8,6 +8,7 @@ import (
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
@@ -150,10 +151,10 @@ func TestLoginToWorldPrewarmsBeforeFadeIn(t *testing.T) {
 	writeTestGAT(t, ctx.Resources.Root, "prontera.gat")
 	next := NewLoginMode().nextWorldMode(ctx)
 	next.Enter(ctx)
-	if next.mapFade.phase != mapFadePrewarm {
-		t.Fatalf("world fade phase after Enter = %d, want prewarm", next.mapFade.phase)
+	if next.mapFade.Phase != maps.FadePrewarm {
+		t.Fatalf("world fade phase after Enter = %d, want prewarm", next.mapFade.Phase)
 	}
-	if got := next.mapFadeAlpha(time.Now()); got != 255 {
+	if got := next.mapFade.Alpha(time.Now()); got != 255 {
 		t.Fatalf("world prewarm alpha = %d, want 255", got)
 	}
 }

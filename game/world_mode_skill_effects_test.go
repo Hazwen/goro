@@ -14,6 +14,7 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
@@ -245,7 +246,7 @@ func TestVenomKnifeFlightAndAfterimages(t *testing.T) {
 	if _, _, alpha := effects.ThrowItemAt(effect, 30); alpha != 0 {
 		t.Fatal("knife must fade after arriving")
 	}
-	m.textures = map[string]*render.Image{"__effectfile_유저인터페이스/item/베넘나이프.bmp|blackkey=true": render.NewImage(8, 8)}
+	m.mapScene.Textures = map[string]*render.Image{"__effectfile_유저인터페이스/item/베넘나이프.bmp|blackkey=true": render.NewImage(8, 8)}
 	frame := render.NewFrame(800, 600)
 	projection := testutil.Projection(800, 600, 14, 20, 0)
 	m.effects().Draw(frame, ctx, projection, starts.Add(6*db.EffectFrameDuration), false)
@@ -334,7 +335,7 @@ func TestGrimtoothPreambleAndFixedTrail(t *testing.T) {
 	if trail.ActorID != 2000000 || m.scheduledSounds[0].actorID != 2000000 || trail.ActorOrigin.X != 10.5 || trail.ActorOrigin.Z != 20.5 || math.Abs(trail.ProjectileDirection.X-.4) > 1e-9 || !trail.Starts.Equal(starts) {
 		t.Fatalf("trail does not start at caster toward target: %+v", trail)
 	}
-	m.textures = map[string]*render.Image{"__effectfile_effect/stone.bmp|blackkey=true": render.NewImage(8, 8)}
+	m.mapScene.Textures = map[string]*render.Image{"__effectfile_effect/stone.bmp|blackkey=true": render.NewImage(8, 8)}
 	m.effects().Active = m.effects().Active[:1]
 	projection := testutil.Projection(800, 600, 14, 20, 0)
 	draw := func() reflect.Value {
@@ -697,7 +698,7 @@ func TestCreatorEffectRenderingWithClientAssets(t *testing.T) {
 			t.Fatal("impact rings must remain at the original victim position with their native magenta tint")
 		}
 	}
-	texture := m.textures["__effectfile_effect/ring_black.tga|blackkey=false"]
+	texture := m.mapScene.Textures["__effectfile_effect/ring_black.tga|blackkey=false"]
 	if texture == nil {
 		t.Fatal("Acid Demonstration must retain the TGA's black pixels")
 	}
@@ -923,7 +924,7 @@ func TestHunterEffectsWithClientAssets(t *testing.T) {
 	projection := testutil.Projection(800, 600, 20, 20, 0)
 	start := time.Unix(100, 0)
 	for _, tc := range []struct{ id, frame int }{{effects.BlitzBeat, 10}, {effects.BlitzBeat, 40}, {effects.Flasher, 30}, {effects.Detecting, 20}, {effects.RemoveTrap, 20}, {effects.Shockwave, 20}} {
-		m := &WorldMode{whitePixel: render.NewImage(1, 1)}
+		m := &WorldMode{mapScene: maps.System{WhitePixel: render.NewImage(1, 1)}}
 		m.effects().AddAt(ctx, tc.id, 300, start)
 		frame := render.NewFrame(800, 600)
 		m.effects().Draw(frame, ctx, projection, start.Add(time.Duration(tc.frame)*db.EffectFrameDuration), false)
@@ -1114,7 +1115,7 @@ func TestMageProjectileSequencesAndSounds(t *testing.T) {
 func TestMageFrostDiverTrailAndBurst(t *testing.T) {
 	ctx := testutil.KnightEffectContext()
 	start := time.Unix(100, 0)
-	m := &WorldMode{textures: map[string]*render.Image{"__effectfile_effect/ice.tga|blackkey=true": render.NewImage(32, 32)}}
+	m := &WorldMode{mapScene: maps.System{Textures: map[string]*render.Image{"__effectfile_effect/ice.tga|blackkey=true": render.NewImage(32, 32)}}}
 	m.addSkillBeforeHitEffect(ctx, network.ActorActionNotify{SkillID: db.SkillMGFrostdiver, SourceID: 2000000, TargetID: 300}, start)
 	effect := m.effects().Active[0]
 	if effect.ActorID != 2000000 || effect.TargetID != 300 || !effect.Starts.Equal(start) || effects.FrostDiverTrailCount(effect) != 48 {
@@ -2572,7 +2573,7 @@ func TestStoneFlingFlight(t *testing.T) {
 	if nearAlpha >= farAlpha {
 		t.Fatal("stone flight duration must depend on distance")
 	}
-	m.textures = map[string]*render.Image{"__effectfile_유저인터페이스/item/돌.bmp|blackkey=true": render.NewImage(8, 8)}
+	m.mapScene.Textures = map[string]*render.Image{"__effectfile_유저인터페이스/item/돌.bmp|blackkey=true": render.NewImage(8, 8)}
 	frame := render.NewFrame(800, 600)
 	m.effects().Draw(frame, ctx, testutil.Projection(800, 600, 14, 20, 0), starts.Add(6*db.EffectFrameDuration), false)
 	if n := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards").Len(); n != 4 {
@@ -5693,12 +5694,12 @@ func TestSpecialEffectNotifyDedupesParameterLevelUpFallback(t *testing.T) {
 }
 
 func soulLinkerTestTextures(m *WorldMode) {
-	m.textures = make(map[string]*render.Image)
+	m.mapScene.Textures = make(map[string]*render.Image)
 	for _, id := range []int{effects.Stin, effects.Stin3, effects.HitLine4, effects.Stin2, effects.HitLine6, effects.HitTexture, effects.AsuraBodyMonster, effects.Hated, effects.Kaizel, effects.BlueBody, effects.ReflectBody, effects.SmaReady, effects.SoulLink, effects.AsuraBody, effects.BlueCasting, effects.TaeReady, effects.StormKick4, effects.BabyBodyBack, effects.M07} {
 		for _, c := range db.EffectSpecs[id].Components {
 			for _, file := range append([]string{c.TextureFile}, c.TextureFiles...) {
 				if file != "" {
-					m.textures["__effectfile_"+file+"|blackkey=true"] = render.NewImage(8, 8)
+					m.mapScene.Textures["__effectfile_"+file+"|blackkey=true"] = render.NewImage(8, 8)
 				}
 			}
 		}

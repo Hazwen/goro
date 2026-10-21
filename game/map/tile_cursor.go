@@ -1,11 +1,10 @@
-package game
+package maps
 
 import (
 	"image"
 	"image/color"
 	"math"
 
-	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -14,20 +13,10 @@ import (
 // RSM walk surfaces can be coplanar with the GAT and use layered depth biases.
 // Keep the cursor just above the largest RSM layer while remaining far below
 // the old 0.001 bias that let it show through furniture.
-const tileCursorDepthBias = rsmModelDepthBias + rsmHorizontalDepthBiasLayers*rsmHorizontalDepthBiasStep
+const TileCursorDepthBias = rsmModelDepthBias + rsmHorizontalDepthBiasLayers*rsmHorizontalDepthBiasStep
 
-func (m *WorldMode) drawTileCursor(screen *render.Frame, ctx client.Context, projection scene.Projection) {
-	if ctx.Input == nil || ctx.World == nil || ctx.World.GAT == nil {
-		return
-	}
-	if m.mapPointerBlocked(ctx) {
-		return
-	}
-	x, y, ok := m.hoveredWalkCell(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY)
-	if !ok {
-		return
-	}
-	verts, ok := tileCursorCellVerts(ctx.World.GAT, x, y)
+func (m *System) DrawTileCursor(screen *render.Frame, manager *res.Manager, gat *res.GAT, projection scene.Projection, x, y int) {
+	verts, ok := tileCursorCellVerts(gat, x, y)
 	if !ok {
 		return
 	}
@@ -35,7 +24,7 @@ func (m *WorldMode) drawTileCursor(screen *render.Frame, ctx client.Context, pro
 	if quadHasInvalidPoint(points) || quadOutside(points, float64(screen.Bounds().Dx()), float64(screen.Bounds().Dy())) {
 		return
 	}
-	drawTileCursorSurface3D(screen, m.tileCursorTexture(ctx.Resources), verts)
+	drawTileCursorSurface3D(screen, m.tileCursorTexture(manager), verts)
 }
 
 func tileCursorCellVerts(gat *res.GAT, x, y int) ([4]scene.Point3, bool) {
@@ -87,7 +76,7 @@ func quadHasInvalidPoint(points [4]scene.Point2) bool {
 	return false
 }
 
-func (m *WorldMode) tileCursorTexture(manager *res.Manager) *render.Image {
+func (m *System) tileCursorTexture(manager *res.Manager) *render.Image {
 	if m.tileCursor != nil {
 		return m.tileCursor
 	}
@@ -164,6 +153,6 @@ func drawTileCursorSurface3D(screen *render.Frame, texture *render.Image, verts 
 		{U: 1, V: 1},
 	}
 	options := scene.TriangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
-	options.DepthBias = tileCursorDepthBias
+	options.DepthBias = TileCursorDepthBias
 	scene.DrawTexturedSurface3DWithOptions(screen, texture, verts, uvs, scene.QuadIndices012213, tints, options)
 }

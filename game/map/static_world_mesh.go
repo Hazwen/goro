@@ -1,18 +1,18 @@
-package game
+package maps
 
 import (
 	"image"
 	"image/color"
 	"math"
 
+	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 )
 
 const (
-	retainedWorldMeshMaxVertices = 65535
-	gndRetainedChunkSize         = 16
+	gndRetainedChunkSize = 16
 )
 
 type retainedWorldMesh struct {
@@ -50,7 +50,7 @@ func (b *retainedMeshBuilder) addTriangle(a, c, d render.Vertex3D) {
 	if b.texture == nil {
 		return
 	}
-	if len(b.vertices)+3 > retainedWorldMeshMaxVertices {
+	if len(b.vertices)+3 > scene.MaxWorldMeshVertices {
 		b.flush()
 	}
 	base := uint16(len(b.vertices))
@@ -62,7 +62,7 @@ func (b *retainedMeshBuilder) addQuad(vertices [4]render.Vertex3D, indices []uin
 	if b.texture == nil {
 		return
 	}
-	if len(b.vertices)+len(vertices) > retainedWorldMeshMaxVertices {
+	if len(b.vertices)+len(vertices) > scene.MaxWorldMeshVertices {
 		b.flush()
 	}
 	base := uint16(len(b.vertices))
@@ -84,14 +84,14 @@ func (b *retainedMeshBuilder) flush() {
 	b.indices = nil
 }
 
-func (m *WorldMode) drawGNDMeshes(screen *render.Frame, manager *res.Manager, gnd *res.GND, rsw *res.RSW, projection scene.Projection) {
+func (m *System) DrawGNDMeshes(screen *render.Frame, manager *res.Manager, gnd *res.GND, rsw *res.RSW, projection scene.Projection) {
 	if gnd == nil {
 		return
 	}
 	cache := m.gndMeshCache
 	if cache == nil || cache.gnd != gnd || cache.rsw != rsw {
 		cache = &gndRetainedMeshCache{gnd: gnd, rsw: rsw, lightmapAtlas: buildGNDLightmapAtlas(gnd), chunks: make(map[gndRetainedChunkKey][]retainedWorldMesh)}
-		m.ownMapImage(cache.lightmapAtlas.image)
+		m.Images.Own(cache.lightmapAtlas.image)
 		m.gndMeshCache = cache
 	}
 	width := screen.Bounds().Dx()
@@ -123,7 +123,7 @@ func (m *WorldMode) drawGNDMeshes(screen *render.Frame, manager *res.Manager, gn
 	}
 }
 
-func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *res.RSW, lightmapAtlas gndLightmapAtlas, startX, endX, startY, endY int) []retainedWorldMesh {
+func (m *System) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *res.RSW, lightmapAtlas gndLightmapAtlas, startX, endX, startY, endY int) []retainedWorldMesh {
 	if gnd == nil {
 		return nil
 	}
@@ -134,11 +134,11 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 	if startX > endX || startY > endY {
 		return nil
 	}
-	if m.whitePixel == nil {
-		m.whitePixel = render.NewImage(1, 1)
-		m.whitePixel.Fill(color.White)
+	if m.WhitePixel == nil {
+		m.WhitePixel = render.NewImage(1, 1)
+		m.WhitePixel.Fill(color.White)
 	}
-	lighting := m.sceneLighting(rsw)
+	lighting := m.Lighting(rsw)
 	topNormals := m.smoothGNDTopNormals(gnd)
 	builders := make(map[retainedMeshKey]*retainedMeshBuilder)
 	builderFor := func(texture, lightTexture *render.Image, options *render.DrawTrianglesOptions) *retainedMeshBuilder {
@@ -168,15 +168,15 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 		}, indices)
 	}
 	addColored := func(verts [4]scene.Point3, indices []uint16, tints [4]color.RGBA, options *render.DrawTrianglesOptions) {
-		builder := builderFor(m.whitePixel, nil, options)
+		builder := builderFor(m.WhitePixel, nil, options)
 		if builder == nil {
 			return
 		}
 		builder.addQuad([4]render.Vertex3D{
-			coloredSurfaceVertex3D(verts[0], 0, 0, tints[0]),
-			coloredSurfaceVertex3D(verts[1], 1, 0, tints[1]),
-			coloredSurfaceVertex3D(verts[2], 1, 1, tints[2]),
-			coloredSurfaceVertex3D(verts[3], 0, 1, tints[3]),
+			scene.ColoredSurfaceVertex3D(verts[0], 0, 0, tints[0]),
+			scene.ColoredSurfaceVertex3D(verts[1], 1, 0, tints[1]),
+			scene.ColoredSurfaceVertex3D(verts[2], 1, 1, tints[2]),
+			scene.ColoredSurfaceVertex3D(verts[3], 0, 1, tints[3]),
 		}, indices)
 	}
 	addLightmapped := func(texture *render.Image, verts [4]scene.Point3, uvs [4]scene.UV, baseTints [4]color.RGBA, lightmapID int, lightmap res.GNDLightmap, lightScales [4]scene.Point3) {
@@ -233,7 +233,7 @@ func (m *WorldMode) buildGNDMeshChunk(manager *res.Manager, gnd *res.GND, rsw *r
 							addTextured(texture, verts, uvs, scene.QuadIndices012023, surfaceVertexTints(baseTints, cell.Heights, normals, lighting), groundTextureDrawOptions())
 						}
 					} else {
-						addColored(verts, scene.QuadIndices012023, groundSurfaceVertexColors(gndTextureName(gnd, surface.TextureID), surface.Color, cell.Heights, normals, lighting), worldOpaqueTriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
+						addColored(verts, scene.QuadIndices012023, groundSurfaceVertexColors(gndTextureName(gnd, surface.TextureID), surface.Color, cell.Heights, normals, lighting), WorldOpaqueTriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
 					}
 				}
 			}
@@ -349,7 +349,7 @@ func lightmappedSurfaceVertex3D(point scene.Point3, uv scene.UV, lightUV scene.U
 	return vertex
 }
 
-func addGNDRetainedSurface(m *WorldMode, manager *res.Manager, gnd *res.GND, surface res.GNDSurface, vertexOrder [4]int, verts [4]scene.Point3, heights [4]float32, normals [4]scene.Point3, lighting sceneLighting, addTextured func(*render.Image, [4]scene.Point3, [4]scene.UV, []uint16, [4]color.RGBA, *render.DrawTrianglesOptions), addColored func([4]scene.Point3, []uint16, [4]color.RGBA, *render.DrawTrianglesOptions)) {
+func addGNDRetainedSurface(m *System, manager *res.Manager, gnd *res.GND, surface res.GNDSurface, vertexOrder [4]int, verts [4]scene.Point3, heights [4]float32, normals [4]scene.Point3, lighting Lighting, addTextured func(*render.Image, [4]scene.Point3, [4]scene.UV, []uint16, [4]color.RGBA, *render.DrawTrianglesOptions), addColored func([4]scene.Point3, []uint16, [4]color.RGBA, *render.DrawTrianglesOptions)) {
 	baseTints := uniformGNDSurfaceBaseTints(surface.Color)
 	uvs := surfaceUVs(surface, vertexOrder)
 	textureName := gndTextureName(gnd, surface.TextureID)
@@ -357,5 +357,56 @@ func addGNDRetainedSurface(m *WorldMode, manager *res.Manager, gnd *res.GND, sur
 		addTextured(texture, verts, uvs, scene.QuadIndices012023, surfaceVertexTints(baseTints, heights, normals, lighting), groundTextureDrawOptions())
 		return
 	}
-	addColored(verts, scene.QuadIndices012023, groundSurfaceVertexColors(textureName, surface.Color, heights, normals, lighting), worldOpaqueTriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
+	addColored(verts, scene.QuadIndices012023, groundSurfaceVertexColors(textureName, surface.Color, heights, normals, lighting), WorldOpaqueTriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
+}
+
+// Use the draw-time loaders, preserving resource lookup and transparency rules.
+// Only the current map retains these images; no cross-map texture cache grows.
+func (m *System) PreloadTextures(ctx client.Context) {
+	if ctx.Config.Headless || ctx.Resources == nil || ctx.World == nil {
+		return
+	}
+	m.UpscaleTextures = ctx.Config.Render.TextureUpscaling
+	if ctx.Runtime != nil {
+		m.UpscaleTextures = ctx.Runtime.TextureUpscaling()
+	}
+	seen := make(map[*render.Image]bool)
+	add := func(img *render.Image) {
+		if img != nil && !seen[img] {
+			seen[img] = true
+			m.Images.Uploads = append(m.Images.Uploads, img)
+		}
+	}
+	gnd, rsw := ctx.World.GND, ctx.World.RSW
+	if gnd != nil {
+		for _, name := range gnd.Textures {
+			add(m.groundTexture(ctx.Resources, name))
+		}
+		atlas := buildGNDLightmapAtlas(gnd)
+		add(m.Images.Own(atlas.image))
+		m.gndMeshCache = &gndRetainedMeshCache{gnd: gnd, rsw: rsw, lightmapAtlas: atlas, chunks: make(map[gndRetainedChunkKey][]retainedWorldMesh)}
+	}
+	if rsw != nil {
+		models := make(map[*res.RSM]bool)
+		for _, placement := range rsw.Models {
+			model := ctx.World.RSM[placement.Filename]
+			if model == nil || models[model] {
+				continue
+			}
+			models[model] = true
+			for _, name := range model.Textures {
+				add(m.groundTexture(ctx.Resources, name))
+			}
+		}
+	}
+	if water, ok := mapWater(gnd, rsw); ok && gnd != nil {
+		for _, cell := range gnd.Cells {
+			if cell.Top >= 0 && waterVisibleForCell(cell, water) {
+				for frame := 0; frame < 32; frame++ {
+					add(m.waterTexture(ctx.Resources, int(water.Type), frame))
+				}
+				break
+			}
+		}
+	}
 }

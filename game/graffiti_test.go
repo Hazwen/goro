@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/kivutar/goro/game/internal/testutil"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -40,9 +41,9 @@ func TestGraffitiLifetimeAndRetainedTerrainMesh(t *testing.T) {
 	for i := range ctx.World.GND.Cells {
 		ctx.World.GND.Cells[i].Heights = [4]float32{3, 3, 3, 3}
 	}
-	m := &WorldMode{textures: map[string]*render.Image{
+	m := &WorldMode{mapScene: maps.System{Textures: map[string]*render.Image{
 		"__effectfile_effect/alpabet.bmp|blackkey=true": render.NewImage(256, 256),
-	}}
+	}}}
 	entry := network.SkillUnitEntry{ID: 900, CreatorID: 2000000, X: 20, Y: 20, UnitID: 176, Visible: true, HasMessage: true, Message: "Hello"}
 	m.applySkillUnitEntry(ctx, entry)
 	projection := testutil.Projection(800, 600, 20, 20, 0)
@@ -87,9 +88,9 @@ func TestGraffitiReleasesImages(t *testing.T) {
 	ctx.World.GND = &res.GND{Width: 1, Height: 1, Cells: []res.GNDCell{{}}}
 	for _, event := range []string{"replacement", "removal", "hidden", "ordinary unit", "map change", "leave"} {
 		t.Run(event, func(t *testing.T) {
-			m := &WorldMode{textures: map[string]*render.Image{
+			m := &WorldMode{mapScene: maps.System{Textures: map[string]*render.Image{
 				"__effectfile_effect/alpabet.bmp|blackkey=true": render.NewImage(256, 256),
-			}}
+			}}}
 			entry := network.SkillUnitEntry{ID: 900, Visible: true, HasMessage: true, Message: "Hello"}
 			m.applySkillUnitEntry(ctx, entry)
 			m.drawGraffiti(render.NewFrame(800, 600), ctx, testutil.Projection(800, 600, 0, 0, 0))

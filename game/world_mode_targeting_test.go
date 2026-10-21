@@ -270,7 +270,7 @@ func TestAttackApproachCellUsesRangedAttackRange(t *testing.T) {
 
 func TestNormalAttackApproachCellAvoidsRejectedRangedCorner(t *testing.T) {
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(200, 100)
+	world.GAT = testutil.FlatWalkableGAT(200, 100)
 	ctx := client.Context{World: world}
 
 	x, y, ok := normalAttackApproachCellFromTarget(ctx, 123, 71, 129, 75, 5)
@@ -290,7 +290,7 @@ func TestNormalAttackApproachCellAvoidsRejectedRangedCorner(t *testing.T) {
 
 func TestRangedAttackApproachCellRequiresReachablePath(t *testing.T) {
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(12, 5)
+	world.GAT = testutil.FlatWalkableGAT(12, 5)
 	for y := 0; y < world.GAT.Height; y++ {
 		world.GAT.SetCellRawType(4, y, 1)
 	}
@@ -303,7 +303,7 @@ func TestRangedAttackApproachCellRequiresReachablePath(t *testing.T) {
 
 func TestSquareRangeApproachChoosesNearestCellInEveryDirection(t *testing.T) {
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	ctx := client.Context{World: world}
 	const sourceX, sourceY, skillRange = 20, 20, 9
 	for _, dx := range []int{-11, -2, 0, 2, 11} {
@@ -327,7 +327,7 @@ func TestSquareRangeApproachChoosesNearestCellInEveryDirection(t *testing.T) {
 
 func TestRangedAttackApproachCellSkipsUnreachablePreferredCell(t *testing.T) {
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(12, 5)
+	world.GAT = testutil.FlatWalkableGAT(12, 5)
 	for _, cell := range [][2]int{
 		{4, 1}, {4, 2}, {4, 3},
 		{5, 1}, {5, 3},
@@ -461,7 +461,7 @@ func TestUpdatePendingAttackDoesNotKeepDelayingScheduledAction(t *testing.T) {
 func TestGroundClickCancelsPendingAttackChase(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.UpsertActor(worldstate.Actor{
 		ID:            300,
 		X:             30,
@@ -518,7 +518,7 @@ func TestNPCClickIgnoresWalkCooldown(t *testing.T) {
 
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	npc := worldstate.Actor{
 		ID:            300,
 		X:             11,
@@ -555,7 +555,7 @@ func TestNPCClickAfterKeyboardFocusLoss(t *testing.T) {
 	networkClient, serverConn := newBotTestConnection(t, 20080910)
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	npc := worldstate.Actor{
 		ID: 300, X: 11, Y: 20,
 		ObjectType: scene.ActorObjectTypeNPC, HasObjectType: true,
@@ -596,7 +596,7 @@ func TestNPCClickAfterKeyboardFocusLoss(t *testing.T) {
 func TestGroundClickRespectsWalkCooldown(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 
 	inputState := input.NewState()
 	networkClient := network.NewClient(20080910, false)

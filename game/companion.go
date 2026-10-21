@@ -7,6 +7,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -81,7 +82,7 @@ func (m *WorldMode) handleCompanionAICommandClick(ctx client.Context, now time.T
 		glog.Debugf("%s AI command attack companion=%d target=%d", kind, id, actor.ID)
 		return true
 	}
-	if x, y, ok := clickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); ok {
+	if x, y, ok := maps.ClickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); ok {
 		m.companions().SetMessage(id, fmt.Sprintf("1,%d,%d", x, y))
 		glog.Debugf("%s AI command move companion=%d target=%d,%d", kind, id, x, y)
 		return true

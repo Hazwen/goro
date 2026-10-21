@@ -223,7 +223,7 @@ func actorStateTint(actor worldstate.Actor) color.RGBA {
 	g *= vg
 	b *= vb
 	a *= va
-	return color.RGBA{R: byte(clampUnit(r) * 255), G: byte(clampUnit(g) * 255), B: byte(clampUnit(b) * 255), A: byte(clampUnit(a) * 255)}
+	return color.RGBA{R: byte(scene.ClampUnit(r) * 255), G: byte(scene.ClampUnit(g) * 255), B: byte(scene.ClampUnit(b) * 255), A: byte(scene.ClampUnit(a) * 255)}
 }
 
 func actorOpt3StateTint(opt3State uint32) (float64, float64, float64, float64) {

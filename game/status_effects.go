@@ -103,14 +103,13 @@ func (m *WorldMode) applyTaekwonNightStatus(ctx client.Context, change network.S
 	if id == 0 {
 		id = scene.LocalSkillTarget(ctx)
 	}
-	if id == 0 || !scene.IsLocalActor(ctx, id) || m.taekwonNight == change.Active {
+	if id == 0 || !scene.IsLocalActor(ctx, id) || m.mapScene.Night == change.Active {
 		return
 	}
-	m.taekwonNight = change.Active
+	m.mapScene.Night = change.Active
 	// Ground and static-model colors include scene lighting, so rebuild their
 	// retained vertices when Soul Link or Eske changes the local night mode.
-	m.gndMeshCache = nil
-	m.rsmMeshCache = make(map[int][]retainedWorldMesh)
+	m.mapScene.InvalidateLighting()
 }
 
 func (m *WorldMode) applyTaekwonStatus(ctx client.Context, change network.StatusEffectChange) {

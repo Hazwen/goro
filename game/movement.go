@@ -6,6 +6,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -81,7 +82,7 @@ func (m *WorldMode) updateHeldWalk(ctx client.Context, pointerBlocked bool, now 
 
 	screenW, screenH := ctx.ScreenSize()
 	projection := m.sceneProjection(ctx, screenW, screenH, now)
-	targetX, targetY, ok := clickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY)
+	targetX, targetY, ok := maps.ClickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY)
 	if !ok || playerAtWalkTarget(ctx.World.Player, targetX, targetY, now) {
 		return false
 	}
@@ -118,15 +119,15 @@ func warpWalkTarget(ctx client.Context, actor worldstate.Actor, now time.Time) (
 			if !ctx.World.GAT.InBounds(x, y) || !ctx.World.GAT.Walkable(x, y) {
 				continue
 			}
-			path, ok := findWalkPath(ctx.World.GAT, playerX, playerY, x, y)
+			path, ok := maps.FindWalkPath(ctx.World.GAT, playerX, playerY, x, y)
 			if !ok {
 				continue
 			}
 			cost := 0
 			for i := 1; i < len(path); i++ {
-				cost += pathStepCost(
-					pathPoint{x: path[i-1].X, y: path[i-1].Y},
-					pathPoint{x: path[i].X, y: path[i].Y},
+				cost += maps.PathStepCost(
+					maps.PathPoint{X: path[i-1].X, Y: path[i-1].Y},
+					maps.PathPoint{X: path[i].X, Y: path[i].Y},
 				)
 			}
 			if cost < bestCost {
@@ -332,7 +333,7 @@ func setPlayerMovementAt(ctx client.Context, fromX, fromY, toX, toY, dir int, no
 	if ctx.World == nil {
 		return
 	}
-	path := walkPath(ctx.World.GAT, fromX, fromY, toX, toY)
+	path := maps.WalkPath(ctx.World.GAT, fromX, fromY, toX, toY)
 	setPlayerMovementPathAt(ctx, path, fromX, fromY, toX, toY, dir, now, fastForward)
 }
 
@@ -398,7 +399,7 @@ func upsertActorAt(ctx client.Context, actor worldstate.Actor, now time.Time) {
 			actor.Speed = existing.Speed
 		}
 		if len(actor.MovePath) == 0 {
-			actor.MovePath = walkPath(ctx.World.GAT, actor.FromX, actor.FromY, actor.ToX, actor.ToY)
+			actor.MovePath = maps.WalkPath(ctx.World.GAT, actor.FromX, actor.FromY, actor.ToX, actor.ToY)
 			if len(actor.MovePath) == 0 {
 				actor.MovePath = directMovementPath(actor.FromX, actor.FromY, actor.ToX, actor.ToY)
 			}
@@ -841,14 +842,6 @@ func directionFromDelta(fromX, fromY, toX, toY int, fallback int) int {
 	return scene.DirectionFromFloatDelta(float64(fromX), float64(fromY), float64(toX), float64(toY), scene.NormalizeDirectionIndex(fallback))
 }
 
-func clickedWalkTarget(ctx client.Context, projection scene.Projection, mouseX, mouseY int) (int, int, bool) {
-	return rayWalkCell(ctx, projection, mouseX, mouseY)
-}
-
-func hoveredWalkCell(ctx client.Context, projection scene.Projection, mouseX, mouseY int) (int, int, bool) {
-	return rayWalkCell(ctx, projection, mouseX, mouseY)
-}
-
 func (m *WorldMode) hoveredWalkCell(ctx client.Context, projection scene.Projection, mouseX, mouseY int) (int, int, bool) {
 	if ctx.World == nil || ctx.World.GAT == nil {
 		m.hoveredWalk.valid = false
@@ -871,7 +864,7 @@ func (m *WorldMode) hoveredWalkCell(ctx client.Context, projection scene.Project
 	if m.hoveredWalk.valid && m.hoveredWalk.key == key {
 		return m.hoveredWalk.x, m.hoveredWalk.y, m.hoveredWalk.ok
 	}
-	x, y, ok := hoveredWalkCell(ctx, projection, mouseX, mouseY)
+	x, y, ok := maps.HoveredWalkCell(ctx, projection, mouseX, mouseY)
 	m.hoveredWalk = hoveredWalkCellCache{
 		valid: true,
 		key:   key,
@@ -880,43 +873,4 @@ func (m *WorldMode) hoveredWalkCell(ctx client.Context, projection scene.Project
 		ok:    ok,
 	}
 	return x, y, ok
-}
-
-const (
-	walkRayStep        = 0.5
-	walkRayMaxDistance = 300.0
-	walkRayHitEpsilon  = 0.5
-)
-
-func rayWalkCell(ctx client.Context, projection scene.Projection, mouseX, mouseY int) (int, int, bool) {
-	if ctx.World == nil || ctx.World.GAT == nil {
-		return 0, 0, false
-	}
-	eye, dir, ok := projection.ScreenRay(mouseX, mouseY)
-	if !ok || dir.Y >= 0 {
-		return 0, 0, false
-	}
-	previousDelta := math.Inf(1)
-	for distance := 1.0; distance <= walkRayMaxDistance; distance += walkRayStep {
-		point := scene.Add3(eye, scene.Mul3(dir, distance))
-		x, y := rayPointGATCell(point)
-		if !ctx.World.GAT.InBounds(x, y) {
-			previousDelta = math.Inf(1)
-			continue
-		}
-		height := scene.TerrainHeightAtRenderPoint(ctx.World, point.X, point.Z)
-		delta := point.Y - height
-		if math.Abs(delta) <= walkRayHitEpsilon || (previousDelta > 0 && delta < 0) {
-			if ctx.World.GAT.Walkable(x, y) {
-				return x, y, true
-			}
-			return 0, 0, false
-		}
-		previousDelta = delta
-	}
-	return 0, 0, false
-}
-
-func rayPointGATCell(point scene.Point3) (int, int) {
-	return int(math.Floor(point.X)), int(math.Floor(point.Z))
 }

@@ -1,4 +1,4 @@
-package game
+package maps
 
 import (
 	"testing"
@@ -17,21 +17,21 @@ func TestMapTexturePreparationRealData(t *testing.T) {
 			start := time.Now()
 			w := worldstate.New()
 			var err error
-			w.GND, _, err = loadGND(resources, name)
+			w.GND, _, err = LoadGND(resources, name)
 			if err != nil {
 				t.Skipf("map unavailable: %v", err)
 			}
-			w.RSW, _, err = loadRSW(resources, name)
+			w.RSW, _, err = LoadRSW(resources, name)
 			if err != nil {
 				t.Fatal(err)
 			}
-			w.RSM, w.RSMFail = loadRSMModels(resources, w.RSW)
-			m := &WorldMode{textures: make(map[string]*render.Image), textureMiss: make(map[string]struct{})}
-			m.preloadMapTextures(client.Context{Resources: resources, World: w})
+			w.RSM, w.RSMFail = LoadRSMModels(resources, w.RSW)
+			m := &System{Textures: make(map[string]*render.Image), TextureMiss: make(map[string]struct{})}
+			m.PreloadTextures(client.Context{Resources: resources, World: w})
 			checkTexture := func(name string) {
 				t.Helper()
-				_, missing := m.textureMiss[name]
-				if name != "" && m.textures[name] == nil && !missing {
+				_, missing := m.TextureMiss[name]
+				if name != "" && m.Textures[name] == nil && !missing {
 					t.Fatalf("texture %q would load during gameplay", name)
 				}
 			}
@@ -50,12 +50,12 @@ func TestMapTexturePreparationRealData(t *testing.T) {
 				}
 			}
 			bytes := 0
-			images := append([]*render.Image(nil), m.mapTextureUploads...)
+			images := append([]*render.Image(nil), m.Images.Uploads...)
 			for _, img := range images {
 				bytes += len(img.RGBA().Pix)
 			}
-			t.Logf("models=%d failed_models=%d textures=%d missing=%d pixels=%.2f MiB prepare=%s", len(w.RSM), w.RSMFail, len(images), len(m.textureMiss), float64(bytes)/(1<<20), time.Since(start))
-			m.Leave()
+			t.Logf("models=%d failed_models=%d textures=%d missing=%d pixels=%.2f MiB prepare=%s", len(w.RSM), w.RSMFail, len(images), len(m.TextureMiss), float64(bytes)/(1<<20), time.Since(start))
+			m.Images.Release()
 			for _, img := range images {
 				if img.RGBA() != nil {
 					t.Fatal("map left CPU pixels allocated")

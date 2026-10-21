@@ -251,7 +251,7 @@ func (m *WorldMode) siegeGuildEmblemAnchor(ctx client.Context, projection scene.
 		Z: float64(view.geometry.Center[2] + view.geometry.Size[2]/2),
 	}
 	matrix := gr2ActorModelMatrix(entry.WorldX, entry.WorldY, entry.WorldZ, entry.Actor.Dir, scale)
-	worldTop := mat4TransformPoint(matrix, top)
+	worldTop := scene.Mat4TransformPoint(matrix, top)
 	projected := projection.Project(worldTop.X, worldTop.Z, worldTop.Y)
 	if !scene.IsFinite(float64(projected.X)) || !scene.IsFinite(float64(projected.Y)) {
 		return centerX, topY

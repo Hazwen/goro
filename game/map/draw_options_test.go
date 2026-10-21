@@ -1,4 +1,4 @@
-package game
+package maps
 
 import (
 	"math"

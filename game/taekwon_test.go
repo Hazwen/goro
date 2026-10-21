@@ -5,13 +5,17 @@ import (
 	"context"
 	"io"
 	"net"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/network"
+	"github.com/kivutar/goro/render"
+	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -49,28 +53,65 @@ func TestStarWarmAndSoulLinkStatusTints(t *testing.T) {
 func TestSoulLinkAndEskeToggleLocalNightLighting(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 150000, Job: db.JobLinker}
+	world.GND = testutil.GNDWithTopHeights(1, 1, func(int, int) [4]float32 { return [4]float32{} })
+	world.RSW = &res.RSW{Models: []res.RSWModel{{Filename: "test.rsm", Scale: res.RSWVector3{X: 1, Y: 1, Z: 1}}}}
+	world.RSW.Light.Diffuse = [3]float32{1, 1, 1}
+	world.RSM = map[string]*res.RSM{"test.rsm": {MainNodeName: "root", Nodes: []res.RSMNode{{
+		Name:     "root",
+		Matrix:   [9]float32{1, 0, 0, 0, 1, 0, 0, 0, 1},
+		Scale:    res.RSMVector3{X: 1, Y: 1, Z: 1},
+		Vertices: []res.RSMVector3{{}, {X: 1}, {Z: 1}},
+		Faces:    []res.RSMFace{{VertexIndices: [3]uint16{0, 1, 2}}},
+	}}}}
 	ctx := client.Context{Session: &session.Session{AccountID: 2000000, CharID: 150000}, World: world}
-	mode := &WorldMode{
-		gndMeshCache: &gndRetainedMeshCache{},
-		rsmMeshCache: map[int][]retainedWorldMesh{1: nil},
+	mode := &WorldMode{}
+	defer mode.Leave()
+	drawColors := func() [2][3]float64 {
+		t.Helper()
+		frame := render.NewFrame(800, 600)
+		projection := testutil.Projection(800, 600, 1, 1, 0)
+		mode.mapScene.DrawGNDMeshes(frame, nil, world.GND, world.RSW, projection)
+		mode.mapScene.DrawRSMModels(frame, nil, world.RSW, world.RSM, world.GND, projection, time.Unix(100, 0))
+		meshes := reflect.ValueOf(frame).Elem().FieldByName("worldMeshes")
+		if meshes.Len() != 2 {
+			t.Fatalf("drawn meshes = %d, want ground and model", meshes.Len())
+		}
+		var colors [2][3]float64
+		for i := range colors {
+			vertex := meshes.Index(i).FieldByName("Mesh").Elem().FieldByName("vertices").Index(0)
+			for c, name := range []string{"ColorR", "ColorG", "ColorB"} {
+				colors[i][c] = vertex.FieldByName(name).Float()
+			}
+		}
+		return colors
 	}
+	day := drawColors()
 
 	mode.applyStatusEffectChange(ctx, network.StatusEffectChange{StatusID: db.StatusSoullink, ActorID: 2000000, Active: true})
-	if !mode.taekwonNight || mode.gndMeshCache != nil || len(mode.rsmMeshCache) != 0 {
-		t.Fatalf("night state=%t gnd=%p rsm=%v", mode.taekwonNight, mode.gndMeshCache, mode.rsmMeshCache)
+	if !mode.mapScene.Night {
+		t.Fatalf("night state=%t", mode.mapScene.Night)
 	}
-	lighting := mode.sceneLighting(nil)
-	if lighting.diffuse.X != 0.5 || lighting.diffuse.Y != 0.5 || lighting.diffuse.Z != 1 || lighting.env.X != 0.5 || lighting.env.Y != 0.5 || lighting.env.Z != 1 {
+	lighting := mode.mapScene.Lighting(nil)
+	if lighting.Diffuse.X != 0.5 || lighting.Diffuse.Y != 0.5 || lighting.Diffuse.Z != 1 || lighting.Env.X != 0.5 || lighting.Env.Y != 0.5 || lighting.Env.Z != 1 {
 		t.Fatalf("night lighting = %+v", lighting)
+	}
+	night := drawColors()
+	for i, name := range []string{"ground", "model"} {
+		if night[i][0] >= day[i][0] || night[i][1] >= day[i][1] || night[i][2] != day[i][2] {
+			t.Errorf("%s mesh did not acquire night lighting: day=%v night=%v", name, day[i], night[i])
+		}
 	}
 
 	mode.applyStatusEffectChange(ctx, network.StatusEffectChange{StatusID: db.StatusSke, ActorID: 2000000, Active: false})
-	if mode.taekwonNight {
+	if mode.mapScene.Night {
 		t.Fatal("inactive Eske did not restore day lighting")
 	}
-	lighting = mode.sceneLighting(nil)
-	if lighting.diffuse.X != 1 || lighting.diffuse.Y != 1 || lighting.diffuse.Z != 1 {
+	lighting = mode.mapScene.Lighting(nil)
+	if lighting.Diffuse.X != 1 || lighting.Diffuse.Y != 1 || lighting.Diffuse.Z != 1 {
 		t.Fatalf("restored lighting = %+v", lighting)
+	}
+	if restored := drawColors(); restored != day {
+		t.Fatalf("meshes did not regain day lighting: got=%v want=%v", restored, day)
 	}
 }
 

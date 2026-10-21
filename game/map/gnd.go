@@ -1,4 +1,4 @@
-package game
+package maps
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	worldstate "github.com/kivutar/goro/world"
 )
 
-func loadGND(manager *res.Manager, mapName string) (*res.GND, string, error) {
+func LoadGND(manager *res.Manager, mapName string) (*res.GND, string, error) {
 	base := strings.TrimSuffix(strings.TrimSuffix(mapName, ".gat"), ".rsw")
 	candidates := []string{
 		"data\\" + base + ".gnd",
@@ -28,7 +28,7 @@ func loadGND(manager *res.Manager, mapName string) (*res.GND, string, error) {
 	return gnd, source, err
 }
 
-func (m *WorldMode) drawGNDWater(screen *render.Frame, manager *res.Manager, gnd *res.GND, rsw *res.RSW, projection scene.Projection, now time.Time, fog scene.SceneFog) {
+func (m *System) DrawGNDWater(screen *render.Frame, manager *res.Manager, gnd *res.GND, rsw *res.RSW, projection scene.Projection, now time.Time, fog scene.SceneFog) {
 	water, ok := mapWater(gnd, rsw)
 	if !ok {
 		return
@@ -98,7 +98,7 @@ func clampGNDRange(gnd *res.GND, startX, endX, startY, endY int) (int, int, int,
 	return startX, endX, startY, endY, startX <= endX && startY <= endY
 }
 
-func worldGNDHeightAt(world *worldstate.World, x, y float64) (float64, bool) {
+func WorldGNDHeightAt(world *worldstate.World, x, y float64) (float64, bool) {
 	if world == nil || world.GND == nil {
 		return 0, false
 	}
@@ -113,7 +113,7 @@ func worldGNDHeightAt(world *worldstate.World, x, y float64) (float64, bool) {
 	return scene.BilinearHeight(cell.Heights, gridX-float64(cellX), gridY-float64(cellY)), true
 }
 
-func gndShadowMapPoint(x, y float64) (int, int) {
+func GNDShadowMapPoint(x, y float64) (int, int) {
 	x += 0.5
 	y += 0.5
 	shadowX := int(math.Floor(x/2)) * 8
@@ -133,7 +133,7 @@ func gndShadowMapPoint(x, y float64) (int, int) {
 	return shadowX, shadowY
 }
 
-func gndShadowMapAlpha(gnd *res.GND, shadowX, shadowY int) uint8 {
+func GNDShadowMapAlpha(gnd *res.GND, shadowX, shadowY int) uint8 {
 	if gnd == nil || shadowX < 0 || shadowY < 0 || shadowX >= gnd.Width*8 || shadowY >= gnd.Height*8 {
 		return 255
 	}
@@ -206,7 +206,7 @@ type gndSurfaceDraw struct {
 	tint    color.RGBA
 }
 
-func (m *WorldMode) smoothGNDTopNormals(gnd *res.GND) [][4]scene.Point3 {
+func (m *System) smoothGNDTopNormals(gnd *res.GND) [][4]scene.Point3 {
 	if gnd == nil {
 		return nil
 	}
@@ -364,55 +364,55 @@ func mapWater(gnd *res.GND, rsw *res.RSW) (res.RSWWater, bool) {
 	return res.RSWWater{}, false
 }
 
-func (m *WorldMode) drawWaterSurface(screen *render.Frame, texture *render.Image, draw gndSurfaceDraw, projection scene.Projection, fog scene.SceneFog) {
+func (m *System) drawWaterSurface(screen *render.Frame, texture *render.Image, draw gndSurfaceDraw, projection scene.Projection, fog scene.SceneFog) {
 	tints := fog.MixVertexTints(projection, draw.verts, [4]color.RGBA{draw.tint, draw.tint, draw.tint, draw.tint})
 	if texture == nil {
-		drawColoredSurfaceTints3DAlpha(screen, m.whitePixel, draw.verts, draw.indices, tints)
+		scene.DrawColoredSurfaceTints3DAlpha(screen, m.WhitePixel, draw.verts, draw.indices, tints)
 		return
 	}
-	drawTexturedSurface3DAlpha(screen, texture, draw.verts, draw.uvs, draw.indices, tints)
+	scene.DrawTexturedSurface3DAlpha(screen, texture, draw.verts, draw.uvs, draw.indices, tints)
 }
 
-func (m *WorldMode) waterTexture(manager *res.Manager, waterType, frame int) *render.Image {
+func (m *System) waterTexture(manager *res.Manager, waterType, frame int) *render.Image {
 	frame = ((frame % 32) + 32) % 32
 	key := fmt.Sprintf("__water_%d_%02d", waterType, frame)
-	if texture, ok := m.textures[key]; ok {
+	if texture, ok := m.Textures[key]; ok {
 		return texture
 	}
-	if _, ok := m.textureMiss[key]; ok {
+	if _, ok := m.TextureMiss[key]; ok {
 		return nil
 	}
 	img, _, err := res.LoadImage(manager, res.WaterTextureCandidates(waterType, frame))
 	if err != nil {
-		m.textureMiss[key] = struct{}{}
+		m.TextureMiss[key] = struct{}{}
 		return nil
 	}
-	texture := m.ownMapImage(render.NewImageFromImage(img))
-	m.textures[key] = texture
+	texture := m.Images.Own(render.NewImageFromImage(img))
+	m.Textures[key] = texture
 	return texture
 }
 
-func (m *WorldMode) groundTexture(manager *res.Manager, name string) *render.Image {
+func (m *System) groundTexture(manager *res.Manager, name string) *render.Image {
 	if name == "" {
 		return nil
 	}
-	if texture, ok := m.textures[name]; ok {
+	if texture, ok := m.Textures[name]; ok {
 		return texture
 	}
-	if _, ok := m.textureMiss[name]; ok {
+	if _, ok := m.TextureMiss[name]; ok {
 		return nil
 	}
 
 	img, _, err := res.LoadImage(manager, res.GroundTextureCandidates(name))
 	if err != nil {
-		m.textureMiss[name] = struct{}{}
+		m.TextureMiss[name] = struct{}{}
 		return nil
 	}
-	if m.textureUpscaling {
+	if m.UpscaleTextures {
 		img = render.UpscaleTexture2x(img)
 	}
-	texture := m.ownMapImage(render.NewImageWithMipmaps(img))
-	m.textures[name] = texture
+	texture := m.Images.Own(render.NewImageWithMipmaps(img))
+	m.Textures[name] = texture
 	return texture
 }
 
@@ -502,7 +502,7 @@ func waterTint(water res.RSWWater, rsw *res.RSW) color.RGBA {
 	return color.RGBA{R: 255, G: 255, B: 255, A: alpha}
 }
 
-func surfaceTint(base color.RGBA, height float32, normal scene.Point3, lighting sceneLighting) color.RGBA {
+func surfaceTint(base color.RGBA, height float32, normal scene.Point3, lighting Lighting) color.RGBA {
 	scale := lighting.groundScale(normal)
 	heightShade := groundHeightShadeAt(height)
 	return color.RGBA{
@@ -513,7 +513,7 @@ func surfaceTint(base color.RGBA, height float32, normal scene.Point3, lighting 
 	}
 }
 
-func surfaceVertexTints(baseTints [4]color.RGBA, heights [4]float32, normals [4]scene.Point3, lighting sceneLighting) [4]color.RGBA {
+func surfaceVertexTints(baseTints [4]color.RGBA, heights [4]float32, normals [4]scene.Point3, lighting Lighting) [4]color.RGBA {
 	return [4]color.RGBA{
 		surfaceTint(baseTints[0], heights[0], normals[0], lighting),
 		surfaceTint(baseTints[1], heights[1], normals[1], lighting),
@@ -537,7 +537,7 @@ func scaleSurfaceVertexTints(baseTints [4]color.RGBA, lightScales [4]scene.Point
 	return tints
 }
 
-func vertexLightScales(lighting sceneLighting, normals [4]scene.Point3) [4]scene.Point3 {
+func vertexLightScales(lighting Lighting, normals [4]scene.Point3) [4]scene.Point3 {
 	return [4]scene.Point3{
 		lighting.groundScale(normals[0]),
 		lighting.groundScale(normals[1]),
@@ -546,7 +546,7 @@ func vertexLightScales(lighting sceneLighting, normals [4]scene.Point3) [4]scene
 	}
 }
 
-func groundSurfaceVertexColors(textureName string, surfaceColor color.RGBA, heights [4]float32, normals [4]scene.Point3, lighting sceneLighting) [4]color.RGBA {
+func groundSurfaceVertexColors(textureName string, surfaceColor color.RGBA, heights [4]float32, normals [4]scene.Point3, lighting Lighting) [4]color.RGBA {
 	base := textureColor(textureName)
 	if surfaceColor.A != 0 && !(surfaceColor.R == 255 && surfaceColor.G == 255 && surfaceColor.B == 255) {
 		base.R = uint8((uint16(base.R)*2 + uint16(surfaceColor.R)) / 3)

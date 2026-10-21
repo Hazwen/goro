@@ -272,7 +272,7 @@ func gr2SkinnedPoint(vertex res.GR2ModelVertex, palette []scene.Mat4) scene.Poin
 			continue
 		}
 		weight := float64(rawWeight) / 255
-		point := mat4TransformPoint(palette[boneIndex], base)
+		point := scene.Mat4TransformPoint(palette[boneIndex], base)
 		out = scene.Add3(out, scene.Mul3(point, weight))
 		applied = true
 	}
@@ -302,7 +302,7 @@ func gr2SkinnedNormal(vertex res.GR2ModelVertex, palette []scene.Mat4) scene.Poi
 			continue
 		}
 		weight := float64(rawWeight) / 255
-		normal := mat4TransformVector(palette[boneIndex], base)
+		normal := scene.Mat4TransformVector(palette[boneIndex], base)
 		out = scene.Add3(out, scene.Mul3(normal, weight))
 		applied = true
 	}
@@ -314,8 +314,8 @@ func gr2SkinnedNormal(vertex res.GR2ModelVertex, palette []scene.Mat4) scene.Poi
 
 func gr2LocalMatrix(position scene.Point3, rotation [4]float32, scaleShear scene.Mat4) scene.Mat4 {
 	matrix := scene.Mat4Identity()
-	matrix = mat4Translate(matrix, position)
-	matrix = mat4RotateQuat(matrix, rotation)
+	matrix = scene.Mat4Translate(matrix, position)
+	matrix = scene.Mat4RotateQuat(matrix, rotation)
 	matrix = scene.Mat4Multiply(matrix, scaleShear)
 	return matrix
 }

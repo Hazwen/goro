@@ -18,6 +18,7 @@ import (
 	"github.com/kivutar/goro/game/bot"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/login"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -84,7 +85,7 @@ func wasdControlsTestContext(t *testing.T) client.Context {
 	ctx.Config.Script.Path = "builtin:wasd"
 	ctx.Session.AccountID = 100
 	ctx.World = worldstate.New()
-	ctx.World.GAT = flatWalkableGAT(64, 64)
+	ctx.World.GAT = testutil.FlatWalkableGAT(64, 64)
 	ctx.World.Player = worldstate.Actor{ID: 100, X: 10, Y: 20}
 	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 	ctx.World.Actors[301] = worldstate.Actor{ID: 301, X: 11, Y: 21, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
@@ -511,7 +512,7 @@ func TestWASDGamepadMovementAttackAndLoot(t *testing.T) {
 			ctx.Network = conn
 			ctx.Config.Script.Path = "builtin:wasd"
 			ctx.World = worldstate.New()
-			ctx.World.GAT = flatWalkableGAT(64, 64)
+			ctx.World.GAT = testutil.FlatWalkableGAT(64, 64)
 			ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 			ctx.World.Items[400] = worldstate.FloorItem{ID: 400, ItemID: 501, X: 11, Y: 20}
 			ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
@@ -1040,7 +1041,7 @@ func TestWASDGamepadMovementFollowsRotatedCamera(t *testing.T) {
 	ctx.Network = conn
 	ctx.Config.Script.Path = "builtin:wasd"
 	ctx.World = worldstate.New()
-	ctx.World.GAT = flatWalkableGAT(64, 64)
+	ctx.World.GAT = testutil.FlatWalkableGAT(64, 64)
 	ctx.World.Player = worldstate.Actor{ID: 2000000, X: 20, Y: 20}
 	mode := NewWorldMode()
 	mode.camera.Rotate(90)
@@ -1059,7 +1060,7 @@ func TestWASDGamepadDeadzoneAndFocusedChat(t *testing.T) {
 	ctx.Network = conn
 	ctx.Config.Script.Path = "builtin:wasd"
 	ctx.World = worldstate.New()
-	ctx.World.GAT = flatWalkableGAT(64, 64)
+	ctx.World.GAT = testutil.FlatWalkableGAT(64, 64)
 	ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	mode := NewWorldMode()
@@ -1086,7 +1087,7 @@ func TestWASDGamepadDisconnectStopsWalking(t *testing.T) {
 	conn, server := newBotTestConnection(t, 20080910)
 	state := input.NewState()
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	mode := &WorldMode{}
 	bot, err := newLuaScript(client.Context{Input: state, Network: conn, World: world}, mode, "builtin:wasd")
@@ -1166,7 +1167,7 @@ func TestWASDControlsBeforeChatPreparation(t *testing.T) {
 				ctx.Session.BattleMode = battle
 				ctx.Config.Script.Path = filepath.Join("..", "scripts", "wasd.lua")
 				ctx.World = worldstate.New()
-				ctx.World.GAT = flatWalkableGAT(64, 64)
+				ctx.World.GAT = testutil.FlatWalkableGAT(64, 64)
 				ctx.World.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 				ctx.World.Items[400] = worldstate.FloorItem{ID: 400, ItemID: 501, X: 11, Y: 20}
 				ctx.World.Actors[300] = worldstate.Actor{ID: 300, X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
@@ -1705,7 +1706,7 @@ func TestLuaBotCanStartLongWalkFromPhysicalKey(t *testing.T) {
 	inputState.SetKeyCode(keyW, true)
 
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	mode := &WorldMode{}
 	bot, err := newLuaScript(
@@ -1807,7 +1808,7 @@ func TestLuaBotCanWalkDiagonally(t *testing.T) {
 	}
 
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	bot, err := newLuaScript(
 		client.Context{Input: inputState, Network: networkClient, World: world},
@@ -1839,7 +1840,7 @@ func TestLuaBotHeldSpaceLootsNearbyItemsInDistanceOrder(t *testing.T) {
 	inputState.SetKeyCode(space, true)
 
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	world.Items[400] = worldstate.FloorItem{ID: 400, ItemID: 501, X: 12, Y: 20}
 	world.Items[401] = worldstate.FloorItem{ID: 401, ItemID: 501, X: 11, Y: 20}
@@ -1896,7 +1897,7 @@ func TestLuaBotHeldFightsNearbyEnemiesInDistanceOrder(t *testing.T) {
 	inputState.SetKeyCode(keyF, true)
 
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
 	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 12, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 	world.Actors[301] = worldstate.Actor{ID: 301, Name: "Drops", X: 11, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
@@ -2333,7 +2334,7 @@ end
 		Name:  "Double Strafe",
 	}}
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: sess.CharID, X: 10, Y: 20}
 	world.Actors[300] = worldstate.Actor{ID: 300, Name: "Poring", X: 30, Y: 20, ObjectType: scene.ActorObjectTypeMob, HasObjectType: true}
 
@@ -2688,7 +2689,7 @@ end
 	assertScriptOutput(t, output, "1 0 true true")
 	world := NewWorldMode()
 	m.enter(world)
-	world.mapFade = mapFadeState{} // Finish map loading before exercising controls.
+	world.mapFade = maps.Fade{} // Finish map loading before exercising controls.
 	if loginScript.Active() {
 		t.Fatal("login Lua state survived transition")
 	}

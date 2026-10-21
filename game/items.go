@@ -582,25 +582,25 @@ func (m *WorldMode) itemIconTexture(manager *res.Manager, itemID uint16, identif
 		return nil
 	}
 	key := fmt.Sprintf("__item_icon_%t_%s", identified, resourceName)
-	if m.textures == nil {
-		m.textures = make(map[string]*render.Image)
+	if m.mapScene.Textures == nil {
+		m.mapScene.Textures = make(map[string]*render.Image)
 	}
-	if m.textureMiss == nil {
-		m.textureMiss = make(map[string]struct{})
+	if m.mapScene.TextureMiss == nil {
+		m.mapScene.TextureMiss = make(map[string]struct{})
 	}
-	if texture, ok := m.textures[key]; ok {
+	if texture, ok := m.mapScene.Textures[key]; ok {
 		return texture
 	}
-	if _, ok := m.textureMiss[key]; ok {
+	if _, ok := m.mapScene.TextureMiss[key]; ok {
 		return nil
 	}
 	img, _, err := res.LoadImage(manager, res.ItemIconTextureCandidates(resourceName))
 	if err != nil {
-		m.textureMiss[key] = struct{}{}
+		m.mapScene.TextureMiss[key] = struct{}{}
 		return nil
 	}
 	texture := render.NewImageFromImage(img)
-	m.textures[key] = texture
+	m.mapScene.Textures[key] = texture
 	return texture
 }
 
@@ -613,25 +613,25 @@ func (m *WorldMode) itemCollectionTexture(manager *res.Manager, itemID uint16, i
 		return nil
 	}
 	key := fmt.Sprintf("__item_collection_%t_%s", identified, resourceName)
-	if m.textures == nil {
-		m.textures = make(map[string]*render.Image)
+	if m.mapScene.Textures == nil {
+		m.mapScene.Textures = make(map[string]*render.Image)
 	}
-	if m.textureMiss == nil {
-		m.textureMiss = make(map[string]struct{})
+	if m.mapScene.TextureMiss == nil {
+		m.mapScene.TextureMiss = make(map[string]struct{})
 	}
-	if texture, ok := m.textures[key]; ok {
+	if texture, ok := m.mapScene.Textures[key]; ok {
 		return texture
 	}
-	if _, ok := m.textureMiss[key]; ok {
+	if _, ok := m.mapScene.TextureMiss[key]; ok {
 		return nil
 	}
 	img, _, err := res.LoadImage(manager, res.ItemCollectionTextureCandidates(resourceName))
 	if err != nil {
-		m.textureMiss[key] = struct{}{}
+		m.mapScene.TextureMiss[key] = struct{}{}
 		return nil
 	}
 	texture := render.NewImageFromImage(img)
-	m.textures[key] = texture
+	m.mapScene.Textures[key] = texture
 	return texture
 }
 
@@ -664,25 +664,25 @@ func (m *WorldMode) skillIconTexture(manager *res.Manager, skill session.Skill) 
 		resourceName = strings.ToUpper(strings.ReplaceAll(skillLabel(skill), " ", "_"))
 	}
 	key := fmt.Sprintf("__skill_icon_%d_%s", skill.ID, resourceName)
-	if m.textures == nil {
-		m.textures = make(map[string]*render.Image)
+	if m.mapScene.Textures == nil {
+		m.mapScene.Textures = make(map[string]*render.Image)
 	}
-	if m.textureMiss == nil {
-		m.textureMiss = make(map[string]struct{})
+	if m.mapScene.TextureMiss == nil {
+		m.mapScene.TextureMiss = make(map[string]struct{})
 	}
-	if texture, ok := m.textures[key]; ok {
+	if texture, ok := m.mapScene.Textures[key]; ok {
 		return texture
 	}
-	if _, ok := m.textureMiss[key]; ok {
+	if _, ok := m.mapScene.TextureMiss[key]; ok {
 		return nil
 	}
 	img, _, err := res.LoadImage(manager, res.SkillIconTextureCandidates(resourceName, int(skill.ID)))
 	if err != nil {
-		m.textureMiss[key] = struct{}{}
+		m.mapScene.TextureMiss[key] = struct{}{}
 		return nil
 	}
 	texture := render.NewImageFromImage(img)
-	m.textures[key] = texture
+	m.mapScene.Textures[key] = texture
 	return texture
 }
 

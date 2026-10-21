@@ -8,6 +8,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/effects"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
@@ -87,8 +88,8 @@ func graffitiTexture(atlas image.Image, message string) *render.Image {
 
 func (m *WorldMode) drawGraffiti(screen *render.Frame, ctx client.Context, projection scene.Projection) {
 	for _, writing := range m.graffiti {
-		if math.Abs(float64(writing.x)-projection.PlayerX) > rsmRenderRadius()*2 ||
-			math.Abs(float64(writing.y)-projection.PlayerY) > rsmRenderRadius()*2 {
+		if math.Abs(float64(writing.x)-projection.PlayerX) > maps.RSMRenderRadius()*2 ||
+			math.Abs(float64(writing.y)-projection.PlayerY) > maps.RSMRenderRadius()*2 {
 			continue
 		}
 		if writing.mesh == nil {
@@ -137,6 +138,6 @@ func graffitiMesh(ctx client.Context, writing *groundGraffiti, texture *render.I
 		}
 	}
 	options := scene.TriangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
-	options.DepthBias = tileCursorDepthBias
+	options.DepthBias = maps.TileCursorDepthBias
 	return render.NewWorldMeshWithLightmap(vertices, indices, texture, nil, options)
 }

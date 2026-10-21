@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/glog"
@@ -1016,17 +1017,17 @@ func actorShadowFactor(world *worldstate.World, x, y float64) float64 {
 	if world == nil || world.GND == nil {
 		return 1
 	}
-	if gndHeight, ok := worldGNDHeightAt(world, x, y); ok && scene.TerrainHeightAt(world, x, y)-gndHeight > 0.5 {
+	if gndHeight, ok := maps.WorldGNDHeightAt(world, x, y); ok && scene.TerrainHeightAt(world, x, y)-gndHeight > 0.5 {
 		return 1
 	}
-	shadowX, shadowY := gndShadowMapPoint(x, y)
+	shadowX, shadowY := maps.GNDShadowMapPoint(x, y)
 	total := 0
 	for dy := -3; dy < 3; dy++ {
 		for dx := -3; dx < 3; dx++ {
-			total += int(gndShadowMapAlpha(world.GND, shadowX+dx, shadowY+dy))
+			total += int(maps.GNDShadowMapAlpha(world.GND, shadowX+dx, shadowY+dy))
 		}
 	}
-	return clampUnit(float64(total) / (6 * 6 * 255))
+	return scene.ClampUnit(float64(total) / (6 * 6 * 255))
 }
 
 func actorBillboardSortDepth(projection scene.Projection, x, y, z float64) float64 {

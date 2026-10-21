@@ -328,24 +328,24 @@ func (m *WorldMode) roomBoardIcon(manager *res.Manager, key, resource string) *r
 	if manager == nil {
 		return nil
 	}
-	if m.textures == nil {
-		m.textures = make(map[string]*render.Image)
+	if m.mapScene.Textures == nil {
+		m.mapScene.Textures = make(map[string]*render.Image)
 	}
-	if m.textureMiss == nil {
-		m.textureMiss = make(map[string]struct{})
+	if m.mapScene.TextureMiss == nil {
+		m.mapScene.TextureMiss = make(map[string]struct{})
 	}
-	if texture, ok := m.textures[key]; ok {
+	if texture, ok := m.mapScene.Textures[key]; ok {
 		return texture
 	}
-	if _, ok := m.textureMiss[key]; ok {
+	if _, ok := m.mapScene.TextureMiss[key]; ok {
 		return nil
 	}
 	img, _, err := res.LoadImage(manager, res.InterfaceTextureCandidates(resource))
 	if err != nil {
-		m.textureMiss[key] = struct{}{}
+		m.mapScene.TextureMiss[key] = struct{}{}
 		return nil
 	}
 	texture := render.NewImageFromImage(img)
-	m.textures[key] = texture
+	m.mapScene.Textures[key] = texture
 	return texture
 }

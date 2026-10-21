@@ -532,3 +532,17 @@ func drawFallbackROCursor(screen *render.Frame, img *render.Image, mouseX, mouse
 	opts.Filter = scene.SpriteDrawFilter()
 	screen.DrawImage(img, &opts)
 }
+
+func (m *WorldMode) drawTileCursor(screen *render.Frame, ctx client.Context, projection scene.Projection) {
+	if ctx.Input == nil || ctx.World == nil || ctx.World.GAT == nil {
+		return
+	}
+	if m.mapPointerBlocked(ctx) {
+		return
+	}
+	x, y, ok := m.hoveredWalkCell(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY)
+	if !ok {
+		return
+	}
+	m.mapScene.DrawTileCursor(screen, ctx.Resources, ctx.World.GAT, projection, x, y)
+}

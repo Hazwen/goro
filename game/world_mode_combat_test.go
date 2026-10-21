@@ -4458,7 +4458,7 @@ func TestPendingSkillTargetCancelWithRightClick(t *testing.T) {
 func TestPendingSkillTargetClickIgnoresWalkCooldown(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	lunatic := worldstate.Actor{
 		ID:            300,
 		X:             30,
@@ -4582,7 +4582,7 @@ func TestPendingSkillWheelIgnoredWithoutPendingSkill(t *testing.T) {
 func TestPendingTargetSkillCancelsWhenClickingGround(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(32, 32)
+	world.GAT = testutil.FlatWalkableGAT(32, 32)
 	inputState := input.NewState()
 	projection := testutil.Projection(1280, 720, scene.CellCenter(10), scene.CellCenter(20), 0)
 	point := projection.Project(scene.CellCenter(12), scene.CellCenter(20), 0)
@@ -4607,7 +4607,7 @@ func TestPendingTargetSkillCancelsWhenClickingGround(t *testing.T) {
 func TestPendingGroundSkillDoesNotCancelWhenClickingGround(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(32, 32)
+	world.GAT = testutil.FlatWalkableGAT(32, 32)
 	inputState := input.NewState()
 	projection := testutil.Projection(1280, 720, scene.CellCenter(10), scene.CellCenter(20), 0)
 	point := projection.Project(scene.CellCenter(12), scene.CellCenter(20), 0)
@@ -4866,8 +4866,8 @@ func TestProcessMapSoundsSchedulesNearbyRSWSound(t *testing.T) {
 	mode := &WorldMode{}
 	ctx := client.Context{World: world}
 
-	mode.processMapSounds(ctx, now)
-	mode.processMapSounds(ctx, now.Add(time.Second))
+	mode.mapScene.ProcessMapSounds(ctx, now, mode.scheduleSoundVolumeAtPosition)
+	mode.mapScene.ProcessMapSounds(ctx, now.Add(time.Second), mode.scheduleSoundVolumeAtPosition)
 
 	if len(mode.scheduledSounds) != 1 {
 		t.Fatalf("scheduled sounds = %+v, want one nearby map sound", mode.scheduledSounds)
@@ -4879,11 +4879,11 @@ func TestProcessMapSoundsSchedulesNearbyRSWSound(t *testing.T) {
 	if !sound.positioned || sound.actorID != 0 || sound.x != 110 || sound.y != 220 {
 		t.Fatalf("scheduled map sound source = %+v, want fixed world position", sound)
 	}
-	if got := mode.mapSoundNext[0]; !got.Equal(now.Add(2 * time.Second)) {
+	if got := mode.mapScene.MapSoundNext[0]; !got.Equal(now.Add(2 * time.Second)) {
 		t.Fatalf("next map sound time = %s, want %s", got, now.Add(2*time.Second))
 	}
-	if _, ok := mode.mapSoundNext[1]; ok {
-		t.Fatalf("far sound should not have a timer: %+v", mode.mapSoundNext)
+	if _, ok := mode.mapScene.MapSoundNext[1]; ok {
+		t.Fatalf("far sound should not have a timer: %+v", mode.mapScene.MapSoundNext)
 	}
 }
 
@@ -4902,9 +4902,9 @@ func TestProcessMapSoundsUsesMinimumReplayDelayForZeroCycle(t *testing.T) {
 	mode := &WorldMode{}
 	ctx := client.Context{World: world}
 
-	mode.processMapSounds(ctx, now)
-	mode.processMapSounds(ctx, now.Add(50*time.Millisecond))
-	mode.processMapSounds(ctx, now.Add(100*time.Millisecond))
+	mode.mapScene.ProcessMapSounds(ctx, now, mode.scheduleSoundVolumeAtPosition)
+	mode.mapScene.ProcessMapSounds(ctx, now.Add(50*time.Millisecond), mode.scheduleSoundVolumeAtPosition)
+	mode.mapScene.ProcessMapSounds(ctx, now.Add(100*time.Millisecond), mode.scheduleSoundVolumeAtPosition)
 
 	if len(mode.scheduledSounds) != 2 {
 		t.Fatalf("scheduled sounds = %+v, want initial sound and replay after 100ms", mode.scheduledSounds)

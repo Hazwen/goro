@@ -14,6 +14,7 @@ import (
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
@@ -791,12 +792,12 @@ func TestSpiritEffectsSurviveLoginAndActorRefresh(t *testing.T) {
 func TestMonkStateEffectsDrawExactCountsAndKeepLooping(t *testing.T) {
 	ctx := testutil.MonkEffectContext()
 	ctx.Resources = &res.Manager{}
-	m := &WorldMode{textures: make(map[string]*render.Image)}
+	m := &WorldMode{mapScene: maps.System{Textures: make(map[string]*render.Image)}}
 	for _, id := range []int{effects.Chookgi, effects.Gumgang} {
 		spec, _ := effects.Lookup(id)
 		for _, component := range spec.Components {
 			for _, path := range append(component.TextureFiles, component.TextureFile) {
-				m.textures["__effectfile_"+path+"|blackkey=true"] = render.NewImage(8, 8)
+				m.mapScene.Textures["__effectfile_"+path+"|blackkey=true"] = render.NewImage(8, 8)
 			}
 		}
 	}
@@ -834,8 +835,8 @@ func TestMonkEffectsRenderWithOldROAssets(t *testing.T) {
 		frame := render.NewFrame(800, 600)
 		m.effects().Draw(frame, ctx, projection, m.effects().Active[0].Starts.Add(elapsed), false)
 		count := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards").Len()
-		if count < 9 || len(m.textureMiss) != 0 {
-			t.Fatalf("Monk effects at %s: %d billboards, missing=%v", elapsed, count, m.textureMiss)
+		if count < 9 || len(m.mapScene.TextureMiss) != 0 {
+			t.Fatalf("Monk effects at %s: %d billboards, missing=%v", elapsed, count, m.mapScene.TextureMiss)
 		}
 	}
 }

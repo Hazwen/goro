@@ -21,8 +21,8 @@ func TestGR2ModelFacingYawMatchesClassicRODirections(t *testing.T) {
 		{dir: 6, want: scene.Point3{X: 1}},
 	}
 	for _, tt := range tests {
-		matrix := mat4RotateY(scene.Mat4Identity(), gr2ModelFacingYaw(tt.dir))
-		front := mat4TransformVector(matrix, scene.Point3{Z: -1})
+		matrix := scene.Mat4RotateY(scene.Mat4Identity(), gr2ModelFacingYaw(tt.dir))
+		front := scene.Mat4TransformVector(matrix, scene.Point3{Z: -1})
 		if math.Abs(front.X-tt.want.X) > 1e-6 || math.Abs(front.Z-tt.want.Z) > 1e-6 {
 			t.Fatalf("dir %d front = %+v, want %+v", tt.dir, front, tt.want)
 		}
@@ -31,11 +31,11 @@ func TestGR2ModelFacingYawMatchesClassicRODirections(t *testing.T) {
 
 func TestGR2ActorModelMatrixUsesCellAnchorAndPositiveHeight(t *testing.T) {
 	matrix := gr2ActorModelMatrix(10.5, 20.5, 3, 0, 0.2)
-	base := mat4TransformPoint(matrix, scene.Point3{})
+	base := scene.Mat4TransformPoint(matrix, scene.Point3{})
 	if math.Abs(base.X-10.5) > 1e-6 || math.Abs(base.Y-3) > 1e-6 || math.Abs(base.Z-20.5) > 1e-6 {
 		t.Fatalf("base = %+v, want actor anchor 10.5, height 3, 20.5", base)
 	}
-	up := mat4TransformVector(matrix, scene.Point3{Z: 1})
+	up := scene.Mat4TransformVector(matrix, scene.Point3{Z: 1})
 	if up.Y <= 0 {
 		t.Fatalf("local GR2 +Z should point upward in Goro, got %+v", up)
 	}
@@ -53,7 +53,7 @@ func TestGR2ActorModelMatrixPreservesFacingWithPositiveHeight(t *testing.T) {
 	}
 	for _, tt := range tests {
 		matrix := gr2ActorModelMatrix(0, 0, 0, tt.dir, 1)
-		front := scene.Normalize3(mat4TransformVector(matrix, scene.Point3{Y: -1}))
+		front := scene.Normalize3(scene.Mat4TransformVector(matrix, scene.Point3{Y: -1}))
 		if math.Abs(front.X-tt.want.X) > 1e-6 || math.Abs(front.Z-tt.want.Z) > 1e-6 {
 			t.Fatalf("dir %d front = %+v, want %+v", tt.dir, front, tt.want)
 		}

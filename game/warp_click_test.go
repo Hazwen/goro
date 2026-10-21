@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -44,7 +45,7 @@ func TestWarpClickWalksTowardWarpActor(t *testing.T) {
 
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	warp := worldstate.Actor{
 		ID:            900,
 		X:             14,
@@ -93,7 +94,7 @@ func TestWarpClickWalksTowardWarpActor(t *testing.T) {
 func TestWarpWalkTargetUsesWalkableNeighborWhenCenterIsBlocked(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{X: 10, Y: 20}
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.GAT.SetCellRawType(14, 20, 1)
 	ctx := client.Context{World: world}
 

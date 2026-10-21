@@ -9,6 +9,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/internal/testutil"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -20,7 +21,7 @@ func groundSkillTestContext(t *testing.T) (client.Context, *WorldMode, net.Conn)
 	t.Helper()
 	networkClient, serverConn := newBotTestConnection(t, 20080910)
 	world := worldstate.New()
-	world.GAT = flatWalkableGAT(64, 64)
+	world.GAT = testutil.FlatWalkableGAT(64, 64)
 	world.Player = worldstate.Actor{ID: 200, X: 20, Y: 20}
 	return client.Context{
 		World: world, Network: networkClient,
@@ -208,12 +209,12 @@ func TestMapChangeCancelsSkillTextPrompt(t *testing.T) {
 			})
 
 			// Complete the normal fade/handoff, including reuse of the same map.
-			mode.mapFade.started = time.Now().Add(-mapFadeOutDuration)
+			mode.mapFade.Started = time.Now().Add(-maps.FadeOutDuration)
 			if next, err := mode.Update(ctx); err != nil || next != nil {
 				t.Fatalf("fade-out handoff = %T, err=%v", next, err)
 			}
-			for range mapFadeHandoffFrames {
-				mode.recordCoveredMapFrame()
+			for range maps.FadeHandoffFrames {
+				mode.mapFade.RecordCoveredFrame()
 			}
 			next, err := mode.Update(ctx)
 			if err != nil {
@@ -244,7 +245,7 @@ func TestMapChangeCancelsSkillTextPrompt(t *testing.T) {
 
 func TestUnreachableGroundTargetReplacesPreviousCast(t *testing.T) {
 	ctx, mode, serverConn := groundSkillTestContext(t)
-	ctx.World.GAT = flatWalkableGAT(12, 5)
+	ctx.World.GAT = testutil.FlatWalkableGAT(12, 5)
 	ctx.World.Player.X, ctx.World.Player.Y = 10, 2
 	skill := session.Skill{ID: db.SkillMGFirewall, Level: 1, Type: skillTargetPlace, Range: 3}
 	if err := mode.skills().UseGround(ctx, skill, 0, 2, "", "test"); err != nil {

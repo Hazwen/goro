@@ -2,10 +2,7 @@ package game
 
 import (
 	"context"
-	"fmt"
-	"hash/fnv"
 	"image"
-	"image/color"
 	"math"
 	"sort"
 	"strings"
@@ -16,6 +13,7 @@ import (
 	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/login"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/game/weather"
@@ -23,13 +21,13 @@ import (
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/render"
-	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 	gameui "github.com/kivutar/goro/ui"
 	worldstate "github.com/kivutar/goro/world"
 )
 
 type WorldMode struct {
+	mapScene     maps.System
 	effectSystem effects.System
 
 	mail              mailState
@@ -39,15 +37,7 @@ type WorldMode struct {
 	camera            followCamera
 	cameraShakeStart  time.Time
 	cameraShakeEnd    time.Time
-	whitePixel        *render.Image
-	tileCursor        *render.Image
-	textures          map[string]*render.Image
-	mapImages         *render.ImageGroup
-	mapTextureUploads []*render.Image
-	mapUploadBatch    int
-	textureUpscaling  bool // Captured when loading the map; cached meshes keep matching UVs.
 	spriteUpscaler    *sprites.Upscaler
-	textureMiss       map[string]struct{}
 	imageCache        map[string]image.Image
 	imageMiss         map[string]struct{}
 
@@ -89,15 +79,6 @@ type WorldMode struct {
 	petAccessoryIDs   map[uint32]uint32
 	petAccessoryViews map[petAccessorySpriteKey]*scene.SpriteView
 	petAccessoryMiss  map[petAccessorySpriteKey]struct{}
-	rsmMeshCache      map[int][]retainedWorldMesh
-	rsmNodeMatrices   map[*res.RSM]map[string]scene.Mat4
-	rsmAnimNodes      map[*res.RSM]animatedRSMNodeCache
-	rsmBoundsCache    map[rsmBoundsCacheKey]rsmBounds
-	rsmFaceMetaCache  map[*res.RSM]map[*res.RSMNode][]rsmFaceMeta
-	rsmAnimScratch    animatedRSMScratch
-	rsmPlacementGrid  *rsmPlacementGrid
-	runtimeRSMModels  map[string]*res.RSM
-	gndMeshCache      *gndRetainedMeshCache
 	pendingWarp       bool
 	deferredPackets   []network.Packet
 	pendingAttack     attackIntent
@@ -131,7 +112,6 @@ type WorldMode struct {
 	scheduledSounds  []scheduledSound
 	scheduledStops   []scheduledActorStop
 	scheduledResumes []scheduledWalkResume
-	mapSoundNext     map[int]time.Time
 	weather          weather.System
 	actorDeaths      map[uint32]time.Time
 	actorVanishes    map[uint32]actorVanishFade
@@ -143,14 +123,11 @@ type WorldMode struct {
 	actorNameReqAt   map[uint32]time.Time
 	guildEmblems     map[uint32]guildEmblem
 	speechBubbles    map[uint32]speechBubble
-	gndNormalSource  *res.GND
-	gndTopNormals    [][4]scene.Point3
-	taekwonNight     bool
 
 	ui               worldUI
 	pendingChatRoom  network.ChatRoomCreate
 	pendingTradeName string
-	mapFade          mapFadeState
+	mapFade          maps.Fade
 	hoveredWalk      hoveredWalkCellCache
 	bot              *bot.Script
 	companionSystem  companion.System
@@ -351,34 +328,7 @@ type pendingSkillTextTarget struct {
 	source string
 }
 
-type mapFadePhase int
-
-const (
-	mapFadeNone mapFadePhase = iota
-	mapFadeOut
-	mapFadeHold
-	mapFadePrewarm
-	mapFadeIn
-)
-
-type mapFadeState struct {
-	phase           mapFadePhase
-	started         time.Time
-	coveredFrames   int
-	change          network.MapChange
-	hasChange       bool
-	characterSelect bool
-}
-
-const (
-	mapFadeOutDuration = 220 * time.Millisecond
-	mapFadeInDuration  = 340 * time.Millisecond
-	// Present the transition cover before blocking on synchronous map loading.
-	mapFadeHandoffFrames = 1
-	// Warm the base map, then allow a frame for the initial post-ack actors.
-	mapFadePrewarmFrames     = 2
-	actorNameRequestCooldown = time.Second
-)
+const actorNameRequestCooldown = time.Second
 
 func NewWorldMode() *WorldMode {
 	m := &WorldMode{}
@@ -397,7 +347,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.releaseMapTextures()
 	now := time.Now()
 	m.bindNPCDialogLifecycle()
-	m.startMapPrewarm()
+	m.mapFade.StartPrewarm()
 	m.camera.ResetTracking()
 	ctx.World.GAT = nil
 	ctx.World.GND = nil
@@ -405,14 +355,14 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	ctx.World.RSM = nil
 	ctx.World.RSMFail = 0
 	if ctx.World.MapName != "" {
-		gat, _, err := loadGAT(ctx.Resources, ctx.World.MapName)
+		gat, _, err := maps.LoadGAT(ctx.Resources, ctx.World.MapName)
 		if err != nil {
 			return newMapErrorMode(ctx, err, m.ui.console)
 		}
 		ctx.World.GAT = gat
 	}
-	m.textures = make(map[string]*render.Image)
-	m.textureMiss = make(map[string]struct{})
+	m.mapScene.Textures = make(map[string]*render.Image)
+	m.mapScene.TextureMiss = make(map[string]struct{})
 	m.playerView = nil
 	m.shadowView = nil
 	m.shadowViewMiss = false
@@ -445,14 +395,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.petAccessoryIDs = make(map[uint32]uint32)
 	m.petAccessoryViews = make(map[petAccessorySpriteKey]*scene.SpriteView)
 	m.petAccessoryMiss = make(map[petAccessorySpriteKey]struct{})
-	m.rsmMeshCache = make(map[int][]retainedWorldMesh)
-	m.rsmNodeMatrices = make(map[*res.RSM]map[string]scene.Mat4)
-	m.rsmAnimNodes = make(map[*res.RSM]animatedRSMNodeCache)
-	m.rsmBoundsCache = make(map[rsmBoundsCacheKey]rsmBounds)
-	m.rsmFaceMetaCache = make(map[*res.RSM]map[*res.RSMNode][]rsmFaceMeta)
-	m.rsmAnimScratch.reset()
-	m.rsmPlacementGrid = nil
-	m.gndMeshCache = nil
+	m.mapScene.ResetGeometry()
 	m.pendingWarp = false
 	m.pendingAttack = attackIntent{}
 	m.pendingPickup = pickupIntent{}
@@ -475,7 +418,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.ui.poptips.Clear()
 	m.scheduledSounds = nil
 	m.scheduledStops = nil
-	m.mapSoundNext = make(map[int]time.Time)
+	m.mapScene.MapSoundNext = make(map[int]time.Time)
 	m.weather = weather.System{}
 	m.effects().StarFlights = nil
 	m.actorDeaths = make(map[uint32]time.Time)
@@ -533,23 +476,23 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 		return nil
 	}
 
-	if gnd, _, err := loadGND(ctx.Resources, ctx.World.MapName); err == nil {
+	if gnd, _, err := maps.LoadGND(ctx.Resources, ctx.World.MapName); err == nil {
 		ctx.World.GND = gnd
 	} else {
 		ctx.World.GND = nil
 	}
-	if rsw, rswSource, err := loadRSW(ctx.Resources, ctx.World.MapName); err == nil {
+	if rsw, rswSource, err := maps.LoadRSW(ctx.Resources, ctx.World.MapName); err == nil {
 		ctx.World.RSW = rsw
-		ctx.World.RSM, ctx.World.RSMFail = loadRSMModels(ctx.Resources, rsw)
+		ctx.World.RSM, ctx.World.RSMFail = maps.LoadRSMModels(ctx.Resources, rsw)
 		m.playMapBGM(ctx, rswSource)
-		m.preloadMapSounds(ctx)
+		m.mapScene.PreloadMapSounds(ctx)
 	} else {
 		ctx.World.RSW = nil
 		ctx.World.RSM = nil
 		ctx.World.RSMFail = 0
 		m.playMapBGM(ctx, ctx.World.MapName)
 	}
-	m.preloadMapTextures(ctx)
+	m.mapScene.PreloadTextures(ctx)
 	_ = ctx.Network.SendLoadEndAck()
 	return nil
 }
@@ -626,34 +569,34 @@ func (m *WorldMode) playMapBGM(ctx client.Context, rswName string) {
 
 func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	now := time.Now()
-	if m.mapFade.phase == mapFadeOut {
-		if !m.mapFadeElapsed(now) {
+	if m.mapFade.Phase == maps.FadeOut {
+		if !m.mapFade.Elapsed(now) {
 			return nil, nil
 		}
-		m.mapFade.phase = mapFadeHold
-		m.mapFade.coveredFrames = 0
+		m.mapFade.Phase = maps.FadeHold
+		m.mapFade.CoveredFrames = 0
 		return nil, nil
 	}
-	if m.mapFade.phase == mapFadeHold && m.mapFade.coveredFrames >= mapFadeHandoffFrames {
-		if m.mapFade.characterSelect {
+	if m.mapFade.Phase == maps.FadeHold && m.mapFade.CoveredFrames >= maps.FadeHandoffFrames {
+		if m.mapFade.CharacterSelect {
 			return m.nextCharacterSelectMode(ctx), nil
 		}
-		if m.mapFade.hasChange {
-			change := m.mapFade.change
-			m.mapFade = mapFadeState{phase: mapFadeHold, started: now}
+		if m.mapFade.HasChange {
+			change := m.mapFade.Change
+			m.mapFade = maps.Fade{Phase: maps.FadeHold, Started: now}
 			next := m.handleMapChange(ctx, change)
 			if next != nil {
 				return next, nil
 			}
 			if !m.pendingWarp {
-				m.startMapFadeIn(now)
+				m.mapFade.StartIn(now)
 			}
 			return nil, nil
 		}
 	}
-	m.advanceMapPrewarm(now)
-	if m.mapFade.phase == mapFadeIn && m.mapFadeElapsed(now) {
-		m.mapFade = mapFadeState{}
+	m.mapFade.AdvancePrewarm(now, len(m.mapScene.Images.Uploads) != 0)
+	if m.mapFade.Phase == maps.FadeIn && m.mapFade.Elapsed(now) {
+		m.mapFade = maps.Fade{}
 	}
 
 	if m.updateDisconnectDialog(ctx) {
@@ -696,7 +639,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	m.processScheduledWalkResumes(ctx, now)
 	if ctx.Config.Headless {
 		m.playDueScheduledSounds(ctx, now)
-		if !progressBlocksActions && m.mapFade.phase != mapFadeHold && m.mapFade.phase != mapFadePrewarm {
+		if !progressBlocksActions && m.mapFade.Phase != maps.FadeHold && m.mapFade.Phase != maps.FadePrewarm {
 			dead := playerIsDead(ctx)
 			m.updateBotInput(ctx, !dead)
 			if !dead {
@@ -707,11 +650,11 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 		return nil, nil
 	}
 	m.processActorMotionSounds(ctx, now)
-	m.processMapSounds(ctx, now)
+	m.mapScene.ProcessMapSounds(ctx, now, m.scheduleSoundVolumeAtPosition)
 	m.playDueScheduledSounds(ctx, now)
 
 	m.camera.Update(ctx, now)
-	if m.mapFade.phase == mapFadeHold || m.mapFade.phase == mapFadePrewarm {
+	if m.mapFade.Phase == maps.FadeHold || m.mapFade.Phase == maps.FadePrewarm {
 		return nil, nil
 	}
 	m.ui.console.UpdatePresentation(ctx)
@@ -1206,7 +1149,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 			m.requestNPCTalk(ctx, actor, "click")
 			return nil, nil
 		}
-		if targetX, targetY, ok := clickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); ok && m.walkReady(now) {
+		if targetX, targetY, ok := maps.ClickedWalkTarget(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY); ok && m.walkReady(now) {
 			glog.Debugf("click walk target mouse=%d,%d player=%d,%d target=%d,%d", ctx.Input.MouseX, ctx.Input.MouseY, playerX, playerY, targetX, targetY)
 			m.cancelAttackIntent()
 			if shouldUseTurnOnlyGroundClick(ctx) {
@@ -1550,22 +1493,22 @@ func (m *WorldMode) requestNPCTalk(ctx client.Context, actor worldstate.Actor, s
 }
 
 func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
-	if m.prepareMapTextureUploads(screen) {
-		clearWorldScene(screen, ctx.World.MapName)
+	if m.mapScene.Images.PrepareUploads(screen) {
+		maps.ClearWorldScene(screen, ctx.World.MapName)
 		return
 	}
 	width, height := screen.Bounds().Dx(), screen.Bounds().Dy()
 	now := time.Now()
 	projection := m.sceneProjection(ctx, width, height, now)
 	fog := weather.FogFromMap(ctx.Resources, ctx.World.MapName, ctx.Config.Fog)
-	clearWorldScene(screen, ctx.World.MapName)
+	maps.ClearWorldScene(screen, ctx.World.MapName)
 	var actorOverlays []scene.ActorDrawEntry
 	screen.SetCamera3D(projection.RenderCameraWithFog(fog))
 	vertexFog := scene.SceneFog{}
 
 	if ctx.World.GND != nil {
-		m.drawGNDMeshes(screen, ctx.Resources, ctx.World.GND, ctx.World.RSW, projection)
-		m.drawGNDWater(screen, ctx.Resources, ctx.World.GND, ctx.World.RSW, projection, now, vertexFog)
+		m.mapScene.DrawGNDMeshes(screen, ctx.Resources, ctx.World.GND, ctx.World.RSW, projection)
+		m.mapScene.DrawGNDWater(screen, ctx.Resources, ctx.World.GND, ctx.World.RSW, projection, now, vertexFog)
 		m.drawGraffiti(screen, ctx, projection)
 		if !ctx.Config.Render.NoUI {
 			m.drawTileCursor(screen, ctx, projection)
@@ -1589,7 +1532,7 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 	if !ctx.Config.Render.NoUI {
 		m.drawSceneActorOverlays(screen, ctx, projection, now, actorOverlays)
 	}
-	m.drawRSWEffects(screen, ctx, projection, now)
+	m.mapScene.DrawRSWEffects(screen, ctx, projection, now, m.effects)
 	m.weather.Draw(screen, ctx, projection, now, m.effects(), m.scheduleSound)
 	m.effects().Draw(screen, ctx, projection, now, false)
 	m.drawDamageFloaters(screen, ctx, projection, now)
@@ -1612,7 +1555,7 @@ func (m *WorldMode) DrawOverlay(ctx client.Context, screen *render.Frame) {
 	width, height := screen.Bounds().Dx(), screen.Bounds().Dy()
 	now := time.Now()
 	projection := m.sceneProjection(ctx, width, height, now)
-	m.drawMapFade(screen, now)
+	m.mapFade.Draw(screen, now)
 	if !ctx.Config.Render.NoUI {
 		m.drawUIDragGhosts(screen, ctx)
 		m.drawPetSlotMachine(screen, ctx, now)
@@ -1621,13 +1564,10 @@ func (m *WorldMode) DrawOverlay(ctx client.Context, screen *render.Frame) {
 }
 
 func (m *WorldMode) FrameSubmitted() {
-	if m.mapUploadBatch > 0 {
-		clear(m.mapTextureUploads[:m.mapUploadBatch])
-		m.mapTextureUploads = m.mapTextureUploads[m.mapUploadBatch:]
-		m.mapUploadBatch = 0
+	if m.mapScene.Images.FrameSubmitted() {
 		return
 	}
-	m.recordCoveredMapFrame()
+	m.mapFade.RecordCoveredFrame()
 }
 
 func (m *WorldMode) DrawUIOverlay(ctx client.Context, screen *render.Frame) {
@@ -1796,7 +1736,7 @@ type sceneDrawEntry struct {
 }
 
 func (m *WorldMode) drawSceneModelsAndActors(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) []scene.ActorDrawEntry {
-	m.drawRSMModels(screen, ctx.Resources, ctx.World.RSW, ctx.World.RSM, ctx.World.GND, projection, now)
+	m.mapScene.DrawRSMModels(screen, ctx.Resources, ctx.World.RSW, ctx.World.RSM, ctx.World.GND, projection, now)
 	m.drawSkillUnitRSMModels(screen, ctx, projection, now)
 	m.effects().Draw(screen, ctx, projection, now, true)
 	actors := m.collectSceneActorEntries(screen, ctx, projection)
@@ -1845,222 +1785,36 @@ func sortedSceneDrawEntries(actors []scene.ActorDrawEntry, items []sceneItemDraw
 	return entries
 }
 
-func loadGAT(manager *res.Manager, mapName string) (*res.GAT, string, error) {
-	if manager == nil {
-		return nil, "", fmt.Errorf("no game resources available for map %s", mapName)
+func (m *WorldMode) releaseMapTextures() {
+	for id := range m.graffiti {
+		m.removeGraffiti(id)
 	}
-	base := strings.TrimSuffix(strings.TrimSuffix(mapName, ".gat"), ".rsw")
-	candidates := []string{
-		"data\\" + base + ".gat",
-		"data/" + base + ".gat",
-		base + ".gat",
+	m.graffiti = nil
+	if m.spriteUpscaler != nil {
+		m.spriteUpscaler.Close()
+		m.spriteUpscaler = nil
 	}
-	data, source, err := manager.ReadFileCandidates(candidates)
-	if err != nil {
-		return nil, source, fmt.Errorf("cannot load GAT for map %s: %w", mapName, err)
-	}
-	gat, err := res.ParseGAT(data)
-	if err != nil {
-		return nil, source, fmt.Errorf("parse %s: %w", source, err)
-	}
-	return gat, source, nil
+	m.mapScene.Images.Release()
 }
 
-func loadRSW(manager *res.Manager, mapName string) (*res.RSW, string, error) {
-	base := strings.TrimSuffix(strings.TrimSuffix(mapName, ".gat"), ".rsw")
-	candidates := []string{
-		"data\\" + base + ".rsw",
-		"data/" + base + ".rsw",
-		base + ".rsw",
-	}
-	data, source, err := manager.ReadFileCandidates(candidates)
-	if err != nil {
-		return nil, source, fmt.Errorf("cannot load RSW for map %s: %w", mapName, err)
-	}
-	rsw, err := res.ParseRSW(data)
-	return rsw, source, err
+// Leave also covers disconnects, character selection, and failed map loads.
+func (m *WorldMode) Leave() {
+	m.releaseMapTextures()
 }
 
-func loadRSMModels(manager *res.Manager, rsw *res.RSW) (map[string]*res.RSM, int) {
-	if rsw == nil {
-		return nil, 0
+func (m *WorldMode) startMapFadeOut(change network.MapChange, now time.Time) {
+	m.ui.npcCutin.Clear()
+	// A queued cell (or message) belongs to the map where it was selected,
+	// even when the server warps us within the same loaded map.
+	m.pendingSkill = pendingSkillTarget{}
+	m.pendingSkillText = pendingSkillTextTarget{}
+	if m.ui.skillTextPrompt.IsOpen() {
+		m.ui.skillTextPrompt.Close()
 	}
-	models := make(map[string]*res.RSM)
-	failures := 0
-	for _, placement := range rsw.Models {
-		if placement.Filename == "" {
-			continue
-		}
-		if _, ok := models[placement.Filename]; ok {
-			continue
-		}
-		rsm, err := loadRSMModel(manager, placement.Filename)
-		models[placement.Filename] = rsm
-		if err != nil {
-			failures++
-			continue
-		}
-	}
-	return models, failures
+	m.mapFade.StartOut(change, now)
 }
 
-func loadRSMModel(manager *res.Manager, filename string) (*res.RSM, error) {
-	var data []byte
-	for _, candidate := range res.RSMModelCandidates(filename) {
-		raw, err := manager.ReadFile(candidate)
-		if err == nil {
-			data = raw
-			break
-		}
-	}
-	if data == nil {
-		return nil, fmt.Errorf("rsm not found: %s", filename)
-	}
-	return res.ParseRSM(data)
-}
-
-func quadNormal(verts [4]scene.Point3) scene.Point3 {
-	normal := scene.Normalize3(scene.Cross3(scene.Sub3(verts[1], verts[0]), scene.Sub3(verts[2], verts[0])))
-	if normal == (scene.Point3{}) {
-		return scene.Point3{Y: 1}
-	}
-	return normal
-}
-
-type sceneLighting struct {
-	direction scene.Point3
-	diffuse   scene.Point3
-	ambient   scene.Point3
-	env       scene.Point3
-}
-
-func sceneLightingFromRSW(rsw *res.RSW) sceneLighting {
-	longitude := 45.0
-	latitude := 45.0
-	diffuse := scene.Point3{X: 1, Y: 1, Z: 1}
-	ambient := scene.Point3{}
-	if rsw != nil {
-		longitude = float64(rsw.Light.Longitude)
-		latitude = float64(rsw.Light.Latitude)
-		diffuse = scene.Point3{X: float64(rsw.Light.Diffuse[0]), Y: float64(rsw.Light.Diffuse[1]), Z: float64(rsw.Light.Diffuse[2])}
-		ambient = scene.Point3{X: float64(rsw.Light.Ambient[0]), Y: float64(rsw.Light.Ambient[1]), Z: float64(rsw.Light.Ambient[2])}
-	}
-	longitude = scene.DegreesToRadians(longitude)
-	latitude = scene.DegreesToRadians(latitude)
-	dir := scene.Normalize3(scene.Point3{
-		X: -math.Cos(longitude) * math.Sin(latitude),
-		Y: -math.Cos(latitude),
-		Z: -math.Sin(longitude) * math.Sin(latitude),
-	})
-	if dir == (scene.Point3{}) {
-		dir = scene.Normalize3(scene.Point3{X: -0.5, Y: -0.7, Z: -0.5})
-	}
-	diffuse = clampUnitPoint(diffuse)
-	ambient = clampUnitPoint(ambient)
-	env := scene.Point3{
-		X: 1 - (1-ambient.X)*(1-diffuse.X),
-		Y: 1 - (1-ambient.Y)*(1-diffuse.Y),
-		Z: 1 - (1-ambient.Z)*(1-diffuse.Z),
-	}
-	return sceneLighting{
-		direction: dir,
-		diffuse:   diffuse,
-		ambient:   ambient,
-		env:       clampUnitPoint(env),
-	}
-}
-
-func (m *WorldMode) sceneLighting(rsw *res.RSW) sceneLighting {
-	lighting := sceneLightingFromRSW(rsw)
-	if !m.taekwonNight {
-		return lighting
-	}
-	lighting.diffuse.X = math.Min(lighting.diffuse.X, 0.5)
-	lighting.diffuse.Y = math.Min(lighting.diffuse.Y, 0.5)
-	lighting.env = scene.Point3{
-		X: 1 - (1-lighting.ambient.X)*(1-lighting.diffuse.X),
-		Y: 1 - (1-lighting.ambient.Y)*(1-lighting.diffuse.Y),
-		Z: 1 - (1-lighting.ambient.Z)*(1-lighting.diffuse.Z),
-	}
-	return lighting
-}
-
-func (l sceneLighting) groundScale(normal scene.Point3) scene.Point3 {
-	weight := math.Max(scene.Dot3(scene.Normalize3(normal), l.direction), 0)
-	return scene.Point3{
-		X: clampUnit(l.ambient.X+l.diffuse.X*weight) * clampUnit(l.env.X),
-		Y: clampUnit(l.ambient.Y+l.diffuse.Y*weight) * clampUnit(l.env.Y),
-		Z: clampUnit(l.ambient.Z+l.diffuse.Z*weight) * clampUnit(l.env.Z),
-	}
-}
-
-func (l sceneLighting) modelScaleNormalized(normal scene.Point3) scene.Point3 {
-	weight := math.Max(scene.Dot3(normal, l.direction), 0.5)
-	return l.modelScaleFromWeight(weight)
-}
-
-func (l sceneLighting) modelScaleFromWeight(weight float64) scene.Point3 {
-	return scene.Point3{
-		X: clampUnit(l.ambient.X+l.diffuse.X*weight) * clampUnit(l.env.X),
-		Y: clampUnit(l.ambient.Y+l.diffuse.Y*weight) * clampUnit(l.env.Y),
-		Z: clampUnit(l.ambient.Z+l.diffuse.Z*weight) * clampUnit(l.env.Z),
-	}
-}
-
-func clampUnitPoint(point scene.Point3) scene.Point3 {
-	return scene.Point3{X: clampUnit(point.X), Y: clampUnit(point.Y), Z: clampUnit(point.Z)}
-}
-
-func clampUnit(value float64) float64 {
-	return math.Max(0, math.Min(1, value))
-}
-
-func textureColor(name string) color.RGBA {
-	if name == "" {
-		return color.RGBA{R: 78, G: 86, B: 78, A: 255}
-	}
-	hash := fnv.New32a()
-	_, _ = hash.Write([]byte(strings.ToLower(name)))
-	value := hash.Sum32()
-	return color.RGBA{
-		R: 70 + uint8(value&0x3f),
-		G: 80 + uint8((value>>8)&0x4f),
-		B: 68 + uint8((value>>16)&0x4f),
-		A: 255,
-	}
-}
-
-func drawColoredSurfaceTints3DAlpha(screen *render.Frame, white *render.Image, verts [4]scene.Point3, indices []uint16, colors [4]color.RGBA) {
-	drawColoredSurfaceTints3DWithOptions(screen, white, verts, indices, colors, scene.TriangleDrawOptions(render.FilterNearest, render.AddressUnsafe))
-}
-
-func drawColoredSurfaceTints3DWithOptions(screen *render.Frame, white *render.Image, verts [4]scene.Point3, indices []uint16, colors [4]color.RGBA, options *render.DrawTrianglesOptions) {
-	vertices := []render.Vertex3D{
-		coloredSurfaceVertex3D(verts[0], 0, 0, colors[0]),
-		coloredSurfaceVertex3D(verts[1], 1, 0, colors[1]),
-		coloredSurfaceVertex3D(verts[2], 1, 1, colors[2]),
-		coloredSurfaceVertex3D(verts[3], 0, 1, colors[3]),
-	}
-	screen.DrawTriangles3DOwned(vertices, indices, white, options)
-}
-
-func drawTexturedSurface3DAlpha(screen *render.Frame, texture *render.Image, verts [4]scene.Point3, uvs [4]scene.UV, indices []uint16, tints [4]color.RGBA) {
-	scene.DrawTexturedSurface3DWithOptions(screen, texture, verts, uvs, indices, tints, scene.TriangleDrawOptions(render.FilterLinear, render.AddressRepeat))
-}
-
-func coloredSurfaceVertex3D(point scene.Point3, u, v float32, tint color.RGBA) render.Vertex3D {
-	return render.Vertex3D{
-		X:      float32(point.X),
-		Y:      float32(point.Y),
-		Z:      float32(point.Z),
-		SrcX:   u,
-		SrcY:   v,
-		ColorR: float32(tint.R) / 255,
-		ColorG: float32(tint.G) / 255,
-		ColorB: float32(tint.B) / 255,
-		ColorA: float32(tint.A) / 255,
-		DepthX: float32(point.X),
-		DepthY: float32(point.Y),
-		DepthZ: float32(point.Z),
-	}
+func (m *WorldMode) startCharacterSelectFadeOut(now time.Time) {
+	m.ui.npcCutin.Clear()
+	m.mapFade.StartCharacterSelectOut(now)
 }

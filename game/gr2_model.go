@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/render"
@@ -47,18 +48,18 @@ func (m *WorldMode) drawNonPCGR2Model3D(screen *render.Frame, ctx client.Context
 	palette := view.paletteForActor(actor, state, now)
 	scale := gr2ModelWorldScale * m.actorBodySizeMultiplier(actor.ID, now)
 	matrix := gr2ActorModelMatrix(entry.WorldX, entry.WorldY, entry.WorldZ, actor.Dir, scale)
-	lighting := m.sceneLighting(nil)
+	lighting := m.mapScene.Lighting(nil)
 	if ctx.World != nil {
-		lighting = m.sceneLighting(ctx.World.RSW)
+		lighting = m.mapScene.Lighting(ctx.World.RSW)
 	}
 	tint := entry.Stealth.Tint(m.actorRenderTint(actor, now))
 	alpha := m.actorVisualAlpha(actor.ID, now)
 	if alpha <= 0 {
 		return true
 	}
-	if m.whitePixel == nil {
-		m.whitePixel = render.NewImage(1, 1)
-		m.whitePixel.Fill(color.White)
+	if m.mapScene.WhitePixel == nil {
+		m.mapScene.WhitePixel = render.NewImage(1, 1)
+		m.mapScene.WhitePixel.Fill(color.White)
 	}
 	options := gr2ModelDrawOptions()
 	options.Blend = entry.Stealth.Blend(m.actorRenderBlend(actor.ID, now))
@@ -68,12 +69,12 @@ func (m *WorldMode) drawNonPCGR2Model3D(screen *render.Frame, ctx client.Context
 	for _, batch := range view.geometry.Batches {
 		texture := m.gr2BatchTexture(ctx, actor, view, batch.TextureIndex)
 		if texture == nil {
-			texture = m.whitePixel
+			texture = m.mapScene.WhitePixel
 		}
 		bounds := texture.Bounds()
 		textureWidth := float32(bounds.Dx())
 		textureHeight := float32(bounds.Dy())
-		drawBatch := animatedRSMDrawBatch{screen: screen, texture: texture, options: *options}
+		drawBatch := scene.ModelDrawBatch{Screen: screen, Texture: texture, Options: *options}
 		start := int(batch.StartIndex)
 		end := start + int(batch.IndexCount)
 		if start < 0 || start >= len(view.geometry.Indices) {
@@ -87,10 +88,10 @@ func (m *WorldMode) drawNonPCGR2Model3D(screen *render.Frame, ctx client.Context
 			b, okB := gr2ModelVertex3D(view.geometry, int(view.geometry.Indices[i+1]), matrix, palette, lighting, tint, shadow, alpha, textureWidth, textureHeight)
 			c, okC := gr2ModelVertex3D(view.geometry, int(view.geometry.Indices[i+2]), matrix, palette, lighting, tint, shadow, alpha, textureWidth, textureHeight)
 			if okA && okB && okC {
-				drawBatch.addTriangle(a, b, c)
+				drawBatch.AddTriangle(a, b, c)
 			}
 		}
-		drawBatch.flush()
+		drawBatch.Flush()
 	}
 	return true
 }
@@ -238,17 +239,17 @@ func loadGR2ModelAnimationClips(manager *res.Manager, resourceName string, model
 	return clips, fmt.Sprintf(" clips=%d/5 bone=%d", loaded, boneType)
 }
 
-func gr2ModelVertex3D(geometry *res.GR2Geometry, index int, matrix scene.Mat4, palette []scene.Mat4, lighting sceneLighting, tint color.RGBA, shadow, alpha float64, textureWidth, textureHeight float32) (render.Vertex3D, bool) {
+func gr2ModelVertex3D(geometry *res.GR2Geometry, index int, matrix scene.Mat4, palette []scene.Mat4, lighting maps.Lighting, tint color.RGBA, shadow, alpha float64, textureWidth, textureHeight float32) (render.Vertex3D, bool) {
 	if geometry == nil || index < 0 || index >= len(geometry.Vertices) {
 		return render.Vertex3D{}, false
 	}
 	vertex := geometry.Vertices[index]
-	point := mat4TransformPoint(matrix, gr2SkinnedPoint(vertex, palette))
-	normal := scene.Normalize3(mat4TransformVector(matrix, gr2SkinnedNormal(vertex, palette)))
+	point := scene.Mat4TransformPoint(matrix, gr2SkinnedPoint(vertex, palette))
+	normal := scene.Normalize3(scene.Mat4TransformVector(matrix, gr2SkinnedNormal(vertex, palette)))
 	if normal == (scene.Point3{}) {
 		normal = scene.Point3{Y: 1}
 	}
-	scale := lighting.modelScaleNormalized(normal)
+	scale := lighting.ModelScaleNormalized(normal)
 	color := color.RGBA{
 		R: scene.ClampColor(float64(tint.R) * scale.X * shadow),
 		G: scene.ClampColor(float64(tint.G) * scale.Y * shadow),
@@ -260,13 +261,13 @@ func gr2ModelVertex3D(geometry *res.GR2Geometry, index int, matrix scene.Mat4, p
 
 func gr2ActorModelMatrix(worldX, worldY, worldZ float64, direction int, scale float64) scene.Mat4 {
 	matrix := scene.Mat4Identity()
-	matrix = mat4Translate(matrix, scene.Point3{X: worldX, Y: worldZ, Z: worldY})
+	matrix = scene.Mat4Translate(matrix, scene.Point3{X: worldX, Y: worldZ, Z: worldY})
 	// Classic stands GR2 models upright with a 90 degree X rotation. Goro flips
 	// the sign so GR2 +Z points up in its positive-height world axis; that also
 	// reverses the local front axis, so yaw needs a 180 degree compensation.
-	matrix = mat4RotateY(matrix, gr2ModelFacingYaw(direction)+math.Pi)
-	matrix = mat4RotateX(matrix, -math.Pi/2)
-	matrix = mat4Scale(matrix, scene.Point3{X: scale, Y: scale, Z: scale})
+	matrix = scene.Mat4RotateY(matrix, gr2ModelFacingYaw(direction)+math.Pi)
+	matrix = scene.Mat4RotateX(matrix, -math.Pi/2)
+	matrix = scene.Mat4Scale(matrix, scene.Point3{X: scale, Y: scale, Z: scale})
 	return matrix
 }
 
@@ -274,16 +275,8 @@ func gr2ModelFacingYaw(direction int) float64 {
 	return math.Pi - float64(scene.NormalizeDirectionIndex(direction))*(2*math.Pi/8)
 }
 
-func mat4TransformVector(matrix scene.Mat4, point scene.Point3) scene.Point3 {
-	return scene.Point3{
-		X: matrix[0]*point.X + matrix[4]*point.Y + matrix[8]*point.Z,
-		Y: matrix[1]*point.X + matrix[5]*point.Y + matrix[9]*point.Z,
-		Z: matrix[2]*point.X + matrix[6]*point.Y + matrix[10]*point.Z,
-	}
-}
-
 func gr2ModelDrawOptions() *render.DrawTrianglesOptions {
-	options := worldOpaqueTriangleDrawOptions(render.FilterLinear, render.AddressRepeat)
+	options := maps.WorldOpaqueTriangleDrawOptions(render.FilterLinear, render.AddressRepeat)
 	options.Blend = render.BlendSourceOver
 	return options
 }
