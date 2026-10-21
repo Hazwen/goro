@@ -1,8 +1,6 @@
 package game
 
 import (
-	"image/color"
-	"math"
 	"time"
 
 	"github.com/kivutar/goro/client"
@@ -17,10 +15,10 @@ const (
 	effectFuncCastRing
 	effectFuncLockOnTarget
 	effectFuncLevel99Aura
-	effectFuncGroundAura
+	effectFuncLevel99Ground
 	effectFuncLevel99Bubble
 	effectFuncPropertyGround
-	effectFuncLandProtectorGround
+	effectFuncGroundSigil
 	effectFuncSpiritSphere
 	effectFuncGumgang
 	effectFuncFlatColorTile
@@ -31,8 +29,8 @@ const (
 	effectFuncHitParticles
 	effectFuncBlessingCircle
 	effectFuncEstin
-	effectFuncSoulLinkerParticles
-	effectFuncSoulLinkerHitLines
+	effectFuncRisingBuffParticles
+	effectFuncHitLineBurst
 	effectFuncEsma
 	effectFuncKaizel
 	effectFuncEsmaHitTexture
@@ -50,7 +48,7 @@ const (
 	effectFuncArrowShower
 	effectFuncHunter
 	effectFuncSniper
-	effectFuncClown
+	effectFuncClownGypsy
 	effectFuncBlacksmith
 	effectFuncCartTermination
 	effectFuncChemicalProtection
@@ -74,41 +72,41 @@ const (
 	effectFuncShieldBoomerang
 	effectFuncShieldChain
 	effectFuncPressure
-	effectFuncSacrifice
+	effectFuncBashRays
 	effectFuncGrandCross
 	effectFuncCrusaderDefense
 	effectFuncProvidence
 	effectFuncDevotionLink
 	effectFuncGuard
-	effectFuncFullStrip
+	effectFuncEquipmentBurst
 	effectFuncGospelCross
 	effectFuncSpiralPierce
 	effectFuncAgility
 	effectFuncMonkRays
 	effectFuncTripleAttack
 	effectFuncChainCrush
-	effectFuncAsuraGlyphs
+	effectFuncGlyphs
 	effectFuncTaekwonStorm
 	effectFuncStarRings
 	effectFuncStarBlind
 	effectFuncTaekwonStop
-	effectFuncTaekwonDash
+	effectFuncChemicalDash
 	effectFuncTaekwonJump
 	effectFuncTaekwonFoot
 	effectFuncHitLine
 	effectFuncTurnUndead
 	effectFuncRevive
-	effectFuncPriestGround
+	effectFuncGroundWalls
 	effectFuncMageProjectile
 	effectFuncFrostDiverHit
 	effectFuncMageBolt
 	effectFuncSight
-	effectFuncWizardSpikes
+	effectFuncGroundSpikes
 	effectFuncWaterBall
 	effectFuncJupitel
 	effectFuncSightTrasher
 	effectFuncFirePillar
-	effectFuncSageGroundCast
+	effectFuncGroundCast
 	effectFuncSoulDrain
 	effectFuncGravitation
 	effectFuncHPConversion
@@ -117,11 +115,6 @@ const (
 	effectFuncNinjaWind
 	effectFuncNinjaPetals
 	effectFuncNativeSprite
-)
-
-const (
-	groundSampleFallbackRotationRadiansPerSecond = 40 * math.Pi / 180
-	groundTextureHoverPeriodSeconds              = 10.8
 )
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
@@ -136,7 +129,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawSoulDrain(screen, ctx, projection, component, effect, now)
 	case effectFuncGravitation:
 		m.drawGravitation(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
-	case effectFuncWizardSpikes:
+	case effectFuncGroundSpikes:
 		m.drawGroundSpikes(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncWaterBall:
 		m.drawWizardWaterBall(screen, ctx, projection, component, effect, now)
@@ -158,7 +151,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawTurnUndeadEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncRevive:
 		m.drawReviveEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
-	case effectFuncPriestGround:
+	case effectFuncGroundWalls:
 		m.drawGroundWallsEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncMonkRays:
 		m.drawMonkRays(screen, ctx, component, effect, now)
@@ -168,8 +161,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawSongGround(screen, ctx, projection, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncDirectedSprite:
 		m.drawDirectedSpriteEffect(screen, ctx, projection, component, effect, now)
-	case effectFuncClown:
-		m.drawClownEffect(screen, ctx, projection, component, effect, now)
+	case effectFuncClownGypsy:
+		m.drawClownGypsyEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncBlacksmith:
 		m.drawBlacksmithEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncChemicalProtection:
@@ -182,7 +175,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawCartTermination(screen, ctx, projection, component, effect, now)
 	case effectFuncSniper:
 		m.drawSniperEffect(screen, ctx, component, effect, now)
-	case effectFuncAsuraGlyphs:
+	case effectFuncGlyphs:
 		m.drawEffectGlyphs(screen, ctx, projection, component, effect, now)
 	case effectFuncStarRings:
 		m.drawStarRings(screen, ctx, component, effect, worldX, worldY, worldZ, now)
@@ -192,7 +185,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawTaekwonStorm(screen, ctx, component, effect, now)
 	case effectFuncTaekwonStop:
 		m.drawTaekwonStop(screen, ctx, component, effect, now)
-	case effectFuncTaekwonDash:
+	case effectFuncChemicalDash:
 		m.drawChemicalDash(screen, ctx, component, effect, now)
 	case effectFuncTaekwonFoot:
 		m.drawTaekwonFoot(screen, ctx, component, effect, now)
@@ -208,7 +201,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawAgilityEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncSpiralPierce:
 		m.drawSpiralPierceEffect(screen, ctx, component, effect, now)
-	case effectFuncFullStrip:
+	case effectFuncEquipmentBurst:
 		m.drawEquipmentBurst(screen, ctx, projection, component, effect, now)
 	case effectFuncGuard:
 		m.drawGuardEffect(screen, ctx, projection, component, effect, now)
@@ -220,7 +213,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawShieldChainEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncPressure:
 		m.drawPressureEffect(screen, ctx, projection, component, effect, now)
-	case effectFuncSacrifice:
+	case effectFuncBashRays:
 		m.drawBashRays(screen, ctx, projection, component, effect, now)
 	case effectFuncGrandCross:
 		m.drawGrandCrossEffect(screen, ctx, projection, component, effect, now)
@@ -279,15 +272,15 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawLockOnTargetEffect(screen, ctx, component, effect, worldX, worldY, worldZ, progress, now)
 	case effectFuncLevel99Aura:
 		m.drawLevel99AuraEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
-	case effectFuncGroundAura:
-		m.drawGroundAuraEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncLevel99Ground:
+		m.drawLevel99GroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncLevel99Bubble:
 		m.drawLevel99BubbleEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncPropertyGround:
 		m.drawPropertyGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
-	case effectFuncSageGroundCast:
+	case effectFuncGroundCast:
 		m.drawGroundCastEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
-	case effectFuncLandProtectorGround:
+	case effectFuncGroundSigil:
 		m.drawGroundSigilEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncSpiritSphere:
 		m.drawSpiritSphereEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
@@ -313,7 +306,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawBlueCastingEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncEstin:
 		m.drawEstinEffect(screen, ctx, component, effect, now)
-	case effectFuncSoulLinkerParticles:
+	case effectFuncRisingBuffParticles:
 		m.drawRisingBuffParticles(screen, ctx, projection, component, effect, now)
 	case effectFuncNinjaWind:
 		m.drawNinjaWind(screen, ctx, component, effect, now)
@@ -327,237 +320,225 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawKaizelEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncEsmaHitTexture:
 		m.drawEsmaHitTexture(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
-	case effectFuncSoulLinkerHitLines:
+	case effectFuncHitLineBurst:
 		m.drawHitLineBurst(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	default:
 	}
 }
 
-func (m *WorldMode) drawGroundAuraEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
-	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
-	if texture == nil {
-		return
+func effectFuncAdapterForName(name string) effectFuncAdapter {
+	switch name {
+	case "SoulDrain":
+		return effectFuncSoulDrain
+	case "HPConversion":
+		return effectFuncHPConversion
+	case "SoulChangeLink":
+		return effectFuncSoulChangeLink
+	case "SoulBreaker":
+		return effectFuncSoulBreaker
+	case "Gravitation":
+		return effectFuncGravitation
+	case "ChemicalProtection":
+		return effectFuncChemicalProtection
+	case "BerserkPotion":
+		return effectFuncBerserkPotion
+	case "Twilight":
+		return effectFuncTwilight
+	case "CartTermination":
+		return effectFuncCartTermination
+	case "HasteUp", "Overthrust":
+		return effectFuncBlacksmith
+	case "SageGroundCast":
+		return effectFuncGroundCast
+	case "WizardSpikes":
+		return effectFuncGroundSpikes
+	case "WaterBall":
+		return effectFuncWaterBall
+	case "Jupitel":
+		return effectFuncJupitel
+	case "SightTrasher":
+		return effectFuncSightTrasher
+	case "FirePillar":
+		return effectFuncFirePillar
+	case "MageProjectile":
+		return effectFuncMageProjectile
+	case "FrostDiverHit":
+		return effectFuncFrostDiverHit
+	case "MageBolt":
+		return effectFuncMageBolt
+	case "Sight":
+		return effectFuncSight
+	case "TurnUndead":
+		return effectFuncTurnUndead
+	case "Revive":
+		return effectFuncRevive
+	case "PriestGround":
+		return effectFuncGroundWalls
+	case "Agility":
+		return effectFuncAgility
+	case "FullStrip":
+		return effectFuncEquipmentBurst
+	case "Guard":
+		return effectFuncGuard
+	case "GospelCross":
+		return effectFuncGospelCross
+	case "DevotionLink":
+		return effectFuncDevotionLink
+	case "Providence":
+		return effectFuncProvidence
+	case "CrusaderDefense":
+		return effectFuncCrusaderDefense
+	case "GrandCross":
+		return effectFuncGrandCross
+	case "Sacrifice":
+		return effectFuncBashRays
+	case "Pressure":
+		return effectFuncPressure
+	case "ShieldChain":
+		return effectFuncShieldChain
+	case "ShieldBoomerang":
+		return effectFuncShieldBoomerang
+	case "BowlingBash":
+		return effectFuncBowlingBash
+	case "SpearBoomerang":
+		return effectFuncSpearBoomerang
+	case "BashHit":
+		return effectFuncBashHit
+	case "Bash":
+		return effectFuncBash
+	case "Endure":
+		return effectFuncEndure
+	case "MagnumBreak":
+		return effectFuncMagnumBreak
+	case "MagicTarget":
+		return effectFuncGroundSample
+	case "CastRing":
+		return effectFuncCastRing
+	case "LockOnTarget":
+		return effectFuncLockOnTarget
+	case "Level99Aura":
+		return effectFuncLevel99Aura
+	case "GroundAura":
+		return effectFuncLevel99Ground
+	case "Level99Bubble":
+		return effectFuncLevel99Bubble
+	case "NinjaWind":
+		return effectFuncNinjaWind
+	case "NinjaPetals":
+		return effectFuncNinjaPetals
+	case "NativeSprite":
+		return effectFuncNativeSprite
+	case "PropertyGround":
+		return effectFuncPropertyGround
+	case "LandProtectorGround":
+		return effectFuncGroundSigil
+	case "SpiritSphere":
+		return effectFuncSpiritSphere
+	case "Gumgang":
+		return effectFuncGumgang
+	case "FlatColorTile":
+		return effectFuncFlatColorTile
+	case "GroundTexture", "SpiderWeb":
+		return effectFuncGroundTexture
+	case "EffectBodyColor", "MagicCrasherBodyColor", "TransBlueBody", "LightBlade":
+		return effectFuncBodyColor
+	case "MapPillar":
+		return effectFuncMapPillar
+	case "HitRing":
+		return effectFuncHitRing
+	case "HitParticles":
+		return effectFuncHitParticles
+	case "BlessingCircle":
+		return effectFuncBlessingCircle
+	case "SoulLink":
+		return effectFuncSoulLink
+	case "KaupeDodge":
+		return effectFuncKaupeDodge
+	case "RogueBurst":
+		return effectFuncRogueBurst
+	case "ImpactParticles":
+		return effectFuncImpactParticles
+	case "MonkRays":
+		return effectFuncMonkRays
+	case "SongMusic":
+		return effectFuncSongMusic
+	case "SongVertical":
+		return effectFuncSongVertical
+	case "SongLight":
+		return effectFuncSongLight
+	case "SongOut":
+		return effectFuncSongOut
+	case "DirectedSprite":
+		return effectFuncDirectedSprite
+	case "ArrowVulcan", "Moonlit", "Marionette", "Hermode", "TarotCard":
+		return effectFuncClownGypsy
+	case "TrueSight", "WindWalk", "SharpShooting":
+		return effectFuncSniper
+	case "AsuraGlyphs":
+		return effectFuncGlyphs
+	case "StarRings":
+		return effectFuncStarRings
+	case "StarBlind":
+		return effectFuncStarBlind
+	case "TaekwonStorm":
+		return effectFuncTaekwonStorm
+	case "TaekwonStop":
+		return effectFuncTaekwonStop
+	case "TaekwonDash":
+		return effectFuncChemicalDash
+	case "TaekwonFoot":
+		return effectFuncTaekwonFoot
+	case "TaekwonJump":
+		return effectFuncTaekwonJump
+	case "ChainCrush":
+		return effectFuncChainCrush
+	case "TripleAttack":
+		return effectFuncTripleAttack
+	case "HitLine":
+		return effectFuncHitLine
+	case "Tanji":
+		return effectFuncShieldBoomerang
+	case "SonicBlow":
+		return effectFuncSonicBlow
+	case "SlimPitcher":
+		return effectFuncSlimPitcher
+	case "AcidDemon":
+		return effectFuncAcidDemon
+	case "ThrowItem":
+		return effectFuncThrowItem
+	case "Grimtooth":
+		return effectFuncGrimtooth
+	case "RisingParticles":
+		return effectFuncRisingParticles
+	case "Steal":
+		return effectFuncSteal
+	case "Detecting", "RemoveTrap", "Flasher", "BlitzBeat":
+		return effectFuncHunter
+	case "ArrowShower":
+		return effectFuncArrowShower
+	case "MammoniteCoins":
+		return effectFuncMammoniteCoins
+	case "CartRevolution":
+		return effectFuncCartRevolution
+	case "SprinkleSand":
+		return effectFuncSprinkleSand
+	case "BlueCasting":
+		return effectFuncBlueCasting
+	case "SpiralPierce":
+		return effectFuncSpiralPierce
+	case "Estin":
+		return effectFuncEstin
+	case "Estun", "SoulLinkerParticles":
+		return effectFuncRisingBuffParticles
+	case "Esma":
+		return effectFuncEsma
+	case "Kaizel":
+		return effectFuncKaizel
+	case "EsmaHitTexture":
+		return effectFuncEsmaHitTexture
+	case "SoulLinkerHitLines":
+		return effectFuncHitLineBurst
+	default:
+		return effectFuncUnknown
 	}
-	elapsed := now.Sub(effect.starts).Seconds()
-	sizes := []float64{component.sizeStart, component.sizeEnd}
-	for i, size := range sizes {
-		if size <= 0 {
-			continue
-		}
-		phase := elapsed*6 + float64(i)*23*math.Pi/180
-		size += math.Sin(phase) * 0.08
-		drawGroundTextureQuad(screen, texture, x, y, z+component.posZ+0.01*float64(i), size, size, float64(i)*23*math.Pi/180, color.RGBA{R: 255, G: 255, B: 255, A: 204}, true)
-	}
-}
-
-const (
-	mapPillarBands          = 4
-	mapPillarSegments       = 20
-	mapPillarCycleFrames    = 960.0
-	mapPillarGrowStartFrame = 200.0
-	mapPillarGrowEndFrame   = 290.0
-	mapPillarShrinkFrame    = 800.0
-	mapPillarWorldScale     = 0.2
-	mapPillarBandRadiusStep = 0.5 * mapPillarWorldScale
-	mapPillarRiseRadians    = 89.0 * math.Pi / 180.0
-)
-
-func (m *WorldMode) drawMapPillarEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, x, y, z, progress float64) {
-	texture := m.effectTexture(ctx.Resources, component.textureName)
-	if texture == nil || component.height <= 0 || component.bottomSize <= 0 {
-		return
-	}
-	tint := effectComponentTint(component, component.alphaMax)
-	frames := clampFloat(progress, 0, 0.999999) * mapPillarCycleFrames
-	for band := 0; band < mapPillarBands; band++ {
-		process := frames + float64(band)*30
-		height := mapPillarBandHeight(process, component.height)
-		if height <= 0 {
-			continue
-		}
-		radius := component.bottomSize + float64(band)*mapPillarBandRadiusStep
-		rotation := float64(band)*90 + frames
-		drawMapPillarBand(screen, texture, x, y, z, radius, height, rotation, tint)
-	}
-}
-
-func mapPillarBandHeight(process, maxHeight float64) float64 {
-	if process < mapPillarGrowStartFrame || maxHeight <= 0 {
-		return 0
-	}
-	if process >= mapPillarShrinkFrame {
-		maxHeight -= (process - (mapPillarShrinkFrame - 1)) * mapPillarWorldScale
-		if maxHeight <= 0 {
-			return 0
-		}
-	}
-	if process <= mapPillarGrowEndFrame {
-		return maxHeight * math.Sin((process-mapPillarGrowStartFrame)*math.Pi/180)
-	}
-	return maxHeight
-}
-
-func drawMapPillarBand(screen *render.Frame, texture *render.Image, x, y, z, radius, height, rotationDegrees float64, tint color.RGBA) {
-	if screen == nil || texture == nil || radius <= 0 || height <= 0 || tint.A == 0 {
-		return
-	}
-	bounds := texture.Bounds()
-	srcW, srcH := float32(bounds.Dx()), float32(bounds.Dy())
-	center := modelPoint3{x: x, y: z, z: y}
-	radialRise := math.Cos(mapPillarRiseRadians) * height
-	verticalRise := math.Sin(mapPillarRiseRadians) * height
-	vertices := make([]render.Vertex3D, 0, (mapPillarSegments+1)*2)
-	indices := make([]uint16, 0, mapPillarSegments*6)
-	for i := 0; i <= mapPillarSegments; i++ {
-		u := float32(i) / float32(mapPillarSegments)
-		angle := (rotationDegrees + float64(i)*360/float64(mapPillarSegments)) * math.Pi / 180
-		cosine := math.Cos(angle)
-		sine := math.Sin(angle)
-		base := modelPoint3{
-			x: center.x + radius*cosine,
-			y: center.y,
-			z: center.z + radius*sine,
-		}
-		top := modelPoint3{
-			x: center.x + (radius+radialRise)*cosine,
-			y: center.y + verticalRise,
-			z: center.z + (radius+radialRise)*sine,
-		}
-		vertices = append(vertices,
-			texturedSurfaceVertex3D(base, texturePoint{u: u, v: 1}, tint, srcW, srcH),
-			texturedSurfaceVertex3D(top, texturePoint{u: u, v: 0}, tint, srcW, srcH),
-		)
-		if i == mapPillarSegments {
-			continue
-		}
-		baseIndex := uint16(i * 2)
-		indices = append(indices, baseIndex, baseIndex+1, baseIndex+2, baseIndex+1, baseIndex+3, baseIndex+2)
-	}
-	options := triangleDrawOptions(render.FilterLinear, render.AddressRepeat)
-	options.Blend = render.BlendLighter
-	screen.DrawTriangles3D(vertices, indices, texture, options)
-}
-
-func (m *WorldMode) drawFlatColorTileEffect(screen *render.Frame, component worldEffectComponent, x, y, z float64) {
-	size := component.sizeStart
-	if size <= 0 {
-		size = 1
-	}
-	tint := component.color
-	if tint.A == 0 {
-		tint.A = 128
-	}
-	drawGroundTextureQuad(screen, m.whitePixel, x, y, z+component.posZ+0.02, size, size, 0, tint, false)
-}
-
-func (m *WorldMode) drawGroundTextureEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, componentIndex int, x, y, z, progress float64, now time.Time) {
-	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
-	if texture == nil {
-		return
-	}
-	size := component.sizeStart
-	if size <= 0 {
-		size = 1
-	}
-	if component.sizeEnd > 0 && component.sizeEnd != size {
-		size += (component.sizeEnd - size) * progress
-	}
-	alpha := effectComponentAlpha(progress, component)
-	tint := effectComponentTint(component, alpha)
-	zOffset := groundTextureZOffset(component, effect, componentIndex, now)
-	drawGroundTextureQuad(screen, texture, x, y, z+zOffset, size, size, component.angleStart, tint, component.blendAdditive)
-}
-
-func groundTextureZOffset(component worldEffectComponent, effect worldEffect, componentIndex int, now time.Time) float64 {
-	if component.posZEnd == 0 || component.posZEnd == component.posZ || now.IsZero() {
-		return component.posZ
-	}
-	elapsed := math.Max(0, now.Sub(effect.starts).Seconds())
-	phase := deterministicAngle(effect, componentIndex+733) + elapsed*2*math.Pi/groundTextureHoverPeriodSeconds
-	return component.posZ + (component.posZEnd-component.posZ)*(0.5+0.5*math.Sin(phase))
-}
-
-func drawGroundTextureQuad(screen *render.Frame, texture *render.Image, x, y, z, sizeX, sizeY, angle float64, tint color.RGBA, additive bool) {
-	if screen == nil || texture == nil || sizeX <= 0 || sizeY <= 0 || tint.A == 0 {
-		return
-	}
-	halfX := sizeX * 0.5
-	halfY := sizeY * 0.5
-	sinA, cosA := math.Sin(angle), math.Cos(angle)
-	point := func(dx, dy float64) modelPoint3 {
-		px := dx*cosA - dy*sinA
-		py := dx*sinA + dy*cosA
-		return modelPoint3{x: x + px, y: z, z: y + py}
-	}
-	verts := [4]modelPoint3{
-		point(-halfX, -halfY),
-		point(halfX, -halfY),
-		point(halfX, halfY),
-		point(-halfX, halfY),
-	}
-	uvs := [4]texturePoint{{u: 0, v: 0}, {u: 1, v: 0}, {u: 1, v: 1}, {u: 0, v: 1}}
-	options := triangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
-	if additive {
-		options.Blend = render.BlendLighter
-	}
-	drawTexturedSurface3DWithOptions(screen, texture, verts, uvs, quadIndices012023, [4]color.RGBA{tint, tint, tint, tint}, options)
-}
-
-func warpEffectTexturedVertex3D(x, y, z float64, srcX, srcY float32, c color.RGBA) render.Vertex3D {
-	point := modelPoint3{x: x, y: z, z: y}
-	return render.Vertex3D{
-		X:      float32(point.x),
-		Y:      float32(point.y),
-		Z:      float32(point.z),
-		SrcX:   srcX,
-		SrcY:   srcY,
-		ColorR: float32(c.R) / 255,
-		ColorG: float32(c.G) / 255,
-		ColorB: float32(c.B) / 255,
-		ColorA: float32(c.A) / 255,
-		DepthX: float32(point.x),
-		DepthY: float32(point.y),
-		DepthZ: float32(point.z),
-	}
-}
-
-func warpEffectVertex3D(x, y, z float64, c color.RGBA) render.Vertex3D {
-	return warpEffectTexturedVertex3D(x, y, z, 0, 0, c)
-}
-
-func drawWorldSoftRing(screen *render.Frame, white *render.Image, x, y, z, radius, width float64, c color.RGBA, segments int) {
-	inner := math.Max(0, radius-width*0.5)
-	mid := math.Max(inner+0.01, radius)
-	outer := math.Max(mid+0.01, radius+width*0.5)
-	drawWorldRingBand(screen, white, x, y, z, inner, mid, 0, c.A, c, segments)
-	drawWorldRingBand(screen, white, x, y, z, mid, outer, c.A, 0, c, segments)
-}
-
-func drawWorldRingBand(screen *render.Frame, white *render.Image, x, y, z, innerRadius, outerRadius float64, innerAlpha, outerAlpha uint8, c color.RGBA, segments int) {
-	if segments < 3 || outerRadius <= innerRadius {
-		return
-	}
-	vertices := make([]render.Vertex3D, 0, (segments+1)*2)
-	indices := make([]uint16, 0, segments*6)
-	innerColor := c
-	outerColor := c
-	innerColor.A = innerAlpha
-	outerColor.A = outerAlpha
-	for i := 0; i <= segments; i++ {
-		angle := float64(i) * 2 * math.Pi / float64(segments)
-		cosine := math.Cos(angle)
-		sine := math.Sin(angle)
-		vertices = append(vertices,
-			warpEffectVertex3D(x+cosine*innerRadius, y+sine*innerRadius, z, innerColor),
-			warpEffectVertex3D(x+cosine*outerRadius, y+sine*outerRadius, z, outerColor),
-		)
-		if i == segments {
-			continue
-		}
-		base := uint16(i * 2)
-		indices = append(indices, base, base+1, base+3, base, base+3, base+2)
-	}
-	options := triangleDrawOptions(render.FilterNearest, render.AddressUnsafe)
-	options.Blend = render.BlendLighter
-	screen.DrawTriangles3D(vertices, indices, white, options)
 }

@@ -3,7 +3,7 @@ package db
 import "time"
 
 func bottomBasilicaEffectSpec() EffectSpec {
-	return groundWallsEffectSpec(effectBottomBasilica)
+	return groundWallsEffectSpec("effect/alpha_down.tga", 29999)
 }
 
 func assumptioEffectSpec() EffectSpec {

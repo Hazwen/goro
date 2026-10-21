@@ -1,8 +1,6 @@
 package db
 
-import (
-	"time"
-)
+import "time"
 
 func trueSightEffectSpec() EffectSpec {
 	spec := funcEffectSpec("TrueSight", 250*EffectFrameDuration, true)

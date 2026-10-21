@@ -267,8 +267,8 @@ func drawWorldCylinderBandRotated(screen *render.Frame, white, texture *render.I
 		topCosine := math.Cos(topAngle)
 		topSine := math.Sin(topAngle)
 		vertices = append(vertices,
-			warpEffectTexturedVertex3D(x+cosine*bottomRadius, y+sine*bottomRadius, z, u*srcW, srcH, tint),
-			warpEffectTexturedVertex3D(x+topCosine*topRadius, y+topSine*topRadius, z+height, u*srcW, 0, tint),
+			effectTexturedVertex3D(x+cosine*bottomRadius, y+sine*bottomRadius, z, u*srcW, srcH, tint),
+			effectTexturedVertex3D(x+topCosine*topRadius, y+topSine*topRadius, z+height, u*srcW, 0, tint),
 		)
 		if i == segments {
 			continue

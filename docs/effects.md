@@ -18,14 +18,17 @@ as a procedural effect does.
 registry. Each entry calls a named, zero-argument definition. Literal settings
 and calls that configure a parameterized builder belong in the owning file.
 Native and local IDs for the same effect may call the same definition.
-Keep ID constants in numeric order, with aliases beside their resolved ID and
-native IDs separate from Goro-local IDs. Never renumber an effect to fill a gap.
+Keep ID constants and registry entries in numeric order, with aliases beside
+their resolved ID and native IDs separate from Goro-local IDs. Never renumber
+an effect to fill a gap.
 
 An inherited or reused job effect keeps its original owner: for example, Heal
 and its larger variants belong to Acolyte even when Arch Bishop uses them.
 A renderer supporting variants from several jobs belongs in a shared file;
 its job-specific definitions stay with their jobs. Native `FuncName` strings
 remain stable even when the Go renderer gets a more general name.
+`game/effects_func.go` maps those names to adapters and dispatches to renderers;
+the rendering implementations live with their jobs or shared primitives.
 
 Skill-to-effect and ground-unit-to-effect mappings remain central routing tables
 in `db/skills.go` and `game/effects.go`. They select effect IDs; they do not define

@@ -1,8 +1,6 @@
 package db
 
-import (
-	"time"
-)
+import "time"
 
 func spiritSphereEffectSpec() EffectSpec {
 	return EffectSpec{

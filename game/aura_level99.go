@@ -1,12 +1,12 @@
 package game
 
 import (
-	"github.com/kivutar/goro/render"
 	"image/color"
 	"math"
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/render"
 )
 
 const (
@@ -274,4 +274,21 @@ func level99BubbleAlpha(clientY float64) float64 {
 		alpha = 250 + (clientY+20)*25
 	}
 	return clampFloat(alpha/255, 0, 250.0/255.0)
+}
+
+func (m *WorldMode) drawLevel99GroundEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	elapsed := now.Sub(effect.starts).Seconds()
+	sizes := []float64{component.sizeStart, component.sizeEnd}
+	for i, size := range sizes {
+		if size <= 0 {
+			continue
+		}
+		phase := elapsed*6 + float64(i)*23*math.Pi/180
+		size += math.Sin(phase) * 0.08
+		drawGroundTextureQuad(screen, texture, x, y, z+component.posZ+0.01*float64(i), size, size, float64(i)*23*math.Pi/180, color.RGBA{R: 255, G: 255, B: 255, A: 204}, true)
+	}
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/kivutar/goro/render"
 )
 
-func (m *WorldMode) applyClownSkill(ctx client.Context, notify network.SkillNoDamageNotify, now time.Time) {
+func (m *WorldMode) applyClownGypsySkill(ctx client.Context, notify network.SkillNoDamageNotify, now time.Time) {
 	source, target := notify.SourceID, notify.TargetID
 	if isLocalActor(ctx, source) {
 		source = localSkillTarget(ctx)
@@ -107,7 +107,7 @@ func tarotCardAlpha(frame int) int {
 	return max(0, min(220, 10*n)-5*max(0, n-199))
 }
 
-func (m *WorldMode) drawClownEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+func (m *WorldMode) drawClownGypsyEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
 	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
 	if texture == nil {
 		return

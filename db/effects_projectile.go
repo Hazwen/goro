@@ -1,8 +1,6 @@
 package db
 
-import (
-	"time"
-)
+import "time"
 
 func throwItemFlightEffectSpec(texture string) EffectSpec {
 	spec := funcEffectSpec("ThrowItem", 200*EffectFrameDuration, false)

@@ -61,7 +61,7 @@ func TestGypsySkillAnimationsWithClientAssets(t *testing.T) {
 	}
 }
 
-func TestClownMoonlitStatusOwnership(t *testing.T) {
+func TestClownGypsyMoonlitStatusOwnership(t *testing.T) {
 	ctx := archerEffectContext()
 	m := &WorldMode{}
 	m.applyStatusEffectChange(ctx, network.StatusEffectChange{StatusID: db.StatusMoon, ActorID: 100, Active: true})
@@ -80,7 +80,7 @@ func TestClownMoonlitStatusOwnership(t *testing.T) {
 	}
 }
 
-func TestClownMarionetteLinkLifetime(t *testing.T) {
+func TestClownGypsyMarionetteLinkLifetime(t *testing.T) {
 	for _, end := range []uint16{db.StatusMarionetteMaster, db.StatusMarionette} {
 		ctx := archerEffectContext()
 		m := &WorldMode{}
@@ -119,7 +119,7 @@ func TestClownMarionetteLinkLifetime(t *testing.T) {
 	}
 }
 
-func TestClownArrowVulcanTiming(t *testing.T) {
+func TestClownGypsyArrowVulcanTiming(t *testing.T) {
 	ctx := archerEffectContext()
 	m := &WorldMode{playerView: humanoidSoundView(spriteActionPCAttack3, 6, 3, []string{"atk"})}
 	a := network.ActorActionNotify{SourceID: 2000000, TargetID: 300, SkillID: db.SkillCGArrowvulcan, SourceSpeed: 500, HitCount: 9, Damage: 100}
@@ -173,7 +173,7 @@ func TestClownArrowVulcanTiming(t *testing.T) {
 	}
 }
 
-func TestClownSuccessPacketsAndTarotSelection(t *testing.T) {
+func TestClownGypsySuccessPacketsAndTarotSelection(t *testing.T) {
 	ctx := archerEffectContext()
 	for _, skill := range []uint16{db.SkillCGLongingfreedom, db.SkillCGTarotcard, db.SkillCGHermode} {
 		m := &WorldMode{}
@@ -214,7 +214,7 @@ func TestClownSuccessPacketsAndTarotSelection(t *testing.T) {
 	}
 }
 
-func TestClownHermodeGroundUnitOwnership(t *testing.T) {
+func TestClownGypsyHermodeGroundUnitOwnership(t *testing.T) {
 	ctx := archerEffectContext()
 	m := &WorldMode{}
 	m.applyGroundSkillNotify(ctx, network.GroundSkillNotify{SkillID: db.SkillCGHermode, SourceID: 2000000})
@@ -238,7 +238,7 @@ func TestClownHermodeGroundUnitOwnership(t *testing.T) {
 	}
 }
 
-func TestClownEffectsWithClientAssets(t *testing.T) {
+func TestClownGypsyEffectsWithClientAssets(t *testing.T) {
 	ctx := archerEffectContext()
 	ctx.Resources = realDataManager(t)
 	start := time.Unix(100, 0)
@@ -281,7 +281,7 @@ func TestClownEffectsWithClientAssets(t *testing.T) {
 	}
 }
 
-func TestClownBodyEffectRendering(t *testing.T) {
+func TestClownGypsyBodyEffectRendering(t *testing.T) {
 	ctx := archerEffectContext()
 	start := time.Unix(100, 0)
 	for _, tc := range []struct{ id, frame, copies int }{{effectPinkBody, 1000, 2}, {effectChemicalBody, 30, 2}, {effectChemicalBody, 31, 1}} {

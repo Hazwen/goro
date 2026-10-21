@@ -156,6 +156,8 @@ func (m *WorldMode) drawCastRingEffect(screen *render.Frame, ctx client.Context,
 	drawWorldCylinderBandRotated(screen, m.whitePixel, nil, x, y, z+0.035, component.bottomSize, component.topSize, component.height, tint, maxInt(component.circleSides, component.totalCircleSides), angleOffset)
 }
 
+const groundSampleFallbackRotationRadiansPerSecond = 40 * math.Pi / 180
+
 func (m *WorldMode) drawGroundPlaneEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, worldX, worldY, progress float64, now time.Time) {
 	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
 	if texture == nil || ctx.World == nil {

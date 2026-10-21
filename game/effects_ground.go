@@ -142,3 +142,107 @@ func (m *WorldMode) drawGroundSigilEffect(screen *render.Frame, ctx client.Conte
 	}, color.RGBA{255, 255, 255, 100})
 	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
 }
+
+const groundTextureHoverPeriodSeconds = 10.8
+
+func (m *WorldMode) drawFlatColorTileEffect(screen *render.Frame, component worldEffectComponent, x, y, z float64) {
+	size := component.sizeStart
+	if size <= 0 {
+		size = 1
+	}
+	tint := component.color
+	if tint.A == 0 {
+		tint.A = 128
+	}
+	drawGroundTextureQuad(screen, m.whitePixel, x, y, z+component.posZ+0.02, size, size, 0, tint, false)
+}
+
+func (m *WorldMode) drawGroundTextureEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, componentIndex int, x, y, z, progress float64, now time.Time) {
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	size := component.sizeStart
+	if size <= 0 {
+		size = 1
+	}
+	if component.sizeEnd > 0 && component.sizeEnd != size {
+		size += (component.sizeEnd - size) * progress
+	}
+	alpha := effectComponentAlpha(progress, component)
+	tint := effectComponentTint(component, alpha)
+	zOffset := groundTextureZOffset(component, effect, componentIndex, now)
+	drawGroundTextureQuad(screen, texture, x, y, z+zOffset, size, size, component.angleStart, tint, component.blendAdditive)
+}
+
+func groundTextureZOffset(component worldEffectComponent, effect worldEffect, componentIndex int, now time.Time) float64 {
+	if component.posZEnd == 0 || component.posZEnd == component.posZ || now.IsZero() {
+		return component.posZ
+	}
+	elapsed := math.Max(0, now.Sub(effect.starts).Seconds())
+	phase := deterministicAngle(effect, componentIndex+733) + elapsed*2*math.Pi/groundTextureHoverPeriodSeconds
+	return component.posZ + (component.posZEnd-component.posZ)*(0.5+0.5*math.Sin(phase))
+}
+
+func drawGroundTextureQuad(screen *render.Frame, texture *render.Image, x, y, z, sizeX, sizeY, angle float64, tint color.RGBA, additive bool) {
+	if screen == nil || texture == nil || sizeX <= 0 || sizeY <= 0 || tint.A == 0 {
+		return
+	}
+	halfX := sizeX * 0.5
+	halfY := sizeY * 0.5
+	sinA, cosA := math.Sin(angle), math.Cos(angle)
+	point := func(dx, dy float64) modelPoint3 {
+		px := dx*cosA - dy*sinA
+		py := dx*sinA + dy*cosA
+		return modelPoint3{x: x + px, y: z, z: y + py}
+	}
+	verts := [4]modelPoint3{
+		point(-halfX, -halfY),
+		point(halfX, -halfY),
+		point(halfX, halfY),
+		point(-halfX, halfY),
+	}
+	uvs := [4]texturePoint{{u: 0, v: 0}, {u: 1, v: 0}, {u: 1, v: 1}, {u: 0, v: 1}}
+	options := triangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
+	if additive {
+		options.Blend = render.BlendLighter
+	}
+	drawTexturedSurface3DWithOptions(screen, texture, verts, uvs, quadIndices012023, [4]color.RGBA{tint, tint, tint, tint}, options)
+}
+
+func drawWorldSoftRing(screen *render.Frame, white *render.Image, x, y, z, radius, width float64, c color.RGBA, segments int) {
+	inner := math.Max(0, radius-width*0.5)
+	mid := math.Max(inner+0.01, radius)
+	outer := math.Max(mid+0.01, radius+width*0.5)
+	drawWorldRingBand(screen, white, x, y, z, inner, mid, 0, c.A, c, segments)
+	drawWorldRingBand(screen, white, x, y, z, mid, outer, c.A, 0, c, segments)
+}
+
+func drawWorldRingBand(screen *render.Frame, white *render.Image, x, y, z, innerRadius, outerRadius float64, innerAlpha, outerAlpha uint8, c color.RGBA, segments int) {
+	if segments < 3 || outerRadius <= innerRadius {
+		return
+	}
+	vertices := make([]render.Vertex3D, 0, (segments+1)*2)
+	indices := make([]uint16, 0, segments*6)
+	innerColor := c
+	outerColor := c
+	innerColor.A = innerAlpha
+	outerColor.A = outerAlpha
+	for i := 0; i <= segments; i++ {
+		angle := float64(i) * 2 * math.Pi / float64(segments)
+		cosine := math.Cos(angle)
+		sine := math.Sin(angle)
+		vertices = append(vertices,
+			effectVertex3D(x+cosine*innerRadius, y+sine*innerRadius, z, innerColor),
+			effectVertex3D(x+cosine*outerRadius, y+sine*outerRadius, z, outerColor),
+		)
+		if i == segments {
+			continue
+		}
+		base := uint16(i * 2)
+		indices = append(indices, base, base+1, base+3, base, base+3, base+2)
+	}
+	options := triangleDrawOptions(render.FilterNearest, render.AddressUnsafe)
+	options.Blend = render.BlendLighter
+	screen.DrawTriangles3D(vertices, indices, white, options)
+}

@@ -119,27 +119,27 @@ func cookingFailEffectSpec() EffectSpec {
 	return strEffectSpecAttached("cook_fail", "caramel_die.wav", false)
 }
 
-func pinkEffectSpec() EffectSpec {
+func dropPinkEffectSpec() EffectSpec {
 	return dropEffectSpec("pink", true)
 }
 
-func yellowEffectSpec() EffectSpec {
+func dropYellowEffectSpec() EffectSpec {
 	return dropEffectSpec("yellow", false)
 }
 
-func purpleEffectSpec() EffectSpec {
+func dropPurpleEffectSpec() EffectSpec {
 	return dropEffectSpec("purple", false)
 }
 
-func blueEffectSpec() EffectSpec {
+func dropBlueEffectSpec() EffectSpec {
 	return dropEffectSpec("blue", false)
 }
 
-func greenEffectSpec() EffectSpec {
+func dropGreenEffectSpec() EffectSpec {
 	return dropEffectSpec("green", false)
 }
 
-func redEffectSpec() EffectSpec {
+func dropRedEffectSpec() EffectSpec {
 	return dropEffectSpec("red", false)
 }
 

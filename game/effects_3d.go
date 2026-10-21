@@ -429,3 +429,25 @@ func effectSphereMesh(texture *render.Image, center modelPoint3, radius, rotatio
 	}
 	return vertices, indices
 }
+
+func effectTexturedVertex3D(x, y, z float64, srcX, srcY float32, c color.RGBA) render.Vertex3D {
+	point := modelPoint3{x: x, y: z, z: y}
+	return render.Vertex3D{
+		X:      float32(point.x),
+		Y:      float32(point.y),
+		Z:      float32(point.z),
+		SrcX:   srcX,
+		SrcY:   srcY,
+		ColorR: float32(c.R) / 255,
+		ColorG: float32(c.G) / 255,
+		ColorB: float32(c.B) / 255,
+		ColorA: float32(c.A) / 255,
+		DepthX: float32(point.x),
+		DepthY: float32(point.y),
+		DepthZ: float32(point.z),
+	}
+}
+
+func effectVertex3D(x, y, z float64, c color.RGBA) render.Vertex3D {
+	return effectTexturedVertex3D(x, y, z, 0, 0, c)
+}

@@ -342,6 +342,11 @@ func (m *WorldMode) drawNativeSpriteEffect(screen *render.Frame, ctx client.Cont
 	m.drawSPREffect(screen, ctx, projection, effect, c, x, y, z, now)
 }
 
+type asuraGlyphs struct {
+	origins [2]modelPoint3
+	count   int
+}
+
 func (m *WorldMode) drawEffectGlyphs(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
 	mildWind := effect.effectID >= effectBeginAsura1 && effect.effectID <= effectBeginAsura7
 	if !mildWind && effect.asuraGlyphs == nil {

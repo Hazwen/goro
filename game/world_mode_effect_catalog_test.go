@@ -635,10 +635,10 @@ func TestRobrowserSpecialEffectsTwoHundredToTwoFiftyMatchTableRows(t *testing.T)
 		adapter  effectFuncAdapter
 		texture  string
 	}{
-		{"EF_LEVEL99_2", effectLevel99Ground, "GroundAura", effectFuncGroundAura, "effect/pikapika2.bmp"},
+		{"EF_LEVEL99_2", effectLevel99Ground, "GroundAura", effectFuncLevel99Ground, "effect/pikapika2.bmp"},
 		{"EF_LEVEL99_3", effectLevel99Bubble, "Level99Bubble", effectFuncLevel99Bubble, "effect/whitelight.tga"},
 		{"EF_CHOOKGI", effectChookgi, "SpiritSphere", effectFuncSpiritSphere, "effect/thunder_center.bmp"},
-		{"EF_BOTTOM_LA", effectBottomLand, "LandProtectorGround", effectFuncLandProtectorGround, "effect/aaa copy.bmp"},
+		{"EF_BOTTOM_LA", effectBottomLand, "LandProtectorGround", effectFuncGroundSigil, "effect/aaa copy.bmp"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 1 {
@@ -1721,7 +1721,7 @@ func TestRobrowserLevel99AliasesThreeFiftyToFourHundredMatchTableRows(t *testing
 	}{
 		{"EF_LEVEL99_4", effectLevel99Aura1, "Level99Bubble", effectFuncLevel99Bubble, "effect/whitelight.tga"},
 		{"EF_LEVEL99_5", effectLevel99AuraMid, "Level99Aura", effectFuncLevel99Aura, "effect/ring_blue.tga"},
-		{"EF_LEVEL99_6", effectLevel99AuraBottom, "GroundAura", effectFuncGroundAura, "effect/pikapika2.bmp"},
+		{"EF_LEVEL99_6", effectLevel99AuraBottom, "GroundAura", effectFuncLevel99Ground, "effect/pikapika2.bmp"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 1 || spec.duration != 5*time.Minute {

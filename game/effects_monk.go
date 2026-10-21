@@ -153,8 +153,3 @@ func (m *WorldMode) drawHitLine(screen *render.Frame, ctx client.Context, compon
 		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
 	}
 }
-
-type asuraGlyphs struct {
-	origins [2]modelPoint3
-	count   int
-}

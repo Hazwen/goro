@@ -22,7 +22,7 @@ func (m *WorldMode) applyPerformanceGroundSkill(ctx client.Context, notify netwo
 		m.scheduleSoundAtActor(now, notify.SourceID, sound)
 	}
 	if notify.SkillID == db.SkillCGMoonlit {
-		m.applyClownSkill(ctx, network.SkillNoDamageNotify{SkillID: notify.SkillID, SourceID: notify.SourceID}, now)
+		m.applyClownGypsySkill(ctx, network.SkillNoDamageNotify{SkillID: notify.SkillID, SourceID: notify.SourceID}, now)
 	}
 	// Skill-unit packets own each symbol and its lifetime.
 	return true

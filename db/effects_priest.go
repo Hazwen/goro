@@ -74,9 +74,9 @@ func slowPoisonEffectSpec() EffectSpec {
 }
 
 func bottomMagnusEffectSpec() EffectSpec {
-	return groundWallsEffectSpec(effectBottomMagnus)
+	return groundWallsEffectSpec("effect/ring_red.tga", 9999)
 }
 
 func bottomSancEffectSpec() EffectSpec {
-	return groundWallsEffectSpec(effectBottomSanc)
+	return groundWallsEffectSpec("effect/alpha_down.tga", 9999)
 }
