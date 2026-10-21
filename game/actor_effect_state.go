@@ -199,6 +199,16 @@ func (m *WorldMode) syncActorSpiritEffects(ctx client.Context, actorID uint32) {
 	case db.JobGunslinger, db.JobGunslingerB:
 		sphereEffect = effectChookgi3
 	}
+	if sphereEffect == effectChookgi3 && visible && actor.SpiritSpheres > 0 {
+		for i := range m.worldEffects {
+			effect := &m.worldEffects[i]
+			if effect.effectID == effectChookgi3 && effect.actorID == actorID && effect.hitCount != min(int(actor.SpiritSpheres), 10) {
+				effect.hitCount = min(int(actor.SpiritSpheres), 10)
+				effect.starts = time.Now()
+				effect.gunslingerCoins = newGunslingerCoins(*effect)
+			}
+		}
+	}
 	for _, id := range [...]int{effectChookgi, effectChookgi2, effectChookgi3} {
 		m.setActorStateEffect(ctx, actorID, id, visible && actor.SpiritSpheres > 0 && id == sphereEffect)
 	}

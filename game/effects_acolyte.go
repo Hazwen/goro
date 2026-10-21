@@ -51,7 +51,7 @@ func (m *WorldMode) drawAgilityEffect(screen *render.Frame, ctx client.Context, 
 		return
 	}
 	decrease := effect.effectID == effectDecAgility
-	if origin, ok := projection.projectPoint(x, y, z); ok {
+	if origin, ok := projection.projectPoint(x, y, z); ok && component.textureFile != "" {
 		drawEffectScreenParticle(screen, m.effectFileTexture(ctx.Resources, component.textureFile), origin, agilityLabel(decrease, frame, duration))
 	}
 	texture := m.effectFileTexture(ctx.Resources, component.textureFiles[0])
@@ -64,7 +64,11 @@ func (m *WorldMode) drawAgilityEffect(screen *render.Frame, ctx client.Context, 
 	// two ticks; births whose 50-tick lifetime exceeds the parent fade from zero.
 	for birth := max(0, frame/2*2-48); birth <= minInt(frame, duration-50); birth += 2 {
 		age := frame - birth
-		alpha := effectParticleAlpha(age, 50, 20, 30, 200)
+		maxAlpha := 200.0
+		if effect.effectID == effectAgiUp {
+			maxAlpha = 60
+		}
+		alpha := effectParticleAlpha(age, 50, 20, 30, maxAlpha)
 		if alpha == 0 {
 			continue
 		}
@@ -77,8 +81,13 @@ func (m *WorldMode) drawAgilityEffect(screen *render.Frame, ctx client.Context, 
 		}
 		center := modelPoint3{x: x + math.Sin(angle)*radius, y: z + height, z: y + math.Cos(angle)*radius}
 		length := float64(30+hitEffectRandom(effect, birth*4+3, 60)) / 10 / 5
+		width := .18 / 5
+		if effect.effectID == effectAgiUp {
+			length = float64(20+hitEffectRandom(effect, birth*4+3, 100)) / 10 / 5
+			width = float64(1+hitEffectRandom(effect, birth+1000, 4)) / 10 / 5
+		}
 		tint := color.RGBA{R: 255, G: 255, B: 255, A: alpha}
-		for _, side := range []modelPoint3{{x: .18 / 5}, {z: .18 / 5}} {
+		for _, side := range []modelPoint3{{x: width}, {z: width}} {
 			// The texture's U axis runs along the streak, as in Render3DCrossTexture.
 			up := modelPoint3{y: length}
 			appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{

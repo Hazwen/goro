@@ -20,7 +20,11 @@ func (m *WorldMode) drawFullStrip(screen *render.Frame, ctx client.Context, proj
 		if texture == nil {
 			continue
 		}
-		for i := 0; i < 16; i++ {
+		count, size := 16, float64(5+kind*4)*math.Sqrt2/5
+		if effect.effectID == effectRGCoin3 {
+			count, size = 4, math.Sqrt2
+		}
+		for i := 0; i < count; i++ {
 			seed := (kind*16 + i) * 4
 			n := frame + 1 - 18 - hitEffectRandom(effect, seed, 30)
 			alpha := min(n, 10)*25 - max(0, n-25)*7
@@ -31,7 +35,6 @@ func (m *WorldMode) drawFullStrip(screen *render.Frame, ctx client.Context, proj
 			yaw := degreesToRadians(float64(hitEffectRandom(effect, seed+2, 360)))
 			center := add3(effect.actorOrigin, effectParticlePoint(float64(12+n), 0, pitch, yaw))
 			roll := degreesToRadians(float64(hitEffectRandom(effect, seed+3, 360) + 3*(frame+1)))
-			size := float64(5+kind*4) * math.Sqrt2 / 5
 			drawTexturedEffectBillboardRotatedXY(screen, projection, texture, center.x, center.z, center.y, size, size, roll, color.RGBA{250, 100, 100, uint8(alpha)}, true)
 		}
 	}

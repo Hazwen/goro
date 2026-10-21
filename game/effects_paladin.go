@@ -327,7 +327,7 @@ func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context
 		count, distance = 32, float64(2+3*process)/5
 		widths = []float64{1, 2}
 	}
-	if effect.effectID == effectBash3D3 || effect.effectID == effectBash3D4 {
+	if effect.effectID == effectBash3D3 || effect.effectID == effectBash3D4 || effect.effectID == effectBash3D5 {
 		count = 24
 	}
 	if effect.effectID == effectKouenka {
@@ -350,7 +350,7 @@ func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context
 				if layer == 1 {
 					tint = color.RGBA{250, 250, 0, uint8(alpha)}
 				}
-			} else if effect.effectID == effectBash3D4 {
+			} else if effect.effectID == effectBash3D4 || effect.effectID == effectBash3D5 {
 				tint = color.RGBA{50, 50, 50, uint8(alpha)}
 				if layer == 1 {
 					tint = color.RGBA{250, 250, 250, uint8(alpha)}

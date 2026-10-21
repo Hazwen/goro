@@ -63,32 +63,6 @@ func (m *WorldMode) addNinjaBeforeHitEffect(ctx client.Context, action network.A
 	return true
 }
 
-func (m *WorldMode) drawNinjaSprite(screen *render.Frame, ctx client.Context, projection sceneProjection, c worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
-	if effect.effectID == effectKaen {
-		period := 16 * db.EffectFrameDuration
-		cycle := now.Sub(effect.starts) / period
-		for previous := time.Duration(1); previous >= 0; previous-- {
-			birth := (cycle - previous) * period
-			if birth < 0 || (!effect.persistent && birth > 0) || now.Sub(effect.starts)-birth >= 23*db.EffectFrameDuration {
-				continue
-			}
-			copy := effect
-			copy.starts = effect.starts.Add(birth)
-			c.spriteDelay = time.Duration(3+hitEffectRandom(effect, int(cycle-previous), 5)) * db.EffectFrameDuration
-			copy.starts = copy.starts.Add(-c.spriteDelay)
-			m.drawSPREffect(screen, ctx, projection, copy, c, x, y, z, now)
-		}
-		return
-	}
-	// Prim3DParticle advances its first motion on tick zero.
-	effect.starts = effect.starts.Add(-c.spriteDelay)
-	if effect.effectID == effectThunderStorm2 {
-		m.draw3DSpriteEffect(screen, ctx, projection, effect, c, x, y, z+c.posZ, 250*effectPixelRatio, 1, 0, effect.starts, now)
-		return
-	}
-	m.drawSPREffect(screen, ctx, projection, effect, c, x, y, z, now)
-}
-
 // Each petal captures its target's position when it appears, then drifts on its own.
 type ninjaPetals struct {
 	tick      int

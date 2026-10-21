@@ -104,7 +104,7 @@ assumptions.
 
 ### Original-client job audit
 
-Active follow-up to the first-job, Knight/Lord Knight, Crusader/Paladin,
+Completed source audit following the first-job, Knight/Lord Knight, Crusader/Paladin,
 Priest/High Priest, Monk, Wizard, Sage, Assassin/Rogue, and Soul Linker passes.
 For each class: inspect every skill against dhxj and the 2008 HighPriest client,
 cross-check server packets, implement discrepancies, review and fix twice,
@@ -133,7 +133,7 @@ Where they disagree, verify the actual Sakexe binary before choosing behaviour.
 - [x] Taekwon — all 17 skills audited; kick poses/body effects, Run footprints, High Jump, Mild Wind, and sounds reviewed twice and validated with client assets.
 - [x] Star Gladiator — all 18 skills audited; Warmth, Comfort, Hatred, Demon, and Fusion reviewed twice and validated with client assets.
 - [x] Ninja — all 23 skills audited; native projectiles, particles, sprites, ground units, Mirror Image, and poses reviewed twice and validated with client assets.
-- [ ] Gunslinger
+- [x] Gunslinger — all 22 skills audited; native gun poses, packet ownership, coins, grenade units, sprites, and sound timing reviewed twice and validated with client assets.
 
 Hunter reference checks: `dhxj` and 2008 `HighPriest` skill action/effect
 routing, trap state changes, particle primitives, and rAthena trap packets.
@@ -430,6 +430,29 @@ status end. Existing shared rendering handles rings, spikes, throws, and rays.
 Both reviews, full tests with OldRO assets, and a normal build passed. No live
 visual comparison was performed; the new procedural effects need playtesting.
 
+Gunslinger reference checks: dhxj Session2/GameActor/GameModePacket,
+RagEffect/Effect_SPR/CHEMICAL3/CHOOKGI/RG_COIN2, the HighPriest decompilation,
+the actual 2008 Sakexe effect cases and release-pose table, roBrowser mappings,
+and rAthena's Gunslinger implementations and ground-cast notification path.
+All 22 skills were checked, including the three passives (no independent
+activation visual). Attacks launch their special visual once per damage
+notification; Disarm, Desperado, and buffs use the separate successful
+no-damage notification. Tracking no longer emits a spurious casting STR.
+Added red/blue buff flashes, Increasing Accuracy streaks, Piercing Shot rays,
+and Disarm weapon particles using existing native primitive renderers.
+Corrected sprite direction, playback speed, sound delays, and Triple Action's
+30-tick sprite delay. Flip Coin and Cracker use centered sounds. Ground Drift's
+five grenade types belong to their server units and overlap 23-tick sprite
+plays every 16 ticks. Coins follow the reported count, show at most five gold
+orbs (larger orbs represent counts above five), and reset on count changes.
+Their cosmetic wandering catches up for at most two seconds after a long
+pause. Native gun release/casting poses reuse the actor animation chain,
+including the randomized forward/reverse buff motion. The former NPC Power Up
+alias for EF_AGIUP was corrected while preserving the NPC skill's existing
+sound. Both reviews, the full test suite with OldRO assets, and a normal build
+passed. No live visual comparison was performed; the new visuals need
+playtesting, as do the other procedural effects in this audit.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -438,8 +461,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `746`.
-- Catalog size relative to all numeric constants: about `65.0%`.
+- Goro effect catalog entries: `750`.
+- Catalog size relative to all numeric constants: about `65.4%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.
@@ -479,7 +502,7 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 - Ninja expanded-class support: normal/baby jobs, full skill tree and level
   metadata, roBrowser skill actions/effects, and Ninja status routing.
 - Gunslinger expanded-class support: normal/baby jobs, full skill tree and
-  level metadata, weapon actions, status icons, and roBrowser skill effects.
+  level metadata, native gun poses, coins, grenade units, and skill effects.
 - Taekwon-family support: normal/baby Taekwon, Star Gladiator, and Soul Linker
   jobs, skill trees, stance/status behavior, mission packets, and ranking UI.
 - Common effects: hit feedback, potion/food families, Heal/recovery feedback,

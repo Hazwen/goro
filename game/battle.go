@@ -834,7 +834,7 @@ func (m *WorldMode) addSkillBeforeHitEffect(ctx client.Context, action network.A
 	if action.SkillID == 0 || skillSplashAction(action) {
 		return
 	}
-	if m.addMageProjectileEffect(ctx, action, starts) || m.addNinjaBeforeHitEffect(ctx, action, starts) {
+	if m.addMageProjectileEffect(ctx, action, starts) || m.addNinjaBeforeHitEffect(ctx, action, starts) || m.addGunslingerBeforeHitEffect(ctx, action, starts) {
 		return
 	}
 	effectIDs := skillBeforeHitEffectIDs(action.SkillID)

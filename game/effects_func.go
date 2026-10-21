@@ -116,7 +116,7 @@ const (
 	effectFuncSoulBreaker
 	effectFuncNinjaWind
 	effectFuncNinjaPetals
-	effectFuncNinjaSprite
+	effectFuncNativeSprite
 )
 
 const (
@@ -319,8 +319,8 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawNinjaWind(screen, ctx, component, effect, now)
 	case effectFuncNinjaPetals:
 		m.drawNinjaPetals(screen, ctx, projection, component, effect, now)
-	case effectFuncNinjaSprite:
-		m.drawNinjaSprite(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
+	case effectFuncNativeSprite:
+		m.drawNativeSpriteEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncEsma:
 		m.drawEsmaEffect(screen, ctx, component, effect, now)
 	case effectFuncKaizel:
@@ -628,6 +628,10 @@ func groundTextureZOffset(component worldEffectComponent, effect worldEffect, co
 }
 
 func (m *WorldMode) drawSpiritSphereEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
+	if effect.effectID == effectChookgi3 {
+		m.drawGunslingerCoins(screen, ctx, projection, component, effect, x, y, z, now)
+		return
+	}
 	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
 	if texture == nil {
 		return

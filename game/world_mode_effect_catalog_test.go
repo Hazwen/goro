@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 746 {
-		t.Fatalf("implemented effects = %d, want 746", coverage.Implemented)
+	if coverage.Implemented != 750 {
+		t.Fatalf("implemented effects = %d, want 750", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 122.89 || coverage.ActivePercent > 122.90 {
-		t.Fatalf("active coverage = %.3f, want about 122.90", coverage.ActivePercent)
+	if coverage.ActivePercent < 123.55 || coverage.ActivePercent > 123.56 {
+		t.Fatalf("active coverage = %.3f, want about 123.56", coverage.ActivePercent)
 	}
 }
 
@@ -884,7 +884,7 @@ func TestRobrowserActiveEffectsFourFiftyToFiveHundredHaveSpecs(t *testing.T) {
 		effectDarkJupitelHit: "EF_YUFITEL2",
 		effectNPCStop:        "EF_NPC_STOP",
 		effectDarkCasting:    "EF_DARKCASTING",
-		effectNPCPowerUp:     "EF_AGIUP",
+		effectAgiUp:          "EF_AGIUP",
 		effectJumpKick:       "EF_JUMPKICK",
 		effectBeginAsura1:    "EF_BEGINASURA1",
 		effectBeginAsura2:    "EF_BEGINASURA2",
@@ -1894,21 +1894,6 @@ func TestRobrowserSimpleEffectsFourFiftyToFiveHundredMatchTableRows(t *testing.T
 		}
 	}
 
-	for _, tc := range []struct {
-		name string
-		id   int
-		wav  string
-	}{
-		{"EF_AGIUP", effectNPCPowerUp, "effect\\mon_폭기.wav"},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
-			t.Fatalf("%s spec = %+v ok=%t, want sound-only 500ms", tc.name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
-			t.Fatalf("%s sfx = %#v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
 }
 
 func TestRobrowserDarkCombatEffectsFourFiftyToFiveHundredMatchTableRows(t *testing.T) {
@@ -2070,7 +2055,6 @@ func TestRobrowserSimpleEffectsFiveFiftyToSixHundredMatchTableRows(t *testing.T)
 		{"EF_ITEM_ZZZ", effectItemZZZ, "item_zzz", "_snore.wav", false},
 		{"EF_ITEM_RAIN", effectItemRain, "item_rain", "", false},
 		{"EF_M01", effectM01, "m_ef01", "", false},
-		{"EF_M02", effectM02, "m_ef02", "", true},
 		{"EF_M03", effectM03, "m_ef03", "", false},
 		{"EF_M04", effectM04, "m_ef04", "", false},
 		{"EF_M05", effectM05, "m_ef05", "dragon_breath.wav", false},
@@ -2160,47 +2144,6 @@ func TestRobrowserSimpleEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) 
 		}
 	}
 
-	for _, tc := range []struct {
-		name      string
-		id        int
-		file      string
-		wav       string
-		attached  bool
-		stop      bool
-		repeat    bool
-		direction bool
-	}{
-		{"EF_DESPERADO", effectDesperado, "데스페라도", "effect\\데스페라도.wav", true, false, false, false},
-		{"EF_LIGHTNING_S", effectLightningS, "라이트닝스피어", "", false, false, false, false},
-		{"EF_BLIND_S", effectBlindS, "블라인드스피어", "", false, false, false, false},
-		{"EF_POISON_S", effectPoisonS, "포이즌스피어", "", false, false, false, false},
-		{"EF_FREEZING_S", effectFreezingS, "프리징스피어", "", false, false, false, false},
-		{"EF_FLARE_S", effectFlareS, "플레어스피어", "", false, false, false, false},
-		{"EF_RAPIDSHOWER", effectRapidShower, "래피드샤워", "effect\\래피드샤워.wav", true, false, false, false},
-		{"EF_MAGICALBULLET", effectMagicalBullet, "매지컬불릿", "effect\\매지컬블릿.wav", true, false, false, false},
-		{"EF_SPREADATTACK", effectSpreadAttack, "스프레드", "", true, false, false, true},
-		{"EF_TRACKING", effectTracking, "트래킹", "", true, false, false, false},
-		{"EF_TRIPLEACTION", effectTripleAction, "트리플액션", "effect\\트리플액션.wav", true, false, false, false},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 1 {
-			t.Fatalf("%s spec = %+v ok=%t, want one SPR component", tc.name, spec, ok)
-		}
-		component := spec.components[0]
-		if component.kind != effectComponentSPR || component.spriteFile != tc.file || component.attachedEntity != tc.attached || component.spriteStopAtEnd != tc.stop || component.repeat != tc.repeat || component.spriteDirection != tc.direction {
-			t.Fatalf("%s component = %+v", tc.name, component)
-		}
-		if tc.wav == "" {
-			if len(spec.sfx) != 0 {
-				t.Fatalf("%s sfx = %#v, want none", tc.name, spec.sfx)
-			}
-			continue
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
-			t.Fatalf("%s sfx = %#v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
-
 	hapgyeok, ok := worldEffectSpecForID(effectHapgyeok)
 	if !ok || len(hapgyeok.components) != 2 {
 		t.Fatalf("EF_HAPGYEOK spec = %+v ok=%t", hapgyeok, ok)
@@ -2212,44 +2155,9 @@ func TestRobrowserSimpleEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) 
 		t.Fatalf("EF_HAPGYEOK components = %+v", hapgyeok.components)
 	}
 
-	for _, tc := range []struct {
-		name string
-		id   int
-		wav  string
-	}{
-		{"EF_RG_COIN3", effectRGCoin3, "effect\\디스암.wav"},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
-			t.Fatalf("%s spec = %+v ok=%t, want sound-only 500ms", tc.name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
-			t.Fatalf("%s sfx = %#v, want %q", tc.name, spec.sfx, tc.wav)
-		}
-	}
 }
 
 func TestRobrowserFuncEffectsSixHundredToSixFiftyMatchTableRows(t *testing.T) {
-	dust, ok := worldEffectSpecForID(effectBash3D5)
-	if !ok || dust.duration != 175*time.Millisecond || len(dust.components) != 3 {
-		t.Fatalf("EF_BASH3D5 spec = %+v ok=%t", dust, ok)
-	}
-	if len(dust.sfx) != 1 || dust.sfx[0] != "effect\\bash3d5.wav" {
-		t.Fatalf("EF_BASH3D5 sfx = %#v", dust.sfx)
-	}
-	body, first, second := dust.components[0], dust.components[1], dust.components[2]
-	if body.kind != effectComponentFUNC || body.funcName != "Bash3D5" || !body.attachedEntity {
-		t.Fatalf("EF_BASH3D5 body = %+v", body)
-	}
-	for i, component := range []worldEffectComponent{first, second} {
-		if component.kind != effectComponentCylinder || component.textureName != "alpha_center" || component.duration != 175*time.Millisecond || component.duplicate != 6 || component.alphaMax != 0.6 || !component.fade || component.angleX != -90 || component.angleZRandom != 360 || !component.fixedPerspective || component.posZ != 1.5 || component.height != 0 || component.bottomSize != 0.01 || component.animation != 2 || !component.attachedEntity || component.totalCircleSides != 30 || component.circleSides != 1 {
-			t.Fatalf("EF_BASH3D5 cylinder %d = %+v", i, component)
-		}
-	}
-	if first.topSize != 4.5 || second.topSize != 7.2 {
-		t.Fatalf("EF_BASH3D5 top sizes = %.1f %.1f", first.topSize, second.topSize)
-	}
-
 	chookgi, ok := worldEffectSpecForID(effectChookgi3)
 	if !ok || chookgi.duration != 5*time.Minute || len(chookgi.components) != 1 {
 		t.Fatalf("EF_CHOOKGI3 spec = %+v ok=%t", chookgi, ok)

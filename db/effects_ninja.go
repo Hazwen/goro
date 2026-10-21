@@ -35,7 +35,7 @@ func ninjaWindEffectSpec(vertical bool) EffectSpec {
 }
 
 func ninjaSpriteEffectSpec(id int) EffectSpec {
-	spec := funcEffectSpec("NinjaSprite", 100*EffectFrameDuration, true)
+	spec := funcEffectSpec("NativeSprite", 100*EffectFrameDuration, true)
 	c := &spec.Components[0]
 	c.WorldSizedSprite, c.Overlay = true, true
 	c.SpriteDelay = 4 * EffectFrameDuration

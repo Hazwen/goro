@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
@@ -307,4 +308,36 @@ func (m *WorldMode) drawDirectedSpriteEffect(screen *render.Frame, ctx client.Co
 	component.duration = 0 // The non-repeating ACT owns its visible lifetime.
 	p := effect.actorOrigin
 	m.drawSPREffect(screen, ctx, projection, effect, component, p.x, p.z, p.y, now)
+}
+
+func (m *WorldMode) drawNativeSpriteEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, c worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
+	if now.Before(effect.starts.Add(c.delay)) {
+		return
+	}
+	if effect.effectID == effectKaen || effect.effectID >= effectLightningS && effect.effectID <= effectFlareS {
+		period := 16 * db.EffectFrameDuration
+		cycle := now.Sub(effect.starts) / period
+		for previous := time.Duration(1); previous >= 0; previous-- {
+			birth := (cycle - previous) * period
+			if birth < 0 || (!effect.persistent && birth > 0) || now.Sub(effect.starts)-birth >= 23*db.EffectFrameDuration {
+				continue
+			}
+			copy := effect
+			copy.starts = effect.starts.Add(birth)
+			if effect.effectID == effectKaen {
+				c.spriteDelay = time.Duration(3+hitEffectRandom(effect, int(cycle-previous), 5)) * db.EffectFrameDuration
+			}
+			copy.starts = copy.starts.Add(-c.spriteDelay)
+			m.drawSPREffect(screen, ctx, projection, copy, c, x, y, z, now)
+		}
+		return
+	}
+	// Prim3DParticle advances its first motion on tick zero.
+	effect.starts = effect.starts.Add(c.delay - c.spriteDelay)
+	c.delay = 0
+	if effect.effectID == effectThunderStorm2 {
+		m.draw3DSpriteEffect(screen, ctx, projection, effect, c, x, y, z+c.posZ, 250*effectPixelRatio, 1, 0, effect.starts, now)
+		return
+	}
+	m.drawSPREffect(screen, ctx, projection, effect, c, x, y, z, now)
 }

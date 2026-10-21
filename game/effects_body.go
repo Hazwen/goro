@@ -215,6 +215,14 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 			red = max(red, blueBodyAlpha(min(frame/8, 25)))
 		case effectTaeReady:
 			blue = max(blue, blueBodyAlpha(frame))
+		case effectMadnessBlue:
+			blue = max(blue, blueBodyAlpha(20+frame%32))
+		case effectMadnessRed:
+			red = max(red, blueBodyAlpha(20+frame%32))
+		case effectRedHit:
+			if frame <= 16 {
+				red = max(red, blueBodyAlpha(frame*3))
+			}
 		case effectBlueHit:
 			if frame <= 16 {
 				blue = max(blue, blueBodyAlpha(frame*3))

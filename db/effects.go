@@ -450,7 +450,7 @@ const (
 	effectDarkJupitelHit   = 452
 	effectNPCStop          = 453
 	effectDarkCasting      = 454
-	effectNPCPowerUp       = 456
+	effectAgiUp            = 456
 	effectJumpKick         = 457
 	effectQuakeBody2       = 458
 	effectStormKick3       = 461
@@ -520,6 +520,7 @@ const (
 	effectRedLightBody     = 544
 	effectSmaReady         = 546
 	effectStin             = 547
+	effectRedHit           = 548
 	effectBlueHit          = 549
 	effectQuakeBody3       = 550
 	effectStin2            = 553
@@ -569,7 +570,10 @@ const (
 	effectBottomSuiton     = 620
 	effectStin4            = 621
 	effectThunderStorm2    = 622
+	effectChemical4        = 623
 	effectStin5            = 624
+	effectMadnessBlue      = 625
+	effectMadnessRed       = 626
 	effectRGCoin3          = 627
 	effectBash3D5          = 628
 	effectChookgi3         = 629
@@ -3990,7 +3994,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectDarkJupitelHit:    darkJupitelHitEffectSpec(),
 	effectNPCStop:           sprEffectSpec("스톱", "", true, false),
 	effectDarkCasting:       darkCastingEffectSpec(),
-	effectNPCPowerUp:        soundOnlyEffectSpec("effect\\mon_폭기.wav"),
+	effectAgiUp:             gunslingerAgilityEffectSpec(),
 	effectJumpKick:          {Duration: 100 * EffectFrameDuration, SFX: []string{"effect\\T_날라차기.wav"}, SFXDelays: []time.Duration{5 * EffectFrameDuration}},
 	effectBeginAsura1:       mildWindEffectSpec("effect/hanmoon1.tga"),
 	effectBeginAsura2:       mildWindEffectSpec("effect/hanmoon2.tga"),
@@ -4039,6 +4043,10 @@ var EffectSpecs = map[int]EffectSpec{
 	effectBlueBody:          soulLinkerBodyEffectSpec("BlueBody", "effect\\t_치잉.wav", 200),
 	effectSmaReady:          esmaReadyEffectSpec(),
 	effectStin:              estinEffectSpec(),
+	effectRedHit:            funcEffectSpec("RedHit", 60*EffectFrameDuration, true),
+	effectMadnessBlue:       funcEffectSpec("BlueHit", 64*EffectFrameDuration, true),
+	effectMadnessRed:        funcEffectSpec("RedHit", 64*EffectFrameDuration, true),
+	effectChemical4:         piercingShotEffectSpec(),
 	effectBlueHit:           funcEffectSpec("BlueHit", 60*EffectFrameDuration, true),
 	effectQuakeBody3:        funcEffectSpec("QuakeBody3", 60*EffectFrameDuration, true),
 	effectStin2:             esmaEffectSpec(),
@@ -4058,7 +4066,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectItemZZZ:           sprEffectSpec("item_zzz", "_snore.wav", true, false),
 	effectItemRain:          sprEffectSpec("item_rain", "", true, false),
 	effectM01:               sprEffectSpec("m_ef01", "", true, false),
-	effectM02:               sprDirectionEffectSpec("m_ef02", ""),
+	effectM02:               gunslingerSpriteEffectSpec(effectM02),
 	effectM03:               sprEffectSpec("m_ef03", "", true, false),
 	effectM04:               sprEffectSpec("m_ef04", "", true, false),
 	effectM05:               sprEffectSpec("m_ef05", "dragon_breath.wav", true, false),
@@ -4091,8 +4099,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectStin4:             ninjaWindEffectSpec(false),
 	effectStin5:             ninjaWindEffectSpec(true),
 	effectThunderStorm2:     ninjaSpriteEffectSpec(effectThunderStorm2),
-	effectRGCoin3:           soundOnlyEffectSpec("effect\\디스암.wav"),
-	effectBash3D5:           bash3DEffectSpec("Bash3D5", "effect\\bash3d5.wav", 175*time.Millisecond, 0, 6),
+	effectRGCoin3:           disarmEffectSpec(),
+	effectBash3D5:           lordKnightBurstEffectSpec("effect\\더스트샷.wav", 0),
 	effectChookgi3:          spiritSphereEffectSpec(),
 	effectKirikage:          ninjaSpriteEffectSpec(effectKirikage),
 	effectTatami:            ninjaSpriteEffectSpec(effectTatami),
@@ -4101,18 +4109,18 @@ var EffectSpecs = map[int]EffectSpec{
 	effectKaen:              ninjaSpriteEffectSpec(effectKaen),
 	effectBaku:              strEffectSpec("fire dragon", "effect\\폭염룡.wav"),
 	effectHyousyouraku:      strEffectSpec("icy", "effect\\빙정락.wav"),
-	effectDesperado:         sprEffectSpec("데스페라도", "effect\\데스페라도.wav", true, false),
-	effectLightningS:        sprEffectSpec("라이트닝스피어", "", false, false),
-	effectBlindS:            sprEffectSpec("블라인드스피어", "", false, false),
-	effectPoisonS:           sprEffectSpec("포이즌스피어", "", false, false),
-	effectFreezingS:         sprEffectSpec("프리징스피어", "", false, false),
-	effectFlareS:            sprEffectSpec("플레어스피어", "", false, false),
-	effectRapidShower:       sprEffectSpec("래피드샤워", "effect\\래피드샤워.wav", true, false),
-	effectMagicalBullet:     sprEffectSpec("매지컬불릿", "effect\\매지컬블릿.wav", true, false),
-	effectSpreadAttack:      sprDirectionEffectSpec("스프레드", ""),
+	effectDesperado:         gunslingerSpriteEffectSpec(effectDesperado),
+	effectLightningS:        gunslingerSpriteEffectSpec(effectLightningS),
+	effectBlindS:            gunslingerSpriteEffectSpec(effectBlindS),
+	effectPoisonS:           gunslingerSpriteEffectSpec(effectPoisonS),
+	effectFreezingS:         gunslingerSpriteEffectSpec(effectFreezingS),
+	effectFlareS:            gunslingerSpriteEffectSpec(effectFlareS),
+	effectRapidShower:       gunslingerSpriteEffectSpec(effectRapidShower),
+	effectMagicalBullet:     gunslingerSpriteEffectSpec(effectMagicalBullet),
+	effectSpreadAttack:      gunslingerSpriteEffectSpec(effectSpreadAttack),
 	effectTrackCasting:      strEffectSpecAttached("트랙킹", "", false),
-	effectTracking:          sprEffectSpec("트래킹", "", true, false),
-	effectTripleAction:      sprEffectSpec("트리플액션", "effect\\트리플액션.wav", true, false),
+	effectTracking:          gunslingerSpriteEffectSpec(effectTracking),
+	effectTripleAction:      gunslingerSpriteEffectSpec(effectTripleAction),
 	effectBullseye:          strEffectSpecAttached("불스아이", "", false),
 	effectNPCEarthquake:     npcEarthquakeEffectSpec(),
 	effectDragonFear:        dragonFearEffectSpec(),
