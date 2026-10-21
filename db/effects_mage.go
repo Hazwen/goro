@@ -1,6 +1,9 @@
 package db
 
-import "time"
+import (
+	"image/color"
+	"time"
+)
 
 func mageProjectileEffectSpec(id int) EffectSpec {
 	spec := funcEffectSpec("MageProjectile", 52*EffectFrameDuration, true)
@@ -58,4 +61,115 @@ func mageSightEffectSpec() EffectSpec {
 	spec.Components = append(spec.Components, shadow)
 	spec.SFX = []string{"effect\\ef_sight.wav"}
 	return spec
+}
+
+func safetyWallEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 50 * time.Second,
+		SFX:      []string{"effect\\ef_glasswall.wav"},
+		Components: []EffectComponent{
+			{
+				Kind:    EffectComponentSTR,
+				STRFile: "safetywall",
+			},
+			{
+				Kind:             EffectComponentCylinder,
+				TextureName:      "alpha_down",
+				Duration:         50 * time.Second,
+				AlphaMax:         0.4,
+				Fade:             true,
+				Rotate:           true,
+				Animation:        0,
+				BottomSize:       0.6,
+				TopSize:          0.6,
+				Height:           7,
+				TotalCircleSides: 32,
+				CircleSides:      32,
+				Color:            color.RGBA{R: 128, G: 25, B: 128, A: 255},
+			},
+			{
+				Kind:             EffectComponentCylinder,
+				TextureName:      "alpha_down",
+				Duration:         50 * time.Second,
+				Delay:            50 * time.Millisecond,
+				AlphaMax:         0.4,
+				Fade:             true,
+				Rotate:           true,
+				Animation:        0,
+				BottomSize:       0.65,
+				TopSize:          0.65,
+				Height:           6,
+				TotalCircleSides: 32,
+				CircleSides:      32,
+				Color:            color.RGBA{R: 128, G: 25, B: 128, A: 255},
+			},
+			{
+				Kind:             EffectComponentCylinder,
+				TextureName:      "alpha_down",
+				Duration:         50 * time.Second,
+				Delay:            100 * time.Millisecond,
+				AlphaMax:         0.4,
+				Fade:             true,
+				Rotate:           true,
+				Animation:        0,
+				BottomSize:       0.7,
+				TopSize:          0.7,
+				Height:           7,
+				TotalCircleSides: 32,
+				CircleSides:      32,
+				Color:            color.RGBA{R: 128, G: 25, B: 128, A: 255},
+			},
+		},
+	}
+}
+
+func glassWallEffectSpec() EffectSpec {
+	return strEffectSpec("effect/safetywall", "effect\\ef_glasswall.wav")
+}
+
+func napalmBeatEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 700 * time.Millisecond,
+		SFX:      []string{"effect\\ef_napalmbeat.wav"},
+	}
+}
+
+func soulStrikeEffectSpec() EffectSpec {
+	return mageProjectileEffectSpec(effectSoulStrike)
+}
+
+func stoneCurseEffectSpec() EffectSpec {
+	return strEffectSpecAttached("stonecurse", "", false)
+}
+
+func coldBoltEffectSpec() EffectSpec {
+	return mageBoltEffectSpec(false)
+}
+
+func fireBoltEffectSpec() EffectSpec {
+	return mageBoltEffectSpec(true)
+}
+
+func fireBallEffectSpec() EffectSpec {
+	return mageProjectileEffectSpec(effectFireBall)
+}
+
+func fireWallEffectSpec() EffectSpec {
+	return strEffectSpecRandom("firewall%d", "effect\\ef_firewall.wav", 1, 2)
+}
+
+func frostDiverEffectSpec() EffectSpec {
+	return mageProjectileEffectSpec(effectFrostDiver)
+}
+
+func lightningBoltEffectSpec() EffectSpec {
+	return strEffectSpecAttached("lightning", "", false)
+}
+
+func thunderStormEffectSpec() EffectSpec {
+	return strEffectSpec("thunderstorm", "effect\\magician_thunderstorm.wav")
+}
+
+func energyCoatEffectSpec() EffectSpec {
+	return strEffectSpecAttached("energycoat", "", false)
 }

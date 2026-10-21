@@ -9,3 +9,11 @@ func cartTerminationEffectSpec() EffectSpec {
 	spec.SFXDelays = []time.Duration{30 * EffectFrameDuration}
 	return spec
 }
+
+func meltdownEffectSpec() EffectSpec {
+	return strEffectSpecAttached("melt", "effect\\black_overthrust.wav", false)
+}
+
+func cartBoostEffectSpec() EffectSpec {
+	return strEffectSpecAttached("cart", "effect\\ef_incagility.wav", false)
+}

@@ -346,7 +346,7 @@ func TestPriestGroundGeometryAndBlending(t *testing.T) {
 		}}
 		spec, _ := worldEffectSpecForID(tc.id)
 		frame := render.NewFrame(800, 600)
-		m.drawPriestGroundEffect(frame, ctx, spec.components[0], worldEffect{effectID: tc.id, starts: start},
+		m.drawGroundWallsEffect(frame, ctx, spec.components[0], worldEffect{effectID: tc.id, starts: start},
 			10, 20, 3, start.Add(89*db.EffectFrameDuration))
 		cmds := reflect.ValueOf(frame).Elem().FieldByName("worldCommands")
 		if cmds.Len() != 1 {

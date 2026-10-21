@@ -163,7 +163,7 @@ func TestAsuraNativeGlyphTimingAndPalette(t *testing.T) {
 		}
 		for _, tick := range []int{0, 1, 21, 291} {
 			frame := render.NewFrame(800, 600)
-			m.drawAsuraGlyphs(frame, ctx, projection, spec.components[1], effect, start.Add(time.Duration(tick)*db.EffectFrameDuration))
+			m.drawEffectGlyphs(frame, ctx, projection, spec.components[1], effect, start.Add(time.Duration(tick)*db.EffectFrameDuration))
 			draws := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
 			count := 0
 			if tick == 1 {

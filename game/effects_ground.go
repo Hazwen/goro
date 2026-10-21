@@ -11,7 +11,7 @@ import (
 )
 
 // Sanctuary, Magnus, Basilica, and Fog Wall share the native rectangular walls.
-func (m *WorldMode) drawPriestGroundEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
+func (m *WorldMode) drawGroundWallsEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
 	if now.Before(effect.starts) {
 		return
 	}
@@ -39,7 +39,7 @@ func (m *WorldMode) drawPriestGroundEffect(screen *render.Frame, ctx client.Cont
 		phase := degreesToRadians(float64((hitEffectRandom(effect, 0, 360) + tick) % 360))
 		height *= (.65 + .35*math.Sin(phase)) * math.Sin(degreesToRadians(float64(min(tick, 90))))
 		tint.A = uint8(max(0, alpha-2*max(0, tick-fade)))
-		appendPriestSquareBand(&vertices, &indices, texture, center, half/5, height/5, 0, 8*half/5, tint)
+		appendSquareEffectBand(&vertices, &indices, texture, center, half/5, height/5, 0, 8*half/5, tint)
 		if effect.effectID == effectFogWallGround {
 			tint.A *= 2
 			for _, sign := range []float64{-1, 1} {
@@ -57,7 +57,7 @@ func (m *WorldMode) drawPriestGroundEffect(screen *render.Frame, ctx client.Cont
 
 // A band follows the square perimeter, splitting at corners. The native
 // RenderTeiRect restarts the texture on each face, including partial faces.
-func appendPriestSquareBand(vertices *[]render.Vertex3D, indices *[]uint16, texture *render.Image, center modelPoint3, half, height, start, length float64, tint color.RGBA) {
+func appendSquareEffectBand(vertices *[]render.Vertex3D, indices *[]uint16, texture *render.Image, center modelPoint3, half, height, start, length float64, tint color.RGBA) {
 	if height <= 0 || tint.A == 0 {
 		return
 	}
@@ -77,4 +77,68 @@ func appendPriestSquareBand(vertices *[]render.Vertex3D, indices *[]uint16, text
 		side = (side + 1) % 4
 		offset = 0
 	}
+}
+
+func (m *WorldMode) drawPropertyGroundEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
+	n := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
+	if n <= 0 {
+		return
+	}
+	radius, rise, alpha := propertyGroundRing(n, hitEffectRandom(effect, 1, 100))
+	if alpha <= 0 {
+		return
+	}
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	rise = degreesToRadians(rise)
+	origin := modelPoint3{x: x, y: z, z: y}
+	vertices, indices := []render.Vertex3D{}, []uint16{}
+	tint := color.RGBA{255, 255, 255, uint8(alpha)}
+	if effect.effectID == effectBottomSuiton {
+		tint.R, tint.G = 120, 120
+	}
+	appendEffectBand(&vertices, &indices, texture, origin, radius/5,
+		degreesToRadians(float64(hitEffectRandom(effect, 0, 360))), 2*math.Pi, 1/math.Tan(rise), 10,
+		tint, func(j int) float64 {
+			return 3 * math.Sin(rise) * (1 + .3*math.Sin(degreesToRadians(float64(j*9)))*math.Sin(degreesToRadians(float64(n%360))))
+		})
+	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(false, false))
+}
+
+// PrimGI4 resets when its rising angle falls below ten degrees. After the
+// random initial fade, its 65-tick cycle can be sampled without replaying it.
+func propertyGroundRing(tick, initialAlpha int) (radius, rise float64, alpha int) {
+	reset := max(1, (initialAlpha+1)/2)
+	if tick < reset {
+		return 2.6 + .04*float64(tick), float64(80 - tick), max(0, initialAlpha-2*tick)
+	}
+	phase := (tick - reset) % 65
+	alpha = 20*min(phase, 9) - 2*max(0, phase-9)
+	return 2.14 + .04*float64(phase), float64(74 - phase), alpha
+}
+
+func (m *WorldMode) drawGroundSigilEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
+	n := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
+	if n <= 0 {
+		return
+	}
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	speed, size := 3, 7.0
+	if effect.effectID == effectBottomSpider {
+		speed, size = 1, 12
+	}
+	phase := (hitEffectRandom(effect, 0, 360) + speed*n) % 360
+	radius := size * (.9 + .1*math.Sin(degreesToRadians(float64(phase)))) / 5
+	origin := modelPoint3{x: x, y: z + 2.0/5, z: y}
+	vertices, indices := []render.Vertex3D{}, []uint16{}
+	appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{
+		add3(origin, modelPoint3{z: -radius}), add3(origin, modelPoint3{x: -radius}),
+		add3(origin, modelPoint3{z: radius}), add3(origin, modelPoint3{x: radius}),
+	}, color.RGBA{255, 255, 255, 100})
+	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
 }

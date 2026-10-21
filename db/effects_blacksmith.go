@@ -44,3 +44,35 @@ func maximizePowerEffectSpec() EffectSpec {
 	spec.SFXDelays = []time.Duration{0, 40 * EffectFrameDuration, 47 * EffectFrameDuration, 65 * EffectFrameDuration}
 	return spec
 }
+
+func adrenalineCastEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\black_adrenalinerush_a.wav")
+}
+
+func weaponPerfectEffectSpec() EffectSpec {
+	return strEffectSpecAttachedMin("weaponperfection", "weaponperfection_min", "effect\\black_weapon_perfection.wav", false)
+}
+
+func maximizeSoundsEffectSpec() EffectSpec {
+	return delayedSoundEffectSpecDuration(950*time.Millisecond,
+		[]string{
+			"effect\\black_maximize_power_circle.wav",
+			"effect\\black_maximize_power_sword.wav",
+			"effect\\black_maximize_power_sword.wav",
+			"effect\\black_maximize_power_sword_bic.wav",
+		},
+		[]time.Duration{time.Millisecond, 550 * time.Millisecond, 700 * time.Millisecond, 950 * time.Millisecond},
+	)
+}
+
+func greedSoundEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\ef_entry.wav")
+}
+
+func refineOKEffectSpec() EffectSpec {
+	return strEffectSpecAttached("bs_refinesuccess", "effect\\bs_refinesuccess.wav", false)
+}
+
+func refineFailEffectSpec() EffectSpec {
+	return strEffectSpecAttached("bs_refinefailed", "effect\\bs_refinefailed.wav", false)
+}

@@ -2,384 +2,333 @@ package db
 
 import (
 	"image/color"
-	"math"
-	"strconv"
 	"time"
 )
+
+const EffectFrameDuration = time.Second / 60
 
 const (
 	ReferenceActiveEffectTableEntries = 607
 	ReferenceNumericEffectConstants   = 1147
 )
 
+// Native effect IDs.
 const (
-	effectFireBolt       = 10019
-	effectNapalmBeat     = 32
-	effectGroundSample   = 513
-	effectCastRing       = 10021
-	effectProvoke        = 67
-	effectMvp            = 68
-	effectEndure         = 11
-	effectBeginSpell     = 12
-	effectSafetyWall     = 315
-	effectColdBolt       = 10014
-	effectBashBegin      = 16
-	effectHit1           = 0
-	effectBashHit        = 1
-	effectHit3           = 2
-	effectHit4           = 3
-	effectHit5           = 4
-	effectHit6           = 5
-	effectEntry          = 6
-	effectExit           = 7
-	effectWarp           = 8
-	effectEnhance        = 9
-	effectArrowShot      = 10060
-	effectArrowShower    = 10061
-	effectMagicPower     = SkillEffectMagicPower
-	effectGravitation    = 522
-	effectMammonite      = 10
-	effectCartRevolution = 170
-	effectSight          = 22
-	effectSightBlaster   = 601
-	effectSoulStrike     = 15
-	effectGlassWall      = 13
-	effectHealSP         = 14
-	effectMagnumBreak    = 17
-	effectQuakeMagnum    = 10022
-	effectSteal          = 18
-	effectSummonSlave    = 215
-	effectPoisonAttack   = 20
-	effectDetoxication   = 21
-	effectStoneCurse     = 23
-	effectFireBall       = 24
-	effectFireWall       = 25
-	effectIceArrow       = 26
-	effectFrostDiver     = 27
-	effectFrostDiverHit  = 28
-	effectLightningBolt  = 29
-	effectThunderStorm   = 30
-	effectFireArrow      = 31
-	effectTeleportOld    = 34
-	effectReadyPortalOld = 35
-	effectIncAgility     = 37
-	effectDecAgility     = 38
-	effectIncAgiDex      = 43
-	effectRuwach         = 33
-	effectAqua           = 39
-	effectSignum         = 40
-	effectAngelus        = 41
-	effectBlessing       = 42
-	effectGloria         = 75
-	effectMagnificat     = 76
-	effectResurrection   = 77
-	effectLexAeterna     = 85
-	effectSuffragium     = 88
-	effectStormGust      = 89
-	effectWeaponPerfect  = 103
-	effectMaximizePower  = 104
-	effectKyrie          = 112
-	effectChristmasCarol = 717
-	effectFireHit        = 49
-	effectFireSplashHit  = 50
-	effectColdHit        = 51
-	effectWindHit        = 52
-	effectPoisonHit      = 53
-	effectBeginSpell2    = 54
-	effectBeginSpell3    = 55
-	effectBeginSpell4    = 56
-	effectBeginSpell5    = 57
-	effectBeginSpell6    = 58
-	effectBeginSpell7    = 59
-	effectLockOnTarget   = 60
-	effectWarpZone       = 61
-	effectSightTrasher   = 62
-	effectArrowShotRO    = 64
-	effectInvenom        = 65
-	effectSkidTrap       = 69
-	effectBrandishSpear  = 70
-	effectBowlingBash    = 73
-	effectIceWall        = 74
-	effectRecovery       = 78
-	effectEarthSpike     = 79
-	effectSpearBoomerang = 80
-	effectPierce         = 81
-	effectTurnUndead     = 82
-	effectSanctuary      = 83
-	effectImpositio      = 84
-	effectAspersio       = 86
-	effectLexDivina      = 87
-	effectLordVermilion  = 90
-	effectBenedictio     = 91
-	effectMeteorStorm    = 92
-	effectJupitelThunder = 93
-	effectJupitelHit     = 94
-	effectQuagmire       = 95
-	effectFirePillar     = 96
-	effectFirePillarBomb = 97
-	effectHasteUp        = 98
-	effectFlasher        = 99
-	effectRemoveTrap     = 100
-	effectRepairWeapon   = 101
-	effectCrashEarth     = 102
-	effectBlastMine      = 105
-	effectBlastMineBomb  = 106
-	effectClaymore       = 107
-	effectFreezingTrap   = 108
-	effectGasPush        = 110
-	effectSpringTrap     = 111
-	effectMagnus         = 113
-	effectBlitzBeat      = 115
-	effectWaterBall      = 116
-	effectWaterBall2     = 117
-	effectDetecting      = 119
-	effectCloaking       = 120
-	effectSonicBlow      = 121
-	effectSonicBlowHit   = 122
-	effectGrimtooth      = 123
-	effectVenomDust      = 124
-	effectEnchantPoison  = 125
-	effectPoisonReact    = 126
-	effectPoisonReact2   = 127
-	effectOverthrust     = 128
-	effectVenomSplasher  = 129
-	effectTwoHandQuicken = 130
-	effectAutoCounter    = 131
-	effectGrimtoothAtk   = 132
-	effectFreeze         = 133
-	effectFreezed        = 134
-	effectIceCrash       = 135
-	effectSlowPoison     = 136
-	effectFirePillarOn   = 138
-	effectSandman        = 139
-	effectRevive         = 140
-	effectHeavenDrive    = 142
-	effectSonicBlow2     = 143
-	effectBrandishSpear2 = 144
-	effectShockwave      = 145
-	effectShockwaveHit   = 146
-	effectEarthHit       = 147
-	effectPierceSelf     = 148
-	effectBowlingSelf    = 149
-	effectSpearStabSelf  = 150
-	effectSpearBmrSelf   = 151
-	effectRain           = 161
-	effectSnow           = 162
-	effectSakura         = 163
-	effectBanjjakii      = 165
-	effectMakeBlur       = 166
-	effectSmoke          = 44
-	effectFirefly        = 45
-	effectTorch          = 47
-	effectBubble         = 109
-	effectCure           = 66
-	effectPneuma         = 141
-	effectHolyLight      = 152
-	effectConcentration  = 153
-	effectRefineOK       = 154
-	effectRefineFail     = 155
-	effectTeleportation  = 304
-	effectPharmacyOK     = 305
-	effectPharmacyFail   = 306
-	effectFirstAid       = 309
-	effectHeal           = 312
-	effectReadyPortal    = 316
-	effectPortal         = 317
-	effectHealOffensive  = 320
-	effectBaseLevelUp    = 371
-	effectJobLevelUp     = 158
-	effectVenomDust2     = 171
-	effectMentalBreak    = 181
-	effectMagicalAtkHit  = 182
-	effectSuiExplosion   = 183
-	effectSuicide        = 185
-	effectComboAttack1   = 186
-	effectComboAttack2   = 187
-	effectComboAttack3   = 188
-	effectComboAttack4   = 189
-	effectComboAttack5   = 190
-	effectGuidedAttack   = 191
-	effectPoisonAttack2  = 192
-	effectSilenceAttack  = 193
-	effectStunAttack     = 194
-	effectPetrifyAttack  = 195
-	effectSleepAttack    = 197
-	effectPong           = 199
-	effectLevel99        = 200
-	effectLevel99Ground  = 201
-	effectLevel99Bubble  = 202
-	effectGumgang        = 203
-	effectPotionRed      = 204
-	effectPotionOrange   = 205
-	effectPotionYellow   = 206
-	effectPotionWhite    = 207
-	effectPotionBlue     = 208
-	effectPotionGreen    = 209
-	effectFood           = 210
-	effectFoodBlue       = 211
-	effectDarkBreath     = 212
-	effectDefender       = 213
-	effectKeeping        = 214
-	effectBloodDrain     = 216
-	effectEnergyDrain    = 217
-	effectItemFast       = 218
-	effectItemFast2      = 219
-	effectItemFast3      = 220
-	effectCrusaderDef    = 222
-	effectGanbantein     = 223
-	effectVolcano        = 225
-	effectGrandCross     = 226
-	effectIntimidate     = 227
-	effectChookgi        = 228
-	effectLineLink       = 232
-	effectSpellBreaker   = 234
-	effectDispell        = 235
-	effectDeluge         = 236
-	effectViolentGale    = 237
-	effectLandProtector  = 238
-	effectBottomVolcano  = 239
-	effectBottomDeluge   = 240
-	effectBottomViolent  = 241
-	effectBottomLand     = 242
-	effectMagicRod       = 244
-	effectHolyCross      = 245
-	effectShieldCharge   = 246
-	effectProvidence     = 248
-	effectShieldBoomer   = 249
-	effectSpearQuicken   = 250
-	effectDevotion       = 251
-	effectReflectShield  = 252
-	effectAbsorbSpirits  = 253
-	effectSteelBody      = 254
-	effectFlameLauncher  = 255
-	effectFrostWeapon    = 256
-	effectLightningLoad  = 257
-	effectSeismicWeapon  = 258
-	effectGumgang2       = 261
-	effectTeiHit1        = 262
-	effectGumgang3       = 263
-	effectTeiHit2        = 264
-	effectTanji          = 265
-	effectTeiHit1X       = 266
-	effectChimto         = 267
-	effectStealCoin      = 268
-	effectStripWeapon    = 269
-	effectStripShield    = 270
-	effectStripArmor     = 271
-	effectStripHelm      = 272
-	effectChainCombo     = 273
-	effectRogueCoin      = 274
-	effectBackStab       = 275
-	effectTeiHit3        = 276
-	effectBottomLullaby  = 278
-	effectBottomRichKim  = 279
-	effectBottomChaos    = 280
-	effectBottomDrum     = 281
-	effectBottomNibelung = 282
-	effectBottomRoki     = 283
-	effectBottomAbyss    = 284
-	effectBottomSieg     = 285
-	effectBottomWhistle  = 286
-	effectBottomSinX     = 287
-	effectBottomBragi    = 288
-	effectBottomApple    = 289
-	effectBottomHumming  = 291
-	effectBottomForget   = 292
-	effectBottomFortune  = 293
-	effectBottomService  = 294
-	effectTalkFrostJoke  = 295
-	effectTalkScream     = 296
-	effectThrowItem      = 298
-	effectThrowItem2     = 299
-	effectChemicalProt   = 300
-	effectDemonstration  = 302
-	effectChemical2      = 303
-	effectHeal2          = 313
-	effectExit2          = 314
-	effectBottomMagnus   = 318
-	effectBottomSanc     = 319
-	effectWarpZone2      = 321
-	effectHeal4          = 325
-	effectBeginAsura     = 328
-	effectTripleAttack   = 329
-	effectHitLine        = 330
-	effectHPTime         = 331
-	effectSPTime         = 332
-	effectBlind          = 334
-	effectPoisonStatus   = 335
-	effectGuard          = 336
-	effectJobLvUp50      = 337
-	effectMagnum2        = 339
-	effectCoupleCasting  = 342
-	effectEntry2         = 344
-	effectColorPaper     = 347
-	effectFoodChocolate  = 363
-	effectResistPotion   = 491
-	effectItemAccel      = 507
-	effectFirecracker    = 508
-	effectItemSlow       = 519
-	effectBoxThunder     = 576
-	effectBoxResentment  = 577
-	effectBoxDrowsiness  = 579
-	effectBoxSunlight    = 580
-	effectStatFoodSTR    = 593
-	effectStatFoodINT    = 594
-	effectStatFoodVIT    = 595
-	effectStatFoodAGI    = 596
-	effectStatFoodDEX    = 597
-	effectStatFoodLUK    = 598
-	effectFirecracker1   = 612
-	effectFirecracker2   = 682
-	effectFirecracker3   = 683
-	effectFirecracker4   = 684
-	effectFirecracker5   = 685
-	effectFirecracker6   = 686
-	effectFirecracker7   = 709
-	effectEnergyCoat     = 169
-	effectThrowItem3     = 308
-	effectSprinkleSand   = 310
-	effectLoud           = 311
-	effectPokJuk         = 297
-	effectCloud          = 229
-	effectCloud2         = 230
-	effectMapPillar      = 231
-	effectMapPillar2     = 247
-	effectMapPillar3     = 259
-	effectMapPillar4     = 260
-	effectCloud3         = 233
-	effectMaple          = 333
-	effectDragonSmoke    = 373
-	effectRainbow        = 410
-	effectCloud4         = 515
-	effectCloud5         = 516
-	effectCloud6         = 592
-	effectBubbleDrop     = 665
-	effectTorchRed       = 690
-	effectTorchGreen     = 691
-	effectMapGhost       = 692
-	effectGlow1          = 693
-	effectGlow2          = 694
-	effectGlow4          = 695
-	effectTorchPurple    = 696
-	effectCloud7         = 697
-	effectCloud8         = 698
-)
-
-const (
-	effectBottomDissonance = 277
-	effectBottomUglyDance  = 290
-)
-
-const (
+	effectHit1              = 0
+	effectBashHit           = 1
+	effectHit3              = 2
+	effectHit4              = 3
+	effectHit5              = 4
+	effectHit6              = 5
+	effectEntry             = 6
+	effectExit              = 7
+	effectWarp              = 8
+	effectEnhance           = 9
+	effectMammonite         = 10
+	effectEndure            = 11
+	effectBeginSpell        = 12
+	effectGlassWall         = 13
+	effectHealSP            = 14
+	effectSoulStrike        = 15
+	effectBashBegin         = 16
+	effectMagnumBreak       = 17
+	effectSteal             = 18
+	effectPoisonAttack      = 20
+	effectDetoxication      = 21
+	effectSight             = 22
+	effectStoneCurse        = 23
+	effectFireBall          = 24
+	effectFireWall          = 25
+	effectIceArrow          = 26
+	effectFrostDiver        = 27
+	effectFrostDiverHit     = 28
+	effectLightningBolt     = 29
+	effectThunderStorm      = 30
+	effectFireArrow         = 31
+	effectNapalmBeat        = 32
+	effectRuwach            = 33
+	effectTeleportOld       = 34
+	effectReadyPortalOld    = 35
+	effectIncAgility        = 37
+	effectDecAgility        = 38
+	effectAqua              = 39
+	effectSignum            = 40
+	effectAngelus           = 41
+	effectBlessing          = 42
+	effectIncAgiDex         = 43
+	effectSmoke             = 44
+	effectFirefly           = 45
+	effectTorch             = 47
+	effectFireHit           = 49
+	effectFireSplashHit     = 50
+	effectColdHit           = 51
+	effectWindHit           = 52
+	effectPoisonHit         = 53
+	effectBeginSpell2       = 54
+	effectBeginSpell3       = 55
+	effectBeginSpell4       = 56
+	effectBeginSpell5       = 57
+	effectBeginSpell6       = 58
+	effectBeginSpell7       = 59
+	effectLockOnTarget      = 60
+	effectWarpZone          = 61
+	effectSightTrasher      = 62
+	effectArrowShotRO       = 64
+	effectInvenom           = 65
+	effectCure              = 66
+	effectProvoke           = 67
+	effectMvp               = 68
+	effectSkidTrap          = 69
+	effectBrandishSpear     = 70
+	effectBowlingBash       = 73
+	effectIceWall           = 74
+	effectGloria            = 75
+	effectMagnificat        = 76
+	effectResurrection      = 77
+	effectRecovery          = 78
+	effectEarthSpike        = 79
+	effectSpearBoomerang    = 80
+	effectPierce            = 81
+	effectTurnUndead        = 82
+	effectSanctuary         = 83
+	effectImpositio         = 84
+	effectLexAeterna        = 85
+	effectAspersio          = 86
+	effectLexDivina         = 87
+	effectSuffragium        = 88
+	effectStormGust         = 89
+	effectLordVermilion     = 90
+	effectBenedictio        = 91
+	effectMeteorStorm       = 92
+	effectJupitelThunder    = 93
+	effectJupitelHit        = 94
+	effectQuagmire          = 95
+	effectFirePillar        = 96
+	effectFirePillarBomb    = 97
+	effectHasteUp           = 98
+	effectFlasher           = 99
+	effectRemoveTrap        = 100
+	effectRepairWeapon      = 101
+	effectCrashEarth        = 102
+	effectWeaponPerfect     = 103
+	effectMaximizePower     = 104
+	effectBlastMine         = 105
+	effectBlastMineBomb     = 106
+	effectClaymore          = 107
+	effectFreezingTrap      = 108
+	effectBubble            = 109
+	effectGasPush           = 110
+	effectSpringTrap        = 111
+	effectKyrie             = 112
+	effectMagnus            = 113
+	effectBlitzBeat         = 115
+	effectWaterBall         = 116
+	effectWaterBall2        = 117
+	effectDetecting         = 119
+	effectCloaking          = 120
+	effectSonicBlow         = 121
+	effectSonicBlowHit      = 122
+	effectGrimtooth         = 123
+	effectVenomDust         = 124
+	effectEnchantPoison     = 125
+	effectPoisonReact       = 126
+	effectPoisonReact2      = 127
+	effectOverthrust        = 128
+	effectVenomSplasher     = 129
+	effectTwoHandQuicken    = 130
+	effectAutoCounter       = 131
+	effectGrimtoothAtk      = 132
+	effectFreeze            = 133
+	effectFreezed           = 134
+	effectIceCrash          = 135
+	effectSlowPoison        = 136
+	effectFirePillarOn      = 138
+	effectSandman           = 139
+	effectRevive            = 140
+	effectPneuma            = 141
+	effectHeavenDrive       = 142
+	effectSonicBlow2        = 143
+	effectBrandishSpear2    = 144
+	effectShockwave         = 145
+	effectShockwaveHit      = 146
+	effectEarthHit          = 147
+	effectPierceSelf        = 148
+	effectBowlingSelf       = 149
+	effectSpearStabSelf     = 150
+	effectSpearBmrSelf      = 151
+	effectHolyLight         = 152
+	effectConcentration     = 153
+	effectRefineOK          = 154
+	effectRefineFail        = 155
+	effectJobLevelUp        = 158
+	effectRain              = 161
+	effectSnow              = 162
+	effectSakura            = 163
+	effectBanjjakii         = 165
+	effectMakeBlur          = 166
+	effectEnergyCoat        = 169
+	effectCartRevolution    = 170
+	effectVenomDust2        = 171
+	effectMentalBreak       = 181
+	effectMagicalAtkHit     = 182
+	effectSuiExplosion      = 183
+	effectSuicide           = 185
+	effectComboAttack1      = 186
+	effectComboAttack2      = 187
+	effectComboAttack3      = 188
+	effectComboAttack4      = 189
+	effectComboAttack5      = 190
+	effectGuidedAttack      = 191
+	effectPoisonAttack2     = 192
+	effectSilenceAttack     = 193
+	effectStunAttack        = 194
+	effectPetrifyAttack     = 195
+	effectSleepAttack       = 197
+	effectPong              = 199
+	effectLevel99           = 200
+	effectLevel99Ground     = 201
+	effectLevel99Bubble     = 202
+	effectGumgang           = 203
+	effectPotionRed         = 204
+	effectPotionOrange      = 205
+	effectPotionYellow      = 206
+	effectPotionWhite       = 207
+	effectPotionBlue        = 208
+	effectPotionGreen       = 209
+	effectFood              = 210
+	effectFoodBlue          = 211
+	effectDarkBreath        = 212
+	effectDefender          = 213
+	effectKeeping           = 214
+	effectSummonSlave       = 215
+	effectBloodDrain        = 216
+	effectEnergyDrain       = 217
+	effectItemFast          = 218
+	effectItemFast2         = 219
+	effectItemFast3         = 220
+	effectCrusaderDef       = 222
+	effectGanbantein        = 223
+	effectVolcano           = 225
+	effectGrandCross        = 226
+	effectIntimidate        = 227
+	effectChookgi           = 228
+	effectCloud             = 229
+	effectCloud2            = 230
+	effectMapPillar         = 231
+	effectLineLink          = 232
+	effectCloud3            = 233
+	effectSpellBreaker      = 234
+	effectDispell           = 235
+	effectDeluge            = 236
+	effectViolentGale       = 237
+	effectLandProtector     = 238
+	effectBottomVolcano     = 239
+	effectBottomDeluge      = 240
+	effectBottomViolent     = 241
+	effectBottomLand        = 242
+	effectMagicRod          = 244
+	effectHolyCross         = 245
+	effectShieldCharge      = 246
+	effectMapPillar2        = 247
+	effectProvidence        = 248
+	effectShieldBoomer      = 249
+	effectSpearQuicken      = 250
+	effectDevotion          = 251
+	effectReflectShield     = 252
+	effectAbsorbSpirits     = 253
+	effectSteelBody         = 254
+	effectFlameLauncher     = 255
+	effectFrostWeapon       = 256
+	effectLightningLoad     = 257
+	effectSeismicWeapon     = 258
+	effectMapPillar3        = 259
+	effectMapPillar4        = 260
+	effectGumgang2          = 261
+	effectTeiHit1           = 262
+	effectGumgang3          = 263
+	effectTeiHit2           = 264
+	effectTanji             = 265
+	effectTeiHit1X          = 266
+	effectChimto            = 267
+	effectStealCoin         = 268
+	effectStripWeapon       = 269
+	effectStripShield       = 270
+	effectStripArmor        = 271
+	effectStripHelm         = 272
+	effectChainCombo        = 273
+	effectRogueCoin         = 274
+	effectBackStab          = 275
+	effectTeiHit3           = 276
+	effectBottomDissonance  = 277
+	effectBottomLullaby     = 278
+	effectBottomRichKim     = 279
+	effectBottomChaos       = 280
+	effectBottomDrum        = 281
+	effectBottomNibelung    = 282
+	effectBottomRoki        = 283
+	effectBottomAbyss       = 284
+	effectBottomSieg        = 285
+	effectBottomWhistle     = 286
+	effectBottomSinX        = 287
+	effectBottomBragi       = 288
+	effectBottomApple       = 289
+	effectBottomUglyDance   = 290
+	effectBottomHumming     = 291
+	effectBottomForget      = 292
+	effectBottomFortune     = 293
+	effectBottomService     = 294
+	effectTalkFrostJoke     = 295
+	effectTalkScream        = 296
+	effectPokJuk            = 297
+	effectThrowItem         = 298
+	effectThrowItem2        = 299
+	effectChemicalProt      = 300
+	effectDemonstration     = 302
+	effectChemical2         = 303
+	effectTeleportation     = 304
+	effectPharmacyOK        = 305
+	effectPharmacyFail      = 306
+	effectThrowItem3        = 308
+	effectFirstAid          = 309
+	effectSprinkleSand      = 310
+	effectLoud              = 311
+	effectHeal              = 312
+	effectHeal2             = 313
+	effectExit2             = 314
+	effectSafetyWall        = 315
+	effectReadyPortal       = 316
+	effectPortal            = 317
+	effectBottomMagnus      = 318
+	effectBottomSanc        = 319
+	effectHealOffensive     = 320
+	effectWarpZone2         = 321
+	effectHeal4             = 325
+	effectBeginAsura        = 328
+	effectTripleAttack      = 329
+	effectHitLine           = 330
+	effectHPTime            = 331
+	effectSPTime            = 332
+	effectMaple             = 333
+	effectBlind             = 334
+	effectPoisonStatus      = 335
+	effectGuard             = 336
+	effectJobLvUp50         = 337
+	effectMagnum2           = 339
+	effectCoupleCasting     = 342
+	effectEntry2            = 344
+	effectColorPaper        = 347
 	effectSoulBreaker       = 361
 	effectLevel99Aura1      = 362
+	effectFoodChocolate     = 363
 	effectPressure          = 365
 	effectBash3D            = 366
 	effectAuraBlade         = 367
 	effectRedBody           = 368
 	effectLKConcentration   = 369
 	effectBottomGospel      = 370
+	effectBaseLevelUp       = 371
 	effectDeath             = 372
+	effectDragonSmoke       = 373
 	effectBottomBasilica    = 374
 	effectAssumptio         = 375
 	effectHitLine2          = 376
@@ -410,9 +359,11 @@ const (
 	effectPortal5           = 402
 	effectMagicCrasher2     = 403
 	effectBottomSpider      = 404
+	effectFogWallGround     = 405
 	effectSoulBurn          = 406
 	effectSoulChange        = 407
 	effectSoulBreaker2      = 409
+	effectRainbow           = 410
 	effectPeong             = 411
 	effectPressedBody       = 413
 	effectSpinedBody        = 414
@@ -441,314 +392,360 @@ const (
 	effectLandBody          = 446
 	effectFoot3             = 447
 	effectFoot4             = 448
+	effectTaeReady          = 449
+	effectDarkGrandCross    = 450
+	effectDarkSoulStrike    = 451
+	effectDarkJupitelHit    = 452
+	effectNPCStop           = 453
+	effectDarkCasting       = 454
+	effectAgiUp             = 456
+	effectJumpKick          = 457
+	effectQuakeBody2        = 458
+	effectStormKick3        = 461
+	effectStormKick4        = 462
+	effectSpinedBody2       = 466
+	effectBeginAsura1       = 467
+	effectBeginAsura2       = 468
+	effectBeginAsura3       = 469
+	effectBeginAsura4       = 470
+	effectBeginAsura5       = 471
+	effectBeginAsura6       = 472
+	effectBeginAsura7       = 473
+	effectDevil1            = 475
+	effectDevil2            = 476
+	effectDevil3            = 477
+	effectDevil4            = 478
+	effectDevil5            = 479
+	effectDevil6            = 480
+	effectDevil7            = 481
+	effectDevil8            = 482
+	effectDevil9            = 483
+	effectDevil10           = 484
+	effectBlackDevil        = 487
+	effectFlowerCast        = 488
+	effectResistPotion      = 491
+	effectMochi             = effectResistPotion
+	effectRamadan           = 492
+	effectEDP               = 493
+	effectFullStrip         = 495
+	effectPreserve          = 496
+	effectSlim              = 497
+	effectSlim2             = 498
+	effectSlim3             = 499
+	effectChemicalBody      = 500
+	effectCastSpin          = 501
+	effectPierceBody        = 502
+	effectSoulLink          = 503
+	effectChookgi2          = 504
+	effectMemorize          = 505
+	effectItemAccel         = 507
+	effectMapae             = effectItemAccel
+	effectFirecracker       = 508
+	effectItemPokJuk        = effectFirecracker
+	effectValentine05       = 509
+	effectBeginAsura11      = 510
+	effectChemical2Dash     = 512
+	effectGroundSample      = 513
+	effectCloud4            = 515
+	effectCloud5            = 516
+	effectBottomHermode     = 517
+	effectCartTermination   = 518
+	effectItemSlow          = 519
+	effectItemFastDown      = effectItemSlow
+	effectShieldBoomerang3  = 520
+	effectDoubleCastBody    = 521
+	effectGravitation       = 522
+	effectTarotCard1        = 523
+	effectTarotCard2        = 524
+	effectTarotCard3        = 525
+	effectTarotCard4        = 526
+	effectTarotCard5        = 527
+	effectTarotCard6        = 528
+	effectTarotCard7        = 529
+	effectTarotCard8        = 530
+	effectTarotCard9        = 531
+	effectTarotCard10       = 532
+	effectTarotCard11       = 533
+	effectTarotCard12       = 534
+	effectTarotCard13       = 535
+	effectTarotCard14       = 536
+	effectAcidDemon         = 537
+	effectThrowItem4        = 539
+	effectBabyBodyBack      = 540
+	effectThrowItem5        = 541
+	effectBlueBody          = 542
+	effectHated             = 543
+	effectRedLightBody      = 544
+	effectSmaReady          = 546
+	effectStin              = 547
+	effectRedHit            = 548
+	effectBlueHit           = 549
+	effectQuakeBody3        = 550
+	effectStin2             = 553
+	effectHitTexture        = 554
+	effectStin3             = 555
+	effectScreenQuake       = 563
+	effectHfliMoon1         = 565
+	effectHfliMoon2         = 566
+	effectHfliMoon3         = 567
+	effectHoUp              = 568
+	effectHamiDefence       = 569
+	effectHamiCastle        = 570
+	effectHamiBlood         = 571
+	effectHated2            = 572
+	effectTwilight1         = 573
+	effectTwilight2         = 574
+	effectTwilight3         = 575
+	effectBoxThunder        = 576
+	effectItemThunder       = effectBoxThunder
+	effectBoxResentment     = 577
+	effectItemCloud         = effectBoxResentment
+	effectItemCurse         = 578
+	effectBoxDrowsiness     = 579
+	effectItemZZZ           = effectBoxDrowsiness
+	effectBoxSunlight       = 580
+	effectItemRain          = effectBoxSunlight
+	effectM01               = 583
+	effectM02               = 584
+	effectM03               = 585
+	effectM04               = 586
+	effectM05               = 587
+	effectM06               = 588
+	effectM07               = 589
+	effectKaizel            = 590
+	effectCloud6            = 592
+	effectStatFoodSTR       = 593
+	effectStatFoodINT       = 594
+	effectStatFoodVIT       = 595
+	effectStatFoodAGI       = 596
+	effectStatFoodDEX       = 597
+	effectStatFoodLUK       = 598
+	effectShrink            = 599
+	effectThrowItem6        = 600
+	effectSightBlaster      = 601
+	effectQuakeBody4        = 602
+	effectFireHit2          = 603
+	effectNPCStop2          = 604
+	effectNPCStop2Del       = 605
+	effectFVoice            = 606
+	effectWink              = 607
+	effectCookingOK         = 608
+	effectCookingFail       = 609
+	effectFirecracker1      = 612
+	effectHapgyeok          = 612
+	effectThrowItem7        = 613
+	effectThrowItem8        = 614
+	effectThrowItem9        = 615
+	effectThrowItem10       = 616
+	effectKouenka           = 618
+	effectHyousensou        = 619
+	effectBottomSuiton      = 620
+	effectStin4             = 621
+	effectThunderStorm2     = 622
+	effectChemical4         = 623
+	effectStin5             = 624
+	effectMadnessBlue       = 625
+	effectMadnessRed        = 626
+	effectRGCoin3           = 627
+	effectBash3D5           = 628
+	effectChookgi3          = 629
+	effectKirikage          = 630
+	effectTatami            = 631
+	effectKasumikiri        = 632
+	effectIssen             = 633
+	effectKaen              = 634
+	effectBaku              = 635
+	effectHyousyouraku      = 636
+	effectDesperado         = 637
+	effectLightningS        = 638
+	effectBlindS            = 639
+	effectPoisonS           = 640
+	effectFreezingS         = 641
+	effectFlareS            = 642
+	effectRapidShower       = 643
+	effectMagicalBullet     = 644
+	effectSpreadAttack      = 645
+	effectTrackCasting      = 646
+	effectTracking          = 647
+	effectTripleAction      = 648
+	effectBullseye          = 649
+	effectBubbleDrop        = 665
+	effectNPCEarthquake     = 666
+	effectDragonFear        = 668
+	effectWideBleeding      = 669
+	effectWideConfuse       = 670
+	effectBottomRunner      = 671
+	effectBottomTransfer    = 672
+	effectBottomEvilLand    = 674
+	effectGuard3            = 675
+	effectCriticalWound     = 677
+	effectFirecracker2      = 682
+	effectFirecracker3      = 683
+	effectFirecracker4      = 684
+	effectFirecracker5      = 685
+	effectFirecracker6      = 686
+	effectTorchRed          = 690
+	effectTorchGreen        = 691
+	effectMapGhost          = 692
+	effectGlow1             = 693
+	effectGlow2             = 694
+	effectGlow4             = 695
+	effectTorchPurple       = 696
+	effectCloud7            = 697
+	effectCloud8            = 698
+	effectFlowerLeaf        = 699
+	effectItem315           = 704
+	effectItem316           = 705
+	effectItem317           = 706
+	effectStormMin          = 708
+	effectFirecracker7      = 709
+	effectBottomBlue        = 715
+	effectBottomBlue2       = 716
+	effectChristmasCarol    = 717
+	effectFirePillarOn2     = 718
+	effectForestLight5      = 719
+	effectAdoramus          = 721
+	effectIgnitionBreak     = 722
+	effectFrostMisty        = 726
+	effectCrimsonRock       = 727
+	effectHellInferno       = 728
+	effectMarshOfAbyss      = 729
+	effectDragonHowling     = 731
+	effectEarthWall         = 732
+	effectChainLightning    = 734
+	effectAimedBolt         = 745
+	effectArrowStorm        = 746
+	effectLaulamus          = 747
+	effectLauagnus          = 748
+	effectMillenniumShield  = 749
+	effectConcentration2    = 750
+	effectGlassWall3        = 754
+	effectBerserkPotion2    = 756
+	effectRolling1          = 758
+	effectRolling2          = 759
+	effectRolling3          = 760
+	effectRolling4          = 761
+	effectRolling5          = 762
+	effectRolling6          = 763
+	effectRolling7          = 764
+	effectRolling8          = 765
+	effectRolling9          = 766
+	effectRolling10         = 767
+	effectCastSpin2         = 775
+	effectCrashAxe          = 795
+	effectStasis            = 799
+	effectBottomBasilica2   = 802
+	effectRecognized        = 803
+	effectTetra             = 804
+	effectTetraCasting      = 805
+	effectStretch           = 811
+	effectEnervation        = 813
+	effectEnervation2       = 814
+	effectEnervation3       = 815
+	effectEnervation4       = 816
+	effectEnervation5       = 817
+	effectEnervation6       = 818
+	effectBottomManhole     = 822
+	effectManhole           = 823
+	effectForestLight6      = 825
+	effectBottomAni         = 827
+	effectBottomMaelstrom   = 828
+	effectBottomBloodyLust  = 829
+	effectHealN             = 832
+	effectChookgiN          = 833
+	effectDance1            = 847
+	effectBotReverb         = 856
+	effectRainParticle      = 857
+	effectChemicalV2        = 858
+	effectBotReverb2        = 860
+	effectCirclePower2      = 861
+	effectSecra2            = 862
+	effectSprPlant2         = 866
+	effectSprPlant3         = 868
+	effectSprPlant4         = 870
+	effectSprPlant5         = 872
+	effectSprPlant6         = 874
+	effectSprPlant7         = 876
+	effectSprPlant8         = 878
+	effectHeartAsura        = 879
+	effectGlassWall4        = 883
+	effectBash3D6           = 885
+	effectElectric4         = 888
+	effectTeiHit1T          = 889
+	effectPressure2         = 906
+	effectPrimeCharge2      = 908
+	effectPrimeCharge3      = 909
+	effectPrimeCharge4      = 910
+	effectFireWall2         = 920
+	effectSprPlant10        = 922
+	effectShockwave2        = 926
+	effectColdThrow2        = 928
+	effectDemonicFire4      = 929
+	effectPressure3         = 930
+	effectPoisonMist        = 959
+	effectEraserCutter      = 960
+	effectLavaSlide         = 964
+	effectSonicClaw         = 965
+	effectTinderBreaker     = 966
+	effectMidnightFrenzy    = 967
+	effectVolcanicAsh       = 975
+	effectRWC2011           = 987
+	effectRWC2011Two        = 988
+	effectRunMakeOK         = 1015
+	effectRunMakeFailure    = 1016
+	effectMIResultMakeOK    = 1017
+	effectMIResultMakeFail  = 1018
+	effectAllRayProtect     = 1019
+	effectVenomFog          = 1020
+	effectDustStorm         = 1021
+	effectDanceBladeAtk     = 1029
+	effectInvincibleOff2    = 1031
+	effectDeathSummon       = 1033
+	effectGCDarkCrow        = 1040
+	effectAllFullThrottle   = 1042
+	effectSRFlashCombo      = 1043
+	effectRKLuxAnima        = 1044
+	effectSOElemShield      = 1046
+	effectABOffertorium     = 1047
+	effectWLTelekinesis     = 1048
+	effectGNIllusionDoping  = 1049
+	effectNCMagmaEruption   = 1050
+	effectNPCChill          = 1055
+	effectOffertoriumRing   = 1057
+	effectHammerOfGod       = 1062
+	effectAchComplete       = 1094
+	effectBodyColor         = 1111
+	effectBakuretsuHadou    = 1130
+	dropEffectPink          = 1186
+	dropEffectYellow        = 1189
+	dropEffectPurple        = 1190
+	effectDigitalSpace      = 1240
+	dropEffectBlue          = 1869
+	dropEffectGreen         = 1870
+	dropEffectRed           = 1871
+	effectNewSuccess        = 1872
+	effectNewFailure        = 1873
+	effectNewIntro          = 1874
+	effectEnchantYellow     = 1875
+	effectEnchantSuccess    = 1876
+	effectEnchantFail       = 1877
+	effectEnchantBlue       = 1878
+	effectEnchantUpSuccess  = 1879
+	effectEnchantUpFail     = 1880
+	effectEnchantGreen      = 1881
+	effectEnchantResetOK    = 1882
+	effectEnchantResetFail  = 1883
 )
 
+// Goro-local effect IDs.
 const (
-	effectTaeReady         = 449
-	effectDarkGrandCross   = 450
-	effectDarkSoulStrike   = 451
-	effectDarkJupitelHit   = 452
-	effectNPCStop          = 453
-	effectDarkCasting      = 454
-	effectAgiUp            = 456
-	effectJumpKick         = 457
-	effectQuakeBody2       = 458
-	effectStormKick3       = 461
-	effectStormKick4       = 462
-	effectSpinedBody2      = 466
-	effectBeginAsura1      = 467
-	effectBeginAsura2      = 468
-	effectBeginAsura3      = 469
-	effectBeginAsura4      = 470
-	effectBeginAsura5      = 471
-	effectBeginAsura6      = 472
-	effectBeginAsura7      = 473
-	effectDevil1           = 475
-	effectDevil2           = 476
-	effectDevil3           = 477
-	effectDevil4           = 478
-	effectDevil5           = 479
-	effectDevil6           = 480
-	effectDevil7           = 481
-	effectDevil8           = 482
-	effectDevil9           = 483
-	effectDevil10          = 484
-	effectBlackDevil       = 487
-	effectFlowerCast       = 488
-	effectMochi            = effectResistPotion
-	effectRamadan          = 492
-	effectEDP              = 493
-	effectFullStrip        = 495
-	effectPreserve         = 496
-	effectSlim             = 497
-	effectSlim2            = 498
-	effectSlim3            = 499
-	effectChemicalBody     = 500
-	effectCastSpin         = 501
-	effectSoulLink         = 503
-	effectChookgi2         = 504
-	effectMemorize         = 505
-	effectMapae            = effectItemAccel
-	effectItemPokJuk       = effectFirecracker
-	effectValentine05      = 509
-	effectBeginAsura11     = 510
-	effectChemical2Dash    = 512
-	effectBottomHermode    = 517
-	effectCartTermination  = 518
-	effectDoubleCastBody   = 521
-	effectItemFastDown     = effectItemSlow
-	effectTarotCard1       = 523
-	effectTarotCard2       = 524
-	effectTarotCard3       = 525
-	effectTarotCard4       = 526
-	effectTarotCard5       = 527
-	effectTarotCard6       = 528
-	effectTarotCard7       = 529
-	effectTarotCard8       = 530
-	effectTarotCard9       = 531
-	effectTarotCard10      = 532
-	effectTarotCard11      = 533
-	effectTarotCard12      = 534
-	effectTarotCard13      = 535
-	effectTarotCard14      = 536
-	effectAcidDemon        = 537
-	effectThrowItem4       = 539
-	effectBabyBodyBack     = 540
-	effectThrowItem5       = 541
-	effectBlueBody         = 542
-	effectHated            = 543
-	effectRedLightBody     = 544
-	effectSmaReady         = 546
-	effectStin             = 547
-	effectRedHit           = 548
-	effectBlueHit          = 549
-	effectQuakeBody3       = 550
-	effectStin2            = 553
-	effectHitTexture       = 554
-	effectStin3            = 555
-	effectScreenQuake      = 563
-	effectHfliMoon1        = 565
-	effectHfliMoon2        = 566
-	effectHfliMoon3        = 567
-	effectHoUp             = 568
-	effectHamiDefence      = 569
-	effectHamiCastle       = 570
-	effectHamiBlood        = 571
-	effectHated2           = 572
-	effectTwilight1        = 573
-	effectTwilight2        = 574
-	effectTwilight3        = 575
-	effectItemThunder      = effectBoxThunder
-	effectItemCloud        = effectBoxResentment
-	effectItemCurse        = 578
-	effectItemZZZ          = effectBoxDrowsiness
-	effectItemRain         = effectBoxSunlight
-	effectM01              = 583
-	effectM02              = 584
-	effectM03              = 585
-	effectM04              = 586
-	effectM05              = 587
-	effectM06              = 588
-	effectM07              = 589
-	effectKaizel           = 590
-	effectThrowItem6       = 600
-	effectFireHit2         = 603
-	effectQuakeBody4       = 602
-	effectNPCStop2         = 604
-	effectNPCStop2Del      = 605
-	effectFVoice           = 606
-	effectWink             = 607
-	effectCookingOK        = 608
-	effectCookingFail      = 609
-	effectHapgyeok         = 612
-	effectThrowItem7       = 613
-	effectThrowItem8       = 614
-	effectThrowItem9       = 615
-	effectThrowItem10      = 616
-	effectKouenka          = 618
-	effectHyousensou       = 619
-	effectBottomSuiton     = 620
-	effectStin4            = 621
-	effectThunderStorm2    = 622
-	effectChemical4        = 623
-	effectStin5            = 624
-	effectMadnessBlue      = 625
-	effectMadnessRed       = 626
-	effectRGCoin3          = 627
-	effectBash3D5          = 628
-	effectChookgi3         = 629
-	effectKirikage         = 630
-	effectTatami           = 631
-	effectKasumikiri       = 632
-	effectIssen            = 633
-	effectKaen             = 634
-	effectBaku             = 635
-	effectHyousyouraku     = 636
-	effectDesperado        = 637
-	effectLightningS       = 638
-	effectBlindS           = 639
-	effectPoisonS          = 640
-	effectFreezingS        = 641
-	effectFlareS           = 642
-	effectRapidShower      = 643
-	effectMagicalBullet    = 644
-	effectSpreadAttack     = 645
-	effectTrackCasting     = 646
-	effectTracking         = 647
-	effectTripleAction     = 648
-	effectBullseye         = 649
-	effectNPCEarthquake    = 666
-	effectDragonFear       = 668
-	effectWideBleeding     = 669
-	effectWideConfuse      = 670
-	effectBottomRunner     = 671
-	effectBottomTransfer   = 672
-	effectBottomEvilLand   = 674
-	effectGuard3           = 675
-	effectCriticalWound    = 677
-	effectFlowerLeaf       = 699
-	effectItem315          = 704
-	effectItem316          = 705
-	effectItem317          = 706
-	effectStormMin         = 708
-	effectBottomBlue       = 715
-	effectBottomBlue2      = 716
-	effectFirePillarOn2    = 718
-	effectForestLight5     = 719
-	effectAdoramus         = 721
-	effectIgnitionBreak    = 722
-	effectFrostMisty       = 726
-	effectCrimsonRock      = 727
-	effectHellInferno      = 728
-	effectMarshOfAbyss     = 729
-	effectDragonHowling    = 731
-	effectEarthWall        = 732
-	effectChainLightning   = 734
-	effectAimedBolt        = 745
-	effectArrowStorm       = 746
-	effectLaulamus         = 747
-	effectLauagnus         = 748
-	effectMillenniumShield = 749
-	effectConcentration2   = 750
-	effectGlassWall3       = 754
-	effectBerserkPotion2   = 756
-	effectRolling1         = 758
-	effectRolling2         = 759
-	effectRolling3         = 760
-	effectRolling4         = 761
-	effectRolling5         = 762
-	effectRolling6         = 763
-	effectRolling7         = 764
-	effectRolling8         = 765
-	effectRolling9         = 766
-	effectRolling10        = 767
-	effectCastSpin2        = 775
-	effectCrashAxe         = 795
-	effectStasis           = 799
-	effectBottomBasilica2  = 802
-	effectRecognized       = 803
-	effectTetra            = 804
-	effectTetraCasting     = 805
-	effectStretch          = 811
-	effectEnervation       = 813
-	effectEnervation2      = 814
-	effectEnervation3      = 815
-	effectEnervation4      = 816
-	effectEnervation5      = 817
-	effectEnervation6      = 818
-	effectBottomManhole    = 822
-	effectManhole          = 823
-	effectForestLight6     = 825
-	effectBottomAni        = 827
-	effectBottomMaelstrom  = 828
-	effectBottomBloodyLust = 829
-	effectHealN            = 832
-	effectChookgiN         = 833
-	effectDance1           = 847
-	effectBotReverb        = 856
-	effectRainParticle     = 857
-	effectChemicalV2       = 858
-	effectBotReverb2       = 860
-	effectCirclePower2     = 861
-	effectSecra2           = 862
-	effectSprPlant2        = 866
-	effectSprPlant3        = 868
-	effectSprPlant4        = 870
-	effectSprPlant5        = 872
-	effectSprPlant6        = 874
-	effectSprPlant7        = 876
-	effectSprPlant8        = 878
-	effectHeartAsura       = 879
-	effectGlassWall4       = 883
-	effectBash3D6          = 885
-	effectElectric4        = 888
-	effectTeiHit1T         = 889
-	effectPressure2        = 906
-	effectPrimeCharge2     = 908
-	effectPrimeCharge3     = 909
-	effectPrimeCharge4     = 910
-	effectFireWall2        = 920
-	effectSprPlant10       = 922
-	effectShockwave2       = 926
-	effectColdThrow2       = 928
-	effectDemonicFire4     = 929
-	effectPressure3        = 930
-	effectPoisonMist       = 959
-	effectEraserCutter     = 960
-	effectLavaSlide        = 964
-	effectSonicClaw        = 965
-	effectTinderBreaker    = 966
-	effectMidnightFrenzy   = 967
-	effectVolcanicAsh      = 975
-	effectRWC2011          = 987
-	effectRWC2011Two       = 988
-	effectRunMakeOK        = 1015
-	effectRunMakeFailure   = 1016
-	effectMIResultMakeOK   = 1017
-	effectMIResultMakeFail = 1018
-	effectAllRayProtect    = 1019
-	effectVenomFog         = 1020
-	effectDustStorm        = 1021
-	effectDanceBladeAtk    = 1029
-	effectInvincibleOff2   = 1031
-	effectDeathSummon      = 1033
-	effectGCDarkCrow       = 1040
-	effectAllFullThrottle  = 1042
-	effectSRFlashCombo     = 1043
-	effectRKLuxAnima       = 1044
-	effectSOElemShield     = 1046
-	effectABOffertorium    = 1047
-	effectWLTelekinesis    = 1048
-	effectGNIllusionDoping = 1049
-	effectNCMagmaEruption  = 1050
-	effectNPCChill         = 1055
-	effectOffertoriumRing  = 1057
-	effectHammerOfGod      = 1062
-	effectAchComplete      = 1094
-	effectBodyColor        = 1111
-	effectBakuretsuHadou   = 1130
-	dropEffectPink         = 1186
-	dropEffectYellow       = 1189
-	dropEffectPurple       = 1190
-	effectDigitalSpace     = 1240
-	dropEffectBlue         = 1869
-	dropEffectGreen        = 1870
-	dropEffectRed          = 1871
-	effectNewSuccess       = 1872
-	effectNewFailure       = 1873
-	effectNewIntro         = 1874
-	effectEnchantYellow    = 1875
-	effectEnchantSuccess   = 1876
-	effectEnchantFail      = 1877
-	effectEnchantBlue      = 1878
-	effectEnchantUpSuccess = 1879
-	effectEnchantUpFail    = 1880
-	effectEnchantGreen     = 1881
-	effectEnchantResetOK   = 1882
-	effectEnchantResetFail = 1883
-)
-
-const (
+	effectColdBolt               = 10014
+	effectFireBolt               = 10019
+	effectCastRing               = 10021
+	effectQuakeMagnum            = 10022
+	effectArrowShot              = 10060
+	effectArrowShower            = 10061
+	effectMagicPower             = SkillEffectMagicPower
 	effectWhitePulse             = SkillEffectWhitePulse
 	effectSpearProjectile        = SkillEffectSpearProjectile
 	effectSpearHitSound          = SkillEffectSpearHitSound
@@ -760,8 +757,6 @@ const (
 	effectMaximizeSounds         = SkillEffectMaximizeSounds
 	effectGreedSound             = SkillEffectGreedSound
 	effectGospelGround           = SkillEffectGospelGround
-	effectSteelBodyRing          = SkillEffectSteelBodyRing
-	effectFogWallGround          = 405
 	effectHermodeMusic           = SkillEffectHermodeMusic
 	effectBottomDissonanceGround = SkillEffectBottomDissonanceGround
 	effectBottomLullabyGround    = SkillEffectBottomLullabyGround
@@ -782,6 +777,7 @@ const (
 	effectBottomFortuneGround    = SkillEffectBottomFortuneGround
 	effectBottomServiceGround    = SkillEffectBottomServiceGround
 	effectGunslingerCoinSound    = SkillEffectGunslingerCoinSound
+	effectSteelBodyRing          = SkillEffectSteelBodyRing
 )
 
 const EffectPixelRatio = 1.0 / 35.0
@@ -954,727 +950,12 @@ type EffectComponent struct {
 	QuadHornAnimOut    bool
 }
 
-func effectTableSize(value float64) float64 {
-	return value * EffectPixelRatio
-}
-
-func effectTableColor(red, green, blue float64) color.RGBA {
-	return color.RGBA{R: uint8(red * 255), G: uint8(green * 255), B: uint8(blue * 255), A: 255}
-}
-
-func strEffectSpec(file, wav string) EffectSpec {
-	return strEffectSpecRandom(file, wav, 0, 0)
-}
-
-func strEffectSpecRandom(file, wav string, randMin, randMax int) EffectSpec {
-	return strEffectSpecRandomAttached(file, wav, randMin, randMax, false, false)
-}
-
-func strEffectSpecAttached(file, wav string, head bool) EffectSpec {
-	return strEffectSpecRandomAttached(file, wav, 0, 0, true, head)
-}
-
-func strEffectSpecAttachedMin(file, minFile, wav string, head bool) EffectSpec {
-	spec := strEffectSpecAttached(file, wav, head)
-	spec.Components[0].STRMinFile = minFile
-	return spec
-}
-
-func strEffectSpecAttachedTexturePath(file, texturePath, wav string, head bool) EffectSpec {
-	return strEffectSpecTexturePath(file, texturePath, wav, true, head)
-}
-
-func strEffectSpecTexturePath(file, texturePath, wav string, attached, head bool) EffectSpec {
-	spec := strEffectSpecRandomAttached(file, wav, 0, 0, attached, head)
-	spec.Components[0].TexturePath = texturePath
-	return spec
-}
-
-func strEffectSpecRandomAttached(file, wav string, randMin, randMax int, attached, head bool) EffectSpec {
-	spec := EffectSpec{
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSTR,
-			STRFile:        file,
-			STRRandMin:     randMin,
-			STRRandMax:     randMax,
-			AttachedEntity: attached,
-			SpriteHead:     head,
-		}},
-	}
-	if wav != "" {
-		spec.SFX = []string{wav}
-		spec.SFXRandMin = randMin
-		spec.SFXRandMax = randMax
-	}
-	return spec
-}
-
-func sprEffectSpec(file, wav string, attached, head bool) EffectSpec {
-	spec := EffectSpec{
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSPR,
-			SpriteFile:     file,
-			AttachedEntity: attached,
-			SpriteHead:     head,
-		}},
-	}
-	if wav != "" {
-		spec.SFX = []string{wav}
-	}
-	return spec
-}
-
-func sprDirectionEffectSpec(file, wav string) EffectSpec {
-	spec := sprEffectSpec(file, wav, true, false)
-	spec.Components[0].SpriteDirection = true
-	return spec
-}
-
-func sprRepeatEffectSpec(file, wav string, attached bool) EffectSpec {
-	spec := sprEffectSpec(file, wav, attached, false)
-	spec.Components[0].Repeat = true
-	return spec
-}
-
-func sprTexturePathEffectSpec(file, texturePath string, attached, repeat, head, renderBefore bool, yOffset float64) EffectSpec {
-	spec := EffectSpec{
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSPR,
-			SpriteFile:     file,
-			TexturePath:    texturePath,
-			AttachedEntity: attached,
-			Repeat:         repeat,
-			SpriteRepeat:   repeat,
-			SpriteHead:     head,
-			SpriteYOffset:  yOffset,
-			RenderBefore:   renderBefore,
-		}},
-	}
-	if repeat {
-		spec.Duration = 5 * time.Minute
-	}
-	return spec
-}
-
-func dropEffectSpec(colorName string, renderBefore bool) EffectSpec {
-	topFile := "new_dropitem/dropitem_" + colorName + "/dropitem_" + colorName + "/dropitem_" + colorName
-	topTexturePath := "new_dropitem/dropitem_" + colorName + "/dropitem_" + colorName + "/"
-	bottomFile := "new_dropitem/dropitem_" + colorName + "/dropitem_" + colorName + "_bottom/dropitem_" + colorName + "_bottom"
-	bottomTexturePath := "new_dropitem/dropitem_" + colorName + "/dropitem_" + colorName + "_bottom/"
-	return EffectSpec{
-		SFX: []string{"effect\\drop_" + colorName + ".wav"},
-		Components: []EffectComponent{
-			{
-				Kind:         EffectComponentSTR,
-				STRFile:      topFile,
-				TexturePath:  topTexturePath,
-				RenderBefore: renderBefore,
-			},
-			{
-				Kind:         EffectComponentSTR,
-				STRFile:      bottomFile,
-				TexturePath:  bottomTexturePath,
-				RenderBefore: renderBefore,
-			},
-		},
-	}
-}
-
-func funcEffectSpec(name string, duration time.Duration, attached bool) EffectSpec {
-	return EffectSpec{
-		Duration: duration,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       name,
-			AttachedEntity: attached,
-		}},
-	}
-}
-
-func banjjakiiEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: time.Second,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSPR,
-			SpriteFile:     "크리스마스",
-			Duration:       time.Second,
-			AttachedEntity: true,
-		}},
-	}
-}
-
-func level99EffectSpec() EffectSpec {
-	spec := funcEffectSpec("Level99Aura", 5*time.Minute, true)
-	spec.Components[0].TextureFile = "effect/ring_blue.tga"
-	return spec
-}
-
-func level99GroundEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 5 * time.Minute,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "GroundAura",
-			TextureFile:    "effect/pikapika2.bmp",
-			AttachedEntity: true,
-			SizeStart:      effectTableSize(115),
-			SizeEnd:        effectTableSize(130),
-			PosZ:           0.05,
-		}},
-	}
-}
-
-func level99BubbleEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 5 * time.Minute,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "Level99Bubble",
-			TextureFile:    "effect/whitelight.tga",
-			AttachedEntity: true,
-			Color:          color.RGBA{R: 80, G: 80, B: 255, A: 250},
-			SizeStart:      effectTableSize(22.2),
-			PosZ:           0.05,
-		}},
-	}
-}
-
-func robrCylinderBlendComponent(textureName string, tint color.RGBA, duration time.Duration, alphaMax float64, animation int, bottomSize, topSize, height float64, attached, rotate, fade bool, blendMode int) EffectComponent {
-	component := robrCylinderComponent(textureName, tint, duration, alphaMax, animation, bottomSize, topSize, height, attached, rotate, fade, blendMode == 2)
-	component.BlendMode = blendMode
-	component.BlendAdditive = blendMode == 2
-	return component
-}
-
-func hapgyeokEffectSpec() EffectSpec {
-	return firecrackerBannerEffectSpec("합격_")
-}
-
-func firecrackerBannerEffectSpec(sprite string) EffectSpec {
-	return EffectSpec{
-		SFX: []string{"effect\\itempokjuk.wav"},
-		Components: []EffectComponent{
-			{
-				Kind:           EffectComponentSPR,
-				SpriteFile:     sprite,
-				AttachedEntity: true,
-			},
-			{
-				Kind:           EffectComponentSTR,
-				STRFile:        "itempokjuk",
-				AttachedEntity: true,
-			},
-		},
-	}
-}
-
-func groundTextureEffectSpec(texture string) EffectSpec {
-	return EffectSpec{
-		Duration: 1500 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "GroundTexture",
-			TextureFile:    texture,
-			Duration:       1500 * time.Millisecond,
-			SizeStart:      1,
-			SizeEnd:        1,
-			PosZ:           0.05,
-			BlendAdditive:  true,
-			AttachedEntity: false,
-		}},
-	}
-}
-
-func bottomBlueEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 20 * time.Second,
-		Components: []EffectComponent{
-			bottomBlueCylinder(1.5, 2.0, 40.0/255.0, 0, color.RGBA{R: 51, G: 153, B: 255, A: 255}),
-			bottomBlueCylinder(1.58, 2.1, 32.0/255.0, 10, color.RGBA{R: 51, G: 153, B: 255, A: 255}),
-			bottomBlueCylinder(1.65, 2.0, 15.0/255.0, 26.6, color.RGBA{R: 25, G: 102, B: 255, A: 255}),
-			bottomBlueCylinder(1.65, 2.0, 15.0/255.0, 79.8, color.RGBA{R: 25, G: 102, B: 255, A: 255}),
-		},
-	}
-}
-
-func bottomBlueCylinder(size, height, alpha, angleY float64, tint color.RGBA) EffectComponent {
-	return EffectComponent{
-		Kind:             EffectComponentCylinder,
-		TextureName:      "alpha_down",
-		Duration:         20 * time.Second,
-		AlphaMax:         alpha,
-		BottomSize:       size,
-		TopSize:          size,
-		Height:           height,
-		AngleY:           angleY,
-		RotateWithCamera: true,
-		TotalCircleSides: 4,
-		CircleSides:      4,
-		BlendMode:        2,
-		BlendAdditive:    true,
-		AttachedEntity:   true,
-		Color:            tint,
-	}
-}
-
-func screenQuakeEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration:    200 * time.Millisecond,
-		CameraShake: 200 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "CameraQuake",
-			Duration:       200 * time.Millisecond,
-			AttachedEntity: true,
-		}},
-	}
-}
-
-func chemical2EffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration:         500 * time.Millisecond,
-		CameraShake:      200 * time.Millisecond,
-		CameraShakeDelay: 132 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "CameraQuake",
-			AttachedEntity: true,
-		}},
-	}
-}
-
-func naturalRecoveryEffectSpec(tint color.RGBA, wav string) EffectSpec {
-	return EffectSpec{
-		Duration: 1110 * time.Millisecond,
-		SFX:      []string{wav},
-		Components: []EffectComponent{{
-			Kind:            EffectComponent3D,
-			TextureFile:     "effect/pok1.tga",
-			Color:           tint,
-			Duration:        500 * time.Millisecond,
-			Delay:           500 * time.Millisecond,
-			Duplicate:       12,
-			DuplicateDelay:  10 * time.Millisecond,
-			AlphaMax:        0.8,
-			FadeIn:          true,
-			FadeOut:         true,
-			SizeStart:       effectTableSize(30),
-			SizeEnd:         effectTableSize(30),
-			SizeRand:        effectTableSize(20),
-			BlendMode:       2,
-			BlendAdditive:   true,
-			PosXRand:        0.6,
-			PosYRand:        0.6,
-			PosZStartRand:   1.5,
-			PosZStartMiddle: 2,
-			PosZEndRand:     1,
-			PosZEndMiddle:   5,
-			Sparkling:       true,
-			SparkNumber:     3,
-			AttachedEntity:  true,
-		}},
-	}
-}
-
-func bodySizeEffectSpec(name string, duration time.Duration, targetSize float64) EffectSpec {
-	return EffectSpec{
-		Duration: duration,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       name,
-			Duration:       duration,
-			SizeEnd:        targetSize,
-			AttachedEntity: true,
-		}},
-	}
-}
-
-func transBlueBodyEffectSpec() EffectSpec {
-	return funcEffectSpec("TransBlueBody", 200*EffectFrameDuration, true)
-}
-
-func soundOnlyEffectSpec(paths ...string) EffectSpec {
-	return EffectSpec{
-		Duration: 500 * time.Millisecond,
-		SFX:      paths,
-	}
-}
-
-func whitePulseEffectSpec() EffectSpec {
-	return EffectSpec{Duration: 500 * time.Millisecond}
-}
-
-func quakeEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration:    650 * time.Millisecond,
-		CameraShake: 650 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "CameraQuake",
-			Duration:       650 * time.Millisecond,
-			AttachedEntity: true,
-		}},
-	}
-}
-
-func directedSpriteEffectSpec(sprite string) EffectSpec {
-	spec := funcEffectSpec("DirectedSprite", 100*EffectFrameDuration, false)
-	c := &spec.Components[0]
-	c.SpriteFile = sprite
-	c.SpriteDelay = 6 * EffectFrameDuration
-	c.WorldSizedSprite = true
-	c.Overlay = true
-	return spec
-}
-
-func twoDigitString(value int) string {
-	if value < 10 {
-		return "0" + strconv.Itoa(value)
-	}
-	return strconv.Itoa(value)
-}
-
-func delayedSoundEffectSpec(paths []string, delays []time.Duration) EffectSpec {
-	return EffectSpec{
-		Duration:  500 * time.Millisecond,
-		SFX:       paths,
-		SFXDelays: delays,
-	}
-}
-
-func delayedSoundEffectSpecDuration(duration time.Duration, paths []string, delays []time.Duration) EffectSpec {
-	spec := delayedSoundEffectSpec(paths, delays)
-	spec.Duration = duration
-	return spec
-}
-
-func robrCylinderComponent(textureName string, tint color.RGBA, duration time.Duration, alphaMax float64, animation int, bottomSize, topSize, height float64, attached, rotate, fade, additive bool) EffectComponent {
-	blendMode := 0
-	if additive {
-		blendMode = 2
-	}
-	return EffectComponent{
-		Kind:             EffectComponentCylinder,
-		Color:            tint,
-		TextureName:      textureName,
-		Duration:         duration,
-		AlphaMax:         alphaMax,
-		Fade:             fade,
-		Rotate:           rotate,
-		Animation:        animation,
-		BottomSize:       bottomSize,
-		TopSize:          topSize,
-		Height:           height,
-		AttachedEntity:   attached,
-		TotalCircleSides: 32,
-		CircleSides:      32,
-		BlendMode:        blendMode,
-		BlendAdditive:    additive,
-	}
-}
-
-func tintedEffectComponent(component EffectComponent, tint color.RGBA) EffectComponent {
-	component.Color = tint
-	return component
-}
-
-func quadHornEffectComponent(textureFile string, duration time.Duration, height, offsetX, offsetY [2]float64, offsetZ float64, bottomSize, rotateY, rotateZ [2]float64, animation int, animationSpeed time.Duration, animationOut bool, blendMode int) EffectComponent {
-	return quadHornEffectComponentFull(textureFile, duration, height, offsetX, offsetY, offsetZ, bottomSize, [2]float64{}, rotateY, rotateZ, animation, animationSpeed, animationOut, blendMode)
-}
-
-func quadHornEffectComponentFull(textureFile string, duration time.Duration, height, offsetX, offsetY [2]float64, offsetZ float64, bottomSize, rotateX, rotateY, rotateZ [2]float64, animation int, animationSpeed time.Duration, animationOut bool, blendMode int) EffectComponent {
-	return EffectComponent{
-		Kind:               EffectComponentQuadHorn,
-		TextureFile:        textureFile,
-		Duration:           duration,
-		AttachedEntity:     false,
-		Color:              color.RGBA{R: 255, G: 255, B: 255, A: 255},
-		BlendMode:          blendMode,
-		BlendAdditive:      blendMode == 2,
-		Animation:          animation,
-		QuadHornHeightMin:  height[0],
-		QuadHornHeightMax:  height[1],
-		QuadHornOffsetXMin: offsetX[0],
-		QuadHornOffsetXMax: offsetX[1],
-		QuadHornOffsetYMin: offsetY[0],
-		QuadHornOffsetYMax: offsetY[1],
-		QuadHornOffsetZ:    offsetZ,
-		QuadHornBottomMin:  bottomSize[0],
-		QuadHornBottomMax:  bottomSize[1],
-		QuadHornRotateXMin: rotateX[0],
-		QuadHornRotateXMax: rotateX[1],
-		QuadHornRotateYMin: rotateY[0],
-		QuadHornRotateYMax: rotateY[1],
-		QuadHornRotateZMin: rotateZ[0],
-		QuadHornRotateZMax: rotateZ[1],
-		QuadHornAnimSpeed:  animationSpeed,
-		QuadHornAnimOut:    animationOut,
-	}
-}
-
-func coloredTorchEffectSpec(tint color.RGBA) EffectSpec {
-	return EffectSpec{
-		Duration: 24 * time.Hour,
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			SpriteFile:     "torch_01",
-			SpriteRepeat:   true,
-			Duration:       600 * time.Millisecond,
-			SpriteDelay:    100 * time.Millisecond,
-			PosX:           0.1,
-			PosZ:           0.8,
-			SizeStart:      effectTableSize(100),
-			SizeEnd:        effectTableSize(100),
-			AngleStart:     270,
-			AngleEnd:       270,
-			RotateToTarget: true,
-			AlphaMax:       1,
-			BlendAdditive:  true,
-			Color:          tint,
-		}},
-	}
-}
-
-func mapGlowEffectSpec(tint color.RGBA, radius float64) EffectSpec {
-	return EffectSpec{
-		Duration: 24 * time.Hour,
-		Components: []EffectComponent{{
-			Kind:             EffectComponentCylinder,
-			TextureName:      "alpha_center",
-			Duration:         1600 * time.Millisecond,
-			AlphaMax:         0.36,
-			Fade:             true,
-			Rotate:           true,
-			BottomSize:       radius,
-			TopSize:          radius,
-			Height:           0.06,
-			TotalCircleSides: 32,
-			CircleSides:      32,
-			BlendAdditive:    true,
-			Color:            tint,
-		}},
-	}
-}
-
-func mapPillarEffectSpec(texture string, tint color.RGBA, radiusStart, alphaMax float64) EffectSpec {
-	const (
-		duration   = 16 * time.Second
-		worldScale = 0.2
-	)
-	return EffectSpec{
-		Duration: duration,
-		Components: []EffectComponent{{
-			Kind:          EffectComponentFUNC,
-			FuncName:      "MapPillar",
-			TextureName:   texture,
-			Duration:      duration,
-			AlphaMax:      alphaMax,
-			BottomSize:    radiusStart * worldScale,
-			Height:        120 * worldScale,
-			BlendMode:     2,
-			BlendAdditive: true,
-			Color:         tint,
-		}},
-	}
-}
-
-func mapFallingParticleEffectSpec(textureFile string, tint color.RGBA, count int) EffectSpec {
-	return EffectSpec{
-		Duration: 1400 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			TextureFile:    textureFile,
-			Duration:       1400 * time.Millisecond,
-			Duplicate:      count,
-			DuplicateDelay: 18 * time.Millisecond,
-			AlphaMax:       0.78,
-			FadeIn:         true,
-			FadeOut:        true,
-			BlendAdditive:  true,
-			PosXRand:       4,
-			PosYRand:       4,
-			PosZStartRand:  1.5,
-			PosZ:           12,
-			PosZEnd:        0.2,
-			PosXEndRand:    1,
-			PosYEndRand:    1,
-			PosZSmooth:     true,
-			SizeStart:      effectTableSize(8),
-			SizeEnd:        effectTableSize(5),
-			Color:          tint,
-		}},
-	}
-}
-
-func mapRainbowBand(tint color.RGBA, zOffset float64) EffectComponent {
-	return EffectComponent{
-		Kind:          EffectComponent3D,
-		TextureFile:   "effect/alpha_center.tga",
-		Duration:      2200 * time.Millisecond,
-		AlphaMax:      0.3,
-		Fade:          true,
-		BlendAdditive: true,
-		PosZ:          7 + zOffset,
-		SizeStartX:    effectTableSize(900),
-		SizeStartY:    effectTableSize(45),
-		SizeEndX:      effectTableSize(900),
-		SizeEndY:      effectTableSize(45),
-		AngleStart:    -18,
-		Color:         tint,
-	}
-}
-
-func weatherRainEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 900 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:          EffectComponent3D,
-			TextureFile:   "effect/alpha_center.tga",
-			Duration:      900 * time.Millisecond,
-			Duplicate:     85,
-			AlphaMax:      0.5,
-			FadeIn:        true,
-			FadeOut:       true,
-			BlendAdditive: true,
-			PosXRand:      28,
-			PosYRand:      28,
-			PosZ:          18,
-			PosZEnd:       0,
-			PosXEnd:       -3.5,
-			PosYEnd:       2.0,
-			PosZSmooth:    false,
-			SizeStartX:    effectTableSize(2),
-			SizeStartY:    effectTableSize(52),
-			SizeEndX:      effectTableSize(2),
-			SizeEndY:      effectTableSize(52),
-			AngleStart:    -25,
-			Color:         color.RGBA{R: 185, G: 215, B: 255, A: 255},
-		}},
-	}
-}
-
-func weatherSnowEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 8 * time.Second,
-		Components: []EffectComponent{{
-			Kind:          EffectComponent3D,
-			TextureFile:   "effect/pok3.tga",
-			Duration:      8 * time.Second,
-			Duplicate:     180,
-			AlphaMax:      0.85,
-			FadeIn:        true,
-			FadeOut:       true,
-			BlendAdditive: true,
-			PosXRand:      60,
-			PosYRand:      60,
-			PosZStartRand: 2,
-			PosZ:          20,
-			PosZEnd:       -4,
-			PosZSmooth:    false,
-			SizeStart:     effectTableSize(7),
-			SizeEnd:       effectTableSize(7),
-			Color:         color.RGBA{R: 245, G: 250, B: 255, A: 255},
-		}},
-	}
-}
-
-func weatherLeafEffectSpec(spriteFile string, tint color.RGBA) EffectSpec {
-	return EffectSpec{
-		Duration: 5200 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			SpriteFile:       spriteFile,
-			SpriteRepeat:     true,
-			Duration:         5200 * time.Millisecond,
-			Duplicate:        36,
-			AlphaMax:         0.92,
-			FadeIn:           true,
-			FadeOut:          true,
-			PosXRand:         30,
-			PosYRand:         30,
-			PosZ:             20,
-			PosZEnd:          0,
-			PosXEnd:          -4,
-			PosYEnd:          2,
-			PosXEndRand:      3,
-			PosYEndRand:      3,
-			PosXSmooth:       true,
-			PosYSmooth:       true,
-			SizeStart:        effectTableSize(80),
-			SizeEnd:          effectTableSize(80),
-			AngleRandMin:     0,
-			AngleRandMax:     360,
-			RotateWithCamera: true,
-			Color:            tint,
-		}},
-	}
-}
-
-func weatherCloudEffectSpec(textures []string, tint color.RGBA, alpha, radius, z float64, duration time.Duration) EffectSpec {
-	return EffectSpec{
-		Duration: duration,
-		Components: []EffectComponent{{
-			Kind:          EffectComponent3D,
-			TextureFiles:  textures,
-			Duration:      duration,
-			Duplicate:     28,
-			AlphaMax:      alpha,
-			FadeIn:        true,
-			FadeOut:       true,
-			BlendAdditive: false,
-			PosXRand:      radius,
-			PosYRand:      radius,
-			PosXEnd:       2.4,
-			PosYEnd:       0.8,
-			PosZ:          z,
-			SizeStartX:    effectTableSize(1500),
-			SizeStartY:    effectTableSize(900),
-			SizeEndX:      effectTableSize(1500),
-			SizeEndY:      effectTableSize(900),
-			AngleRandMin:  -10,
-			AngleRandMax:  10,
-			Color:         tint,
-		}},
-	}
-}
-
-func einbrochWeatherCloudEffectSpec() EffectSpec {
-	const duration = 34 * time.Second
-	size := 35 * math.Sqrt2 * 0.1
-	return EffectSpec{
-		Duration: duration,
-		Components: []EffectComponent{{
-			Kind:          EffectComponent3D,
-			TextureFiles:  []string{"effect/fog1.tga", "effect/fog2.tga", "effect/fog3.tga"},
-			Duration:      duration,
-			Duplicate:     320,
-			AlphaMax:      170.0 / 255.0,
-			FadeIn:        true,
-			FadeOut:       true,
-			BlendAdditive: false,
-			Overlay:       true,
-			PosXRand:      15,
-			PosYRand:      15,
-			PosZRand:      0.5,
-			PosXEnd:       1.5,
-			PosYEnd:       1.5,
-			PosZ:          -2,
-			SizeStartX:    size,
-			SizeStartY:    size,
-			SizeEndX:      size,
-			SizeEndY:      size,
-			SizeRand:      10 * math.Sqrt2 * 0.1,
-			Color:         color.RGBA{R: 252, G: 171, B: 143, A: 255},
-		}},
-	}
-}
-
 // EffectSpecs is adapted from robr's DB/Effects/EffectTable.js and verified
 // original-client behavior. Leave effects unsupported until their reference
 // behavior is understood rather than guessing local visuals.
 var EffectSpecs = map[int]EffectSpec{
 	effectDoubleGumgang: starWarmthEffectSpec(),
-	effectRedLightBody:  {Duration: 99999999 * EffectFrameDuration},
+	effectRedLightBody:  redLightBodyEffectSpec(),
 	effectHated2:        starWarmthParticlesEffectSpec(),
 	effectFlowerCast:    starComfortEffectSpec(),
 	effectBlackDevil:    starBlackDevilEffectSpec(),
@@ -1689,1498 +970,744 @@ var EffectSpecs = map[int]EffectSpec{
 	effectDevil9:        starBlindEffectSpec(),
 	effectDevil10:       starBlindEffectSpec(),
 
-	SkillEffectChaseWalkSmoke: {Components: []EffectComponent{{Kind: EffectComponentSPR, SpriteFile: "smoke", SpriteDelay: 5 * EffectFrameDuration / 6, WorldSizedSprite: true}}},
+	SkillEffectChaseWalkSmoke: chaseWalkSmokeEffectSpec(),
 
 	effectShieldBoomerang3: shieldChainEffectSpec(),
 	effectShrink:           shrinkEffectSpec(),
 
-	effectRain:        weatherRainEffectSpec(),
-	effectSnow:        weatherSnowEffectSpec(),
-	effectSakura:      weatherLeafEffectSpec("data/sprite/이팩트/sakura01", color.RGBA{R: 255, G: 210, B: 225, A: 255}),
-	effectMaple:       weatherLeafEffectSpec("data/sprite/이팩트/단풍", color.RGBA{R: 255, G: 170, B: 80, A: 255}),
-	effectCloud:       weatherCloudEffectSpec([]string{"effect/cloud4.tga", "effect/cloud1.tga", "effect/cloud2.tga"}, color.RGBA{R: 255, G: 255, B: 255, A: 255}, 0.18, 35, -10, 20*time.Second),
-	effectCloud2:      weatherCloudEffectSpec([]string{"effect/cloud4.tga", "effect/cloud1.tga", "effect/cloud2.tga"}, color.RGBA{R: 255, G: 255, B: 255, A: 255}, 0.58, 35, 4, 20*time.Second),
-	effectCloud3:      weatherCloudEffectSpec([]string{"effect/fog1.tga", "effect/fog2.tga", "effect/fog3.tga"}, color.RGBA{R: 120, G: 110, B: 100, A: 255}, 0.78, 45, -10, 34*time.Second),
-	effectCloud4:      einbrochWeatherCloudEffectSpec(),
-	effectCloud5:      weatherCloudEffectSpec([]string{"effect/cloud4.tga", "effect/cloud1.tga", "effect/cloud2.tga"}, color.RGBA{R: 225, G: 212, B: 194, A: 255}, 0.70, 50, 4, 8*time.Second),
-	effectCloud6:      weatherCloudEffectSpec([]string{"effect/cloud4.tga", "effect/cloud1.tga", "effect/cloud2.tga"}, color.RGBA{R: 255, G: 255, B: 255, A: 255}, 0.58, 35, 4, 28*time.Second),
-	effectCloud7:      weatherCloudEffectSpec([]string{"effect/cloud4.tga", "effect/cloud1.tga", "effect/cloud2.tga"}, color.RGBA{R: 51, G: 79, B: 161, A: 255}, 0.55, 35, 4, 20*time.Second),
-	effectCloud8:      weatherCloudEffectSpec([]string{"effect/cloud4.tga", "effect/cloud1.tga", "effect/cloud2.tga"}, color.RGBA{R: 255, G: 140, B: 51, A: 255}, 0.62, 35, 4, 20*time.Second),
-	effectBeginSpell:  castAuraEffectSpec("ring_yellow", color.RGBA{R: 255, G: 245, B: 120, A: 255}, 0.8, 4, 5, false),
-	effectBeginSpell2: elementalCastAuraEffectSpec("ring_blue", color.RGBA{R: 128, G: 128, B: 255, A: 255}, 0.6),
-	effectBeginSpell3: elementalCastAuraEffectSpec("ring_red", color.RGBA{R: 255, G: 100, B: 100, A: 255}, 0.7),
-	effectBeginSpell4: elementalCastAuraEffectSpec("ring_white", color.RGBA{R: 150, G: 255, B: 150, A: 255}, 0.6),
-	effectBeginSpell5: elementalCastAuraEffectSpec("ring_yellow", color.RGBA{R: 255, G: 245, B: 120, A: 255}, 0.8),
-	effectBeginSpell6: castAuraEffectSpec("ring_white", color.RGBA{R: 255, G: 255, B: 255, A: 255}, 0.8, 4, 5, true),
-	effectBeginSpell7: elementalCastAuraEffectSpec("ring_purple", color.RGBA{R: 200, G: 160, B: 255, A: 255}, 0.7),
-	effectLockOnTarget: {
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "LockOnTarget",
-			TextureFile:    "effect/lockon128.tga",
-			AttachedEntity: true,
-		}},
-	},
-	effectSmoke: {
-		Duration: 10 * time.Second,
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			SpriteFile:       "굴뚝연기",
-			SpriteRepeat:     true,
-			Duration:         10 * time.Second,
-			Duplicate:        10,
-			DuplicateDelay:   time.Second,
-			AlphaMax:         0.8,
-			FadeOut:          true,
-			BlendAdditive:    true,
-			PosZ:             0,
-			PosZEnd:          20,
-			PosXEndRand:      3,
-			PosXSmooth:       true,
-			SizeStart:        effectTableSize(70),
-			SizeEnd:          effectTableSize(300),
-			SizeSmooth:       true,
-			AngleStart:       -90,
-			AngleEnd:         0,
-			Rotate:           true,
-			RotateWithCamera: true,
-			Color:            color.RGBA{R: 255, G: 255, B: 255, A: 255},
-		}},
-	},
-	effectFirefly: {
-		Duration: 3 * time.Second,
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			SpriteFile:     "data/sprite/이팩트/particle1",
-			SpriteRepeat:   true,
-			Duration:       3 * time.Second,
-			Duplicate:      3,
-			DuplicateDelay: 420 * time.Millisecond,
-			PosXRand:       0.18,
-			PosYRand:       0.18,
-			PosZ:           0.25,
-			PosZEnd:        1.0,
-			PosZStartRand:  0.2,
-			PosZEndRand:    0.25,
-			SizeStart:      effectTableSize(70),
-			SizeEnd:        effectTableSize(110),
-			AlphaMax:       0.22,
-			FadeIn:         true,
-			FadeOut:        true,
-			Color:          color.RGBA{R: 230, G: 250, B: 255, A: 255},
-		}},
-	},
-	effectTorch: {
-		Duration: 24 * time.Hour,
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			SpriteFile:     "torch_01",
-			SpriteRepeat:   true,
-			Duration:       600 * time.Millisecond,
-			SpriteDelay:    100 * time.Millisecond,
-			PosX:           0.1,
-			PosZ:           0.8,
-			SizeStart:      effectTableSize(100),
-			SizeEnd:        effectTableSize(100),
-			AngleStart:     270,
-			AngleEnd:       270,
-			RotateToTarget: true,
-			AlphaMax:       1,
-			Color:          color.RGBA{R: 255, G: 255, B: 255, A: 255},
-		}},
-	},
-	effectTorchRed:    coloredTorchEffectSpec(color.RGBA{R: 255, G: 110, B: 75, A: 255}),
-	effectTorchGreen:  coloredTorchEffectSpec(color.RGBA{R: 90, G: 255, B: 135, A: 255}),
-	effectTorchPurple: coloredTorchEffectSpec(color.RGBA{R: 190, G: 120, B: 255, A: 255}),
-	effectBubble:      strEffectSpecRandom("bubble%d", "", 1, 4),
-	effectDragonSmoke: {
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSPR,
-			SpriteFile:     "poisonhit",
-			AttachedEntity: true,
-		}},
-	},
-	effectBanjjakii:  banjjakiiEffectSpec(),
-	effectMapPillar:  mapPillarEffectSpec("ring_blue", color.RGBA{R: 110, G: 175, B: 255, A: 255}, 2, 50.0/255.0),
-	effectMapPillar2: mapPillarEffectSpec("ring_blue", color.RGBA{R: 110, G: 175, B: 255, A: 255}, 11, 70.0/255.0),
-	effectMapPillar3: mapPillarEffectSpec("magic_green", color.RGBA{R: 255, G: 255, B: 255, A: 255}, 2, 50.0/255.0),
-	effectMapPillar4: mapPillarEffectSpec("ring_red", color.RGBA{R: 255, G: 255, B: 255, A: 255}, 2, 50.0/255.0),
-	effectMapGhost: {
-		Duration: 24 * time.Hour,
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			SpriteFile:     "particle2",
-			SpriteRepeat:   true,
-			Duration:       1400 * time.Millisecond,
-			Duplicate:      7,
-			DuplicateDelay: 190 * time.Millisecond,
-			AlphaMax:       0.5,
-			FadeIn:         true,
-			FadeOut:        true,
-			BlendAdditive:  true,
-			PosZ:           0.2,
-			PosZEnd:        2,
-			PosXRand:       0.35,
-			PosYRand:       0.35,
-			SizeStart:      effectTableSize(70),
-			SizeEnd:        effectTableSize(120),
-			Color:          color.RGBA{R: 180, G: 230, B: 255, A: 255},
-		}},
-	},
-	effectGlow1:      mapGlowEffectSpec(color.RGBA{R: 255, G: 245, B: 190, A: 255}, 1.2),
-	effectGlow2:      mapGlowEffectSpec(color.RGBA{R: 150, G: 210, B: 255, A: 255}, 1.45),
-	effectGlow4:      mapGlowEffectSpec(color.RGBA{R: 220, G: 175, B: 255, A: 255}, 1.8),
-	effectBubbleDrop: mapFallingParticleEffectSpec("effect/pok3.tga", color.RGBA{R: 95, G: 180, B: 255, A: 255}, 30),
-	effectRainbow: {
-		Duration: 24 * time.Hour,
-		Components: []EffectComponent{
-			mapRainbowBand(color.RGBA{R: 255, G: 90, B: 90, A: 255}, 0),
-			mapRainbowBand(color.RGBA{R: 255, G: 210, B: 90, A: 255}, 0.18),
-			mapRainbowBand(color.RGBA{R: 90, G: 255, B: 120, A: 255}, 0.36),
-			mapRainbowBand(color.RGBA{R: 90, G: 170, B: 255, A: 255}, 0.54),
-			mapRainbowBand(color.RGBA{R: 185, G: 110, B: 255, A: 255}, 0.72),
-		},
-	},
-	effectPneuma: strEffectSpecRandom("pneuma%d", "", 1, 3),
-	effectCastRing: {
-		Duration: 900 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponentFUNC,
-			FuncName:         "CastRing",
-			TextureName:      "ring_yellow",
-			AlphaMax:         0.9,
-			Fade:             true,
-			Rotate:           true,
-			Animation:        1,
-			BottomSize:       0.8,
-			TopSize:          2.45,
-			Height:           2.8,
-			PosZ:             0.08,
-			TotalCircleSides: 20,
-			CircleSides:      20,
-			Color:            color.RGBA{R: 255, G: 245, B: 150, A: 255},
-		}},
-	},
-	effectGroundSample: {
-		Duration: 900 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:        EffectComponentFUNC,
-			FuncName:    "MagicTarget",
-			TextureFile: "effect/magic_target.tga",
-			AlphaMax:    0.9,
-			PosZ:        0.08,
-			SizeStart:   1,
-			SizeEnd:     1,
-		}},
-	},
-	effectHit1: {
-		Duration: 300 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:        EffectComponent3D,
-			TextureFile: "effect/pok3.tga",
-			Duration:    300 * time.Millisecond,
-			Duplicate:   4,
-			AlphaMax:    0.8,
-			FadeIn:      true,
-			FadeOut:     true,
-			Sparkling:   true,
-			PosZ:        1,
-			PosXEndRand: 2,
-			PosYEndRand: 2,
-			PosZEndRand: 2,
-			SizeStart:   effectTableSize(10),
-			SizeEnd:     effectTableSize(10),
-			SizeRand:    effectTableSize(20),
-			SizeSmooth:  true,
-		}, hitRingComponent("ring_blue", 10, 5, 10, 3.5, 0.7, 5)},
-	},
-	effectBashHit: {
-		Duration: 50 * EffectFrameDuration,
-		SFX:      []string{"effect\\ef_hit2.wav"},
-		Components: []EffectComponent{{
-			Kind:         EffectComponentFUNC,
-			FuncName:     "BashHit",
-			TextureFile:  "effect/lens1.tga",
-			TextureFiles: []string{"effect/lens2.tga"},
-		}},
-	},
-	effectHit3: legacyHitEffectSpec(false),
-	effectHit4: legacyHitEffectSpec(true),
-	effectHit5: {
-		Duration: 400 * time.Millisecond,
-		SFX:      []string{"effect\\ef_hit5.wav"},
-		Components: []EffectComponent{
-			hitSlashComponent(EffectComponent3D, effectTableSize(15), effectTableSize(200), 90, 0, false),
-			hitSlashComponent(EffectComponent3D, effectTableSize(15), effectTableSize(200), 180, 90, false),
-		},
-	},
-	effectHit6: {
-		Duration: 400 * time.Millisecond,
-		SFX:      []string{"effect\\ef_hit6.wav"},
-		Components: []EffectComponent{
-			hitSlashComponent(EffectComponent2D, effectTableSize(10), effectTableSize(150), 90, 0, true),
-			hitSlashComponent(EffectComponent2D, effectTableSize(10), effectTableSize(150), 180, 90, true),
-		},
-	},
-	effectEntry: {
-		Duration: 500 * time.Millisecond,
-		SFX:      []string{"effect\\ef_portal.wav"},
-		Components: []EffectComponent{
-			robrCylinderComponent("ring_blue", color.RGBA{}, 500*time.Millisecond, 0.62, 1, 0.9, 0.9, 7.5, false, true, true, false),
-			robrCylinderComponent("ring_blue", color.RGBA{}, 500*time.Millisecond, 0.62, 1, 0.85, 0.85, 8, true, true, true, false),
-			robrCylinderComponent("ring_blue", color.RGBA{}, 500*time.Millisecond, 0.8, 1, 0.9, 1.5, 1, true, true, true, false),
-		},
-	},
-	effectExit: {
-		Duration: 2000 * time.Millisecond,
-		SFX:      []string{"_heal_effect.wav"},
-		Components: []EffectComponent{
-			robrCylinderComponent("alpha_down", color.RGBA{}, 2000*time.Millisecond, 0.2, 1, 0.95, 0.95, 10, true, false, true, true),
-			healParticleComponent(0.8, 1000*time.Millisecond, 400*time.Millisecond, 80*time.Millisecond, 6, 1.5, 1.5, 0, 0, 0, 3, 6, true),
-			healParticleComponent(0.8, 900*time.Millisecond, 200*time.Millisecond, 200*time.Millisecond, 3, 1, 1, 1, 0, 6, 0, 0, true),
-		},
-	},
-	effectWarp: {
-		Duration: 1000 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponentCylinder,
-			TextureName:      "ring_yellow",
-			Duration:         1000 * time.Millisecond,
-			Duplicate:        4,
-			DuplicateDelay:   300 * time.Millisecond,
-			AlphaMax:         0.8,
-			Fade:             true,
-			Animation:        4,
-			BottomSize:       10,
-			TopSize:          13,
-			PosZ:             0.1,
-			AttachedEntity:   true,
-			TotalCircleSides: 32,
-			CircleSides:      32,
-		}},
-	},
-	effectEnhance: {
-		Duration: 2000 * time.Millisecond,
-		Components: []EffectComponent{
-			robrCylinderComponent("alpha_down", color.RGBA{}, 2000*time.Millisecond, 0.2, 1, 0.95, 0.95, 10, true, false, true, true),
-			incAgilityParticleComponent(0.8, 500*time.Millisecond, 7),
-			incAgilityParticleComponent(0.8, 400*time.Millisecond, 3),
-		},
-	},
-	effectArrowShot: {
-		Duration: 140 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			SpriteFile:       "data/sprite/npc/skel_archer_arrow",
-			ToSrc:            true,
-			RotateToTarget:   true,
-			RotateWithCamera: true,
-			Duration:         140 * time.Millisecond,
-			AlphaMax:         1,
-			FadeIn:           true,
-			FadeOut:          true,
-			PosZ:             1,
-			SizeStart:        effectTableSize(100),
-			SizeEnd:          effectTableSize(100),
-			AngleStart:       180,
-		}},
-	},
-	effectArrowShower: arrowShowerEffectSpec(),
-	effectSafetyWall: {
-		Duration: 50 * time.Second,
-		SFX:      []string{"effect\\ef_glasswall.wav"},
-		Components: []EffectComponent{
-			{
-				Kind:    EffectComponentSTR,
-				STRFile: "safetywall",
-			},
-			{
-				Kind:             EffectComponentCylinder,
-				TextureName:      "alpha_down",
-				Duration:         50 * time.Second,
-				AlphaMax:         0.4,
-				Fade:             true,
-				Rotate:           true,
-				Animation:        0,
-				BottomSize:       0.6,
-				TopSize:          0.6,
-				Height:           7,
-				TotalCircleSides: 32,
-				CircleSides:      32,
-				Color:            color.RGBA{R: 128, G: 25, B: 128, A: 255},
-			},
-			{
-				Kind:             EffectComponentCylinder,
-				TextureName:      "alpha_down",
-				Duration:         50 * time.Second,
-				Delay:            50 * time.Millisecond,
-				AlphaMax:         0.4,
-				Fade:             true,
-				Rotate:           true,
-				Animation:        0,
-				BottomSize:       0.65,
-				TopSize:          0.65,
-				Height:           6,
-				TotalCircleSides: 32,
-				CircleSides:      32,
-				Color:            color.RGBA{R: 128, G: 25, B: 128, A: 255},
-			},
-			{
-				Kind:             EffectComponentCylinder,
-				TextureName:      "alpha_down",
-				Duration:         50 * time.Second,
-				Delay:            100 * time.Millisecond,
-				AlphaMax:         0.4,
-				Fade:             true,
-				Rotate:           true,
-				Animation:        0,
-				BottomSize:       0.7,
-				TopSize:          0.7,
-				Height:           7,
-				TotalCircleSides: 32,
-				CircleSides:      32,
-				Color:            color.RGBA{R: 128, G: 25, B: 128, A: 255},
-			},
-		},
-	},
+	effectRain:           weatherRainEffectSpec(),
+	effectSnow:           weatherSnowEffectSpec(),
+	effectSakura:         sakuraEffectSpec(),
+	effectMaple:          mapleEffectSpec(),
+	effectCloud:          cloudEffectSpec(),
+	effectCloud2:         cloud2EffectSpec(),
+	effectCloud3:         cloud3EffectSpec(),
+	effectCloud4:         einbrochWeatherCloudEffectSpec(),
+	effectCloud5:         cloud5EffectSpec(),
+	effectCloud6:         cloud6EffectSpec(),
+	effectCloud7:         cloud7EffectSpec(),
+	effectCloud8:         cloud8EffectSpec(),
+	effectBeginSpell:     beginSpellEffectSpec(),
+	effectBeginSpell2:    beginSpell2EffectSpec(),
+	effectBeginSpell3:    beginSpell3EffectSpec(),
+	effectBeginSpell4:    beginSpell4EffectSpec(),
+	effectBeginSpell5:    beginSpell5EffectSpec(),
+	effectBeginSpell6:    beginSpell6EffectSpec(),
+	effectBeginSpell7:    beginSpell7EffectSpec(),
+	effectLockOnTarget:   lockOnTargetEffectSpec(),
+	effectSmoke:          smokeEffectSpec(),
+	effectFirefly:        fireflyEffectSpec(),
+	effectTorch:          torchEffectSpec(),
+	effectTorchRed:       torchRedEffectSpec(),
+	effectTorchGreen:     torchGreenEffectSpec(),
+	effectTorchPurple:    torchPurpleEffectSpec(),
+	effectBubble:         bubbleEffectSpec(),
+	effectDragonSmoke:    dragonSmokeEffectSpec(),
+	effectBanjjakii:      banjjakiiEffectSpec(),
+	effectMapPillar:      mapPillarBlueEffectSpec(),
+	effectMapPillar2:     mapPillar2EffectSpec(),
+	effectMapPillar3:     mapPillar3EffectSpec(),
+	effectMapPillar4:     mapPillar4EffectSpec(),
+	effectMapGhost:       mapGhostEffectSpec(),
+	effectGlow1:          glow1EffectSpec(),
+	effectGlow2:          glow2EffectSpec(),
+	effectGlow4:          glow4EffectSpec(),
+	effectBubbleDrop:     bubbleDropEffectSpec(),
+	effectRainbow:        rainbowEffectSpec(),
+	effectPneuma:         pneumaEffectSpec(),
+	effectCastRing:       castRingEffectSpec(),
+	effectGroundSample:   groundSampleEffectSpec(),
+	effectHit1:           hit1EffectSpec(),
+	effectBashHit:        bashHitEffectSpec(),
+	effectHit3:           hit3EffectSpec(),
+	effectHit4:           hit4EffectSpec(),
+	effectHit5:           hit5EffectSpec(),
+	effectHit6:           hit6EffectSpec(),
+	effectEntry:          entryEffectSpec(),
+	effectExit:           exitEffectSpec(),
+	effectWarp:           warpEffectSpec(),
+	effectEnhance:        enhanceEffectSpec(),
+	effectArrowShot:      arrowShotEffectSpec(),
+	effectArrowShower:    arrowShowerEffectSpec(),
+	effectSafetyWall:     safetyWallEffectSpec(),
 	effectMammonite:      mammoniteEffectSpec(),
 	effectCartRevolution: cartRevolutionEffectSpec(),
-	effectLoud:           strEffectSpecAttached("loud", "effect\\고성방가.wav", false),
-	effectGlassWall:      strEffectSpec("effect/safetywall", "effect\\ef_glasswall.wav"),
-	effectHealSP: {
-		Duration: 2000 * time.Millisecond,
-		SFX:      []string{"_heal_effect.wav"},
-		Components: []EffectComponent{
-			robrCylinderComponent("ring_blue", color.RGBA{R: 25, G: 128, B: 255, A: 255}, 2000*time.Millisecond, 0.2, 1, 0.95, 0.95, 10, true, true, true, true),
-			tintedEffectComponent(healParticleComponent(0.8, 1000*time.Millisecond, 400*time.Millisecond, 80*time.Millisecond, 6, 1.5, 1.5, 0, 0, 0, 3, 6, true), color.RGBA{R: 25, G: 128, B: 255, A: 255}),
-			tintedEffectComponent(healParticleComponent(0.8, 900*time.Millisecond, 200*time.Millisecond, 200*time.Millisecond, 3, 1, 1, 1, 0, 6, 0, 0, true), color.RGBA{R: 25, G: 128, B: 255, A: 255}),
-		},
-	},
-	effectSight:        mageSightEffectSpec(),
-	effectSightBlaster: sightBlasterEffectSpec(),
-	effectNapalmBeat: {
-		Duration: 700 * time.Millisecond,
-		SFX:      []string{"effect\\ef_napalmbeat.wav"},
-	},
-	effectPokJuk: {
-		Duration: 4 * time.Second,
-		Components: []EffectComponent{
-			{
-				Kind:          EffectComponent3D,
-				TextureFile:   "effect/pok3.tga",
-				Duration:      900 * time.Millisecond,
-				AlphaMax:      0.9,
-				FadeIn:        true,
-				FadeOut:       true,
-				BlendAdditive: true,
-				PosZ:          0,
-				PosZEnd:       8,
-				PosXEndRand:   1.5,
-				PosYEndRand:   1.5,
-				PosZSmooth:    true,
-				SizeStart:     effectTableSize(8),
-				SizeEnd:       effectTableSize(12),
-				Color:         color.RGBA{R: 255, G: 255, B: 255, A: 255},
-			},
-			{
-				Kind:          EffectComponent3D,
-				TextureFile:   "effect/pok3.tga",
-				Duration:      900 * time.Millisecond,
-				Delay:         850 * time.Millisecond,
-				Duplicate:     45,
-				AlphaMax:      0.9,
-				FadeOut:       true,
-				BlendAdditive: true,
-				PosZ:          8,
-				PosXEndRand:   4.5,
-				PosYEndRand:   4.5,
-				PosZEndRand:   4.5,
-				SizeStart:     effectTableSize(14),
-				SizeEnd:       effectTableSize(4),
-				SizeRand:      effectTableSize(4),
-				Color:         color.RGBA{R: 120, G: 180, B: 255, A: 255},
-			},
-			{
-				Kind:          EffectComponent3D,
-				TextureFile:   "effect/pok3.tga",
-				Duration:      900 * time.Millisecond,
-				Delay:         900 * time.Millisecond,
-				Duplicate:     45,
-				AlphaMax:      0.85,
-				FadeOut:       true,
-				BlendAdditive: true,
-				PosZ:          8,
-				PosXEndRand:   4.0,
-				PosYEndRand:   4.0,
-				PosZEndRand:   4.0,
-				SizeStart:     effectTableSize(12),
-				SizeEnd:       effectTableSize(3),
-				SizeRand:      effectTableSize(3),
-				Color:         color.RGBA{R: 255, G: 120, B: 160, A: 255},
-			},
-			{
-				Kind:          EffectComponent3D,
-				TextureFile:   "effect/pok3.tga",
-				Duration:      750 * time.Millisecond,
-				Delay:         950 * time.Millisecond,
-				Duplicate:     30,
-				AlphaMax:      0.75,
-				FadeOut:       true,
-				BlendAdditive: true,
-				PosZ:          8,
-				PosXEndRand:   3.2,
-				PosYEndRand:   3.2,
-				PosZEndRand:   3.2,
-				SizeStart:     effectTableSize(10),
-				SizeEnd:       effectTableSize(2),
-				SizeRand:      effectTableSize(2),
-				Color:         color.RGBA{R: 255, G: 255, B: 130, A: 255},
-			},
-		},
-	},
-	effectSoulStrike: mageProjectileEffectSpec(effectSoulStrike),
-	effectEndure: {
-		Duration: 80 * EffectFrameDuration,
-		SFX:      []string{"effect\\ef_endure.wav"},
-		Components: []EffectComponent{{
-			Kind:         EffectComponentFUNC,
-			FuncName:     "Endure",
-			TextureFile:  "effect/endure.tga",
-			TextureFiles: []string{"effect/alpha_down.tga"},
-		}},
-	},
-	effectBashBegin: {
-		Duration: 40 * EffectFrameDuration,
-		SFX:      []string{"effect\\ef_bash.wav"},
-		Components: []EffectComponent{{
-			Kind:         EffectComponentFUNC,
-			FuncName:     "Bash",
-			TextureFile:  "effect/alpha_down.tga",
-			TextureFiles: []string{"effect/alpha_center.tga"},
-		}},
-	},
-	effectProvoke: {
-		SFX:       []string{"effect\\swordman_provoke.wav", "effect\\swordman_provoke.wav"},
-		SFXDelays: []time.Duration{5 * EffectFrameDuration, 30 * EffectFrameDuration},
-		Components: []EffectComponent{{
-			Kind:    EffectComponentSTR,
-			STRFile: "provoke",
-		}},
-	},
-	effectMagnumBreak: {
-		Duration: 30 * EffectFrameDuration,
-		SFX:      []string{"effect\\ef_magnumbreak.wav"},
-		Components: []EffectComponent{{
-			Kind:         EffectComponentFUNC,
-			FuncName:     "MagnumBreak",
-			TextureFile:  "effect/ring_yellow.tga",
-			TextureFiles: []string{"effect/대폭발.tga"},
-		}},
-	},
-	effectQuakeMagnum: {
-		Duration:    50 * time.Millisecond,
-		CameraShake: 50 * time.Millisecond,
-	},
-	effectSteal:        stealEffectSpec(),
-	effectThrowItem3:   throwItemFlightEffectSpec("유저인터페이스/item/돌.bmp"),
-	effectSprinkleSand: sprinkleSandEffectSpec(),
-	effectSummonSlave: {
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSPR,
-			SpriteFile:     "smoke",
-			AttachedEntity: true,
-		}},
-	},
-	effectPoisonAttack: {
-		Duration: 2800 * time.Millisecond,
-		SFX:      []string{"effect\\ef_detoxication.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			Color:          color.RGBA{R: 255, G: 178, B: 255, A: 255},
-			TextureFile:    "effect/pok1.tga",
-			Duration:       1000 * time.Millisecond,
-			AlphaMax:       1,
-			FadeIn:         true,
-			FadeOut:        true,
-			PosXRand:       1,
-			PosYRand:       1,
-			PosZEnd:        5,
-			SizeStart:      100 * EffectPixelRatio,
-			SizeEnd:        100 * EffectPixelRatio,
-			SizeRand:       20 * EffectPixelRatio,
-			Duplicate:      10,
-			DuplicateDelay: 200 * time.Millisecond,
-		}},
-	},
-	effectDetoxication:  detoxicationEffectSpec(),
-	effectStoneCurse:    strEffectSpecAttached("stonecurse", "", false),
-	effectIceArrow:      mageBoltEffectSpec(false),
-	effectColdBolt:      mageBoltEffectSpec(false),
-	effectFireBolt:      mageBoltEffectSpec(true),
-	effectFireBall:      mageProjectileEffectSpec(effectFireBall),
-	effectFireWall:      strEffectSpecRandom("firewall%d", "effect\\ef_firewall.wav", 1, 2),
-	effectFrostDiver:    mageProjectileEffectSpec(effectFrostDiver),
-	effectFrostDiverHit: mageFrostHitEffectSpec(),
-	effectLightningBolt: strEffectSpecAttached("lightning", "", false),
-	effectThunderStorm:  strEffectSpec("thunderstorm", "effect\\magician_thunderstorm.wav"),
-	effectFireArrow:     mageBoltEffectSpec(true),
-	effectTeleportOld: {
-		Duration: 1000 * time.Millisecond,
-		SFX:      []string{"effect\\ef_teleportation.wav"},
-		Components: []EffectComponent{
-			robrCylinderComponent("ring_blue", color.RGBA{R: 255, G: 255, B: 255, A: 255}, 1000*time.Millisecond, 0.5, 5, 0.8, 0.7, 35, true, true, true, false),
-		},
-	},
-	effectReadyPortalOld: {
-		Duration: 25000 * time.Millisecond,
-		SFX:      []string{"effect\\ef_readyportal.wav"},
-		Components: []EffectComponent{
-			robrCylinderComponent("alpha_down", color.RGBA{R: 178, G: 178, B: 255, A: 255}, 25000*time.Millisecond, 0.6, 0, 0.6, 0.6, 15, true, true, true, false),
-		},
-	},
-	effectRuwach: {
-		Duration: 12200 * time.Millisecond,
-		SFX:      []string{"effect\\ef_sight.wav"},
-		Components: []EffectComponent{
-			{
-				Kind:            EffectComponent3D,
-				SpriteFile:      "data\\sprite\\shadow",
-				ShadowTexture:   true,
-				Duration:        12200 * time.Millisecond,
-				AlphaMax:        0.5,
-				PosX:            -2,
-				SizeStart:       effectTableSize(0.4),
-				SizeEnd:         effectTableSize(0.4),
-				SizeDelta:       0.15,
-				Duplicate:       8,
-				OrbitRadiusX:    3,
-				OrbitRadiusY:    3,
-				OrbitRotations:  8,
-				OrbitPhase:      0.7,
-				OrbitPhaseDelta: -0.1,
-				OrbitClockwise:  true,
-			},
-			{
-				Kind:            EffectComponent3D,
-				Color:           color.RGBA{G: 255, B: 255, A: 255},
-				SpriteFile:      "particle2",
-				Duration:        12200 * time.Millisecond,
-				AlphaMax:        0.07,
-				AlphaMaxDelta:   0.07,
-				BlendAdditive:   true,
-				PosX:            -2,
-				PosZ:            2,
-				SizeStart:       effectTableSize(80),
-				SizeEnd:         effectTableSize(80),
-				SizeDelta:       30,
-				Duplicate:       10,
-				OrbitRadiusX:    3,
-				OrbitRadiusY:    3,
-				OrbitRotations:  8,
-				OrbitPhase:      0.7,
-				OrbitPhaseDelta: -0.1,
-				OrbitClockwise:  true,
-			},
-		},
-	},
-	effectIncAgility: agilityEffectSpec(false),
-	effectDecAgility: agilityEffectSpec(true),
-	effectIncAgiDex:  concentrationBeginEffectSpec(),
-	effectAqua: {
-		SFX: []string{"effect\\ef_aqua.wav"},
-		Components: []EffectComponent{{
-			Kind:             EffectComponentSPR,
-			SpriteFile:       "성수뜨기",
-			SpriteDelay:      2 * EffectFrameDuration,
-			PosZ:             4,
-			AttachedEntity:   true,
-			WorldSizedSprite: true,
-		}},
-	},
-	effectSignum:  strEffectSpecAttached("cross", "effect\\ef_signum.wav", false),
-	effectAngelus: strEffectSpecAttachedMin("angelus", "jong_mini", "effect\\ef_angelus.wav", true),
-	effectGloria:  strEffectSpecAttachedMin("gloria", "gloria_min", "effect\\priest_gloria.wav", false),
-	effectBlessing: {
-		Duration: 2500 * time.Millisecond,
-		SFX:      []string{"effect\\ef_blessing.wav"},
-		Components: []EffectComponent{
-			{
-				Kind:             EffectComponentSPR,
-				SpriteFile:       "축복",
-				Duration:         1500 * time.Millisecond,
-				SpriteDelay:      30 * time.Millisecond,
-				SpriteRepeat:     true,
-				SpriteHead:       true,
-				SpriteYOffset:    -120,
-				WorldSizedSprite: true,
-			},
-			{
-				Kind:            EffectComponent3D,
-				SpriteFile:      "particle6",
-				Duration:        1200 * time.Millisecond,
-				Delay:           300 * time.Millisecond,
-				Duplicate:       6,
-				DuplicateDelay:  0,
-				AlphaMax:        1,
-				Sparkling:       true,
-				SparkNumber:     2,
-				FadeIn:          true,
-				FadeOut:         true,
-				PosXRand:        1.2,
-				PosYRand:        1,
-				PosZStartRand:   2,
-				PosZStartMiddle: 5.5,
-				PosZEndRand:     0.5,
-				PosZEndMiddle:   1,
-				SizeStart:       50 * EffectPixelRatio,
-				SizeEnd:         50 * EffectPixelRatio,
-			},
-			{
-				Kind:            EffectComponent3D,
-				SpriteFile:      "particle6",
-				Duration:        1200 * time.Millisecond,
-				Delay:           400 * time.Millisecond,
-				Duplicate:       6,
-				DuplicateDelay:  0,
-				AlphaMax:        1,
-				FadeIn:          true,
-				FadeOut:         true,
-				PosXRand:        1.4,
-				PosYRand:        1.1,
-				PosZStartRand:   2,
-				PosZStartMiddle: 5.5,
-				PosZEndRand:     0.5,
-				PosZEndMiddle:   1,
-				SizeStart:       50 * EffectPixelRatio,
-				SizeEnd:         50 * EffectPixelRatio,
-			},
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "BlessingCircle",
-				TextureName:    "alpha_down",
-				Color:          color.RGBA{R: 0x20, G: 0xb0, B: 0xe8, A: 255},
-				Duration:       150 * EffectFrameDuration,
-				FrameDelay:     EffectFrameDuration,
-				AlphaMax:       100.0 / 255,
-				SizeStart:      2,
-				CircleSides:    10,
-				Overlay:        true,
-				AttachedEntity: true,
-			},
-		},
-	},
-	effectFireHit: strEffectSpecRandomAttached("firehit%d", "effect\\ef_firehit.wav", 1, 3, true, false),
-	effectFireSplashHit: {
-		Duration: 500 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:        EffectComponent2D,
-			TextureFile: "effect/firering.tga",
-			Duration:    500 * time.Millisecond,
-			FadeOut:     true,
-			PosZ:        1,
-			SizeStart:   10 * EffectPixelRatio,
-			SizeEnd:     300 * EffectPixelRatio,
-			AngleStart:  0,
-			AngleEnd:    -360,
-		}},
-	},
-	effectColdHit: soundOnlyEffectSpec("_hit_fist3.wav", "_hit_fist4.wav"),
-	effectWindHit: strEffectSpecRandomAttached("windhit%d", "_hit_fist%d.wav", 1, 3, true, false),
-	effectPoisonHit: {
-		SFX: []string{"effect\\ef_poisonattack.wav"},
-		Components: []EffectComponent{{
-			Kind:       EffectComponentSPR,
-			SpriteFile: "poisonhit",
-		}},
-	},
+	effectLoud:           loudEffectSpec(),
+	effectGlassWall:      glassWallEffectSpec(),
+	effectHealSP:         healSPEffectSpec(),
+	effectSight:          mageSightEffectSpec(),
+	effectSightBlaster:   sightBlasterEffectSpec(),
+	effectNapalmBeat:     napalmBeatEffectSpec(),
+	effectPokJuk:         pokJukEffectSpec(),
+	effectSoulStrike:     soulStrikeEffectSpec(),
+	effectEndure:         endureEffectSpec(),
+	effectBashBegin:      bashBeginEffectSpec(),
+	effectProvoke:        provokeEffectSpec(),
+	effectMagnumBreak:    magnumBreakEffectSpec(),
+	effectQuakeMagnum:    quakeMagnumEffectSpec(),
+	effectSteal:          stealEffectSpec(),
+	effectThrowItem3:     throwItem3EffectSpec(),
+	effectSprinkleSand:   sprinkleSandEffectSpec(),
+	effectSummonSlave:    summonSlaveEffectSpec(),
+	effectPoisonAttack:   poisonAttackEffectSpec(),
+	effectDetoxication:   detoxicationEffectSpec(),
+	effectStoneCurse:     stoneCurseEffectSpec(),
+	effectIceArrow:       coldBoltEffectSpec(),
+	effectColdBolt:       coldBoltEffectSpec(),
+	effectFireBolt:       fireBoltEffectSpec(),
+	effectFireBall:       fireBallEffectSpec(),
+	effectFireWall:       fireWallEffectSpec(),
+	effectFrostDiver:     frostDiverEffectSpec(),
+	effectFrostDiverHit:  mageFrostHitEffectSpec(),
+	effectLightningBolt:  lightningBoltEffectSpec(),
+	effectThunderStorm:   thunderStormEffectSpec(),
+	effectFireArrow:      fireBoltEffectSpec(),
+	effectTeleportOld:    teleportOldEffectSpec(),
+	effectReadyPortalOld: readyPortalOldEffectSpec(),
+	effectRuwach:         ruwachEffectSpec(),
+	effectIncAgility:     incAgilityEffectSpec(),
+	effectDecAgility:     decAgilityEffectSpec(),
+	effectIncAgiDex:      concentrationBeginEffectSpec(),
+	effectAqua:           aquaEffectSpec(),
+	effectSignum:         signumEffectSpec(),
+	effectAngelus:        angelusEffectSpec(),
+	effectGloria:         gloriaEffectSpec(),
+	effectBlessing:       blessingEffectSpec(),
+	effectFireHit:        fireHitEffectSpec(),
+	effectFireSplashHit:  fireSplashHitEffectSpec(),
+	effectColdHit:        coldHitEffectSpec(),
+	effectWindHit:        windHitEffectSpec(),
+	effectPoisonHit:      poisonHitEffectSpec(),
 	effectWarpZone:       warpZoneEffectSpec(),
 	effectSightTrasher:   sightTrasherEffectSpec(),
-	effectArrowShotRO:    strEffectSpecAttached("arrowshot", "", false),
-	effectInvenom:        strEffectSpecAttached("invenom", "effect\\thief_invenom.wav", false),
-	effectSkidTrap:       strEffectSpec("skidtrap", "effect\\hunter_skidtrap.wav"),
-	effectBrandishSpear:  strEffectSpecAttached("brandish", "", false),
+	effectArrowShotRO:    arrowShotROEffectSpec(),
+	effectInvenom:        invenomEffectSpec(),
+	effectSkidTrap:       skidTrapEffectSpec(),
+	effectBrandishSpear:  brandishSpearEffectSpec(),
 	effectBowlingBash:    bowlingBashEffectSpec(),
-	effectCure:           strEffectSpecAttachedMin("cure", "cure_min", "effect\\acolyte_cure.wav", false),
-	effectMvp:            strEffectSpecAttached("mvp", "effect\\st_mvp.wav", false),
+	effectCure:           cureEffectSpec(),
+	effectMvp:            mvpEffectSpec(),
 	effectIceWall:        iceWallEffectSpec(),
-	effectMagnificat:     strEffectSpecAttachedMin("magnificat", "magnificat_min", "effect\\priest_magnificat.wav", false),
-	effectResurrection:   strEffectSpecAttachedMin("resurrection", "resurrection_min", "effect\\priest_resurrection.wav", false),
-	effectRecovery:       strEffectSpecAttached("recovery", "effect\\priest_recovery.wav", false),
+	effectMagnificat:     magnificatEffectSpec(),
+	effectResurrection:   resurrectionEffectSpec(),
+	effectRecovery:       recoveryEffectSpec(),
 	effectEarthSpike:     earthSpikeEffectSpec(),
 	effectSpearBoomerang: spearBoomerangEffectSpec(),
 	effectPierce:         pierceEffectSpec(),
 	effectTurnUndead:     turnUndeadEffectSpec(),
-	effectSanctuary:      strEffectSpecAttached("sanctuary", "effect\\priest_sanctuary.wav", false),
-	effectImpositio:      strEffectSpecAttached("impositio", "effect\\priest_impositio.wav", false),
-	effectLexAeterna:     strEffectSpecAttachedMin("lexaeterna", "lexaeterna_min", "effect\\priest_lexaeterna.wav", false),
-	effectAspersio:       strEffectSpecAttached("aspersio", "effect\\priest_aspersio.wav", false),
-	effectLexDivina:      strEffectSpecAttached("lexdivina", "effect\\priest_lexdivina.wav", false),
-	effectSuffragium:     strEffectSpecAttachedMin("suffragium", "suffragium_min", "effect\\priest_suffragium.wav", false),
+	effectSanctuary:      sanctuaryEffectSpec(),
+	effectImpositio:      impositioEffectSpec(),
+	effectLexAeterna:     lexAeternaEffectSpec(),
+	effectAspersio:       aspersioEffectSpec(),
+	effectLexDivina:      lexDivinaEffectSpec(),
+	effectSuffragium:     suffragiumEffectSpec(),
 	effectStormGust:      stormGustEffectSpec(),
-	effectLordVermilion:  strEffectSpecAttached("lord", "effect\\wizard_fire_ivy.wav", false),
-	effectBenedictio:     strEffectSpecAttached("benedictio", "effect\\priest_benedictio.wav", false),
-	effectMeteorStorm: {
-		CameraShake:      650 * time.Millisecond,
-		CameraShakeDelay: 40 * EffectFrameDuration,
-		SFX:              []string{"effect\\wizard_meteor.wav"},
-		SFXRandMin:       1,
-		SFXRandMax:       4,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSTR,
-			STRFile:        "meteor%d",
-			STRRandMin:     1,
-			STRRandMax:     4,
-			AttachedEntity: true,
-		}},
-	},
+	effectLordVermilion:  lordVermilionEffectSpec(),
+	effectBenedictio:     benedictioEffectSpec(),
+	effectMeteorStorm:    meteorStormEffectSpec(),
 	effectJupitelThunder: jupitelThunderEffectSpec(),
 	effectJupitelHit:     jupitelHitEffectSpec(),
-	effectQuagmire:       strEffectSpec("quagmire", "effect\\wizard_quagmire.wav"),
+	effectQuagmire:       quagmireEffectSpec(),
 	effectFirePillar:     firePillarEffectSpec(),
-	effectFirePillarBomb: strEffectSpec("firepillarbomb", "effect\\wizard_fire_pillar_b.wav"),
+	effectFirePillarBomb: firePillarBombEffectSpec(),
 	effectWhitePulse:     whitePulseEffectSpec(),
-	effectAdrenalineCast: soundOnlyEffectSpec("effect\\black_adrenalinerush_a.wav"),
+	effectAdrenalineCast: adrenalineCastEffectSpec(),
 	effectHasteUp:        hasteUpEffectSpec(),
 	effectFlasher:        flasherEffectSpec(),
 	effectRemoveTrap:     removeTrapEffectSpec(),
 	effectRepairWeapon:   repairWeaponEffectSpec(),
 	effectCrashEarth:     crashEarthEffectSpec(),
-	effectBlastMine:      soundOnlyEffectSpec("effect\\hun_anklesnare.wav"),
+	effectBlastMine:      blastMineSoundEffectSpec(),
 	effectBlastMineBomb:  blastMineEffectSpec(),
-	effectClaymore:       strEffectSpec("claymore", "effect\\hunter_claymoretrap.wav"),
-	effectFreezingTrap:   strEffectSpec("freezing", "effect\\hunter_freezingtrap.wav"),
-	effectGasPush:        strEffectSpec("gaspush", ""),
-	effectSpringTrap:     strEffectSpec("spring", "effect\\hunter_springtrap.wav"),
-	effectWeaponPerfect:  strEffectSpecAttachedMin("weaponperfection", "weaponperfection_min", "effect\\black_weapon_perfection.wav", false),
+	effectClaymore:       claymoreEffectSpec(),
+	effectFreezingTrap:   freezingTrapEffectSpec(),
+	effectGasPush:        gasPushEffectSpec(),
+	effectSpringTrap:     springTrapEffectSpec(),
+	effectWeaponPerfect:  weaponPerfectEffectSpec(),
 	effectMaximizePower:  maximizePowerEffectSpec(),
-	effectMaximizeSounds: delayedSoundEffectSpecDuration(950*time.Millisecond,
-		[]string{
-			"effect\\black_maximize_power_circle.wav",
-			"effect\\black_maximize_power_sword.wav",
-			"effect\\black_maximize_power_sword.wav",
-			"effect\\black_maximize_power_sword_bic.wav",
-		},
-		[]time.Duration{time.Millisecond, 550 * time.Millisecond, 700 * time.Millisecond, 950 * time.Millisecond},
-	),
-	effectGreedSound: soundOnlyEffectSpec("effect\\ef_entry.wav"),
+	effectMaximizeSounds: maximizeSoundsEffectSpec(),
+	effectGreedSound:     greedSoundEffectSpec(),
 
-	effectGunslingerCoinSound: soundOnlyEffectSpec("effect\\플립.wav"),
+	effectGunslingerCoinSound: gunslingerCoinSoundEffectSpec(),
 
-	effectKyrie:           strEffectSpecAttachedMin("kyrie", "kyrie_min", "effect\\priest_kyrie_eleison_a.wav", false),
-	effectMagnus:          strEffectSpec("magnus", "effect\\priest_magnus.wav"),
+	effectKyrie:           kyrieEffectSpec(),
+	effectMagnus:          magnusEffectSpec(),
 	effectBlitzBeat:       blitzBeatEffectSpec(),
 	effectWaterBall:       waterBallEffectSpec(),
 	effectWaterBall2:      waterBall2EffectSpec(),
 	effectDetecting:       detectingEffectSpec(),
-	effectCloaking:        soundOnlyEffectSpec("effect\\assasin_cloaking.wav"),
+	effectCloaking:        cloakingEffectSpec(),
 	effectSonicBlow:       sonicBlowEffectSpec(),
 	effectSonicBlowHit:    sonicBlowHitEffectSpec(),
-	effectGrimtooth:       grimtoothEffectSpec(false),
-	effectEnchantPoison:   poisonParticlesEffectSpec(true),
-	effectVenomDust:       strEffectSpec("venomdust", "effect\\assasin_poisonreact.wav"),
-	effectPoisonReact:     strEffectSpecAttached("poisonreact_1st", "", false),
-	effectPoisonReact2:    strEffectSpecAttached("poisonreact", "effect\\assasin_poisonreact.wav", false),
+	effectGrimtooth:       grimtoothGroundEffectSpec(),
+	effectEnchantPoison:   enchantPoisonEffectSpec(),
+	effectVenomDust:       venomDustEffectSpec(),
+	effectPoisonReact:     poisonReactEffectSpec(),
+	effectPoisonReact2:    poisonReact2EffectSpec(),
 	effectOverthrust:      overthrustEffectSpec(),
 	effectVenomSplasher:   venomSplasherEffectSpec(),
-	effectTwoHandQuicken:  strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", false),
-	effectAutoCounter:     strEffectSpecAttached("autocounter", "effect\\knight_autocounter.wav", false),
-	effectGrimtoothAtk:    grimtoothEffectSpec(true),
-	effectFreeze:          strEffectSpecAttached("freeze", "", false),
-	effectFreezed:         strEffectSpecAttached("freezed", "", false),
-	effectIceCrash:        strEffectSpecAttached("icecrash", "", false),
-	effectSlowPoison:      strEffectSpec("slowp", "effect\\priest_slowpoison.wav"),
+	effectTwoHandQuicken:  twoHandQuickenEffectSpec(),
+	effectAutoCounter:     autoCounterEffectSpec(),
+	effectGrimtoothAtk:    grimtoothAtkEffectSpec(),
+	effectFreeze:          freezeEffectSpec(),
+	effectFreezed:         freezedEffectSpec(),
+	effectIceCrash:        iceCrashEffectSpec(),
+	effectSlowPoison:      slowPoisonEffectSpec(),
 	effectFirePillarOn:    firePillarOnEffectSpec(),
-	effectSandman:         strEffectSpec("sandman", "effect\\hunter_sandman.wav"),
+	effectSandman:         sandmanEffectSpec(),
 	effectRevive:          reviveEffectSpec(),
 	effectHeavenDrive:     heavenDriveEffectSpec(),
-	effectSonicBlow2:      strEffectSpecAttached("sonicblow", "", false),
-	effectBrandishSpear2:  strEffectSpecAttached("brandish2", "", false),
-	effectShockwave:       strEffectSpec("shockwave", ""),
-	effectShockwaveHit:    strEffectSpecAttached("shockwavehit", "", false),
-	effectEarthHit:        strEffectSpecAttached("earthhit", "", false),
-	effectPierceSelf:      strEffectSpecAttached("pierce", "", false),
-	effectBowlingSelf:     strEffectSpecAttached("bowling", "", false),
-	effectSpearStabSelf:   strEffectSpecAttached("spearstab", "", false),
-	effectSpearBmrSelf:    strEffectSpecAttached("spearboomerang", "", false),
-	effectSpearHitSound:   soundOnlyEffectSpec("_hit_spear.wav"),
-	effectEnemyHitNormal1: soundOnlyEffectSpec("_enemy_hit_normal1.wav"),
-	effectHolyLight:       strEffectSpecAttached("holyhit", "", false),
-	effectConcentration:   strEffectSpecAttached("concentration", "effect\\ac_concentration.wav", false),
-	effectRefineOK:        strEffectSpecAttached("bs_refinesuccess", "effect\\bs_refinesuccess.wav", false),
-	effectRefineFail:      strEffectSpecAttached("bs_refinefailed", "effect\\bs_refinefailed.wav", false),
-	effectMakeBlur:        funcEffectSpec("MakeBlur", 2*time.Second, false),
-	effectEnergyCoat:      strEffectSpecAttached("energycoat", "", false),
-	effectVenomDust2:      poisonParticlesEffectSpec(false),
-	effectMentalBreak:     strEffectSpecAttached("mentalbreak", "", false),
-	effectMagicalAtkHit:   strEffectSpecAttached("magical", "", false),
+	effectSonicBlow2:      sonicBlow2EffectSpec(),
+	effectBrandishSpear2:  brandishSpear2EffectSpec(),
+	effectShockwave:       shockwaveEffectSpec(),
+	effectShockwaveHit:    shockwaveHitEffectSpec(),
+	effectEarthHit:        earthHitEffectSpec(),
+	effectPierceSelf:      pierceSelfEffectSpec(),
+	effectBowlingSelf:     bowlingSelfEffectSpec(),
+	effectSpearStabSelf:   spearStabSelfEffectSpec(),
+	effectSpearBmrSelf:    spearBmrSelfEffectSpec(),
+	effectSpearHitSound:   spearHitSoundEffectSpec(),
+	effectEnemyHitNormal1: enemyHitNormal1EffectSpec(),
+	effectHolyLight:       holyLightEffectSpec(),
+	effectConcentration:   concentrationEffectSpec(),
+	effectRefineOK:        refineOKEffectSpec(),
+	effectRefineFail:      refineFailEffectSpec(),
+	effectMakeBlur:        makeBlurEffectSpec(),
+	effectEnergyCoat:      energyCoatEffectSpec(),
+	effectVenomDust2:      venomDust2EffectSpec(),
+	effectMentalBreak:     mentalBreakEffectSpec(),
+	effectMagicalAtkHit:   magicalAtkHitEffectSpec(),
 	effectSuiExplosion:    suiExplosionEffectSpec(),
-	effectSuicide:         strEffectSpecAttached("suicide", "", false),
-	effectComboAttack1:    strEffectSpecAttached("yunta_1", "", false),
-	effectComboAttack2:    strEffectSpecAttached("yunta_2", "", false),
-	effectComboAttack3:    strEffectSpecAttached("yunta_3", "", false),
-	effectComboAttack4:    strEffectSpecAttached("yunta_4", "", false),
-	effectComboAttack5:    strEffectSpecAttached("yunta_5", "", false),
-	effectGuidedAttack:    strEffectSpecAttached("homing", "", false),
-	effectPoisonAttack2:   strEffectSpecAttached("poison", "", false),
-	effectSilenceAttack:   strEffectSpecAttached("silence", "", false),
-	effectStunAttack:      strEffectSpecAttached("stun", "", false),
-	effectPetrifyAttack:   strEffectSpecAttached("stonecurse", "", false),
-	effectSleepAttack:     strEffectSpecAttached("sleep", "", false),
-	effectPong:            strEffectSpecRandom("pong%d", "", 1, 3),
+	effectSuicide:         suicideEffectSpec(),
+	effectComboAttack1:    comboAttack1EffectSpec(),
+	effectComboAttack2:    comboAttack2EffectSpec(),
+	effectComboAttack3:    comboAttack3EffectSpec(),
+	effectComboAttack4:    comboAttack4EffectSpec(),
+	effectComboAttack5:    comboAttack5EffectSpec(),
+	effectGuidedAttack:    guidedAttackEffectSpec(),
+	effectPoisonAttack2:   poisonAttack2EffectSpec(),
+	effectSilenceAttack:   silenceAttackEffectSpec(),
+	effectStunAttack:      stunAttackEffectSpec(),
+	effectPetrifyAttack:   petrifyAttackEffectSpec(),
+	effectSleepAttack:     sleepAttackEffectSpec(),
+	effectPong:            pongEffectSpec(),
 	effectLevel99:         level99EffectSpec(),
 	effectLevel99Ground:   level99GroundEffectSpec(),
 	effectLevel99Bubble:   level99BubbleEffectSpec(),
 	effectGumgang:         gumgangEffectSpec(),
-	effectFirstAid: {
-		Duration: time.Second,
-		SFX:      []string{"_heal_effect.wav"},
-		Components: []EffectComponent{{
-			Kind:          EffectComponent2D,
-			TextureFile:   "effect/pikapika2.bmp",
-			Duration:      time.Second,
-			AlphaMax:      0.2,
-			BlendAdditive: true,
-			FadeOut:       true,
-			PosZ:          2,
-			SizeStart:     100 * EffectPixelRatio,
-			SizeEnd:       100 * EffectPixelRatio,
-		}},
-	},
-	effectTeleportation: {
-		Duration:         1500 * time.Millisecond,
-		DetachLocalActor: true,
-		SFX:              []string{"effect\\ef_teleportation.wav"},
-		Components: []EffectComponent{
-			teleportCylinderComponent(0.3, 0.3, 35),
-			teleportCylinderComponent(0.6, 0.8, 25),
-			teleportCylinderComponent(0.8, 1.0, 13),
-			teleportCylinderComponent(1.0, 1.3, 5),
-		},
-	},
-	effectReadyPortal: {
-		Duration: 500 * time.Millisecond,
-		SFX:      []string{"effect\\ef_readyportal.wav"},
-		Components: []EffectComponent{
-			readyPortalCylinderComponent(),
-		},
-	},
-	effectPortal: {
-		Duration: 25000 * time.Millisecond,
-		SFX:      []string{"effect\\ef_readyportal.wav", "effect\\ef_portal.wav"},
-		Components: []EffectComponent{
-			readyPortalCylinderComponent(),
-			portalCylinderComponent(0.6, 0.6, 15, 0, "ring_blue", 0.3),
-			portalCylinderComponent(0.8, 0.8, 13, 0, "ring_blue", 0.3),
-			{
-				Kind:             EffectComponentCylinder,
-				Color:            color.RGBA{R: 153, G: 153, B: 255, A: 255},
-				TextureName:      "alpha1",
-				Duration:         25000 * time.Millisecond,
-				AlphaMax:         0.5,
-				Fade:             true,
-				Rotate:           true,
-				Animation:        0,
-				BottomSize:       1,
-				TopSize:          1,
-				Height:           1,
-				PosZ:             2,
-				TotalCircleSides: 20,
-				CircleSides:      10,
-				BlendAdditive:    true,
-			},
-		},
-	},
-	effectPharmacyOK:   strEffectSpecAttached("p_success", "effect\\p_success.wav", false),
-	effectPharmacyFail: strEffectSpecAttached("p_failed", "effect\\p_failed.wav", false),
-	effectHeal: {
-		Duration: 1840 * time.Millisecond,
-		SFX:      []string{"_heal_effect.wav"},
-		Components: []EffectComponent{
-			healCylinderComponent(0.95, 0.95, 8),
-			healCylinderComponent(1.0, 1.0, 8),
-			healParticleComponent(0.6, 1300*time.Millisecond, 400*time.Millisecond, 10*time.Millisecond, 15, 1.5, 1.5, 0, 0, 0, 2, 6, false),
-			healParticleComponent(0.6, 1100*time.Millisecond, 200*time.Millisecond, 50*time.Millisecond, 7, 1, 1, 1, 0, 5, 0, 0, false),
-		},
-	},
-	effectHealOffensive: {
-		Duration: 1490 * time.Millisecond,
-		SFX:      []string{"_heal_effect.wav"},
-		Components: []EffectComponent{
-			healOffensiveCylinderComponent(0.95, 0.95, 10),
-			healOffensiveCylinderComponent(1.0, 1.0, 9),
-			healParticleComponent(0.8, 1000*time.Millisecond, 400*time.Millisecond, 10*time.Millisecond, 10, 1.5, 1.5, 0, 0, 0, 3, 6, true),
-			healParticleComponent(0.8, 900*time.Millisecond, 200*time.Millisecond, 50*time.Millisecond, 5, 1, 1, 1, 0, 6, 0, 0, true),
-		},
-	},
-	effectBaseLevelUp: {
-		Duration: 1300 * time.Millisecond,
-		SFX:      []string{"levelup.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSTR,
-			STRFile:        "angel",
-			AttachedEntity: true,
-		}},
-	},
-	effectJobLevelUp: {
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSTR,
-			STRFile:        "joblvup",
-			AttachedEntity: true,
-		}},
-	},
-	effectPotionRed:    healingPotionEffectSpec("빨간포션", color.RGBA{R: 255, G: 82, B: 70, A: 255}),
-	effectPotionOrange: healingPotionEffectSpec("주홍포션", color.RGBA{R: 255, G: 145, B: 58, A: 255}),
-	effectPotionYellow: healingPotionEffectSpec("노란포션", color.RGBA{R: 255, G: 226, B: 76, A: 255}),
-	effectPotionWhite:  healingPotionEffectSpec("하얀포션", color.RGBA{R: 245, G: 245, B: 255, A: 255}),
-	effectPotionBlue:   bluePotionEffectSpec(),
-	effectPotionGreen:  potionEffectSpec("초록포션", color.RGBA{R: 78, G: 225, B: 98, A: 255}),
-	effectDarkBreath:   {Components: []EffectComponent{{Kind: EffectComponentSPR, SpriteFile: "darkbreath", SpriteHead: true, AttachedEntity: true}}},
-	effectDefender:     strEffectSpecAttached("deffender", "", false),
-	effectKeeping:      strEffectSpecAttached("keeping", "", false),
-	effectBloodDrain:   drainEffectSpec(color.RGBA{R: 255, G: 102, B: 102, A: 255}, false),
-	effectEnergyDrain:  drainEffectSpec(color.RGBA{R: 102, G: 102, B: 255, A: 255}, true),
-	effectItemFast:     strEffectSpecAttached("집중", "effect\\ac_concentration.wav", false),
-	effectItemFast2:    strEffectSpecAttached("각성", "effect\\ac_concentration.wav", false),
-	effectItemFast3:    berserkPotionEffectSpec(),
-	effectCrusaderDef:  crusaderDefenseEffectSpec("ring_black"),
-	effectGrandCross:   grandCrossEffectSpec(),
-	effectIntimidate:   rogueBurstEffectSpec(effectIntimidate),
-	effectChookgi:      spiritSphereEffectSpec(),
+	effectFirstAid:        firstAidEffectSpec(),
+	effectTeleportation:   teleportationEffectSpec(),
+	effectReadyPortal:     readyPortalEffectSpec(),
+	effectPortal:          portalEffectSpec(),
+	effectPharmacyOK:      pharmacyOKEffectSpec(),
+	effectPharmacyFail:    pharmacyFailEffectSpec(),
+	effectHeal:            healEffectSpec(),
+	effectHealOffensive:   healOffensiveEffectSpec(),
+	effectBaseLevelUp:     baseLevelUpEffectSpec(),
+	effectJobLevelUp:      jobLevelUpEffectSpec(),
+	effectPotionRed:       potionRedEffectSpec(),
+	effectPotionOrange:    potionOrangeEffectSpec(),
+	effectPotionYellow:    potionYellowEffectSpec(),
+	effectPotionWhite:     potionWhiteEffectSpec(),
+	effectPotionBlue:      bluePotionEffectSpec(),
+	effectPotionGreen:     potionGreenEffectSpec(),
+	effectDarkBreath:      darkBreathEffectSpec(),
+	effectDefender:        defenderEffectSpec(),
+	effectKeeping:         keepingEffectSpec(),
+	effectBloodDrain:      bloodDrainEffectSpec(),
+	effectEnergyDrain:     energyDrainEffectSpec(),
+	effectItemFast:        itemFastEffectSpec(),
+	effectItemFast2:       itemFast2EffectSpec(),
+	effectItemFast3:       berserkPotionEffectSpec(),
+	effectCrusaderDef:     crusaderDefEffectSpec(),
+	effectGrandCross:      grandCrossEffectSpec(),
+	effectIntimidate:      intimidateEffectSpec(),
+	effectChookgi:         spiritSphereEffectSpec(),
 
-	effectSpellBreaker:           strEffectSpecAttached("spell", "effect\\sage_spell breake.wav", false),
-	effectDispell:                strEffectSpecAttached("디스펠", "", false),
-	effectGanbantein:             sageGroundCastEffectSpec("ring_white", 300),
-	effectVolcano:                sageGroundCastEffectSpec("ring_red", 300),
-	effectDeluge:                 sageGroundCastEffectSpec("ring_blue", 999),
-	effectViolentGale:            sageGroundCastEffectSpec("magic_green", 999),
-	effectLandProtector:          sageGroundCastEffectSpec("ring_white", 999),
-	effectBottomVolcano:          propertyGroundEffectSpec("ring_red"),
-	effectBottomDeluge:           propertyGroundEffectSpec("ring_blue"),
-	effectBottomViolent:          propertyGroundEffectSpec("magic_green"),
+	effectSpellBreaker:           spellBreakerEffectSpec(),
+	effectDispell:                dispellEffectSpec(),
+	effectGanbantein:             ganbanteinEffectSpec(),
+	effectVolcano:                volcanoEffectSpec(),
+	effectDeluge:                 delugeEffectSpec(),
+	effectViolentGale:            violentGaleEffectSpec(),
+	effectLandProtector:          landProtectorEffectSpec(),
+	effectBottomVolcano:          bottomVolcanoEffectSpec(),
+	effectBottomDeluge:           bottomDelugeEffectSpec(),
+	effectBottomViolent:          bottomViolentEffectSpec(),
 	effectBottomLand:             landProtectorGroundEffectSpec(),
-	effectMagicRod:               strEffectSpecAttached("매직로드", "effect\\sage_magic rod.wav", false),
-	effectHolyCross:              strEffectSpecAttached("holy_cross", "effect\\cru_holy cross.wav", false),
-	effectShieldCharge:           strEffectSpecAttached("shield_charge", "", false),
+	effectMagicRod:               magicRodEffectSpec(),
+	effectHolyCross:              holyCrossEffectSpec(),
+	effectShieldCharge:           shieldChargeEffectSpec(),
 	effectProvidence:             providenceEffectSpec(),
 	effectShieldBoomer:           shieldBoomerangEffectSpec(),
 	effectLineLink:               devotionLinkEffectSpec(),
-	effectSpearQuicken:           strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", false),
+	effectSpearQuicken:           spearQuickenEffectSpec(),
 	effectDevotion:               devotionEffectSpec(),
-	effectReflectShield:          crusaderDefenseEffectSpec("ring_yellow"),
+	effectReflectShield:          reflectShieldEffectSpec(),
 	effectAbsorbSpirits:          absorbSpiritsEffectSpec(),
 	effectSteelBody:              steelBodyEffectSpec(),
-	effectSteelBodyRing:          gumgangRingEffectSpec(1500*time.Millisecond, 0.5, 2, 5, ""),
-	effectFlameLauncher:          sageEndowEffectSpec("enc_fire"),
-	effectFrostWeapon:            sageEndowEffectSpec("enc_ice"),
-	effectLightningLoad:          sageEndowEffectSpec("enc_wind"),
-	effectSeismicWeapon:          sageEndowEffectSpec("enc_earth"),
-	effectGumgang2:               gumgangRingEffectSpec(1500*time.Millisecond, 0.5, 2, 5, ""),
-	effectTeiHit1:                teiHitEffectSpec(false),
-	effectGumgang3:               sageGroundCastEffectSpec("ring_yellow", 300),
+	effectSteelBodyRing:          steelBodyRingEffectSpec(),
+	effectFlameLauncher:          flameLauncherEffectSpec(),
+	effectFrostWeapon:            frostWeaponEffectSpec(),
+	effectLightningLoad:          lightningLoadEffectSpec(),
+	effectSeismicWeapon:          seismicWeaponEffectSpec(),
+	effectGumgang2:               gumgang2EffectSpec(),
+	effectTeiHit1:                teiHit1EffectSpec(),
+	effectGumgang3:               gumgang3EffectSpec(),
 	effectTeiHit2:                teiHit2EffectSpec(),
 	effectTanji:                  tanjiEffectSpec(),
-	effectTeiHit1X:               teiHitEffectSpec(true),
+	effectTeiHit1X:               teiHit1XEffectSpec(),
 	effectChimto:                 chimtoEffectSpec(),
-	effectStealCoin:              strEffectSpecAttached("steal_coin", "", false),
-	effectStripWeapon:            divestEffectSpec("strip_weapon"),
-	effectStripShield:            divestEffectSpec("strip_shield"),
-	effectStripArmor:             divestEffectSpec("strip_armor"),
-	effectStripHelm:              divestEffectSpec("strip_helm"),
-	effectChainCombo:             strEffectSpecAttached("연환", "effect\\mon_연환.wav", false),
-	effectRogueCoin:              rogueBurstEffectSpec(effectRogueCoin),
+	effectStealCoin:              stealCoinEffectSpec(),
+	effectStripWeapon:            stripWeaponEffectSpec(),
+	effectStripShield:            stripShieldEffectSpec(),
+	effectStripArmor:             stripArmorEffectSpec(),
+	effectStripHelm:              stripHelmEffectSpec(),
+	effectChainCombo:             chainComboEffectSpec(),
+	effectRogueCoin:              rogueCoinEffectSpec(),
 	effectBackStab:               backStabEffectSpec(),
-	effectTeiHit3:                rogueBurstEffectSpec(effectTeiHit3),
-	effectBottomLullaby:          songMusicEffectSpec("effect/zz.bmp", 1),
-	effectBottomRichKim:          songMusicEffectSpec("effect/pocket.bmp", 3),
-	effectBottomChaos:            songLightEffectSpec(8),
-	effectBottomDrum:             songMusicEffectSpec("", 2),
-	effectBottomNibelung:         songMusicEffectSpec("effect/twirl.bmp", 7),
+	effectTeiHit3:                teiHit3EffectSpec(),
+	effectBottomLullaby:          bottomLullabyEffectSpec(),
+	effectBottomRichKim:          bottomRichKimEffectSpec(),
+	effectBottomChaos:            bottomChaosEffectSpec(),
+	effectBottomDrum:             bottomDrumEffectSpec(),
+	effectBottomNibelung:         bottomNibelungEffectSpec(),
 	effectBottomRoki:             songOutEffectSpec(),
-	effectBottomAbyss:            songMusicEffectSpec("", 5),
-	effectBottomSieg:             songLightEffectSpec(4),
-	effectBottomWhistle:          songMusicEffectSpec("effect/melody_b.bmp", 0),
-	effectBottomSinX:             songVerticalEffectSpec("effect/ring_red.tga", 1),
-	effectBottomBragi:            songMusicEffectSpec("", 8),
-	effectBottomApple:            songMusicEffectSpec("effect/idun_apple.bmp", 6),
-	effectBottomHumming:          songMusicEffectSpec("effect/melody_a.bmp", 0),
-	effectBottomForget:           songVerticalEffectSpec("effect/magic_green.tga", 2),
-	effectBottomFortune:          songMusicEffectSpec("effect/kiss.bmp", 4),
-	effectBottomService:          songVerticalEffectSpec("effect/safeline.bmp", 4),
-	effectBottomDissonanceGround: songVerticalEffectSpec("effect/ring_blue.tga", 0),
-	effectBottomLullabyGround:    songMusicEffectSpec("effect/zz.bmp", 1),
-	effectBottomRichKimGround:    songMusicEffectSpec("effect/pocket.bmp", 3),
-	effectBottomChaosGround:      songLightEffectSpec(8),
-	effectBottomDrumGround:       songMusicEffectSpec("", 2),
-	effectBottomNibelungGround:   songMusicEffectSpec("effect/twirl.bmp", 7),
+	effectBottomAbyss:            bottomAbyssEffectSpec(),
+	effectBottomSieg:             bottomSiegEffectSpec(),
+	effectBottomWhistle:          bottomWhistleEffectSpec(),
+	effectBottomSinX:             bottomSinXEffectSpec(),
+	effectBottomBragi:            bottomBragiEffectSpec(),
+	effectBottomApple:            bottomAppleEffectSpec(),
+	effectBottomHumming:          bottomHummingEffectSpec(),
+	effectBottomForget:           bottomForgetEffectSpec(),
+	effectBottomFortune:          bottomFortuneEffectSpec(),
+	effectBottomService:          bottomServiceEffectSpec(),
+	effectBottomDissonanceGround: bottomDissonanceEffectSpec(),
+	effectBottomLullabyGround:    bottomLullabyEffectSpec(),
+	effectBottomRichKimGround:    bottomRichKimEffectSpec(),
+	effectBottomChaosGround:      bottomChaosEffectSpec(),
+	effectBottomDrumGround:       bottomDrumEffectSpec(),
+	effectBottomNibelungGround:   bottomNibelungEffectSpec(),
 	effectBottomRokiGround:       songOutEffectSpec(),
-	effectBottomAbyssGround:      songMusicEffectSpec("", 5),
-	effectBottomSiegGround:       songLightEffectSpec(4),
-	effectBottomWhistleGround:    songMusicEffectSpec("effect/melody_b.bmp", 0),
-	effectBottomSinXGround:       songVerticalEffectSpec("effect/ring_red.tga", 1),
-	effectBottomBragiGround:      songMusicEffectSpec("", 8),
-	effectBottomAppleGround:      songMusicEffectSpec("effect/idun_apple.bmp", 6),
-	effectBottomUglyDanceGround:  songVerticalEffectSpec("effect/ring_red.tga", 0),
-	effectBottomHummingGround:    songMusicEffectSpec("effect/melody_a.bmp", 0),
-	effectBottomForgetGround:     songVerticalEffectSpec("effect/magic_green.tga", 2),
-	effectBottomFortuneGround:    songMusicEffectSpec("effect/kiss.bmp", 4),
-	effectBottomServiceGround:    songVerticalEffectSpec("effect/safeline.bmp", 4),
-	effectTalkFrostJoke:          funcEffectSpec("FrostJokeTalk", 500*time.Millisecond, true),
-	effectTalkScream:             funcEffectSpec("ScreamTalk", 500*time.Millisecond, true),
-	effectThrowItem:              throwItemFlightEffectSpec("유저인터페이스/item/빈병.bmp"),
-	effectThrowItem2:             throwItemFlightEffectSpec("유저인터페이스/item/빈포션병.bmp"),
-	effectThrowItem5:             throwItemFlightEffectSpec("유저인터페이스/item/버서크포션.bmp"),
+	effectBottomAbyssGround:      bottomAbyssEffectSpec(),
+	effectBottomSiegGround:       bottomSiegEffectSpec(),
+	effectBottomWhistleGround:    bottomWhistleEffectSpec(),
+	effectBottomSinXGround:       bottomSinXEffectSpec(),
+	effectBottomBragiGround:      bottomBragiEffectSpec(),
+	effectBottomAppleGround:      bottomAppleEffectSpec(),
+	effectBottomUglyDanceGround:  bottomUglyDanceEffectSpec(),
+	effectBottomHummingGround:    bottomHummingEffectSpec(),
+	effectBottomForgetGround:     bottomForgetEffectSpec(),
+	effectBottomFortuneGround:    bottomFortuneEffectSpec(),
+	effectBottomServiceGround:    bottomServiceEffectSpec(),
+	effectTalkFrostJoke:          talkFrostJokeEffectSpec(),
+	effectTalkScream:             talkScreamEffectSpec(),
+	effectThrowItem:              acidTerrorBottleEffectSpec(),
+	effectThrowItem2:             throwItem2EffectSpec(),
+	effectThrowItem5:             throwItem5EffectSpec(),
 	effectChemicalProt:           chemicalProtectionEffectSpec(),
-	effectTwilight1:              twilightEffectSpec(0),
-	effectTwilight2:              twilightEffectSpec(1),
-	effectTwilight3:              twilightEffectSpec(2),
+	effectTwilight1:              twilight1EffectSpec(),
+	effectTwilight2:              twilight2EffectSpec(),
+	effectTwilight3:              twilight3EffectSpec(),
 	effectDemonstration:          demonstrationEffectSpec(),
 	effectChemical2:              chemical2EffectSpec(),
 	effectHeal2:                  heal2EffectSpec(),
 	effectExit2:                  exit2EffectSpec(),
-	effectBottomMagnus:           priestGroundEffectSpec(effectBottomMagnus),
-	effectBottomSanc:             priestGroundEffectSpec(effectBottomSanc),
+	effectBottomMagnus:           bottomMagnusEffectSpec(),
+	effectBottomSanc:             bottomSancEffectSpec(),
 	effectWarpZone2:              warpZone2EffectSpec(),
 	effectHeal4:                  heal4EffectSpec(),
-	effectBeginAsura:             beginAsuraEffectSpec(false),
+	effectBeginAsura:             beginAsuraCastEffectSpec(),
 	effectTripleAttack:           tripleAttackEffectSpec(),
 	effectHitLine:                hitLineEffectSpec(),
-	effectHPTime:                 naturalRecoveryEffectSpec(color.RGBA{R: 230, G: 255, B: 230, A: 255}, "_heal_effect.wav"),
-	effectSPTime:                 naturalRecoveryEffectSpec(color.RGBA{R: 230, G: 230, B: 255, A: 255}, "effect\\흡기.wav"),
-	effectBlind: {
-		Duration: 500 * time.Millisecond,
-		SFX:      []string{"_blind.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "Blind",
-			AttachedEntity: false,
-		}},
-	},
-	effectPoisonStatus: funcEffectSpec("Poison", 500*time.Millisecond, false),
-	effectGuard:        guardEffectSpec(),
-	effectJobLvUp50:    strEffectSpecAttached("joblvup", "", false),
-	effectMagnum2:      magnum2EffectSpec(),
-	effectEntry2:       entry2EffectSpec(),
-	effectColorPaper:   soundOnlyEffectSpec("effect\\wedding.wav"),
-	effectSoulBreaker:  soulBreakerEffectSpec(false),
-	effectLevel99Aura1: level99BubbleEffectSpec(),
-	effectFoodChocolate: sprEffectSpec(
-		"vallentine",
-		"effect\\vallentine.wav",
-		true,
-		false,
-	),
-	effectPressure:          pressureEffectSpec(),
-	effectBash3D:            sacrificeEffectSpec(),
-	effectAuraBlade:         auraBladeEffectSpec(),
-	effectRedBody:           funcEffectSpec("EffectBodyColor", 99999*EffectFrameDuration, true),
-	effectPierceBody:        {Duration: 200 * EffectFrameDuration, SFX: []string{"effect\\ef_beginspell.wav"}, Components: []EffectComponent{{Kind: EffectComponentFUNC, FuncName: "EffectBodyColor", AttachedEntity: true}}},
-	effectQuake:             quakeEffectSpec(),
-	effectLKConcentration:   strEffectSpecAttached("twohand", "", true),
-	effectBottomGospel:      soundOnlyEffectSpec("effect\\가스펠.wav"),
-	effectGospelGround:      gospelGroundEffectSpec(),
-	effectFogWallGround:     fogWallGroundEffectSpec(),
-	effectDeath:             strEffectSpecAttached("devil", "", false),
-	effectBottomBasilica:    priestGroundEffectSpec(effectBottomBasilica),
-	effectAssumptio:         funcEffectSpec("EffectBodyColor", 2*time.Second, true),
-	effectHitLine2:          palmStrikeEffectSpec(),
-	effectBash3D2:           tigerFistEffectSpec(),
-	effectEnergyDrain2:      soulDrainEffectSpec(),
-	effectTransBlueBody:     transBlueBodyEffectSpec(),
-	effectMagicCrasher:      magicCrasherEffectSpec(),
-	effectMagicPower:        soundOnlyEffectSpec("effect\\마법력 증폭.wav"),
-	effectLightBlade:        funcEffectSpec("LightBlade", 99999999*EffectFrameDuration, true),
-	effectEnergyDrain3:      hpConversionEffectSpec(),
-	effectLineLink2:         soulChangeLinkEffectSpec(),
-	effectLinkLight:         funcEffectSpec("EffectBodyColor", 200*EffectFrameDuration, true),
-	effectTrueSight:         trueSightEffectSpec(),
-	effectFalconAssault:     falconAssaultEffectSpec(),
-	effectSharpShootingCast: sharpShootingCastEffectSpec(),
-	effectTripleAttack2:     sharpShootingEffectSpec(),
-	effectPortal4:           windWalkEffectSpec(),
-	effectMeltdown:          strEffectSpecAttached("melt", "effect\\black_overthrust.wav", false),
-	effectCartBoost:         strEffectSpecAttached("cart", "effect\\ef_incagility.wav", false),
-	effectCartTermination:   cartTerminationEffectSpec(),
-	effectRejectSword:       strEffectSpecAttached("sword", "effect\\kyrie_guard.wav", false),
-	effectTripleAttack3:     arrowVulcanEffectSpec(),
-	effectMoonlit:           moonlitEffectSpec(),
-	effectMarionetteLink:    marionetteEffectSpec(),
-	effectPinkBody:          funcEffectSpec("EffectBodyColor", 99999999*EffectFrameDuration, true),
-	effectChemicalBody:      funcEffectSpec("EffectBodyColor", 120*EffectFrameDuration, true),
-	effectLevel99AuraMid:    level99EffectSpec(),
-	effectLevel99AuraBottom: level99GroundEffectSpec(),
-	effectBash3D3:           lordKnightBurstEffectSpec("effect\\헤드 크러쉬.wav", 0),
-	effectBash3D4:           lordKnightBurstEffectSpec("effect\\비트 조인트.wav", 22*EffectFrameDuration),
-	effectNapalmVulcan:      napalmVulcanEffectSpec(),
-	effectPortal5:           portal5EffectSpec(),
-	effectMagicCrasher2:     magicCrasher2EffectSpec(),
-	effectBottomSpider:      spiderWebEffectSpec(),
-	effectSoulBurn:          strEffectSpecAttached("소울번", "", false),
-	effectSoulChange:        strEffectSpecAttached("사람효과", "", false),
-	effectSoulBreaker2:      soulBreakerEffectSpec(true),
-	effectPressedBody:       {Duration: 50 * EffectFrameDuration, SFX: []string{"effect\\T_내려찍기.wav"}, SFXDelays: []time.Duration{5 * EffectFrameDuration}},
-	effectSpinedBody:        {Duration: 50 * EffectFrameDuration},
-	effectSpinedBody2:       {Duration: 50 * EffectFrameDuration, SFX: []string{"effect\\T_돌려차기.wav"}, SFXDelays: []time.Duration{5 * EffectFrameDuration}},
-	effectKickedBody:        {Duration: 100 * EffectFrameDuration, SFX: []string{"effect\\EF_hit2.wav", "effect\\EF_hit4.wav"}, SFXDelays: []time.Duration{17 * EffectFrameDuration, 25 * EffectFrameDuration}},
-	effectHitLine5:          soulLinkerHitLinesEffectSpec(),
-	effectRun:               {Duration: 9999 * EffectFrameDuration},
-	effectStopRun:           {Duration: 30 * EffectFrameDuration},
-	effectReflectBody:       soulLinkerBodyEffectSpec("ReflectBody", "effect\\t_마법반사.wav", 200),
-	effectFourWayBody:       soulLinkerBodyEffectSpec("FourWayBody", "", 100),
-	effectAsuraBody:         soulLinkerBodyEffectSpec("AsuraBody", "", 500),
-	effectBlueCasting:       blueCastingEffectSpec(),
-	effectCoupleCasting:     coupleCastingEffectSpec(),
-	effectTaeReady:          soulLinkerBodyEffectSpec("TaeReady", "", 60),
-	effectStormKick4:        kaupeDodgeEffectSpec(),
-	effectSoulLink:          soulLinkEffectSpec(),
-	effectBabyBodyBack:      soulLinkerBodyEffectSpec("BabyBodyBack", "", 15),
-	effectAsuraBodyMonster:  soulLinkerBodyEffectSpec("AsuraBodyMonster", "effect\\t_공격력.wav", 150),
-	effectHitLine6:          soulLinkerHitLinesEffectSpec(),
-	effectBabyBody:          bodySizeEffectSpec("EffectSmallTransition", 300*time.Millisecond, 2.5),
-	effectBabyBody2:         bodySizeEffectSpec("EffectSmall", 5*time.Minute, 2.5),
-	effectGiantBody:         bodySizeEffectSpec("EffectBigTransition", 300*time.Millisecond, 7.5),
-	effectGiantBody2:        bodySizeEffectSpec("EffectBig", 5*time.Minute, 7.5),
-	effectQuakeBody:         {Duration: 14 * EffectFrameDuration},
-	effectQuakeBody2:        {Duration: 35 * EffectFrameDuration},
-	effectHitLine4:          soulLinkerHitLinesEffectSpec(),
-	effectAssumptio2:        strEffectSpecAttached("asum", "effect\\아숨프티오.wav", false),
-	effectStormKick:         taekwonStormEffectSpec(true),
-	effectPeong:             taekwonJumpEffectSpec(),
-	effectStormKick3:        taekwonStormEffectSpec(false),
-	effectStopEffect:        taekwonStopEffectSpec(),
-	effectChemical3:         taekwonDashEffectSpec(),
-	effectFoot3:             taekwonFootEffectSpec("effect/foot_l2.tga"),
-	effectFoot4:             taekwonFootEffectSpec("effect/foot_r2.tga"),
-	effectJumpBody:          {Duration: 500 * EffectFrameDuration, SFX: []string{"effect\\T_회피2.wav"}, SFXDelays: []time.Duration{30 * EffectFrameDuration}},
-	effectLandBody:          {Duration: 35 * EffectFrameDuration},
-	effectDarkGrandCross:    {},
-	effectDarkSoulStrike:    darkSoulStrikeEffectSpec(),
-	effectDarkJupitelHit:    darkJupitelHitEffectSpec(),
-	effectNPCStop:           sprEffectSpec("스톱", "", true, false),
-	effectDarkCasting:       darkCastingEffectSpec(),
-	effectAgiUp:             gunslingerAgilityEffectSpec(),
-	effectJumpKick:          {Duration: 100 * EffectFrameDuration, SFX: []string{"effect\\T_날라차기.wav"}, SFXDelays: []time.Duration{5 * EffectFrameDuration}},
-	effectBeginAsura1:       mildWindEffectSpec("effect/hanmoon1.tga"),
-	effectBeginAsura2:       mildWindEffectSpec("effect/hanmoon2.tga"),
-	effectBeginAsura3:       mildWindEffectSpec("effect/hanmoon3.tga"),
-	effectBeginAsura4:       mildWindEffectSpec("effect/hanmoon4.tga"),
-	effectBeginAsura5:       mildWindEffectSpec("effect/hanmoon7.tga"),
-	effectBeginAsura6:       mildWindEffectSpec("effect/hanmoon5.tga"),
-	effectBeginAsura7:       mildWindEffectSpec("effect/hanmoon6.tga"),
-	effectMochi:             strEffectSpecAttached("찹쌀떡", "", false),
-	effectRamadan:           strEffectSpecAttached("ramadan", "", false),
-	effectEDP:               enchantDeadlyPoisonEffectSpec(),
-	effectFullStrip:         fullStripEffectSpec(),
-	effectPreserve:          preserveEffectSpec(),
-	effectCastSpin:          {Duration: 100 * EffectFrameDuration, SFX: []string{"effect\\EF_BeginSpell.wav"}},
-	effectChookgi2:          spiritSphereEffectSpec(),
-	effectMemorize:          memorizeEffectSpec(),
-	effectDoubleCastBody:    funcEffectSpec("EffectBodyColor", 120*EffectFrameDuration, true),
-	effectMapae:             strEffectSpecAttached("mapae", "effect\\mapae.wav", false),
-	effectItemPokJuk:        strEffectSpecAttached("itempokjuk", "effect\\itempokjuk.wav", false),
-	effectValentine05:       sprEffectSpec("05vallentine", "", true, false),
-	effectBeginAsura11:      beginAsuraEffectSpec(true),
-	effectChemical2Dash:     chainCrushEffectSpec(),
-	effectBottomHermode:     hermodeEffectSpec(),
-	effectHermodeMusic:      soundOnlyEffectSpec("effect\\헤르모드의 지팡이.wav"),
-	effectItemFastDown:      sprEffectSpec("fast", "effect\\fast.wav", true, false),
-	effectTarotCard1:        tarotCardEffectSpec(1),
-	effectTarotCard2:        tarotCardEffectSpec(2),
-	effectTarotCard3:        tarotCardEffectSpec(3),
-	effectTarotCard4:        tarotCardEffectSpec(4),
-	effectTarotCard5:        tarotCardEffectSpec(5),
-	effectTarotCard6:        tarotCardEffectSpec(6),
-	effectTarotCard7:        tarotCardEffectSpec(7),
-	effectTarotCard8:        tarotCardEffectSpec(8),
-	effectTarotCard9:        tarotCardEffectSpec(9),
-	effectTarotCard10:       tarotCardEffectSpec(10),
-	effectTarotCard11:       tarotCardEffectSpec(11),
-	effectTarotCard12:       tarotCardEffectSpec(12),
-	effectTarotCard13:       tarotCardEffectSpec(13),
-	effectTarotCard14:       tarotCardEffectSpec(14),
-	effectSlim:              slimPitcherEffectSpec("레드슬림포션"),
-	effectSlim2:             slimPitcherEffectSpec("옐로우슬림포션"),
-	effectSlim3:             slimPitcherEffectSpec("화이트슬림포션"),
-	effectThrowItem4:        acidBottlesEffectSpec(),
-	effectAcidDemon:         acidDemonEffectSpec(),
-	effectHated:             soulLinkerBuffEffectSpec(false),
-	effectBlueBody:          soulLinkerBodyEffectSpec("BlueBody", "effect\\t_치잉.wav", 200),
-	effectSmaReady:          esmaReadyEffectSpec(),
-	effectStin:              estinEffectSpec(),
-	effectRedHit:            funcEffectSpec("RedHit", 60*EffectFrameDuration, true),
-	effectMadnessBlue:       funcEffectSpec("BlueHit", 64*EffectFrameDuration, true),
-	effectMadnessRed:        funcEffectSpec("RedHit", 64*EffectFrameDuration, true),
-	effectChemical4:         piercingShotEffectSpec(),
-	effectBlueHit:           funcEffectSpec("BlueHit", 60*EffectFrameDuration, true),
-	effectQuakeBody3:        funcEffectSpec("QuakeBody3", 60*EffectFrameDuration, true),
-	effectStin2:             esmaEffectSpec(),
-	effectHitTexture:        esmaHitTextureEffectSpec(),
-	effectStin3:             estunEffectSpec(),
-	effectScreenQuake:       screenQuakeEffectSpec(),
-	effectHfliMoon1:         strEffectSpecAttached("moonlight_1", "effect\\h_moonlight_1.wav", false),
-	effectHfliMoon2:         strEffectSpecAttached("moonlight_2", "effect\\h_moonlight_2.wav", false),
-	effectHfliMoon3:         strEffectSpecAttached("moonlight_3", "effect\\h_moonlight_3.wav", false),
-	effectHoUp:              strEffectSpecAttached("h_levelup", "", false),
-	effectHamiDefence:       strEffectSpecAttached("defense", "", false),
-	effectHamiCastle:        sprEffectSpec("캐슬링", "", true, false),
-	effectHamiBlood:         sprEffectSpec("블러드러스트", "", true, false),
-	effectItemThunder:       sprEffectSpec("item_thunder", "", true, false),
-	effectItemCloud:         sprEffectSpec("item_cloud", "", true, false),
-	effectItemCurse:         sprEffectSpec("item_curse", "", true, false),
-	effectItemZZZ:           sprEffectSpec("item_zzz", "_snore.wav", true, false),
-	effectItemRain:          sprEffectSpec("item_rain", "", true, false),
-	effectM01:               sprEffectSpec("m_ef01", "", true, false),
-	effectM02:               gunslingerSpriteEffectSpec(effectM02),
-	effectM03:               sprEffectSpec("m_ef03", "", true, false),
-	effectM04:               sprEffectSpec("m_ef04", "", true, false),
-	effectM05:               sprEffectSpec("m_ef05", "dragon_breath.wav", true, false),
-	effectM06:               sprEffectSpec("m_ef06", "", true, false),
-	effectM07:               sprEffectSpec("m_ef07", "", true, false),
-	effectKaizel:            soulLinkerBuffEffectSpec(true),
-	effectStatFoodSTR:       strEffectSpecAttached("food_str", "_heal_effect.wav", false),
-	effectStatFoodINT:       strEffectSpecAttached("food_int", "_heal_effect.wav", false),
-	effectStatFoodVIT:       strEffectSpecAttached("food_vit", "_heal_effect.wav", false),
-	effectStatFoodAGI:       strEffectSpecAttached("food_agi", "_heal_effect.wav", false),
-	effectStatFoodDEX:       strEffectSpecAttached("food_dex", "_heal_effect.wav", false),
-	effectStatFoodLUK:       strEffectSpecAttached("food_luk", "_heal_effect.wav", false),
-	effectThrowItem6:        throwItemFlightEffectSpec("유저인터페이스/item/베넘나이프.bmp"),
-	effectFireHit2:          strEffectSpecRandomAttached("firehit%d", "", 1, 3, true, false),
-	effectQuakeBody4:        closeConfineHitEffectSpec(),
-	effectNPCStop2:          closeConfineRingEffectSpec(),
-	effectNPCStop2Del:       funcEffectSpec("RemoveCloseConfine", 2*EffectFrameDuration, true),
-	effectFVoice:            pangVoiceEffectSpec(),
-	effectWink:              directedSpriteEffectSpec("wink"),
-	effectCookingOK:         strEffectSpecAttached("cook_suc", "_heal_effect.wav", false),
-	effectCookingFail:       strEffectSpecAttached("cook_fail", "caramel_die.wav", false),
-	effectHapgyeok:          hapgyeokEffectSpec(),
-	effectThrowItem7:        throwItemFlightEffectSpec("유저인터페이스/item/수리검.bmp"),
-	effectThrowItem8:        throwItemFlightEffectSpec("유저인터페이스/item/쿠나이_독.bmp"),
-	effectThrowItem9:        throwItemFlightEffectSpec("유저인터페이스/item/풍마_열화.bmp"),
-	effectThrowItem10:       throwItemFlightEffectSpec("effect/coin_a.bmp"),
-	effectKouenka:           ninjaFirePetalEffectSpec(),
-	effectHyousensou:        ninjaIceSpearEffectSpec(),
-	effectBottomSuiton:      propertyGroundEffectSpec("ring_blue"),
-	effectStin4:             ninjaWindEffectSpec(false),
-	effectStin5:             ninjaWindEffectSpec(true),
-	effectThunderStorm2:     ninjaSpriteEffectSpec(effectThunderStorm2),
-	effectRGCoin3:           disarmEffectSpec(),
-	effectBash3D5:           lordKnightBurstEffectSpec("effect\\더스트샷.wav", 0),
-	effectChookgi3:          spiritSphereEffectSpec(),
-	effectKirikage:          ninjaSpriteEffectSpec(effectKirikage),
-	effectTatami:            ninjaSpriteEffectSpec(effectTatami),
-	effectKasumikiri:        ninjaSpriteEffectSpec(effectKasumikiri),
-	effectIssen:             ninjaSpriteEffectSpec(effectIssen),
-	effectKaen:              ninjaSpriteEffectSpec(effectKaen),
-	effectBaku:              strEffectSpec("fire dragon", "effect\\폭염룡.wav"),
-	effectHyousyouraku:      strEffectSpec("icy", "effect\\빙정락.wav"),
-	effectDesperado:         gunslingerSpriteEffectSpec(effectDesperado),
-	effectLightningS:        gunslingerSpriteEffectSpec(effectLightningS),
-	effectBlindS:            gunslingerSpriteEffectSpec(effectBlindS),
-	effectPoisonS:           gunslingerSpriteEffectSpec(effectPoisonS),
-	effectFreezingS:         gunslingerSpriteEffectSpec(effectFreezingS),
-	effectFlareS:            gunslingerSpriteEffectSpec(effectFlareS),
-	effectRapidShower:       gunslingerSpriteEffectSpec(effectRapidShower),
-	effectMagicalBullet:     gunslingerSpriteEffectSpec(effectMagicalBullet),
-	effectSpreadAttack:      gunslingerSpriteEffectSpec(effectSpreadAttack),
-	effectTrackCasting:      strEffectSpecAttached("트랙킹", "", false),
-	effectTracking:          gunslingerSpriteEffectSpec(effectTracking),
-	effectTripleAction:      gunslingerSpriteEffectSpec(effectTripleAction),
-	effectBullseye:          strEffectSpecAttached("불스아이", "", false),
-	effectNPCEarthquake:     npcEarthquakeEffectSpec(),
-	effectDragonFear:        dragonFearEffectSpec(),
-	effectWideBleeding:      strEffectSpecAttached("wideb", "effect\\wideb.wav", false),
-	effectWideConfuse:       strEffectSpecAttached("dfear", "effect\\dragonfear.wav", false),
-	effectBottomRunner:      groundTextureEffectSpec("effect/hanmoon1.tga"),
-	effectBottomTransfer:    groundTextureEffectSpec("effect/hanmoon2.tga"),
-	effectBottomEvilLand:    evilLandEffectSpec(),
-	effectGravitation:       gravitationEffectSpec(),
-	effectGuard3:            soundOnlyEffectSpec("effect\\kyrie_guard.wav"),
-	effectCriticalWound:     strEffectSpecAttached("cwound", "", false),
-	effectFirecracker2:      firecrackerBannerEffectSpec("폭죽_러브"),
-	effectFirecracker3:      firecrackerBannerEffectSpec("폭죽_화이트데이"),
-	effectFirecracker4:      firecrackerBannerEffectSpec("폭죽_발렌타인"),
-	effectFirecracker5:      firecrackerBannerEffectSpec("폭죽_생일"),
-	effectFirecracker6:      firecrackerBannerEffectSpec("폭죽_크리스마스"),
-	effectFlowerLeaf:        strEffectSpecAttached("flower_leaf", "", false),
-	effectItem315:           strEffectSpecAttached("mobile_ef02", "", false),
-	effectItem316:           strEffectSpecAttached("mobile_ef01", "", false),
-	effectItem317:           strEffectSpecAttached("mobile_ef03", "", false),
-	effectStormMin:          strEffectSpecAttached("storm_min", "effect\\wizard_stormgust.wav", false),
-	effectFirecracker7:      strEffectSpec("pokjuk_jap", ""),
-	effectBottomBlue:        bottomBlueEffectSpec(),
-	effectBottomBlue2:       bottomBlueEffectSpec(),
-	effectFirePillarOn2:     judexEffectSpec(),
-	effectForestLight5:      soundOnlyEffectSpec("effect\\ab_renovation.wav"),
-	effectAdoramus:          strEffectSpecAttached("ado", "effect\\ab_adoramus.wav", false),
-	effectIgnitionBreak:     strEffectSpecAttached("이그니션브레이크", "effect\\wl_jackfrost.wav", false),
-	effectFrostMisty:        soundOnlyEffectSpec("effect\\t_에나지방출.wav"),
-	effectCrimsonRock:       strEffectSpecAttached("crimson_r", "effect\\crimson_r.wav", false),
-	effectHellInferno:       strEffectSpecAttached("hell_in", "", false),
-	effectMarshOfAbyss:      sprEffectSpec("mashofa", "", false, false),
-	effectDragonHowling:     strEffectSpecAttached("dragon_h", "dragon_h.wav", false),
-	effectEarthWall:         earthWallEffectSpec(),
-	effectChainLightning:    strEffectSpecAttached("chainlight", "effect\\chainlight.wav", false),
-	effectAimedBolt:         strEffectSpecAttached("aimed", "", false),
-	effectArrowStorm:        strEffectSpecAttached("arrowstorm", "", false),
-	effectLaulamus:          strEffectSpecAttached("laulamus", "", false),
-	effectLauagnus:          strEffectSpecAttached("lauagnus", "", false),
-	effectMillenniumShield:  strEffectSpecAttached("mil_shield", "", false),
-	effectConcentration2:    strEffectSpecAttached("concentration", "", false),
-	effectGlassWall3:        glassWall3EffectSpec(),
-	effectBerserkPotion2:    strEffectSpecAttached("버서크", "", false),
-	effectRolling1:          rollingCutterCounterEffectSpec(1),
-	effectRolling2:          rollingCutterCounterEffectSpec(2),
-	effectRolling3:          rollingCutterCounterEffectSpec(3),
-	effectRolling4:          rollingCutterCounterEffectSpec(4),
-	effectRolling5:          rollingCutterCounterEffectSpec(5),
-	effectRolling6:          rollingCutterCounterEffectSpec(6),
-	effectRolling7:          rollingCutterCounterEffectSpec(7),
-	effectRolling8:          rollingCutterCounterEffectSpec(8),
-	effectRolling9:          rollingCutterCounterEffectSpec(9),
-	effectRolling10:         rollingCutterCounterEffectSpec(10),
-	effectCastSpin2:         funcEffectSpec("CastSpin2", 500*time.Millisecond, true),
-	effectCrashAxe:          strEffectSpecAttached("powerswing", "", false),
-	effectStasis:            soundOnlyEffectSpec("effect\\wl_stasis.wav"),
-	effectBottomBasilica2:   bottomBasilica2EffectSpec(),
-	effectRecognized:        soundOnlyEffectSpec("effect\\wl_recognizedspell.wav"),
-	effectTetra:             soundOnlyEffectSpec("effect\\wl_tetravortex.wav"),
-	effectTetraCasting:      funcEffectSpec("TetraCasting", 500*time.Millisecond, true),
-	effectStretch:           soundOnlyEffectSpec("effect\\bodypaint.wav"),
-	effectEnervation:        strEffectSpecAttached("enervation", "", false),
-	effectEnervation2:       strEffectSpecAttached("groomy", "", false),
-	effectEnervation3:       strEffectSpecAttached("ignorance", "", false),
-	effectEnervation4:       strEffectSpecAttached("laziness", "effect\\laziness.wav", false),
-	effectEnervation5:       strEffectSpecAttached("unlucky", "", false),
-	effectEnervation6:       strEffectSpecAttached("weakness", "", false),
-	effectBottomManhole:     soundOnlyEffectSpec("effect\\dimension.wav"),
-	effectManhole:           soundOnlyEffectSpec("effect\\manhole.wav"),
-	effectForestLight6:      soundOnlyEffectSpec("effect\\dimension.wav"),
-	effectBottomAni:         soundOnlyEffectSpec("effect\\chaospanic.wav"),
-	effectBottomMaelstrom:   soundOnlyEffectSpec("effect\\maelstrom.wav"),
-	effectBottomBloodyLust:  soundOnlyEffectSpec("effect\\bloodylust.wav"),
-	effectHealN:             soundOnlyEffectSpec("effect\\기공포.wav"),
-	effectChookgiN:          spiritSphereEffectSpec(),
-	effectDance1:            soundOnlyEffectSpec("effect\\수줍은하루의우울.wav"),
-	effectBotReverb:         melodyBillboardEffectSpec("effect/melody_b.bmp", "effect\\reverberation.wav", effectTableColor(1, 0.6, 0.6)),
-	effectRainParticle:      soundOnlyEffectSpec("effect\\rainstorm.wav"),
-	effectChemicalV2:        soundOnlyEffectSpec("effect\\안식의자장가.wav"),
-	effectBotReverb2:        melodyBillboardEffectSpec("effect/melody_a.bmp", "effect\\나락의노래.wav", effectTableColor(0.6, 0.6, 1)),
-	effectCirclePower2:      soundOnlyEffectSpec("effect\\순환하는자연의소리.wav"),
-	effectSecra2:            secra2EffectSpec(),
-	effectSprPlant2:         soundOnlyEffectSpec("effect\\워그와함께춤을.wav"),
-	effectSprPlant3:         soundOnlyEffectSpec("effect\\마나의노래.wav"),
-	effectSprPlant4:         soundOnlyEffectSpec("effect\\새터데이나이트피버.wav"),
-	effectSprPlant5:         soundOnlyEffectSpec("effect\\레라드의이슬.wav"),
-	effectSprPlant6:         soundOnlyEffectSpec("effect\\멜로디오브싱크.wav"),
-	effectSprPlant7:         soundOnlyEffectSpec("effect\\비욘드오브워크라이.wav"),
-	effectSprPlant8:         soundOnlyEffectSpec("effect\\언리미티드허밍보이스.wav"),
-	effectHeartAsura:        soundOnlyEffectSpec("effect\\세이렌의목소리.wav"),
-	effectGlassWall4:        glassWall4EffectSpec(),
-	effectBash3D6:           bash3D6EffectSpec(),
-	effectElectric4:         soundOnlyEffectSpec("effect\\sr_earthshaker.wav"),
-	effectTeiHit1T:          teiHit1TEffectSpec(),
-	effectPressure2:         pressureDropEffectSpec("effect/shield.bmp", "effect\\lg_shieldpress.wav"),
-	effectPrimeCharge2:      soundOnlyEffectSpec("effect\\lg_prestige.wav"),
-	effectPrimeCharge3:      soundOnlyEffectSpec("effect\\lg_banding.wav"),
-	effectPrimeCharge4:      soundOnlyEffectSpec("effect\\lg_inspiration.wav"),
-	effectFireWall2:         strEffectSpecAttached("firewall_per", "", false),
-	effectSprPlant10:        soundOnlyEffectSpec("effect\\s사이킥웨이브.wav"),
-	effectShockwave2:        strEffectSpecAttached("hunter_shockwave_blue", "", false),
-	effectColdThrow2:        soundOnlyEffectSpec("effect\\wl_jackfrost.wav"),
-	effectDemonicFire4:      soundOnlyEffectSpec("effect\\s워머.wav"),
-	effectPressure3:         pressureDropEffectSpec("effect/cross1.bmp", ""),
-	effectPoisonMist:        strEffectSpecAttached("poison_mist", "", false),
-	effectEraserCutter:      strEffectSpecAttached("eraser_cutter", "", false),
-	effectLavaSlide:         strEffectSpecAttached("lava_slide", "", false),
-	effectSonicClaw:         strEffectSpecAttached("sonic_claw", "", false),
-	effectTinderBreaker:     strEffectSpecAttached("tinder", "", false),
-	effectMidnightFrenzy:    strEffectSpecAttached("mid_frenzy", "", false),
-	effectVolcanicAsh:       strEffectSpecAttached("vash00", "", false),
-	effectRWC2011:           strEffectSpecAttached("rwc2011", "", false),
-	effectRWC2011Two:        strEffectSpecAttached("rwc2011_2", "", false),
-	effectRunMakeOK:         strEffectSpecAttached("rune_success", "", false),
-	effectRunMakeFailure:    strEffectSpecAttached("rune_fail", "", false),
-	effectMIResultMakeOK:    strEffectSpecAttached("changematerial_su", "", false),
-	effectMIResultMakeFail:  strEffectSpecAttached("changematerial_fa", "", false),
-	effectAllRayProtect:     strEffectSpecAttached("guardian", "", false),
-	effectVenomFog:          strEffectSpecRandomAttached("bubble%d_1", "", 1, 4, true, false),
-	effectDustStorm:         strEffectSpecAttached("dust", "", false),
-	effectDanceBladeAtk:     strEffectSpecAttached("dancingblade", "", false),
-	effectInvincibleOff2:    strEffectSpecAttached("invincibleoff2", "", false),
-	effectDeathSummon:       strEffectSpecAttached("devil", "", false),
-	effectGCDarkCrow:        strEffectSpecAttached("gc_darkcrow", "", false),
-	effectAllFullThrottle:   strEffectSpecAttached("all_full_throttle", "effect\\all_full_throttle.wav", false),
-	effectSRFlashCombo:      strEffectSpecAttached("sr_flashcombo", "effect\\sr_flashcombo.wav", false),
-	effectRKLuxAnima:        strEffectSpecAttached("rk_luxanima", "", false),
-	effectSOElemShield:      strEffectSpecAttached("so_elemental_shield", "effect\\so_elemental_shield.wav", false),
-	effectABOffertorium:     strEffectSpecAttached("ab_offertorium", "effect\\ab_offertorium.wav", false),
-	effectWLTelekinesis:     strEffectSpecAttached("wl_telekinesis_intense", "effect\\wl_telekinesis_intense.wav", false),
-	effectGNIllusionDoping:  strEffectSpecAttached("gn_illusiondoping", "effect\\gn_illusiondoping.wav", false),
-	effectNCMagmaEruption:   strEffectSpecAttached("nc_magma_eruption", "effect\\nc_magma_eruption.wav", false),
-	effectNPCChill:          strEffectSpecAttached("chill", "", false),
-	effectOffertoriumRing:   strEffectSpecAttached("ab_offertorium_ring", "", false),
-	effectHammerOfGod:       strEffectSpecAttached("stormgust", "effect\\RL_HAMMER_OF_GOD.wav", false),
-	effectAchComplete:       strEffectSpecAttachedTexturePath("ach_complete/ppring3", "ach_complete/", "", false),
-	effectBodyColor:         funcEffectSpec("EffectBodyColor", 300*time.Millisecond, true),
-	effectBakuretsuHadou:    sprTexturePathEffectSpec("bakuretsu_hadou/bakuretsu_hadou", "bakuretsu_hadou/", true, true, true, false, -50),
-	dropEffectPink:          dropEffectSpec("pink", true),
-	dropEffectYellow:        dropEffectSpec("yellow", false),
-	dropEffectPurple:        dropEffectSpec("purple", false),
-	effectDigitalSpace:      sprTexturePathEffectSpec("digital_space/digital_space", "digital_space/", true, true, false, true, 0),
-	dropEffectBlue:          dropEffectSpec("blue", false),
-	dropEffectGreen:         dropEffectSpec("green", false),
-	dropEffectRed:           dropEffectSpec("red", false),
-	effectNewSuccess:        strEffectSpecTexturePath("grade_enchant/new_success/new_success", "grade_enchant/new_success/", "", false, false),
-	effectNewFailure:        strEffectSpecTexturePath("grade_enchant/new_failed/new_failed", "grade_enchant/new_failed/", "", false, false),
-	effectNewIntro:          strEffectSpecTexturePath("grade_enchant/new_intro/new_intro", "grade_enchant/new_intro/", "", false, false),
-	effectEnchantYellow:     strEffectSpecTexturePath("ui_enchant/ui_intro_yellow/ui_intro_yellow", "ui_enchant/ui_intro_yellow/", "", false, false),
-	effectEnchantSuccess:    strEffectSpecTexturePath("ui_enchant/ui_enchant_success/ui_enchant_success", "ui_enchant/ui_enchant_success/", "", false, false),
-	effectEnchantFail:       strEffectSpecTexturePath("ui_enchant/ui_fail/ui_enchant_fail", "ui_enchant/ui_fail/", "", false, false),
-	effectEnchantBlue:       strEffectSpecTexturePath("ui_enchant/ui_intro_blue/ui_intro_blue", "ui_enchant/ui_intro_blue/", "", false, false),
-	effectEnchantUpSuccess:  strEffectSpecTexturePath("ui_enchant/ui_levelup_success/ui_levelup_success", "ui_enchant/ui_levelup_success/", "", false, false),
-	effectEnchantUpFail:     strEffectSpecTexturePath("ui_enchant/ui_fail/ui_levelup_fail", "ui_enchant/ui_fail/", "", false, false),
-	effectEnchantGreen:      strEffectSpecTexturePath("ui_enchant/ui_intro_green/ui_intro_green", "ui_enchant/ui_intro_green/", "", false, false),
-	effectEnchantResetOK:    strEffectSpecTexturePath("ui_enchant/ui_reset_success/ui_reset_success", "ui_enchant/ui_reset_success/", "", false, false),
-	effectEnchantResetFail:  strEffectSpecTexturePath("ui_enchant/ui_fail/ui_reset_fail", "ui_enchant/ui_fail/", "", false, false),
-	effectFood: {
-		Duration: 850 * time.Millisecond,
-		SFX:      []string{"_heal_effect.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSTR,
-			Color:          color.RGBA{R: 255, G: 182, B: 86, A: 255},
-			STRFile:        "fruit",
-			AttachedEntity: true,
-		}},
-	},
-	effectFoodBlue: {
-		Duration: 850 * time.Millisecond,
-		SFX:      []string{"effect\\흡기.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponentSTR,
-			Color:          color.RGBA{R: 132, G: 112, B: 255, A: 255},
-			STRFile:        "fruit_",
-			AttachedEntity: true,
-		}},
-	},
-	effectBottomDissonance: songVerticalEffectSpec("effect/ring_blue.tga", 0),
-	effectBottomUglyDance:  songVerticalEffectSpec("effect/ring_red.tga", 0),
-	effectChristmasCarol:   strEffectSpecAttachedMin("angelus", "jong_mini", "effect\\wewish.wav", false),
-}
-
-func hitSlashComponent(kind EffectComponentKind, sizeX, sizeEndY, angleStart, angleEnd float64, overlay bool) EffectComponent {
-	return EffectComponent{
-		Kind:        kind,
-		TextureFile: "effect/lens2.tga",
-		Duration:    400 * time.Millisecond,
-		AlphaMax:    1,
-		FadeOut:     true,
-		Rotate:      true,
-		PosZ:        1,
-		SizeStartX:  sizeX,
-		SizeEndX:    sizeX,
-		SizeStartY:  effectTableSize(10),
-		SizeEndY:    sizeEndY,
-		AngleStart:  angleStart,
-		AngleEnd:    angleEnd,
-		Overlay:     overlay,
-	}
+	effectHPTime:                 hpTimeEffectSpec(),
+	effectSPTime:                 spTimeEffectSpec(),
+	effectBlind:                  blindEffectSpec(),
+	effectPoisonStatus:           poisonStatusEffectSpec(),
+	effectGuard:                  guardEffectSpec(),
+	effectJobLvUp50:              jobLvUp50EffectSpec(),
+	effectMagnum2:                magnum2EffectSpec(),
+	effectEntry2:                 entry2EffectSpec(),
+	effectColorPaper:             colorPaperEffectSpec(),
+	effectSoulBreaker:            soulBreakerBaseEffectSpec(),
+	effectLevel99Aura1:           level99BubbleEffectSpec(),
+	effectFoodChocolate:          foodChocolateEffectSpec(),
+	effectPressure:               pressureEffectSpec(),
+	effectBash3D:                 sacrificeEffectSpec(),
+	effectAuraBlade:              auraBladeEffectSpec(),
+	effectRedBody:                redBodyEffectSpec(),
+	effectPierceBody:             pierceBodyEffectSpec(),
+	effectQuake:                  quakeEffectSpec(),
+	effectLKConcentration:        lkConcentrationEffectSpec(),
+	effectBottomGospel:           bottomGospelEffectSpec(),
+	effectGospelGround:           gospelGroundEffectSpec(),
+	effectFogWallGround:          fogWallGroundEffectSpec(),
+	effectDeath:                  deathEffectSpec(),
+	effectBottomBasilica:         bottomBasilicaEffectSpec(),
+	effectAssumptio:              assumptioEffectSpec(),
+	effectHitLine2:               palmStrikeEffectSpec(),
+	effectBash3D2:                tigerFistEffectSpec(),
+	effectEnergyDrain2:           soulDrainEffectSpec(),
+	effectTransBlueBody:          transBlueBodyEffectSpec(),
+	effectMagicCrasher:           magicCrasherEffectSpec(),
+	effectMagicPower:             magicPowerEffectSpec(),
+	effectLightBlade:             lightBladeEffectSpec(),
+	effectEnergyDrain3:           hpConversionEffectSpec(),
+	effectLineLink2:              soulChangeLinkEffectSpec(),
+	effectLinkLight:              linkLightEffectSpec(),
+	effectTrueSight:              trueSightEffectSpec(),
+	effectFalconAssault:          falconAssaultEffectSpec(),
+	effectSharpShootingCast:      sharpShootingCastEffectSpec(),
+	effectTripleAttack2:          sharpShootingEffectSpec(),
+	effectPortal4:                windWalkEffectSpec(),
+	effectMeltdown:               meltdownEffectSpec(),
+	effectCartBoost:              cartBoostEffectSpec(),
+	effectCartTermination:        cartTerminationEffectSpec(),
+	effectRejectSword:            rejectSwordEffectSpec(),
+	effectTripleAttack3:          arrowVulcanEffectSpec(),
+	effectMoonlit:                moonlitEffectSpec(),
+	effectMarionetteLink:         marionetteEffectSpec(),
+	effectPinkBody:               pinkBodyEffectSpec(),
+	effectChemicalBody:           chemicalBodyEffectSpec(),
+	effectLevel99AuraMid:         level99EffectSpec(),
+	effectLevel99AuraBottom:      level99GroundEffectSpec(),
+	effectBash3D3:                bash3D3EffectSpec(),
+	effectBash3D4:                bash3D4EffectSpec(),
+	effectNapalmVulcan:           napalmVulcanEffectSpec(),
+	effectPortal5:                portal5EffectSpec(),
+	effectMagicCrasher2:          magicCrasher2EffectSpec(),
+	effectBottomSpider:           spiderWebEffectSpec(),
+	effectSoulBurn:               soulBurnEffectSpec(),
+	effectSoulChange:             soulChangeEffectSpec(),
+	effectSoulBreaker2:           soulBreaker2EffectSpec(),
+	effectPressedBody:            pressedBodyEffectSpec(),
+	effectSpinedBody:             spinedBodyEffectSpec(),
+	effectSpinedBody2:            spinedBody2EffectSpec(),
+	effectKickedBody:             kickedBodyEffectSpec(),
+	effectHitLine5:               hitLineBurstEffectSpec(),
+	effectRun:                    runEffectSpec(),
+	effectStopRun:                stopRunEffectSpec(),
+	effectReflectBody:            reflectBodyEffectSpec(),
+	effectFourWayBody:            fourWayBodyEffectSpec(),
+	effectAsuraBody:              asuraBodyEffectSpec(),
+	effectBlueCasting:            blueCastingEffectSpec(),
+	effectCoupleCasting:          coupleCastingEffectSpec(),
+	effectTaeReady:               taeReadyEffectSpec(),
+	effectStormKick4:             kaupeDodgeEffectSpec(),
+	effectSoulLink:               soulLinkEffectSpec(),
+	effectBabyBodyBack:           babyBodyBackEffectSpec(),
+	effectAsuraBodyMonster:       asuraBodyMonsterEffectSpec(),
+	effectHitLine6:               hitLineBurstEffectSpec(),
+	effectBabyBody:               babyBodyEffectSpec(),
+	effectBabyBody2:              babyBody2EffectSpec(),
+	effectGiantBody:              giantBodyEffectSpec(),
+	effectGiantBody2:             giantBody2EffectSpec(),
+	effectQuakeBody:              quakeBodyEffectSpec(),
+	effectQuakeBody2:             quakeBody2EffectSpec(),
+	effectHitLine4:               hitLineBurstEffectSpec(),
+	effectAssumptio2:             assumptio2EffectSpec(),
+	effectStormKick:              stormKickEffectSpec(),
+	effectPeong:                  taekwonJumpEffectSpec(),
+	effectStormKick3:             stormKick3EffectSpec(),
+	effectStopEffect:             taekwonStopEffectSpec(),
+	effectChemical3:              taekwonDashEffectSpec(),
+	effectFoot3:                  foot3EffectSpec(),
+	effectFoot4:                  foot4EffectSpec(),
+	effectJumpBody:               jumpBodyEffectSpec(),
+	effectLandBody:               landBodyEffectSpec(),
+	effectDarkGrandCross:         darkGrandCrossEffectSpec(),
+	effectDarkSoulStrike:         darkSoulStrikeEffectSpec(),
+	effectDarkJupitelHit:         darkJupitelHitEffectSpec(),
+	effectNPCStop:                npcStopEffectSpec(),
+	effectDarkCasting:            darkCastingEffectSpec(),
+	effectAgiUp:                  gunslingerAgilityEffectSpec(),
+	effectJumpKick:               jumpKickEffectSpec(),
+	effectBeginAsura1:            beginAsura1EffectSpec(),
+	effectBeginAsura2:            beginAsura2EffectSpec(),
+	effectBeginAsura3:            beginAsura3EffectSpec(),
+	effectBeginAsura4:            beginAsura4EffectSpec(),
+	effectBeginAsura5:            beginAsura5EffectSpec(),
+	effectBeginAsura6:            beginAsura6EffectSpec(),
+	effectBeginAsura7:            beginAsura7EffectSpec(),
+	effectMochi:                  mochiEffectSpec(),
+	effectRamadan:                ramadanEffectSpec(),
+	effectEDP:                    enchantDeadlyPoisonEffectSpec(),
+	effectFullStrip:              fullStripEffectSpec(),
+	effectPreserve:               preserveEffectSpec(),
+	effectCastSpin:               castSpinEffectSpec(),
+	effectChookgi2:               spiritSphereEffectSpec(),
+	effectMemorize:               memorizeEffectSpec(),
+	effectDoubleCastBody:         doubleCastBodyEffectSpec(),
+	effectMapae:                  mapaeEffectSpec(),
+	effectItemPokJuk:             itemPokJukEffectSpec(),
+	effectValentine05:            valentine05EffectSpec(),
+	effectBeginAsura11:           beginAsura11EffectSpec(),
+	effectChemical2Dash:          chainCrushEffectSpec(),
+	effectBottomHermode:          hermodeEffectSpec(),
+	effectHermodeMusic:           hermodeMusicEffectSpec(),
+	effectItemFastDown:           itemFastDownEffectSpec(),
+	effectTarotCard1:             tarotCard1EffectSpec(),
+	effectTarotCard2:             tarotCard2EffectSpec(),
+	effectTarotCard3:             tarotCard3EffectSpec(),
+	effectTarotCard4:             tarotCard4EffectSpec(),
+	effectTarotCard5:             tarotCard5EffectSpec(),
+	effectTarotCard6:             tarotCard6EffectSpec(),
+	effectTarotCard7:             tarotCard7EffectSpec(),
+	effectTarotCard8:             tarotCard8EffectSpec(),
+	effectTarotCard9:             tarotCard9EffectSpec(),
+	effectTarotCard10:            tarotCard10EffectSpec(),
+	effectTarotCard11:            tarotCard11EffectSpec(),
+	effectTarotCard12:            tarotCard12EffectSpec(),
+	effectTarotCard13:            tarotCard13EffectSpec(),
+	effectTarotCard14:            tarotCard14EffectSpec(),
+	effectSlim:                   slimEffectSpec(),
+	effectSlim2:                  slim2EffectSpec(),
+	effectSlim3:                  slim3EffectSpec(),
+	effectThrowItem4:             acidBottlesEffectSpec(),
+	effectAcidDemon:              acidDemonEffectSpec(),
+	effectHated:                  hatedEffectSpec(),
+	effectBlueBody:               blueBodyEffectSpec(),
+	effectSmaReady:               esmaReadyEffectSpec(),
+	effectStin:                   estinEffectSpec(),
+	effectRedHit:                 redHitEffectSpec(),
+	effectMadnessBlue:            madnessBlueEffectSpec(),
+	effectMadnessRed:             madnessRedEffectSpec(),
+	effectChemical4:              piercingShotEffectSpec(),
+	effectBlueHit:                blueHitEffectSpec(),
+	effectQuakeBody3:             quakeBody3EffectSpec(),
+	effectStin2:                  esmaEffectSpec(),
+	effectHitTexture:             esmaHitTextureEffectSpec(),
+	effectStin3:                  estunEffectSpec(),
+	effectScreenQuake:            screenQuakeEffectSpec(),
+	effectHfliMoon1:              hfliMoon1EffectSpec(),
+	effectHfliMoon2:              hfliMoon2EffectSpec(),
+	effectHfliMoon3:              hfliMoon3EffectSpec(),
+	effectHoUp:                   hoUpEffectSpec(),
+	effectHamiDefence:            hamiDefenceEffectSpec(),
+	effectHamiCastle:             hamiCastleEffectSpec(),
+	effectHamiBlood:              hamiBloodEffectSpec(),
+	effectItemThunder:            itemThunderEffectSpec(),
+	effectItemCloud:              itemCloudEffectSpec(),
+	effectItemCurse:              itemCurseEffectSpec(),
+	effectItemZZZ:                itemZZZEffectSpec(),
+	effectItemRain:               itemRainEffectSpec(),
+	effectM01:                    m01EffectSpec(),
+	effectM02:                    m02EffectSpec(),
+	effectM03:                    m03EffectSpec(),
+	effectM04:                    m04EffectSpec(),
+	effectM05:                    m05EffectSpec(),
+	effectM06:                    m06EffectSpec(),
+	effectM07:                    m07EffectSpec(),
+	effectKaizel:                 kaizelEffectSpec(),
+	effectStatFoodSTR:            statFoodSTREffectSpec(),
+	effectStatFoodINT:            statFoodINTEffectSpec(),
+	effectStatFoodVIT:            statFoodVITEffectSpec(),
+	effectStatFoodAGI:            statFoodAGIEffectSpec(),
+	effectStatFoodDEX:            statFoodDEXEffectSpec(),
+	effectStatFoodLUK:            statFoodLUKEffectSpec(),
+	effectThrowItem6:             throwItem6EffectSpec(),
+	effectFireHit2:               fireHit2EffectSpec(),
+	effectQuakeBody4:             closeConfineHitEffectSpec(),
+	effectNPCStop2:               closeConfineRingEffectSpec(),
+	effectNPCStop2Del:            npcStop2DelEffectSpec(),
+	effectFVoice:                 pangVoiceEffectSpec(),
+	effectWink:                   winkEffectSpec(),
+	effectCookingOK:              cookingOKEffectSpec(),
+	effectCookingFail:            cookingFailEffectSpec(),
+	effectHapgyeok:               hapgyeokEffectSpec(),
+	effectThrowItem7:             throwItem7EffectSpec(),
+	effectThrowItem8:             throwItem8EffectSpec(),
+	effectThrowItem9:             throwItem9EffectSpec(),
+	effectThrowItem10:            throwItem10EffectSpec(),
+	effectKouenka:                ninjaFirePetalEffectSpec(),
+	effectHyousensou:             ninjaIceSpearEffectSpec(),
+	effectBottomSuiton:           bottomSuitonEffectSpec(),
+	effectStin4:                  stin4EffectSpec(),
+	effectStin5:                  stin5EffectSpec(),
+	effectThunderStorm2:          thunderStorm2EffectSpec(),
+	effectRGCoin3:                disarmEffectSpec(),
+	effectBash3D5:                bash3D5EffectSpec(),
+	effectChookgi3:               spiritSphereEffectSpec(),
+	effectKirikage:               kirikageEffectSpec(),
+	effectTatami:                 tatamiEffectSpec(),
+	effectKasumikiri:             kasumikiriEffectSpec(),
+	effectIssen:                  issenEffectSpec(),
+	effectKaen:                   kaenEffectSpec(),
+	effectBaku:                   bakuEffectSpec(),
+	effectHyousyouraku:           hyousyourakuEffectSpec(),
+	effectDesperado:              desperadoEffectSpec(),
+	effectLightningS:             lightningSEffectSpec(),
+	effectBlindS:                 blindSEffectSpec(),
+	effectPoisonS:                poisonSEffectSpec(),
+	effectFreezingS:              freezingSEffectSpec(),
+	effectFlareS:                 flareSEffectSpec(),
+	effectRapidShower:            rapidShowerEffectSpec(),
+	effectMagicalBullet:          magicalBulletEffectSpec(),
+	effectSpreadAttack:           spreadAttackEffectSpec(),
+	effectTrackCasting:           trackCastingEffectSpec(),
+	effectTracking:               trackingEffectSpec(),
+	effectTripleAction:           tripleActionEffectSpec(),
+	effectBullseye:               bullseyeEffectSpec(),
+	effectNPCEarthquake:          npcEarthquakeEffectSpec(),
+	effectDragonFear:             dragonFearEffectSpec(),
+	effectWideBleeding:           wideBleedingEffectSpec(),
+	effectWideConfuse:            wideConfuseEffectSpec(),
+	effectBottomRunner:           bottomRunnerEffectSpec(),
+	effectBottomTransfer:         bottomTransferEffectSpec(),
+	effectBottomEvilLand:         evilLandEffectSpec(),
+	effectGravitation:            gravitationEffectSpec(),
+	effectGuard3:                 guard3EffectSpec(),
+	effectCriticalWound:          criticalWoundEffectSpec(),
+	effectFirecracker2:           firecracker2EffectSpec(),
+	effectFirecracker3:           firecracker3EffectSpec(),
+	effectFirecracker4:           firecracker4EffectSpec(),
+	effectFirecracker5:           firecracker5EffectSpec(),
+	effectFirecracker6:           firecracker6EffectSpec(),
+	effectFlowerLeaf:             flowerLeafEffectSpec(),
+	effectItem315:                item315EffectSpec(),
+	effectItem316:                item316EffectSpec(),
+	effectItem317:                item317EffectSpec(),
+	effectStormMin:               stormMinEffectSpec(),
+	effectFirecracker7:           firecracker7EffectSpec(),
+	effectBottomBlue:             bottomBlueEffectSpec(),
+	effectBottomBlue2:            bottomBlueEffectSpec(),
+	effectFirePillarOn2:          judexEffectSpec(),
+	effectForestLight5:           forestLight5EffectSpec(),
+	effectAdoramus:               adoramusEffectSpec(),
+	effectIgnitionBreak:          ignitionBreakEffectSpec(),
+	effectFrostMisty:             frostMistyEffectSpec(),
+	effectCrimsonRock:            crimsonRockEffectSpec(),
+	effectHellInferno:            hellInfernoEffectSpec(),
+	effectMarshOfAbyss:           marshOfAbyssEffectSpec(),
+	effectDragonHowling:          dragonHowlingEffectSpec(),
+	effectEarthWall:              earthWallEffectSpec(),
+	effectChainLightning:         chainLightningEffectSpec(),
+	effectAimedBolt:              aimedBoltEffectSpec(),
+	effectArrowStorm:             arrowStormEffectSpec(),
+	effectLaulamus:               laulamusEffectSpec(),
+	effectLauagnus:               lauagnusEffectSpec(),
+	effectMillenniumShield:       millenniumShieldEffectSpec(),
+	effectConcentration2:         concentration2EffectSpec(),
+	effectGlassWall3:             glassWall3EffectSpec(),
+	effectBerserkPotion2:         berserkPotion2EffectSpec(),
+	effectRolling1:               rolling1EffectSpec(),
+	effectRolling2:               rolling2EffectSpec(),
+	effectRolling3:               rolling3EffectSpec(),
+	effectRolling4:               rolling4EffectSpec(),
+	effectRolling5:               rolling5EffectSpec(),
+	effectRolling6:               rolling6EffectSpec(),
+	effectRolling7:               rolling7EffectSpec(),
+	effectRolling8:               rolling8EffectSpec(),
+	effectRolling9:               rolling9EffectSpec(),
+	effectRolling10:              rolling10EffectSpec(),
+	effectCastSpin2:              castSpin2EffectSpec(),
+	effectCrashAxe:               crashAxeEffectSpec(),
+	effectStasis:                 stasisEffectSpec(),
+	effectBottomBasilica2:        bottomBasilica2EffectSpec(),
+	effectRecognized:             recognizedEffectSpec(),
+	effectTetra:                  tetraEffectSpec(),
+	effectTetraCasting:           tetraCastingEffectSpec(),
+	effectStretch:                stretchEffectSpec(),
+	effectEnervation:             enervationEffectSpec(),
+	effectEnervation2:            enervation2EffectSpec(),
+	effectEnervation3:            enervation3EffectSpec(),
+	effectEnervation4:            enervation4EffectSpec(),
+	effectEnervation5:            enervation5EffectSpec(),
+	effectEnervation6:            enervation6EffectSpec(),
+	effectBottomManhole:          bottomManholeEffectSpec(),
+	effectManhole:                manholeEffectSpec(),
+	effectForestLight6:           forestLight6EffectSpec(),
+	effectBottomAni:              bottomAniEffectSpec(),
+	effectBottomMaelstrom:        bottomMaelstromEffectSpec(),
+	effectBottomBloodyLust:       bottomBloodyLustEffectSpec(),
+	effectHealN:                  healNEffectSpec(),
+	effectChookgiN:               spiritSphereEffectSpec(),
+	effectDance1:                 dance1EffectSpec(),
+	effectBotReverb:              botReverbEffectSpec(),
+	effectRainParticle:           rainParticleEffectSpec(),
+	effectChemicalV2:             chemicalV2EffectSpec(),
+	effectBotReverb2:             botReverb2EffectSpec(),
+	effectCirclePower2:           circlePower2EffectSpec(),
+	effectSecra2:                 secra2EffectSpec(),
+	effectSprPlant2:              sprPlant2EffectSpec(),
+	effectSprPlant3:              sprPlant3EffectSpec(),
+	effectSprPlant4:              sprPlant4EffectSpec(),
+	effectSprPlant5:              sprPlant5EffectSpec(),
+	effectSprPlant6:              sprPlant6EffectSpec(),
+	effectSprPlant7:              sprPlant7EffectSpec(),
+	effectSprPlant8:              sprPlant8EffectSpec(),
+	effectHeartAsura:             heartAsuraEffectSpec(),
+	effectGlassWall4:             glassWall4EffectSpec(),
+	effectBash3D6:                bash3D6EffectSpec(),
+	effectElectric4:              electric4EffectSpec(),
+	effectTeiHit1T:               teiHit1TEffectSpec(),
+	effectPressure2:              pressure2EffectSpec(),
+	effectPrimeCharge2:           primeCharge2EffectSpec(),
+	effectPrimeCharge3:           primeCharge3EffectSpec(),
+	effectPrimeCharge4:           primeCharge4EffectSpec(),
+	effectFireWall2:              fireWall2EffectSpec(),
+	effectSprPlant10:             sprPlant10EffectSpec(),
+	effectShockwave2:             shockwave2EffectSpec(),
+	effectColdThrow2:             coldThrow2EffectSpec(),
+	effectDemonicFire4:           demonicFire4EffectSpec(),
+	effectPressure3:              pressure3EffectSpec(),
+	effectPoisonMist:             poisonMistEffectSpec(),
+	effectEraserCutter:           eraserCutterEffectSpec(),
+	effectLavaSlide:              lavaSlideEffectSpec(),
+	effectSonicClaw:              sonicClawEffectSpec(),
+	effectTinderBreaker:          tinderBreakerEffectSpec(),
+	effectMidnightFrenzy:         midnightFrenzyEffectSpec(),
+	effectVolcanicAsh:            volcanicAshEffectSpec(),
+	effectRWC2011:                rwc2011EffectSpec(),
+	effectRWC2011Two:             rwc2011TwoEffectSpec(),
+	effectRunMakeOK:              runMakeOKEffectSpec(),
+	effectRunMakeFailure:         runMakeFailureEffectSpec(),
+	effectMIResultMakeOK:         miResultMakeOKEffectSpec(),
+	effectMIResultMakeFail:       miResultMakeFailEffectSpec(),
+	effectAllRayProtect:          allRayProtectEffectSpec(),
+	effectVenomFog:               venomFogEffectSpec(),
+	effectDustStorm:              dustStormEffectSpec(),
+	effectDanceBladeAtk:          danceBladeAtkEffectSpec(),
+	effectInvincibleOff2:         invincibleOff2EffectSpec(),
+	effectDeathSummon:            deathSummonEffectSpec(),
+	effectGCDarkCrow:             gcDarkCrowEffectSpec(),
+	effectAllFullThrottle:        allFullThrottleEffectSpec(),
+	effectSRFlashCombo:           srFlashComboEffectSpec(),
+	effectRKLuxAnima:             rkLuxAnimaEffectSpec(),
+	effectSOElemShield:           soElemShieldEffectSpec(),
+	effectABOffertorium:          abOffertoriumEffectSpec(),
+	effectWLTelekinesis:          wlTelekinesisEffectSpec(),
+	effectGNIllusionDoping:       gnIllusionDopingEffectSpec(),
+	effectNCMagmaEruption:        ncMagmaEruptionEffectSpec(),
+	effectNPCChill:               npcChillEffectSpec(),
+	effectOffertoriumRing:        offertoriumRingEffectSpec(),
+	effectHammerOfGod:            hammerOfGodEffectSpec(),
+	effectAchComplete:            achCompleteEffectSpec(),
+	effectBodyColor:              bodyColorEffectSpec(),
+	effectBakuretsuHadou:         bakuretsuHadouEffectSpec(),
+	dropEffectPink:               pinkEffectSpec(),
+	dropEffectYellow:             yellowEffectSpec(),
+	dropEffectPurple:             purpleEffectSpec(),
+	effectDigitalSpace:           digitalSpaceEffectSpec(),
+	dropEffectBlue:               blueEffectSpec(),
+	dropEffectGreen:              greenEffectSpec(),
+	dropEffectRed:                redEffectSpec(),
+	effectNewSuccess:             newSuccessEffectSpec(),
+	effectNewFailure:             newFailureEffectSpec(),
+	effectNewIntro:               newIntroEffectSpec(),
+	effectEnchantYellow:          enchantYellowEffectSpec(),
+	effectEnchantSuccess:         enchantSuccessEffectSpec(),
+	effectEnchantFail:            enchantFailEffectSpec(),
+	effectEnchantBlue:            enchantBlueEffectSpec(),
+	effectEnchantUpSuccess:       enchantUpSuccessEffectSpec(),
+	effectEnchantUpFail:          enchantUpFailEffectSpec(),
+	effectEnchantGreen:           enchantGreenEffectSpec(),
+	effectEnchantResetOK:         enchantResetOKEffectSpec(),
+	effectEnchantResetFail:       enchantResetFailEffectSpec(),
+	effectFood:                   foodEffectSpec(),
+	effectFoodBlue:               foodBlueEffectSpec(),
+	effectBottomDissonance:       bottomDissonanceEffectSpec(),
+	effectBottomUglyDance:        bottomUglyDanceEffectSpec(),
+	effectChristmasCarol:         christmasCarolEffectSpec(),
 }

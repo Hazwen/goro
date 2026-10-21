@@ -62,3 +62,63 @@ func ninjaSpriteEffectSpec(id int) EffectSpec {
 	}
 	return spec
 }
+
+func throwItem7EffectSpec() EffectSpec {
+	return throwItemFlightEffectSpec("유저인터페이스/item/수리검.bmp")
+}
+
+func throwItem8EffectSpec() EffectSpec {
+	return throwItemFlightEffectSpec("유저인터페이스/item/쿠나이_독.bmp")
+}
+
+func throwItem9EffectSpec() EffectSpec {
+	return throwItemFlightEffectSpec("유저인터페이스/item/풍마_열화.bmp")
+}
+
+func throwItem10EffectSpec() EffectSpec {
+	return throwItemFlightEffectSpec("effect/coin_a.bmp")
+}
+
+func bottomSuitonEffectSpec() EffectSpec {
+	return propertyGroundEffectSpec("ring_blue")
+}
+
+func stin4EffectSpec() EffectSpec {
+	return ninjaWindEffectSpec(false)
+}
+
+func stin5EffectSpec() EffectSpec {
+	return ninjaWindEffectSpec(true)
+}
+
+func thunderStorm2EffectSpec() EffectSpec {
+	return ninjaSpriteEffectSpec(effectThunderStorm2)
+}
+
+func kirikageEffectSpec() EffectSpec {
+	return ninjaSpriteEffectSpec(effectKirikage)
+}
+
+func tatamiEffectSpec() EffectSpec {
+	return ninjaSpriteEffectSpec(effectTatami)
+}
+
+func kasumikiriEffectSpec() EffectSpec {
+	return ninjaSpriteEffectSpec(effectKasumikiri)
+}
+
+func issenEffectSpec() EffectSpec {
+	return ninjaSpriteEffectSpec(effectIssen)
+}
+
+func kaenEffectSpec() EffectSpec {
+	return ninjaSpriteEffectSpec(effectKaen)
+}
+
+func bakuEffectSpec() EffectSpec {
+	return strEffectSpec("fire dragon", "effect\\폭염룡.wav")
+}
+
+func hyousyourakuEffectSpec() EffectSpec {
+	return strEffectSpec("icy", "effect\\빙정락.wav")
+}

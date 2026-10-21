@@ -142,7 +142,7 @@ func TestEstunEmitsParticlesAndStops(t *testing.T) {
 	projection := newSceneProjectionForTarget(800, 600, 14.5, 20.5, 0)
 	for _, tc := range []struct{ frame, count int }{{-1, 0}, {0, 0}, {1, 4}, {10, 40}, {199, 196}, {230, 76}, {250, 0}} {
 		frame := render.NewFrame(800, 600)
-		m.drawSoulLinkerParticles(frame, ctx, projection, spec.components[0], effect, starts.Add(time.Duration(tc.frame)*db.EffectFrameDuration))
+		m.drawRisingBuffParticles(frame, ctx, projection, spec.components[0], effect, starts.Add(time.Duration(tc.frame)*db.EffectFrameDuration))
 		draws := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
 		if draws.Len() != tc.count {
 			t.Fatalf("tick %d: %d particles, want %d", tc.frame, draws.Len(), tc.count)
@@ -214,7 +214,7 @@ func TestEstunImpactStreaksHaveBoundedLifetime(t *testing.T) {
 	effect := worldEffect{effectID: effectHitLine4, actorID: 300, starts: starts}
 	for _, tick := range []int{5, 30, 80, 200} {
 		frame := render.NewFrame(800, 600)
-		m.drawSoulLinkerHitLines(frame, ctx, spec.components[0], effect, 18.5, 20.5, 0, starts.Add(time.Duration(tick)*db.EffectFrameDuration))
+		m.drawHitLineBurst(frame, ctx, spec.components[0], effect, 18.5, 20.5, 0, starts.Add(time.Duration(tick)*db.EffectFrameDuration))
 		commands := reflect.ValueOf(frame).Elem().FieldByName("worldCommands")
 		if (commands.Len() > 0) != (tick == 30) {
 			t.Fatalf("tick %d: impact draws=%d", tick, commands.Len())
@@ -426,7 +426,7 @@ func TestSoulLinkerParticleAndKaizelTiming(t *testing.T) {
 		spec, _ := worldEffectSpecForID(tc.id)
 		m.addWorldEffectAt(ctx, tc.id, 300, starts)
 		effect := m.worldEffects[len(m.worldEffects)-1]
-		m.drawSoulLinkerParticles(frame, ctx, projection, spec.components[0], effect, starts.Add(time.Duration(tc.tick)*db.EffectFrameDuration))
+		m.drawRisingBuffParticles(frame, ctx, projection, spec.components[0], effect, starts.Add(time.Duration(tc.tick)*db.EffectFrameDuration))
 		if n := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards").Len(); n != tc.count {
 			t.Fatalf("effect %d tick %d: got %d particles, want %d", tc.id, tc.tick, n, tc.count)
 		}

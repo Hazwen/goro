@@ -109,3 +109,27 @@ func epiclesisTreePulseComponent(sizeStart, sizeEnd float64, delay time.Duration
 		SizeEnd:        effectTableSize(sizeEnd),
 	}
 }
+
+func forestLight5EffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\ab_renovation.wav")
+}
+
+func adoramusEffectSpec() EffectSpec {
+	return strEffectSpecAttached("ado", "effect\\ab_adoramus.wav", false)
+}
+
+func laulamusEffectSpec() EffectSpec {
+	return strEffectSpecAttached("laulamus", "", false)
+}
+
+func lauagnusEffectSpec() EffectSpec {
+	return strEffectSpecAttached("lauagnus", "", false)
+}
+
+func abOffertoriumEffectSpec() EffectSpec {
+	return strEffectSpecAttached("ab_offertorium", "effect\\ab_offertorium.wav", false)
+}
+
+func offertoriumRingEffectSpec() EffectSpec {
+	return strEffectSpecAttached("ab_offertorium_ring", "", false)
+}

@@ -163,7 +163,7 @@ func quadHornAnimation(component worldEffectComponent, progress float64, compone
 }
 
 // Wizard ground spikes and Ninja Ice Spear share this native spike animation.
-func (m *WorldMode) drawWizardSpikes(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, origin modelPoint3, now time.Time) {
+func (m *WorldMode) drawGroundSpikes(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, origin modelPoint3, now time.Time) {
 	if now.Before(effect.starts) {
 		return
 	}
@@ -197,7 +197,7 @@ func (m *WorldMode) drawWizardSpikes(screen *render.Frame, ctx client.Context, c
 		pitch, yaw := float64(80+rand(0, 20)), float64(rand(1, 360))
 		size, height := float64(300+rand(2, 50))/100, 18.0
 		alpha := 250.0
-		travel := wizardEarthSpikeTravel(age, 12, 15)
+		travel := earthSpikeTravel(age, 12, 15)
 		position.y -= 2
 		switch effect.effectID {
 		case effectIceWall:
@@ -213,7 +213,7 @@ func (m *WorldMode) drawWizardSpikes(screen *render.Frame, ctx client.Context, c
 			height = float64(1+rand(3, 60))/10 + 9
 			position.x += float64(i%5 - 2)
 			position.z += float64(i/5 - 2)
-			travel = wizardEarthSpikeTravel(age, 11, 14)
+			travel = earthSpikeTravel(age, 11, 14)
 			n := float64(max(0, age-(life-30)))
 			travel -= n + .01*n*(n+1)/2
 			alpha = 254
@@ -251,7 +251,7 @@ func (m *WorldMode) drawWizardSpikes(screen *render.Frame, ctx client.Context, c
 	}
 }
 
-func wizardEarthSpikeTravel(age, reverse, stop int) float64 {
+func earthSpikeTravel(age, reverse, stop int) float64 {
 	n := float64(min(age+1, reverse))
 	return n + .01*n*(n+1)/2 - 1.2*float64(max(0, min(age, stop)-reverse+1))
 }

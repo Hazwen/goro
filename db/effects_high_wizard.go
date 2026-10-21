@@ -35,3 +35,11 @@ func magicCrasherEffectSpec() EffectSpec {
 	spec.SFXDelays = []time.Duration{25 * EffectFrameDuration}
 	return spec
 }
+
+func ganbanteinEffectSpec() EffectSpec {
+	return groundCastEffectSpec("ring_white", 300)
+}
+
+func magicPowerEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\마법력 증폭.wav")
+}

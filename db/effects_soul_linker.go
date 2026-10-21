@@ -29,16 +29,6 @@ func estunEffectSpec() EffectSpec {
 	}
 }
 
-func soulLinkerHitLinesEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 200 * EffectFrameDuration,
-		Components: []EffectComponent{{
-			Kind: EffectComponentFUNC, FuncName: "SoulLinkerHitLines",
-			TextureFile: "effect/white02.bmp", AttachedEntity: true,
-		}},
-	}
-}
-
 func esmaEffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 200 * EffectFrameDuration,
@@ -54,39 +44,8 @@ func esmaEffectSpec() EffectSpec {
 	}
 }
 
-// Kaahi and Kaizel share EF_HATED's particles and body glow. Keeping the
-// components together lets each skill play its own sound only once.
-func soulLinkerBuffEffectSpec(kaizel bool) EffectSpec {
-	spec := EffectSpec{
-		Duration: 200 * EffectFrameDuration,
-		Components: []EffectComponent{{
-			Kind: EffectComponentFUNC, FuncName: "SoulLinkerParticles",
-			TextureFiles: []string{"effect/pok1.tga", "effect/pok3.tga"},
-			Color:        color.RGBA{150, 150, 250, 255}, AttachedEntity: true,
-		}},
-	}
-	if kaizel {
-		spec.SFX = []string{"effect\\priest_resurrection.wav"}
-		spec.Components = append(spec.Components, EffectComponent{
-			Kind: EffectComponentFUNC, FuncName: "Kaizel",
-			TextureFile: "effect/magic_blue.tga", AttachedEntity: true,
-		})
-	}
-	return spec
-}
-
 func esmaReadyEffectSpec() EffectSpec {
-	spec := soulLinkerBuffEffectSpec(false)
-	spec.SFX = nil
-	return spec
-}
-
-func soulLinkerBodyEffectSpec(name, sound string, frames int) EffectSpec {
-	spec := funcEffectSpec(name, time.Duration(frames)*EffectFrameDuration, true)
-	if sound != "" {
-		spec.SFX = []string{sound}
-	}
-	return spec
+	return hatedEffectSpec()
 }
 
 func esmaHitTextureEffectSpec() EffectSpec {
@@ -116,4 +75,50 @@ func kaupeDodgeEffectSpec() EffectSpec {
 		SFX:      []string{"effect\\t_회피.wav"}, SFXDelays: []time.Duration{15 * EffectFrameDuration},
 		Components: []EffectComponent{{Kind: EffectComponentFUNC, FuncName: "KaupeDodge", TextureFile: "effect/whitelight.tga"}},
 	}
+}
+
+func reflectBodyEffectSpec() EffectSpec {
+	return bodyTransformEffectSpec("ReflectBody", "effect\\t_마법반사.wav", 200)
+}
+
+func fourWayBodyEffectSpec() EffectSpec {
+	return bodyTransformEffectSpec("FourWayBody", "", 100)
+}
+
+func asuraBodyEffectSpec() EffectSpec {
+	return bodyTransformEffectSpec("AsuraBody", "", 500)
+}
+
+func asuraBodyMonsterEffectSpec() EffectSpec {
+	return bodyTransformEffectSpec("AsuraBodyMonster", "effect\\t_공격력.wav", 150)
+}
+
+func babyBodyEffectSpec() EffectSpec {
+	return bodySizeEffectSpec("EffectSmallTransition", 300*time.Millisecond, 2.5)
+}
+
+func blueBodyEffectSpec() EffectSpec {
+	return bodyTransformEffectSpec("BlueBody", "effect\\t_치잉.wav", 200)
+}
+
+func blueHitEffectSpec() EffectSpec {
+	return funcEffectSpec("BlueHit", 60*EffectFrameDuration, true)
+}
+
+func quakeBody3EffectSpec() EffectSpec {
+	return funcEffectSpec("QuakeBody3", 60*EffectFrameDuration, true)
+}
+
+func m07EffectSpec() EffectSpec {
+	return sprEffectSpec("m_ef07", "", true, false)
+}
+
+func kaizelEffectSpec() EffectSpec {
+	spec := hatedEffectSpec()
+	spec.SFX = []string{"effect\\priest_resurrection.wav"}
+	spec.Components = append(spec.Components, EffectComponent{
+		Kind: EffectComponentFUNC, FuncName: "Kaizel",
+		TextureFile: "effect/magic_blue.tga", AttachedEntity: true,
+	})
+	return spec
 }

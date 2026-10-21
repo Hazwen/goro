@@ -23,3 +23,7 @@ func cartRevolutionEffectSpec() EffectSpec {
 	})
 	return spec
 }
+
+func loudEffectSpec() EffectSpec {
+	return strEffectSpecAttached("loud", "effect\\고성방가.wav", false)
+}

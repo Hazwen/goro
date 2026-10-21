@@ -80,7 +80,7 @@ func (m *WorldMode) drawSoulChangeLink(screen *render.Frame, ctx client.Context,
 	}
 	var vertices []render.Vertex3D
 	var indices []uint16
-	appendMonkTrail(&vertices, &indices, texture, from, to, .2/5, 10, color.RGBA{0, 100, 150, uint8(alpha)})
-	appendMonkTrail(&vertices, &indices, texture, from, to, .4/5, 10, color.RGBA{255, 50, 0, uint8(alpha * 2)})
+	appendEffectTube(&vertices, &indices, texture, from, to, .2/5, 10, color.RGBA{0, 100, 150, uint8(alpha)})
+	appendEffectTube(&vertices, &indices, texture, from, to, .4/5, 10, color.RGBA{255, 50, 0, uint8(alpha * 2)})
 	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
 }

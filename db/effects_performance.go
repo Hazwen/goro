@@ -1,59 +1,5 @@
 package db
 
-import (
-	"image/color"
-	"time"
-)
-
-// Musical ground effects are shared by the Bard and Dancer job families.
-func melodyBillboardEffectSpec(texture, wav string, tint color.RGBA) EffectSpec {
-	return EffectSpec{
-		Duration: 100 * time.Millisecond,
-		SFX:      []string{wav},
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			TextureFile:    texture,
-			Color:          tint,
-			Duration:       100 * time.Millisecond,
-			AlphaMax:       0.6,
-			AttachedEntity: true,
-			SizeStart:      effectTableSize(50),
-			SizeEnd:        effectTableSize(50),
-			PosZ:           0.5,
-			Repeat:         true,
-		}},
-	}
-}
-
-func secra2EffectSpec() EffectSpec {
-	components := make([]EffectComponent, 0, 10)
-	for i := 0; i < 10; i++ {
-		sizeStart := 850 - float64(i)*50
-		tint := effectTableColor(1, 0.55+float64(i)*0.05, 0.55+float64(i)*0.05)
-		components = append(components, EffectComponent{
-			Kind:           EffectComponent3D,
-			TextureFile:    "effect/priest_spell.bmp",
-			Color:          tint,
-			Duration:       1500 * time.Millisecond,
-			AlphaMax:       0.3,
-			BlendMode:      2,
-			BlendAdditive:  true,
-			FadeIn:         true,
-			FadeOut:        true,
-			AttachedEntity: true,
-			PosZ:           7,
-			SizeStart:      effectTableSize(sizeStart),
-			SizeEnd:        effectTableSize(100),
-			SizeSmooth:     true,
-		})
-	}
-	return EffectSpec{
-		Duration:   1500 * time.Millisecond,
-		SFX:        []string{"effect\\ab_ancilla.wav"},
-		Components: components,
-	}
-}
-
 func songMusicEffectSpec(texture string, variant int) EffectSpec {
 	spec := funcEffectSpec("SongMusic", 29999*EffectFrameDuration, false)
 	c := &spec.Components[0]
@@ -87,4 +33,32 @@ func songOutEffectSpec() EffectSpec {
 	spec := funcEffectSpec("SongOut", 29999*EffectFrameDuration, false)
 	spec.Components[0].TextureFile = "effect/safeline.bmp"
 	return spec
+}
+
+func bottomLullabyEffectSpec() EffectSpec {
+	return songMusicEffectSpec("effect/zz.bmp", 1)
+}
+
+func bottomRichKimEffectSpec() EffectSpec {
+	return songMusicEffectSpec("effect/pocket.bmp", 3)
+}
+
+func bottomChaosEffectSpec() EffectSpec {
+	return songLightEffectSpec(8)
+}
+
+func bottomDrumEffectSpec() EffectSpec {
+	return songMusicEffectSpec("", 2)
+}
+
+func bottomNibelungEffectSpec() EffectSpec {
+	return songMusicEffectSpec("effect/twirl.bmp", 7)
+}
+
+func bottomAbyssEffectSpec() EffectSpec {
+	return songMusicEffectSpec("", 5)
+}
+
+func bottomSiegEffectSpec() EffectSpec {
+	return songLightEffectSpec(4)
 }

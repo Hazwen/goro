@@ -97,7 +97,7 @@ func (m *WorldMode) drawSniperEffect(screen *render.Frame, ctx client.Context, c
 			for i := 0; i < 16; i++ {
 				from, to, alpha := sharpShootingLine(effect, i, frame)
 				if alpha > 0 {
-					appendMonkTrail(&vertices, &indices, texture, from, to, .01+.05*float64(layer), 5, color.RGBA{255, 255, 255, uint8(alpha)})
+					appendEffectTube(&vertices, &indices, texture, from, to, .01+.05*float64(layer), 5, color.RGBA{255, 255, 255, uint8(alpha)})
 				}
 			}
 			if len(indices) > 0 {

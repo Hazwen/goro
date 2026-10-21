@@ -38,3 +38,51 @@ func rollingCutterCounterComponent(texture string, alphaMax, red, green, blue, s
 		AttachedEntity: true,
 	}
 }
+
+func rolling1EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(1)
+}
+
+func rolling2EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(2)
+}
+
+func rolling3EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(3)
+}
+
+func rolling4EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(4)
+}
+
+func rolling5EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(5)
+}
+
+func rolling6EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(6)
+}
+
+func rolling7EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(7)
+}
+
+func rolling8EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(8)
+}
+
+func rolling9EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(9)
+}
+
+func rolling10EffectSpec() EffectSpec {
+	return rollingCutterCounterEffectSpec(10)
+}
+
+func castSpin2EffectSpec() EffectSpec {
+	return funcEffectSpec("CastSpin2", 500*time.Millisecond, true)
+}
+
+func gcDarkCrowEffectSpec() EffectSpec {
+	return strEffectSpecAttached("gc_darkcrow", "", false)
+}

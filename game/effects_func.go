@@ -137,7 +137,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncGravitation:
 		m.drawGravitation(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncWizardSpikes:
-		m.drawWizardSpikes(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
+		m.drawGroundSpikes(screen, ctx, component, effect, modelPoint3{x: worldX, y: worldZ, z: worldY}, now)
 	case effectFuncWaterBall:
 		m.drawWizardWaterBall(screen, ctx, projection, component, effect, now)
 	case effectFuncJupitel:
@@ -159,7 +159,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncRevive:
 		m.drawReviveEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncPriestGround:
-		m.drawPriestGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+		m.drawGroundWallsEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncMonkRays:
 		m.drawMonkRays(screen, ctx, component, effect, now)
 	case effectFuncSongMusic:
@@ -183,7 +183,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncSniper:
 		m.drawSniperEffect(screen, ctx, component, effect, now)
 	case effectFuncAsuraGlyphs:
-		m.drawAsuraGlyphs(screen, ctx, projection, component, effect, now)
+		m.drawEffectGlyphs(screen, ctx, projection, component, effect, now)
 	case effectFuncStarRings:
 		m.drawStarRings(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncStarBlind:
@@ -193,7 +193,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncTaekwonStop:
 		m.drawTaekwonStop(screen, ctx, component, effect, now)
 	case effectFuncTaekwonDash:
-		m.drawTaekwonDash(screen, ctx, component, effect, now)
+		m.drawChemicalDash(screen, ctx, component, effect, now)
 	case effectFuncTaekwonFoot:
 		m.drawTaekwonFoot(screen, ctx, component, effect, now)
 	case effectFuncTaekwonJump:
@@ -209,7 +209,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncSpiralPierce:
 		m.drawSpiralPierceEffect(screen, ctx, component, effect, now)
 	case effectFuncFullStrip:
-		m.drawFullStrip(screen, ctx, projection, component, effect, now)
+		m.drawEquipmentBurst(screen, ctx, projection, component, effect, now)
 	case effectFuncGuard:
 		m.drawGuardEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncGospelCross:
@@ -221,7 +221,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncPressure:
 		m.drawPressureEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncSacrifice:
-		m.drawSacrificeEffect(screen, ctx, projection, component, effect, now)
+		m.drawBashRays(screen, ctx, projection, component, effect, now)
 	case effectFuncGrandCross:
 		m.drawGrandCrossEffect(screen, ctx, projection, component, effect, now)
 	case effectFuncCrusaderDefense:
@@ -286,9 +286,9 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncPropertyGround:
 		m.drawPropertyGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncSageGroundCast:
-		m.drawSageGroundCastEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+		m.drawGroundCastEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncLandProtectorGround:
-		m.drawLandProtectorGroundEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+		m.drawGroundSigilEffect(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncSpiritSphere:
 		m.drawSpiritSphereEffect(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncGumgang:
@@ -314,7 +314,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncEstin:
 		m.drawEstinEffect(screen, ctx, component, effect, now)
 	case effectFuncSoulLinkerParticles:
-		m.drawSoulLinkerParticles(screen, ctx, projection, component, effect, now)
+		m.drawRisingBuffParticles(screen, ctx, projection, component, effect, now)
 	case effectFuncNinjaWind:
 		m.drawNinjaWind(screen, ctx, component, effect, now)
 	case effectFuncNinjaPetals:
@@ -328,7 +328,7 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 	case effectFuncEsmaHitTexture:
 		m.drawEsmaHitTexture(screen, ctx, projection, component, effect, worldX, worldY, worldZ, now)
 	case effectFuncSoulLinkerHitLines:
-		m.drawSoulLinkerHitLines(screen, ctx, component, effect, worldX, worldY, worldZ, now)
+		m.drawHitLineBurst(screen, ctx, component, effect, worldX, worldY, worldZ, now)
 	default:
 	}
 }

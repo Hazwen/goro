@@ -1,8 +1,6 @@
 package db
 
-import (
-	"time"
-)
+import "time"
 
 func iceWallEffectSpec() EffectSpec {
 	spec := funcEffectSpec("WizardSpikes", 9999*EffectFrameDuration, false)
@@ -122,4 +120,37 @@ func waterBallEffectSpec() EffectSpec {
 			AttachedEntity:   true,
 		}},
 	}
+}
+
+func lordVermilionEffectSpec() EffectSpec {
+	return strEffectSpecAttached("lord", "effect\\wizard_fire_ivy.wav", false)
+}
+
+func meteorStormEffectSpec() EffectSpec {
+	return EffectSpec{
+		CameraShake:      650 * time.Millisecond,
+		CameraShakeDelay: 40 * EffectFrameDuration,
+		SFX:              []string{"effect\\wizard_meteor.wav"},
+		SFXRandMin:       1,
+		SFXRandMax:       4,
+		Components: []EffectComponent{{
+			Kind:           EffectComponentSTR,
+			STRFile:        "meteor%d",
+			STRRandMin:     1,
+			STRRandMax:     4,
+			AttachedEntity: true,
+		}},
+	}
+}
+
+func quagmireEffectSpec() EffectSpec {
+	return strEffectSpec("quagmire", "effect\\wizard_quagmire.wav")
+}
+
+func firePillarBombEffectSpec() EffectSpec {
+	return strEffectSpec("firepillarbomb", "effect\\wizard_fire_pillar_b.wav")
+}
+
+func stormMinEffectSpec() EffectSpec {
+	return strEffectSpecAttached("storm_min", "effect\\wizard_stormgust.wav", false)
 }

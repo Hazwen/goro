@@ -56,3 +56,43 @@ func basilicaCylinderComponent(size, height, alpha, angleY float64) EffectCompon
 	component.AngleY = angleY
 	return component
 }
+
+func frostMistyEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\t_에나지방출.wav")
+}
+
+func crimsonRockEffectSpec() EffectSpec {
+	return strEffectSpecAttached("crimson_r", "effect\\crimson_r.wav", false)
+}
+
+func hellInfernoEffectSpec() EffectSpec {
+	return strEffectSpecAttached("hell_in", "", false)
+}
+
+func marshOfAbyssEffectSpec() EffectSpec {
+	return sprEffectSpec("mashofa", "", false, false)
+}
+
+func chainLightningEffectSpec() EffectSpec {
+	return strEffectSpecAttached("chainlight", "effect\\chainlight.wav", false)
+}
+
+func stasisEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\wl_stasis.wav")
+}
+
+func recognizedEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\wl_recognizedspell.wav")
+}
+
+func tetraEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\wl_tetravortex.wav")
+}
+
+func tetraCastingEffectSpec() EffectSpec {
+	return funcEffectSpec("TetraCasting", 500*time.Millisecond, true)
+}
+
+func wlTelekinesisEffectSpec() EffectSpec {
+	return strEffectSpecAttached("wl_telekinesis_intense", "effect\\wl_telekinesis_intense.wav", false)
+}

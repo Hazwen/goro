@@ -202,3 +202,141 @@ func darkJupitelHitEffectSpec() EffectSpec {
 		},
 	}
 }
+
+func summonSlaveEffectSpec() EffectSpec {
+	return EffectSpec{
+		Components: []EffectComponent{{
+			Kind:           EffectComponentSPR,
+			SpriteFile:     "smoke",
+			AttachedEntity: true,
+		}},
+	}
+}
+
+func gasPushEffectSpec() EffectSpec {
+	return strEffectSpec("gaspush", "")
+}
+
+func mentalBreakEffectSpec() EffectSpec {
+	return strEffectSpecAttached("mentalbreak", "", false)
+}
+
+func suicideEffectSpec() EffectSpec {
+	return strEffectSpecAttached("suicide", "", false)
+}
+
+func comboAttack1EffectSpec() EffectSpec {
+	return strEffectSpecAttached("yunta_1", "", false)
+}
+
+func comboAttack2EffectSpec() EffectSpec {
+	return strEffectSpecAttached("yunta_2", "", false)
+}
+
+func comboAttack3EffectSpec() EffectSpec {
+	return strEffectSpecAttached("yunta_3", "", false)
+}
+
+func comboAttack4EffectSpec() EffectSpec {
+	return strEffectSpecAttached("yunta_4", "", false)
+}
+
+func comboAttack5EffectSpec() EffectSpec {
+	return strEffectSpecAttached("yunta_5", "", false)
+}
+
+func guidedAttackEffectSpec() EffectSpec {
+	return strEffectSpecAttached("homing", "", false)
+}
+
+func poisonAttack2EffectSpec() EffectSpec {
+	return strEffectSpecAttached("poison", "", false)
+}
+
+func silenceAttackEffectSpec() EffectSpec {
+	return strEffectSpecAttached("silence", "", false)
+}
+
+func stunAttackEffectSpec() EffectSpec {
+	return strEffectSpecAttached("stun", "", false)
+}
+
+func petrifyAttackEffectSpec() EffectSpec {
+	return strEffectSpecAttached("stonecurse", "", false)
+}
+
+func sleepAttackEffectSpec() EffectSpec {
+	return strEffectSpecAttached("sleep", "", false)
+}
+
+func darkBreathEffectSpec() EffectSpec {
+	return EffectSpec{Components: []EffectComponent{{Kind: EffectComponentSPR, SpriteFile: "darkbreath", SpriteHead: true, AttachedEntity: true}}}
+}
+
+func defenderEffectSpec() EffectSpec {
+	return strEffectSpecAttached("deffender", "", false)
+}
+
+func keepingEffectSpec() EffectSpec {
+	return strEffectSpecAttached("keeping", "", false)
+}
+
+func bloodDrainEffectSpec() EffectSpec {
+	return drainEffectSpec(color.RGBA{R: 255, G: 102, B: 102, A: 255}, false)
+}
+
+func energyDrainEffectSpec() EffectSpec {
+	return drainEffectSpec(color.RGBA{R: 102, G: 102, B: 255, A: 255}, true)
+}
+
+func darkGrandCrossEffectSpec() EffectSpec {
+	return EffectSpec{}
+}
+
+func npcStopEffectSpec() EffectSpec {
+	return sprEffectSpec("스톱", "", true, false)
+}
+
+func wideBleedingEffectSpec() EffectSpec {
+	return strEffectSpecAttached("wideb", "effect\\wideb.wav", false)
+}
+
+func wideConfuseEffectSpec() EffectSpec {
+	return strEffectSpecAttached("dfear", "effect\\dragonfear.wav", false)
+}
+
+func bottomRunnerEffectSpec() EffectSpec {
+	return groundTextureEffectSpec("effect/hanmoon1.tga")
+}
+
+func bottomTransferEffectSpec() EffectSpec {
+	return groundTextureEffectSpec("effect/hanmoon2.tga")
+}
+
+func guard3EffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\kyrie_guard.wav")
+}
+
+func criticalWoundEffectSpec() EffectSpec {
+	return strEffectSpecAttached("cwound", "", false)
+}
+
+func venomFogEffectSpec() EffectSpec {
+	return strEffectSpecRandomAttached("bubble%d_1", "", 1, 4, true, false)
+}
+
+func dustStormEffectSpec() EffectSpec {
+	return strEffectSpecAttached("dust", "", false)
+}
+
+func danceBladeAtkEffectSpec() EffectSpec {
+	return strEffectSpecAttached("dancingblade", "", false)
+}
+
+func deathSummonEffectSpec() EffectSpec {
+	return strEffectSpecAttached("devil", "", false)
+}
+
+func npcChillEffectSpec() EffectSpec {
+	return strEffectSpecAttached("chill", "", false)
+}

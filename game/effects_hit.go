@@ -195,7 +195,7 @@ func (m *WorldMode) drawImpactParticles(screen *render.Frame, ctx client.Context
 }
 
 // BASH3D variants share this ray renderer across Paladin, Lord Knight, Champion, Ninja, and Gunslinger.
-func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context, _ sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+func (m *WorldMode) drawBashRays(screen *render.Frame, ctx client.Context, _ sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
 	process := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1 - 24
 	alpha := min(process, 10)*20 - max(0, process-12)*15
 	if effect.effectID == effectBash3D2 || effect.effectID == effectKouenka {
@@ -254,6 +254,78 @@ func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context
 				// Head Crush and Joint Beat use alpha blending for the wider ray.
 				screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(layer == 0, false))
 				vertices, indices = nil, nil
+			}
+		}
+	}
+	if len(indices) > 0 {
+		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
+	}
+}
+
+func (m *WorldMode) drawHitLineBurst(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
+	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
+	if now.Before(effect.starts) || frame >= 200 {
+		return
+	}
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	var vertices []render.Vertex3D
+	var indices []uint16
+	// HitLine4(3) for Estun; HitLine3(3) for Esma.
+	count, start, randomDelay, fixedDelay, baseRadius, heightBase := 16, 6, 31, 0, .05/5, .8
+	if effect.effectID == effectHitLine6 {
+		count, start, randomDelay, fixedDelay, baseRadius, heightBase = 20, 0, 41, 30, .07/5, .6
+	}
+	if effect.effectID == effectHitLine5 {
+		count, start, randomDelay, fixedDelay, baseRadius = 12, 0, 21, 25, .06/5
+	}
+	for i := 0; i < count; i++ {
+		salt := i * 5
+		age := frame - (start + i/4) - fixedDelay - hitEffectRandom(effect, salt, randomDelay) + 1
+		if age <= 0 || age >= 34 {
+			continue
+		}
+		angle := deterministicAngle(effect, salt+1)
+		if effect.effectID == effectHitLine5 {
+			angle = math.Atan2(effect.projectileDirection.z, effect.projectileDirection.x) + degreesToRadians(float64(hitEffectRandom(effect, salt+1, 121)-60))
+		}
+		sin, cos := math.Sincos(angle)
+		distance := float64(6+hitEffectRandom(effect, salt+2, 6)) / 5
+		if effect.effectID == effectHitLine5 {
+			distance = float64(6+hitEffectRandom(effect, salt+2, 7)) / 5
+		}
+		height := heightBase + .1*float64(hitEffectRandom(effect, salt+3, 7))
+		alpha := float64(125 + hitEffectRandom(effect, salt+4, 121))
+		point := func(tick int) modelPoint3 {
+			phase := float64(clampInt(tick, 0, 30) * 6)
+			travel := phase / 90 * distance
+			return modelPoint3{x: x + cos*travel, y: z + 1 + distance*math.Sin(degreesToRadians(phase))*height, z: y + sin*travel}
+		}
+		for trail := 0; trail < 4; trail++ {
+			// PrimHitLine3 updates history after advancing its head, so the
+			// first history slot has the same position as the head.
+			a, b := point(age-max(0, trail-1)), point(age-trail)
+			if a == b {
+				continue
+			}
+			for layer := 0; layer < 2; layer++ {
+				radius := baseRadius
+				brightness := uint8(255 - (5-trail)*30)
+				tint := color.RGBA{brightness, brightness, brightness, uint8(alpha - float64(trail*10))}
+				if layer == 1 {
+					radius *= 4
+					tint = color.RGBA{0, 0, 255, tint.A / 2}
+				}
+				offset := func(side int) modelPoint3 {
+					s, c := math.Sincos(degreesToRadians(float64(side * 120)))
+					return modelPoint3{x: -sin * radius * c, y: -radius * s, z: cos * radius * c}
+				}
+				for side := 0; side < 3; side++ {
+					p, q := offset(side), offset(side+1)
+					appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{add3(a, q), add3(b, q), add3(b, p), add3(a, p)}, tint)
+				}
 			}
 		}
 	}

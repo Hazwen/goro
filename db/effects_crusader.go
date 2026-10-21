@@ -1,10 +1,6 @@
 package db
 
-import (
-	"time"
-)
-
-const effectShrink = 599
+import "time"
 
 func shieldBoomerangEffectSpec() EffectSpec {
 	return EffectSpec{
@@ -77,4 +73,24 @@ func guardEffectSpec() EffectSpec {
 			TextureFile: "effect/guardk.tga", TextureFiles: []string{"effect/guardk2.tga"},
 		}},
 	}
+}
+
+func crusaderDefEffectSpec() EffectSpec {
+	return crusaderDefenseEffectSpec("ring_black")
+}
+
+func holyCrossEffectSpec() EffectSpec {
+	return strEffectSpecAttached("holy_cross", "effect\\cru_holy cross.wav", false)
+}
+
+func shieldChargeEffectSpec() EffectSpec {
+	return strEffectSpecAttached("shield_charge", "", false)
+}
+
+func spearQuickenEffectSpec() EffectSpec {
+	return strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", false)
+}
+
+func reflectShieldEffectSpec() EffectSpec {
+	return crusaderDefenseEffectSpec("ring_yellow")
 }

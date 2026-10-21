@@ -30,7 +30,7 @@ func appendBasilicaWalls(vertices *[]render.Vertex3D, indices *[]uint16, texture
 				angle = max(0, min(90, 2505-layer*30-tick))
 			}
 			height := maxHeight * math.Sin(degreesToRadians(float64(angle)))
-			appendPriestSquareBand(vertices, indices, texture, center, half/5, height/5, start/5, length/5, tint)
+			appendSquareEffectBand(vertices, indices, texture, center, half/5, height/5, start/5, length/5, tint)
 		}
 	}
 }

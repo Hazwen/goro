@@ -242,7 +242,7 @@ func (m *WorldMode) drawShieldBoomerangEffect(screen *render.Frame, ctx client.C
 	}
 }
 
-func (m *WorldMode) drawTaekwonDash(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, now time.Time) {
+func (m *WorldMode) drawChemicalDash(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, now time.Time) {
 	age := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
 	alpha := 12*min(age, 10) - 4*max(0, age-20)
 	piercing := effect.effectID == effectChemical4
@@ -290,4 +290,41 @@ func (m *WorldMode) drawTaekwonDash(screen *render.Frame, ctx client.Context, co
 		}, tint)
 	}
 	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(false, false))
+}
+
+func appendEffectTube(vertices *[]render.Vertex3D, indices *[]uint16, texture *render.Image, from, to modelPoint3, radius float64, sides int, tint color.RGBA) {
+	delta := sub3(to, from)
+	if delta.x == 0 && delta.z == 0 {
+		return
+	}
+	direction := math.Atan2(delta.z, delta.x) + math.Pi/2
+	var previous modelPoint3
+	for i := 0; i <= sides; i++ {
+		s, c := math.Sincos(float64(i) * 2 * math.Pi / float64(sides))
+		offset := modelPoint3{x: radius * c * math.Cos(direction), z: radius * c * math.Sin(direction), y: -radius * s}
+		if i > 0 {
+			appendEffectQuad(vertices, indices, texture, [4]modelPoint3{
+				add3(to, previous), add3(to, offset), add3(from, offset), add3(from, previous),
+			}, tint)
+		}
+		previous = offset
+	}
+}
+
+func splineProjectilePosition(effect worldEffect, tick int, roll float64) modelPoint3 {
+	if tick == 0 {
+		return effect.actorOrigin
+	}
+	n := float64(tick)
+	direction := normalize3(effect.projectileDirection)
+	// Prim3DParticleSpline first retreats, then accelerates forward. Its
+	// transverse arc is rotated around the flight axis for each soul.
+	forward := sub3(mul3(effect.projectileDirection, n/40), mul3(direction, (3.5*n-.175*n*(n+1)/2)/5))
+	arc := (2*n - .1*n*(n-1)/2) / 5
+	s, c := math.Sincos(degreesToRadians(roll))
+	p := add3(effect.actorOrigin, forward)
+	p.y += 2 + arc*c
+	p.x -= direction.z * arc * s
+	p.z += direction.x * arc * s
+	return p
 }

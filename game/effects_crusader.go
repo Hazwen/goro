@@ -11,8 +11,6 @@ import (
 	"github.com/kivutar/goro/render"
 )
 
-const effectShrink = 599
-
 // The native ring primitives have a height at each of their 21 vertices.
 func (m *WorldMode) drawCrusaderDefenseEffect(screen *render.Frame, ctx client.Context, _ sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
 	n := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1

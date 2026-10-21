@@ -11,8 +11,6 @@ import (
 	"github.com/kivutar/goro/world"
 )
 
-const effectPierceBody = 502
-
 func (m *WorldMode) lordKnightSeparateEquipment(ctx client.Context, actor world.Actor, now time.Time) bool {
 	if actor.Opt3State&db.Opt3Aurablade != 0 {
 		return true

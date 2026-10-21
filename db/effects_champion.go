@@ -31,3 +31,7 @@ func portal5EffectSpec() EffectSpec {
 	spec.SFX = nil
 	return spec
 }
+
+func beginAsura11EffectSpec() EffectSpec {
+	return beginAsuraEffectSpec(true)
+}

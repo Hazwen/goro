@@ -27,3 +27,15 @@ func acidDemonEffectSpec() EffectSpec {
 	spec.CameraShakeDelay = 5 * EffectFrameDuration
 	return spec
 }
+
+func slimEffectSpec() EffectSpec {
+	return slimPitcherEffectSpec("레드슬림포션")
+}
+
+func slim2EffectSpec() EffectSpec {
+	return slimPitcherEffectSpec("옐로우슬림포션")
+}
+
+func slim3EffectSpec() EffectSpec {
+	return slimPitcherEffectSpec("화이트슬림포션")
+}

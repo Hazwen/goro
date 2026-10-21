@@ -1,8 +1,6 @@
 package db
 
-import (
-	"time"
-)
+import "time"
 
 func poisonParticlesEffectSpec(enchant bool) EffectSpec {
 	spec := funcEffectSpec("RisingParticles", 10*EffectFrameDuration, false)
@@ -50,4 +48,44 @@ func grimtoothEffectSpec(impact bool) EffectSpec {
 	}
 	spec.Components[0].TextureFile = "effect/stone.bmp"
 	return spec
+}
+
+func cloakingEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\assasin_cloaking.wav")
+}
+
+func grimtoothGroundEffectSpec() EffectSpec {
+	return grimtoothEffectSpec(false)
+}
+
+func enchantPoisonEffectSpec() EffectSpec {
+	return poisonParticlesEffectSpec(true)
+}
+
+func venomDustEffectSpec() EffectSpec {
+	return strEffectSpec("venomdust", "effect\\assasin_poisonreact.wav")
+}
+
+func poisonReactEffectSpec() EffectSpec {
+	return strEffectSpecAttached("poisonreact_1st", "", false)
+}
+
+func poisonReact2EffectSpec() EffectSpec {
+	return strEffectSpecAttached("poisonreact", "effect\\assasin_poisonreact.wav", false)
+}
+
+func grimtoothAtkEffectSpec() EffectSpec {
+	return grimtoothEffectSpec(true)
+}
+
+func sonicBlow2EffectSpec() EffectSpec {
+	return strEffectSpecAttached("sonicblow", "", false)
+}
+
+func venomDust2EffectSpec() EffectSpec {
+	return poisonParticlesEffectSpec(false)
+}
+
+func throwItem6EffectSpec() EffectSpec {
+	return throwItemFlightEffectSpec("유저인터페이스/item/베넘나이프.bmp")
 }

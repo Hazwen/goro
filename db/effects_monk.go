@@ -162,3 +162,62 @@ func steelBodyEffectSpec() EffectSpec {
 	spec.SFX = []string{"effect\\mon_금강불괴.wav"}
 	return spec
 }
+
+func steelBodyRingEffectSpec() EffectSpec {
+	return gumgangRingEffectSpec(1500*time.Millisecond, 0.5, 2, 5, "")
+}
+
+func gumgang2EffectSpec() EffectSpec {
+	return gumgangRingEffectSpec(1500*time.Millisecond, 0.5, 2, 5, "")
+}
+
+func teiHit1EffectSpec() EffectSpec {
+	return teiHitEffectSpec(false)
+}
+
+func gumgang3EffectSpec() EffectSpec {
+	return groundCastEffectSpec("ring_yellow", 300)
+}
+
+func teiHit1XEffectSpec() EffectSpec {
+	return teiHitEffectSpec(true)
+}
+
+func chainComboEffectSpec() EffectSpec {
+	return strEffectSpecAttached("연환", "effect\\mon_연환.wav", false)
+}
+
+func beginAsuraCastEffectSpec() EffectSpec {
+	return beginAsuraEffectSpec(false)
+}
+
+func teiHit1TEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 350 * time.Millisecond,
+		SFX:      []string{"effect\\mon_아수라 패황권.wav"},
+		Components: []EffectComponent{{
+			Kind:             EffectComponent3D,
+			TextureFile:      "effect/lens1.tga",
+			Color:            effectTableColor(0.1, 0.1, 1),
+			Duration:         250 * time.Millisecond,
+			Delay:            100 * time.Millisecond,
+			Duplicate:        24,
+			DuplicateDelay:   0,
+			AlphaMax:         0.8,
+			BlendMode:        2,
+			BlendAdditive:    true,
+			FadeIn:           true,
+			FadeOut:          true,
+			AttachedEntity:   true,
+			PosXEndRand:      40,
+			PosYEndRand:      40,
+			SizeStartX:       effectTableSize(10),
+			SizeStartY:       effectTableSize(150),
+			SizeEndX:         effectTableSize(10),
+			SizeEndY:         effectTableSize(150),
+			Overlay:          true,
+			RotateToTarget:   true,
+			RotateWithCamera: true,
+		}},
+	}
+}

@@ -10,11 +10,6 @@ import (
 	"github.com/kivutar/goro/render"
 )
 
-type soulLinkerParticles struct {
-	origins [21]modelPoint3
-	count   int
-}
-
 func initSoulLinkerProjectile(ctx client.Context, effect *worldEffect) {
 	destination := effectWorldAnchor(ctx, *effect, effect.starts)
 	origin := destination
@@ -82,139 +77,6 @@ func (m *WorldMode) drawEstinEffect(screen *render.Frame, ctx client.Context, co
 			corners[i] = add3(center, modelPoint3{x: 4 * math.Cos(angle), z: 4 * math.Sin(angle)})
 		}
 		appendEffectQuad(&vertices, &indices, texture, corners, effectComponentTint(component, alpha))
-	}
-	if len(indices) > 0 {
-		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
-	}
-}
-
-func (m *WorldMode) drawSoulLinkerParticles(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
-	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
-	if now.Before(effect.starts) || len(component.textureFiles) != 2 {
-		return
-	}
-	textures := [2]*render.Image{
-		m.effectFileTexture(ctx.Resources, component.textureFiles[0]),
-		m.effectFileTexture(ctx.Resources, component.textureFiles[1]),
-	}
-	start, end, step, life := 0, 80, 4, 55
-	jitter, radius, radiusStep := 11, 2.0, .1
-	if effect.effectID == effectSmaReady {
-		start, end = 40, 120
-	} else if effect.effectID == effectStin3 {
-		end, step, life = 199, 1, 50
-		jitter, radius, radiusStep = 9, 1.2, .08
-	}
-	if effect.effectID != effectStin3 {
-		if effect.buffParticles == nil {
-			return
-		}
-		// Keep each emission's position when the actor replaces its movement path.
-		p := effect.buffParticles
-		for p.count < len(p.origins) && start+p.count*step <= min(frame, end) {
-			at := effect.starts.Add(time.Duration(start+p.count*step) * db.EffectFrameDuration)
-			p.origins[p.count] = effectWorldAnchor(ctx, effect, at)
-			p.count++
-		}
-	}
-	// ParticleTime and SMA both emit four independently rising particles.
-	first := max(start, (frame-life+step)/step*step)
-	for emitted := first; emitted <= min(frame, end); emitted += step {
-		age := frame - emitted + 1
-		alpha := float64(max(15*(min(age, 10)-1)-3*max(age-10, 0), 0)) / 255
-		if alpha <= 0 {
-			continue
-		}
-		var center modelPoint3
-		if effect.effectID == effectStin3 {
-			center = add3(effect.actorOrigin, mul3(effect.projectileDirection, .8*float64(max(emitted-2, 0))/5))
-		} else {
-			center = effect.buffParticles.origins[(emitted-start)/step]
-		}
-		for i := 0; i < 4; i++ {
-			salt := (emitted*4 + i) * 5
-			position := add3(center, modelPoint3{
-				x: float64(hitEffectRandom(effect, salt+2, jitter)-jitter/2) / 5,
-				z: float64(hitEffectRandom(effect, salt+3, jitter)-jitter/2) / 5,
-				y: (6 + float64(age)*(.1+.01*float64(hitEffectRandom(effect, salt+4, 20)))) / 5,
-			})
-			size := math.Sqrt2 * (radius + radiusStep*float64(hitEffectRandom(effect, salt+5, 10))) / 5
-			index := 0
-			if age == 35-i*7 || age == 36-i*7 {
-				index = 1
-			}
-			drawTexturedEffectBillboardRotatedXY(screen, projection, textures[index],
-				position.x, position.z, position.y, size, size, degreesToRadians(float64(-5*age+45)), effectComponentTint(component, alpha), true)
-		}
-	}
-}
-
-func (m *WorldMode) drawSoulLinkerHitLines(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
-	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
-	if now.Before(effect.starts) || frame >= 200 {
-		return
-	}
-	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
-	if texture == nil {
-		return
-	}
-	var vertices []render.Vertex3D
-	var indices []uint16
-	// HitLine4(3) for Estun; HitLine3(3) for Esma.
-	count, start, randomDelay, fixedDelay, baseRadius, heightBase := 16, 6, 31, 0, .05/5, .8
-	if effect.effectID == effectHitLine6 {
-		count, start, randomDelay, fixedDelay, baseRadius, heightBase = 20, 0, 41, 30, .07/5, .6
-	}
-	if effect.effectID == effectHitLine5 {
-		count, start, randomDelay, fixedDelay, baseRadius = 12, 0, 21, 25, .06/5
-	}
-	for i := 0; i < count; i++ {
-		salt := i * 5
-		age := frame - (start + i/4) - fixedDelay - hitEffectRandom(effect, salt, randomDelay) + 1
-		if age <= 0 || age >= 34 {
-			continue
-		}
-		angle := deterministicAngle(effect, salt+1)
-		if effect.effectID == effectHitLine5 {
-			angle = math.Atan2(effect.projectileDirection.z, effect.projectileDirection.x) + degreesToRadians(float64(hitEffectRandom(effect, salt+1, 121)-60))
-		}
-		sin, cos := math.Sincos(angle)
-		distance := float64(6+hitEffectRandom(effect, salt+2, 6)) / 5
-		if effect.effectID == effectHitLine5 {
-			distance = float64(6+hitEffectRandom(effect, salt+2, 7)) / 5
-		}
-		height := heightBase + .1*float64(hitEffectRandom(effect, salt+3, 7))
-		alpha := float64(125 + hitEffectRandom(effect, salt+4, 121))
-		point := func(tick int) modelPoint3 {
-			phase := float64(clampInt(tick, 0, 30) * 6)
-			travel := phase / 90 * distance
-			return modelPoint3{x: x + cos*travel, y: z + 1 + distance*math.Sin(degreesToRadians(phase))*height, z: y + sin*travel}
-		}
-		for trail := 0; trail < 4; trail++ {
-			// PrimHitLine3 updates history after advancing its head, so the
-			// first history slot has the same position as the head.
-			a, b := point(age-max(0, trail-1)), point(age-trail)
-			if a == b {
-				continue
-			}
-			for layer := 0; layer < 2; layer++ {
-				radius := baseRadius
-				brightness := uint8(255 - (5-trail)*30)
-				tint := color.RGBA{brightness, brightness, brightness, uint8(alpha - float64(trail*10))}
-				if layer == 1 {
-					radius *= 4
-					tint = color.RGBA{0, 0, 255, tint.A / 2}
-				}
-				offset := func(side int) modelPoint3 {
-					s, c := math.Sincos(degreesToRadians(float64(side * 120)))
-					return modelPoint3{x: -sin * radius * c, y: -radius * s, z: cos * radius * c}
-				}
-				for side := 0; side < 3; side++ {
-					p, q := offset(side), offset(side+1)
-					appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{add3(a, q), add3(b, q), add3(b, p), add3(a, p)}, tint)
-				}
-			}
-		}
 	}
 	if len(indices) > 0 {
 		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
@@ -346,7 +208,7 @@ func (m *WorldMode) drawEsmaHitTexture(screen *render.Frame, ctx client.Context,
 // their history so neither frame rate nor camera movement resets a trail.
 type soulLights struct {
 	tick         int
-	particles    []soulLightParticle
+	particles    []wanderingEffectParticle
 	glyphOrigins [2]modelPoint3
 }
 
@@ -375,7 +237,7 @@ func (p *soulLights) advance(ctx client.Context, effect worldEffect, right model
 		}
 		for i := 0; i < count; i++ {
 			seed := (p.tick*120 + i) * 16
-			particle := soulLightParticle{seed: seed, kind: i % 3, speed: .07 / 5,
+			particle := wanderingEffectParticle{seed: seed, kind: i % 3, speed: .07 / 5,
 				position: soulLinkLightPosition(p.tick, right),
 				radius:   (1 + float64(hitEffectRandom(effect, (p.tick*2+i/3)*16, 11))*.1) / 5}
 			for j := range particle.angles {

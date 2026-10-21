@@ -66,7 +66,7 @@ func (m *WorldMode) addNinjaBeforeHitEffect(ctx client.Context, action network.A
 // Each petal captures its target's position when it appears, then drifts on its own.
 type ninjaPetals struct {
 	tick      int
-	particles [20]soulLightParticle
+	particles [20]wanderingEffectParticle
 }
 
 func (p *ninjaPetals) advance(ctx client.Context, effect worldEffect, now time.Time) {

@@ -1,10 +1,6 @@
 package db
 
-import (
-	"time"
-)
-
-const effectPierceBody = 502
+import "time"
 
 func auraBladeEffectSpec() EffectSpec {
 	return EffectSpec{
@@ -28,4 +24,24 @@ func magnum2EffectSpec() EffectSpec {
 			AttachedEntity: true,
 		}},
 	}
+}
+
+func redBodyEffectSpec() EffectSpec {
+	return funcEffectSpec("EffectBodyColor", 99999*EffectFrameDuration, true)
+}
+
+func pierceBodyEffectSpec() EffectSpec {
+	return EffectSpec{Duration: 200 * EffectFrameDuration, SFX: []string{"effect\\ef_beginspell.wav"}, Components: []EffectComponent{{Kind: EffectComponentFUNC, FuncName: "EffectBodyColor", AttachedEntity: true}}}
+}
+
+func lkConcentrationEffectSpec() EffectSpec {
+	return strEffectSpecAttached("twohand", "", true)
+}
+
+func bash3D3EffectSpec() EffectSpec {
+	return bashRayEffectSpec("effect\\헤드 크러쉬.wav", 0)
+}
+
+func bash3D4EffectSpec() EffectSpec {
+	return bashRayEffectSpec("effect\\비트 조인트.wav", 22*EffectFrameDuration)
 }

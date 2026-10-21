@@ -30,3 +30,35 @@ func spearBoomerangEffectSpec() EffectSpec {
 		}},
 	}
 }
+
+func brandishSpearEffectSpec() EffectSpec {
+	return strEffectSpecAttached("brandish", "", false)
+}
+
+func twoHandQuickenEffectSpec() EffectSpec {
+	return strEffectSpecAttached("twohand", "effect\\knight_twohandquicken.wav", false)
+}
+
+func autoCounterEffectSpec() EffectSpec {
+	return strEffectSpecAttached("autocounter", "effect\\knight_autocounter.wav", false)
+}
+
+func brandishSpear2EffectSpec() EffectSpec {
+	return strEffectSpecAttached("brandish2", "", false)
+}
+
+func pierceSelfEffectSpec() EffectSpec {
+	return strEffectSpecAttached("pierce", "", false)
+}
+
+func bowlingSelfEffectSpec() EffectSpec {
+	return strEffectSpecAttached("bowling", "", false)
+}
+
+func spearStabSelfEffectSpec() EffectSpec {
+	return strEffectSpecAttached("spearstab", "", false)
+}
+
+func spearBmrSelfEffectSpec() EffectSpec {
+	return strEffectSpecAttached("spearboomerang", "", false)
+}

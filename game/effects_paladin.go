@@ -10,8 +10,6 @@ import (
 	"github.com/kivutar/goro/render"
 )
 
-const effectShieldBoomerang3 = 520
-
 type shieldChainFlight struct {
 	origins [5]modelPoint3
 	count   int

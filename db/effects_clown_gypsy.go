@@ -34,3 +34,63 @@ func tarotCardEffectSpec(index int) EffectSpec {
 	spec.Components[0].TextureFile = "effect/tarot" + twoDigitString(index) + ".tga"
 	return spec
 }
+
+func hermodeMusicEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\헤르모드의 지팡이.wav")
+}
+
+func tarotCard1EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(1)
+}
+
+func tarotCard2EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(2)
+}
+
+func tarotCard3EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(3)
+}
+
+func tarotCard4EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(4)
+}
+
+func tarotCard5EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(5)
+}
+
+func tarotCard6EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(6)
+}
+
+func tarotCard7EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(7)
+}
+
+func tarotCard8EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(8)
+}
+
+func tarotCard9EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(9)
+}
+
+func tarotCard10EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(10)
+}
+
+func tarotCard11EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(11)
+}
+
+func tarotCard12EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(12)
+}
+
+func tarotCard13EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(13)
+}
+
+func tarotCard14EffectSpec() EffectSpec {
+	return tarotCardEffectSpec(14)
+}

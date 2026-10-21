@@ -124,7 +124,7 @@ func (m *WorldMode) drawClownEffect(screen *render.Frame, ctx client.Context, pr
 			for i := 0; i < 36; i++ {
 				from, to, alpha, radius := arrowVulcanLine(effect, i, frame)
 				if alpha > 0 {
-					appendMonkTrail(&vertices, &indices, texture, from, to, radius*float64(layer+1), 5, color.RGBA{255, 89, 182, uint8(alpha)})
+					appendEffectTube(&vertices, &indices, texture, from, to, radius*float64(layer+1), 5, color.RGBA{255, 89, 182, uint8(alpha)})
 				}
 			}
 			if len(indices) > 0 {
@@ -172,7 +172,7 @@ func (m *WorldMode) drawClownEffect(screen *render.Frame, ctx client.Context, pr
 		halfStep := math.Pi / 360
 		radius := (.7 + .005*math.Sin(phase/2)*math.Sin(phase/2+halfStep)/math.Sin(halfStep)) / 5
 		for layer := 1; layer <= 2; layer++ {
-			appendMonkTrail(&vertices, &indices, texture, origin, to, radius*float64(layer), 10, color.RGBA{255, 89, 182, uint8(min(80, n) * layer)})
+			appendEffectTube(&vertices, &indices, texture, origin, to, radius*float64(layer), 10, color.RGBA{255, 89, 182, uint8(min(80, n) * layer)})
 		}
 	case effectBottomHermode:
 		yaw := degreesToRadians(float64(hitEffectRandom(effect, 0, 360) + n))

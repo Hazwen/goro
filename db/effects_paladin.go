@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-const effectShieldBoomerang3 = 520
-
 func shieldChainEffectSpec() EffectSpec {
 	spec := shieldBoomerangEffectSpec()
 	spec.Duration = 55 * EffectFrameDuration
@@ -53,4 +51,8 @@ func gospelGroundEffectSpec() EffectSpec {
 			},
 		},
 	}
+}
+
+func bottomGospelEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\가스펠.wav")
 }

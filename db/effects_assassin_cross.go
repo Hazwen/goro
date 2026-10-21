@@ -23,3 +23,11 @@ func enchantDeadlyPoisonEffectSpec() EffectSpec {
 	}
 	return spec
 }
+
+func soulBreakerBaseEffectSpec() EffectSpec {
+	return soulBreakerEffectSpec(false)
+}
+
+func soulBreaker2EffectSpec() EffectSpec {
+	return soulBreakerEffectSpec(true)
+}

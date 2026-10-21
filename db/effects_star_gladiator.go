@@ -12,7 +12,7 @@ func starWarmthEffectSpec() EffectSpec {
 }
 
 func starWarmthParticlesEffectSpec() EffectSpec {
-	spec := soulLinkerBuffEffectSpec(false)
+	spec := hatedEffectSpec()
 	spec.Duration = 300 * EffectFrameDuration
 	spec.SFX = []string{"effect\\T_따듯한마법.wav"}
 	spec.SFXDelays = []time.Duration{10 * EffectFrameDuration}

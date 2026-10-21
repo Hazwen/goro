@@ -164,3 +164,122 @@ func portalCylinderComponent(bottomSize, topSize, height, posZ float64, textureN
 		BlendAdditive:    true,
 	}
 }
+
+func entryEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 500 * time.Millisecond,
+		SFX:      []string{"effect\\ef_portal.wav"},
+		Components: []EffectComponent{
+			robrCylinderComponent("ring_blue", color.RGBA{}, 500*time.Millisecond, 0.62, 1, 0.9, 0.9, 7.5, false, true, true, false),
+			robrCylinderComponent("ring_blue", color.RGBA{}, 500*time.Millisecond, 0.62, 1, 0.85, 0.85, 8, true, true, true, false),
+			robrCylinderComponent("ring_blue", color.RGBA{}, 500*time.Millisecond, 0.8, 1, 0.9, 1.5, 1, true, true, true, false),
+		},
+	}
+}
+
+func exitEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 2000 * time.Millisecond,
+		SFX:      []string{"_heal_effect.wav"},
+		Components: []EffectComponent{
+			robrCylinderComponent("alpha_down", color.RGBA{}, 2000*time.Millisecond, 0.2, 1, 0.95, 0.95, 10, true, false, true, true),
+			healParticleComponent(0.8, 1000*time.Millisecond, 400*time.Millisecond, 80*time.Millisecond, 6, 1.5, 1.5, 0, 0, 0, 3, 6, true),
+			healParticleComponent(0.8, 900*time.Millisecond, 200*time.Millisecond, 200*time.Millisecond, 3, 1, 1, 1, 0, 6, 0, 0, true),
+		},
+	}
+}
+
+func warpEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 1000 * time.Millisecond,
+		Components: []EffectComponent{{
+			Kind:             EffectComponentCylinder,
+			TextureName:      "ring_yellow",
+			Duration:         1000 * time.Millisecond,
+			Duplicate:        4,
+			DuplicateDelay:   300 * time.Millisecond,
+			AlphaMax:         0.8,
+			Fade:             true,
+			Animation:        4,
+			BottomSize:       10,
+			TopSize:          13,
+			PosZ:             0.1,
+			AttachedEntity:   true,
+			TotalCircleSides: 32,
+			CircleSides:      32,
+		}},
+	}
+}
+
+func teleportOldEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 1000 * time.Millisecond,
+		SFX:      []string{"effect\\ef_teleportation.wav"},
+		Components: []EffectComponent{
+			robrCylinderComponent("ring_blue", color.RGBA{R: 255, G: 255, B: 255, A: 255}, 1000*time.Millisecond, 0.5, 5, 0.8, 0.7, 35, true, true, true, false),
+		},
+	}
+}
+
+func readyPortalOldEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 25000 * time.Millisecond,
+		SFX:      []string{"effect\\ef_readyportal.wav"},
+		Components: []EffectComponent{
+			robrCylinderComponent("alpha_down", color.RGBA{R: 178, G: 178, B: 255, A: 255}, 25000*time.Millisecond, 0.6, 0, 0.6, 0.6, 15, true, true, true, false),
+		},
+	}
+}
+
+func teleportationEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration:         1500 * time.Millisecond,
+		DetachLocalActor: true,
+		SFX:              []string{"effect\\ef_teleportation.wav"},
+		Components: []EffectComponent{
+			teleportCylinderComponent(0.3, 0.3, 35),
+			teleportCylinderComponent(0.6, 0.8, 25),
+			teleportCylinderComponent(0.8, 1.0, 13),
+			teleportCylinderComponent(1.0, 1.3, 5),
+		},
+	}
+}
+
+func readyPortalEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 500 * time.Millisecond,
+		SFX:      []string{"effect\\ef_readyportal.wav"},
+		Components: []EffectComponent{
+			readyPortalCylinderComponent(),
+		},
+	}
+}
+
+func portalEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 25000 * time.Millisecond,
+		SFX:      []string{"effect\\ef_readyportal.wav", "effect\\ef_portal.wav"},
+		Components: []EffectComponent{
+			readyPortalCylinderComponent(),
+			portalCylinderComponent(0.6, 0.6, 15, 0, "ring_blue", 0.3),
+			portalCylinderComponent(0.8, 0.8, 13, 0, "ring_blue", 0.3),
+			{
+				Kind:             EffectComponentCylinder,
+				Color:            color.RGBA{R: 153, G: 153, B: 255, A: 255},
+				TextureName:      "alpha1",
+				Duration:         25000 * time.Millisecond,
+				AlphaMax:         0.5,
+				Fade:             true,
+				Rotate:           true,
+				Animation:        0,
+				BottomSize:       1,
+				TopSize:          1,
+				Height:           1,
+				PosZ:             2,
+				TotalCircleSides: 20,
+				CircleSides:      10,
+				BlendAdditive:    true,
+			},
+		},
+	}
+}

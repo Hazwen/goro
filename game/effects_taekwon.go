@@ -239,7 +239,7 @@ func taekwonJumpSequence(casting bool) skillActionSpec {
 type taekwonJumpParticles struct {
 	tick   int
 	origin modelPoint3
-	lights [30]soulLightParticle
+	lights [30]wanderingEffectParticle
 }
 
 func (p *taekwonJumpParticles) advance(ctx client.Context, effect worldEffect, now time.Time) {

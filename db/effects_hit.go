@@ -1,10 +1,6 @@
 package db
 
-import (
-	"time"
-)
-
-const EffectFrameDuration = time.Second / 60
+import "time"
 
 // EffectHitRing holds the Prim3DCylinder motion in cells per original-client tick.
 type EffectHitRing struct {
@@ -105,44 +101,159 @@ func bash3D6EffectSpec() EffectSpec {
 	return spec
 }
 
-func teiHit1TEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 350 * time.Millisecond,
-		SFX:      []string{"effect\\mon_아수라 패황권.wav"},
-		Components: []EffectComponent{{
-			Kind:             EffectComponent3D,
-			TextureFile:      "effect/lens1.tga",
-			Color:            effectTableColor(0.1, 0.1, 1),
-			Duration:         250 * time.Millisecond,
-			Delay:            100 * time.Millisecond,
-			Duplicate:        24,
-			DuplicateDelay:   0,
-			AlphaMax:         0.8,
-			BlendMode:        2,
-			BlendAdditive:    true,
-			FadeIn:           true,
-			FadeOut:          true,
-			AttachedEntity:   true,
-			PosXEndRand:      40,
-			PosYEndRand:      40,
-			SizeStartX:       effectTableSize(10),
-			SizeStartY:       effectTableSize(150),
-			SizeEndX:         effectTableSize(10),
-			SizeEndY:         effectTableSize(150),
-			Overlay:          true,
-			RotateToTarget:   true,
-			RotateWithCamera: true,
-		}},
-	}
-}
-
 // The BASH3D ray burst is shared by Lord Knight attacks and Gunslinger Dust.
-func lordKnightBurstEffectSpec(sound string, delay time.Duration) EffectSpec {
+func bashRayEffectSpec(sound string, delay time.Duration) EffectSpec {
 	return EffectSpec{
 		Duration: 51 * EffectFrameDuration,
 		SFX:      []string{sound}, SFXDelays: []time.Duration{delay},
 		Components: []EffectComponent{{
 			Kind: EffectComponentFUNC, FuncName: "Sacrifice", TextureFile: "effect/alpha_center.tga",
+		}},
+	}
+}
+
+func hit1EffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 300 * time.Millisecond,
+		Components: []EffectComponent{{
+			Kind:        EffectComponent3D,
+			TextureFile: "effect/pok3.tga",
+			Duration:    300 * time.Millisecond,
+			Duplicate:   4,
+			AlphaMax:    0.8,
+			FadeIn:      true,
+			FadeOut:     true,
+			Sparkling:   true,
+			PosZ:        1,
+			PosXEndRand: 2,
+			PosYEndRand: 2,
+			PosZEndRand: 2,
+			SizeStart:   effectTableSize(10),
+			SizeEnd:     effectTableSize(10),
+			SizeRand:    effectTableSize(20),
+			SizeSmooth:  true,
+		}, hitRingComponent("ring_blue", 10, 5, 10, 3.5, 0.7, 5)},
+	}
+}
+
+func hit3EffectSpec() EffectSpec {
+	return legacyHitEffectSpec(false)
+}
+
+func hit4EffectSpec() EffectSpec {
+	return legacyHitEffectSpec(true)
+}
+
+func hit5EffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 400 * time.Millisecond,
+		SFX:      []string{"effect\\ef_hit5.wav"},
+		Components: []EffectComponent{
+			hitSlashComponent(EffectComponent3D, effectTableSize(15), effectTableSize(200), 90, 0, false),
+			hitSlashComponent(EffectComponent3D, effectTableSize(15), effectTableSize(200), 180, 90, false),
+		},
+	}
+}
+
+func hit6EffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 400 * time.Millisecond,
+		SFX:      []string{"effect\\ef_hit6.wav"},
+		Components: []EffectComponent{
+			hitSlashComponent(EffectComponent2D, effectTableSize(10), effectTableSize(150), 90, 0, true),
+			hitSlashComponent(EffectComponent2D, effectTableSize(10), effectTableSize(150), 180, 90, true),
+		},
+	}
+}
+
+func fireHitEffectSpec() EffectSpec {
+	return strEffectSpecRandomAttached("firehit%d", "effect\\ef_firehit.wav", 1, 3, true, false)
+}
+
+func fireSplashHitEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 500 * time.Millisecond,
+		Components: []EffectComponent{{
+			Kind:        EffectComponent2D,
+			TextureFile: "effect/firering.tga",
+			Duration:    500 * time.Millisecond,
+			FadeOut:     true,
+			PosZ:        1,
+			SizeStart:   10 * EffectPixelRatio,
+			SizeEnd:     300 * EffectPixelRatio,
+			AngleStart:  0,
+			AngleEnd:    -360,
+		}},
+	}
+}
+
+func coldHitEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("_hit_fist3.wav", "_hit_fist4.wav")
+}
+
+func windHitEffectSpec() EffectSpec {
+	return strEffectSpecRandomAttached("windhit%d", "_hit_fist%d.wav", 1, 3, true, false)
+}
+
+func poisonHitEffectSpec() EffectSpec {
+	return EffectSpec{
+		SFX: []string{"effect\\ef_poisonattack.wav"},
+		Components: []EffectComponent{{
+			Kind:       EffectComponentSPR,
+			SpriteFile: "poisonhit",
+		}},
+	}
+}
+
+func earthHitEffectSpec() EffectSpec {
+	return strEffectSpecAttached("earthhit", "", false)
+}
+
+func spearHitSoundEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("_hit_spear.wav")
+}
+
+func enemyHitNormal1EffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("_enemy_hit_normal1.wav")
+}
+
+func magicalAtkHitEffectSpec() EffectSpec {
+	return strEffectSpecAttached("magical", "", false)
+}
+
+func deathEffectSpec() EffectSpec {
+	return strEffectSpecAttached("devil", "", false)
+}
+
+func fireHit2EffectSpec() EffectSpec {
+	return strEffectSpecRandomAttached("firehit%d", "", 1, 3, true, false)
+}
+
+func hitSlashComponent(kind EffectComponentKind, sizeX, sizeEndY, angleStart, angleEnd float64, overlay bool) EffectComponent {
+	return EffectComponent{
+		Kind:        kind,
+		TextureFile: "effect/lens2.tga",
+		Duration:    400 * time.Millisecond,
+		AlphaMax:    1,
+		FadeOut:     true,
+		Rotate:      true,
+		PosZ:        1,
+		SizeStartX:  sizeX,
+		SizeEndX:    sizeX,
+		SizeStartY:  effectTableSize(10),
+		SizeEndY:    sizeEndY,
+		AngleStart:  angleStart,
+		AngleEnd:    angleEnd,
+		Overlay:     overlay,
+	}
+}
+
+func hitLineBurstEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 200 * EffectFrameDuration,
+		Components: []EffectComponent{{
+			Kind: EffectComponentFUNC, FuncName: "SoulLinkerHitLines",
+			TextureFile: "effect/white02.bmp", AttachedEntity: true,
 		}},
 	}
 }

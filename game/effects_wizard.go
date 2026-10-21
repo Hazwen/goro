@@ -16,7 +16,7 @@ func (m *WorldMode) drawWizardWaterBall(screen *render.Frame, ctx client.Context
 		return
 	}
 	for i := 11; i >= 0; i-- {
-		p := soulStrikePosition(effect, max(0, frame+1-i), 0)
+		p := splineProjectilePosition(effect, max(0, frame+1-i), 0)
 		m.drawEffectParticleSprite(screen, ctx, projection, component.spriteFile, p, frame/4+1,
 			.75*(1-float64(i)/24), 0, color.RGBA{255, 255, 255, uint8(254 * (1 - float64(i)/12))})
 	}

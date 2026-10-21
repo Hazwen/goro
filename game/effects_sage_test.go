@@ -184,7 +184,7 @@ func TestSageGroundRingTiming(t *testing.T) {
 			} else {
 				alpha += 20
 			}
-			gotRadius, gotAngle, gotAlpha := sageGroundRing(n, initial)
+			gotRadius, gotAngle, gotAlpha := propertyGroundRing(n, initial)
 			if math.Abs(gotRadius-float64(radius)) > 1e-5 || gotAngle != float64(angle) || gotAlpha != alpha {
 				t.Fatalf("initial %d tick %d: got (%f,%f,%d), want (%f,%d,%d)",
 					initial, n, gotRadius, gotAngle, gotAlpha, radius, angle, alpha)

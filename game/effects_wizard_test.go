@@ -215,7 +215,7 @@ func TestWizardStormGustSimplifiedEffects(t *testing.T) {
 	for _, simplified := range []bool{false, true, false} {
 		ctx.Session.LessEffects = simplified
 		frame := render.NewFrame(800, 600)
-		m.drawWizardSpikes(frame, ctx, spec.components[1], worldEffect{effectID: effectStormGust, starts: start},
+		m.drawGroundSpikes(frame, ctx, spec.components[1], worldEffect{effectID: effectStormGust, starts: start},
 			modelPoint3{}, start.Add(60*db.EffectFrameDuration))
 		got := reflect.ValueOf(frame).Elem().FieldByName("worldCommands").Len()
 		if (got == 0) != simplified {
@@ -247,7 +247,7 @@ func TestWizardNativeGeometry(t *testing.T) {
 		frame := render.NewFrame(800, 600)
 		spec, _ := worldEffectSpecForID(tc.id)
 		component := spec.components[len(spec.components)-1]
-		m.drawWizardSpikes(frame, ctx, component, worldEffect{effectID: tc.id, starts: start}, modelPoint3{}, start.Add(time.Duration(tc.tick)*db.EffectFrameDuration))
+		m.drawGroundSpikes(frame, ctx, component, worldEffect{effectID: tc.id, starts: start}, modelPoint3{}, start.Add(time.Duration(tc.tick)*db.EffectFrameDuration))
 		cmds := reflect.ValueOf(frame).Elem().FieldByName("worldCommands")
 		if tc.spikes == 0 {
 			if cmds.Len() != 0 {

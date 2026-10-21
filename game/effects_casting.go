@@ -267,3 +267,35 @@ func lockOnTargetTint(starts, now time.Time) color.RGBA {
 	gb := uint8(clampFloat(factor, 0, 1) * 255)
 	return color.RGBA{R: 255, G: gb, B: gb, A: 255}
 }
+
+// VOLCANO / PrimGI2: four expanding rings at the selected ground cell.
+func (m *WorldMode) drawGroundCastEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, x, y, z float64, now time.Time) {
+	n := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
+	heightScale, initialRise, fade := 5.0, 80, 2
+	if effect.effectID == effectGanbantein {
+		heightScale, initialRise, fade = 3, 70, 8
+	}
+	fadeIn := 20
+	if effect.effectID == effectGumgang3 {
+		fadeIn = 10
+	}
+	alpha := fadeIn*min(n, 10) - fade*max(0, n-10)
+	if n <= 0 || alpha <= 0 {
+		return
+	}
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	rise := degreesToRadians(float64(max(40, initialRise-n)))
+	origin := modelPoint3{x: x, y: z, z: y}
+	vertices, indices := []render.Vertex3D{}, []uint16{}
+	for i := 0; i < 4; i++ {
+		height := heightScale * math.Sin(rise) * (1 + .15*math.Sin(degreesToRadians(float64(n+i*90))))
+		appendEffectBand(&vertices, &indices, texture, origin, (float64(i+1)+.3*float64(n))/5,
+			degreesToRadians(float64(i*90+n*5)), 2*math.Pi, 1/math.Tan(rise), 20,
+			color.RGBA{255, 255, 255, uint8(alpha)},
+			func(j int) float64 { return height * math.Sin(degreesToRadians(float64(j*9))) })
+	}
+	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(false, false))
+}

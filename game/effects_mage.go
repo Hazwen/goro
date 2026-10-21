@@ -106,30 +106,12 @@ func (m *WorldMode) drawMageProjectile(screen *render.Frame, ctx client.Context,
 			roll = -90 + float64((i+1)*180)/float64(count-1)
 		}
 		for segment := 11; segment >= 0; segment-- {
-			p := soulStrikePosition(effect, max(0, age+1-segment), roll)
+			p := splineProjectilePosition(effect, max(0, age+1-segment), roll)
 			scale := 2.75 * (1 - float64(segment)/24)
 			alpha := uint8(255 * (1 - float64(segment)/12))
 			m.drawEffectParticleSprite(screen, ctx, projection, component.spriteFile, p, age/4+1, scale, 0, color.RGBA{255, 255, 255, alpha})
 		}
 	}
-}
-
-func soulStrikePosition(effect worldEffect, tick int, roll float64) modelPoint3 {
-	if tick == 0 {
-		return effect.actorOrigin
-	}
-	n := float64(tick)
-	direction := normalize3(effect.projectileDirection)
-	// Prim3DParticleSpline first retreats, then accelerates forward. Its
-	// transverse arc is rotated around the flight axis for each soul.
-	forward := sub3(mul3(effect.projectileDirection, n/40), mul3(direction, (3.5*n-.175*n*(n+1)/2)/5))
-	arc := (2*n - .1*n*(n-1)/2) / 5
-	s, c := math.Sincos(degreesToRadians(roll))
-	p := add3(effect.actorOrigin, forward)
-	p.y += 2 + arc*c
-	p.x -= direction.z * arc * s
-	p.z += direction.x * arc * s
-	return p
 }
 
 func (m *WorldMode) drawFrostDiverSpikes(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, origin modelPoint3, now time.Time) {

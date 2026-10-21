@@ -20,3 +20,11 @@ func fullStripEffectSpec() EffectSpec {
 	}
 	return spec
 }
+
+func chaseWalkSmokeEffectSpec() EffectSpec {
+	return EffectSpec{Components: []EffectComponent{{Kind: EffectComponentSPR, SpriteFile: "smoke", SpriteDelay: 5 * EffectFrameDuration / 6, WorldSizedSprite: true}}}
+}
+
+func rejectSwordEffectSpec() EffectSpec {
+	return strEffectSpecAttached("sword", "effect\\kyrie_guard.wav", false)
+}

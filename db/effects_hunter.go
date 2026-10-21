@@ -38,3 +38,35 @@ func blastMineEffectSpec() EffectSpec {
 	spec.SFXDelays = []time.Duration{20 * EffectFrameDuration}
 	return spec
 }
+
+func skidTrapEffectSpec() EffectSpec {
+	return strEffectSpec("skidtrap", "effect\\hunter_skidtrap.wav")
+}
+
+func blastMineSoundEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\hun_anklesnare.wav")
+}
+
+func claymoreEffectSpec() EffectSpec {
+	return strEffectSpec("claymore", "effect\\hunter_claymoretrap.wav")
+}
+
+func freezingTrapEffectSpec() EffectSpec {
+	return strEffectSpec("freezing", "effect\\hunter_freezingtrap.wav")
+}
+
+func springTrapEffectSpec() EffectSpec {
+	return strEffectSpec("spring", "effect\\hunter_springtrap.wav")
+}
+
+func sandmanEffectSpec() EffectSpec {
+	return strEffectSpec("sandman", "effect\\hunter_sandman.wav")
+}
+
+func shockwaveEffectSpec() EffectSpec {
+	return strEffectSpec("shockwave", "")
+}
+
+func shockwaveHitEffectSpec() EffectSpec {
+	return strEffectSpecAttached("shockwavehit", "", false)
+}

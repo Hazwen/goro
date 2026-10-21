@@ -115,7 +115,7 @@ func (m *WorldMode) drawRisingParticlesEffect(screen *render.Frame, ctx client.C
 }
 
 // Full Strip and Disarm share the equipment-particle burst.
-func (m *WorldMode) drawFullStrip(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+func (m *WorldMode) drawEquipmentBurst(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
 	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 	if now.Before(effect.starts) || frame > 108 {
 		return
@@ -145,14 +145,14 @@ func (m *WorldMode) drawFullStrip(screen *render.Frame, ctx client.Context, proj
 	}
 }
 
-type soulLightParticle struct {
+type wanderingEffectParticle struct {
 	position        modelPoint3
 	angles          [4]int
 	seed, age, kind int
 	radius, speed   float64
 }
 
-func advanceWanderingAngles(particle *soulLightParticle, effect worldEffect, tick int) {
+func advanceWanderingAngles(particle *wanderingEffectParticle, effect worldEffect, tick int) {
 	for axis := 0; axis < 4; axis += 2 {
 		a, target := &particle.angles[axis], &particle.angles[axis+1]
 		if *target > *a {
@@ -165,6 +165,72 @@ func advanceWanderingAngles(particle *soulLightParticle, effect worldEffect, tic
 			if *a <= *target {
 				*target = 359 - hitEffectRandom(effect, particle.seed+tick*4+axis, max(*a, 1))
 			}
+		}
+	}
+}
+
+type risingBuffParticles struct {
+	origins [21]modelPoint3
+	count   int
+}
+
+func (m *WorldMode) drawRisingBuffParticles(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
+	if now.Before(effect.starts) || len(component.textureFiles) != 2 {
+		return
+	}
+	textures := [2]*render.Image{
+		m.effectFileTexture(ctx.Resources, component.textureFiles[0]),
+		m.effectFileTexture(ctx.Resources, component.textureFiles[1]),
+	}
+	start, end, step, life := 0, 80, 4, 55
+	jitter, radius, radiusStep := 11, 2.0, .1
+	if effect.effectID == effectSmaReady {
+		start, end = 40, 120
+	} else if effect.effectID == effectStin3 {
+		end, step, life = 199, 1, 50
+		jitter, radius, radiusStep = 9, 1.2, .08
+	}
+	if effect.effectID != effectStin3 {
+		if effect.buffParticles == nil {
+			return
+		}
+		// Keep each emission's position when the actor replaces its movement path.
+		p := effect.buffParticles
+		for p.count < len(p.origins) && start+p.count*step <= min(frame, end) {
+			at := effect.starts.Add(time.Duration(start+p.count*step) * db.EffectFrameDuration)
+			p.origins[p.count] = effectWorldAnchor(ctx, effect, at)
+			p.count++
+		}
+	}
+	// ParticleTime and SMA both emit four independently rising particles.
+	first := max(start, (frame-life+step)/step*step)
+	for emitted := first; emitted <= min(frame, end); emitted += step {
+		age := frame - emitted + 1
+		alpha := float64(max(15*(min(age, 10)-1)-3*max(age-10, 0), 0)) / 255
+		if alpha <= 0 {
+			continue
+		}
+		var center modelPoint3
+		if effect.effectID == effectStin3 {
+			center = add3(effect.actorOrigin, mul3(effect.projectileDirection, .8*float64(max(emitted-2, 0))/5))
+		} else {
+			center = effect.buffParticles.origins[(emitted-start)/step]
+		}
+		for i := 0; i < 4; i++ {
+			salt := (emitted*4 + i) * 5
+			position := add3(center, modelPoint3{
+				x: float64(hitEffectRandom(effect, salt+2, jitter)-jitter/2) / 5,
+				z: float64(hitEffectRandom(effect, salt+3, jitter)-jitter/2) / 5,
+				y: (6 + float64(age)*(.1+.01*float64(hitEffectRandom(effect, salt+4, 20)))) / 5,
+			})
+			size := math.Sqrt2 * (radius + radiusStep*float64(hitEffectRandom(effect, salt+5, 10))) / 5
+			index := 0
+			if age == 35-i*7 || age == 36-i*7 {
+				index = 1
+			}
+			drawTexturedEffectBillboardRotatedXY(screen, projection, textures[index],
+				position.x, position.z, position.y, size, size, degreesToRadians(float64(-5*age+45)), effectComponentTint(component, alpha), true)
 		}
 	}
 }

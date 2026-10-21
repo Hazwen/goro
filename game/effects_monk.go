@@ -97,7 +97,7 @@ func (m *WorldMode) drawTripleAttack(screen *render.Frame, ctx client.Context, c
 				continue
 			}
 			tint := color.RGBA{255, 255, uint8(55 + 145*layer), uint8(alpha)}
-			appendMonkTrail(&vertices, &indices, texture, from, to, float64(layer+1)*.05, 5, tint)
+			appendEffectTube(&vertices, &indices, texture, from, to, float64(layer+1)*.05, 5, tint)
 		}
 		if len(indices) > 0 {
 			screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(layer == 1, false))
@@ -146,30 +146,11 @@ func (m *WorldMode) drawHitLine(screen *render.Frame, ctx client.Context, compon
 			if effect.effectID == effectHitLine2 {
 				tint.G, tint.B = uint8(60+j*7), uint8(60+j*7)
 			}
-			appendMonkTrail(&vertices, &indices, texture, from, to, .02, 3, tint)
+			appendEffectTube(&vertices, &indices, texture, from, to, .02, 3, tint)
 		}
 	}
 	if len(indices) > 0 {
 		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
-	}
-}
-
-func appendMonkTrail(vertices *[]render.Vertex3D, indices *[]uint16, texture *render.Image, from, to modelPoint3, radius float64, sides int, tint color.RGBA) {
-	delta := sub3(to, from)
-	if delta.x == 0 && delta.z == 0 {
-		return
-	}
-	direction := math.Atan2(delta.z, delta.x) + math.Pi/2
-	var previous modelPoint3
-	for i := 0; i <= sides; i++ {
-		s, c := math.Sincos(float64(i) * 2 * math.Pi / float64(sides))
-		offset := modelPoint3{x: radius * c * math.Cos(direction), z: radius * c * math.Sin(direction), y: -radius * s}
-		if i > 0 {
-			appendEffectQuad(vertices, indices, texture, [4]modelPoint3{
-				add3(to, previous), add3(to, offset), add3(from, offset), add3(from, previous),
-			}, tint)
-		}
-		previous = offset
 	}
 }
 

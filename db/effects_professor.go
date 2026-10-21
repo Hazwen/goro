@@ -39,3 +39,19 @@ func fogWallGroundEffectSpec() EffectSpec {
 	spec.Components[0].TextureFile = "effect/ring_white.tga"
 	return spec
 }
+
+func linkLightEffectSpec() EffectSpec {
+	return funcEffectSpec("EffectBodyColor", 200*EffectFrameDuration, true)
+}
+
+func soulBurnEffectSpec() EffectSpec {
+	return strEffectSpecAttached("소울번", "", false)
+}
+
+func soulChangeEffectSpec() EffectSpec {
+	return strEffectSpecAttached("사람효과", "", false)
+}
+
+func doubleCastBodyEffectSpec() EffectSpec {
+	return funcEffectSpec("EffectBodyColor", 120*EffectFrameDuration, true)
+}

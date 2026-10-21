@@ -1,8 +1,6 @@
 package db
 
-import (
-	"time"
-)
+import "time"
 
 func rogueBurstEffectSpec(effectID int) EffectSpec {
 	spec := funcEffectSpec("RogueBurst", 300*EffectFrameDuration, false)
@@ -55,4 +53,36 @@ func closeConfineRingEffectSpec() EffectSpec {
 			AttachedEntity: true, Overlay: true,
 		}},
 	}
+}
+
+func intimidateEffectSpec() EffectSpec {
+	return rogueBurstEffectSpec(effectIntimidate)
+}
+
+func stealCoinEffectSpec() EffectSpec {
+	return strEffectSpecAttached("steal_coin", "", false)
+}
+
+func stripWeaponEffectSpec() EffectSpec {
+	return divestEffectSpec("strip_weapon")
+}
+
+func stripShieldEffectSpec() EffectSpec {
+	return divestEffectSpec("strip_shield")
+}
+
+func stripArmorEffectSpec() EffectSpec {
+	return divestEffectSpec("strip_armor")
+}
+
+func stripHelmEffectSpec() EffectSpec {
+	return divestEffectSpec("strip_helm")
+}
+
+func rogueCoinEffectSpec() EffectSpec {
+	return rogueBurstEffectSpec(effectRogueCoin)
+}
+
+func teiHit3EffectSpec() EffectSpec {
+	return rogueBurstEffectSpec(effectTeiHit3)
 }

@@ -58,3 +58,79 @@ func disarmEffectSpec() EffectSpec {
 	spec.SFX, spec.SFXDelays = []string{"effect\\디스암.wav"}, []time.Duration{21 * EffectFrameDuration}
 	return spec
 }
+
+func gunslingerCoinSoundEffectSpec() EffectSpec {
+	return soundOnlyEffectSpec("effect\\플립.wav")
+}
+
+func redHitEffectSpec() EffectSpec {
+	return funcEffectSpec("RedHit", 60*EffectFrameDuration, true)
+}
+
+func madnessBlueEffectSpec() EffectSpec {
+	return funcEffectSpec("BlueHit", 64*EffectFrameDuration, true)
+}
+
+func madnessRedEffectSpec() EffectSpec {
+	return funcEffectSpec("RedHit", 64*EffectFrameDuration, true)
+}
+
+func m02EffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectM02)
+}
+
+func bash3D5EffectSpec() EffectSpec {
+	return bashRayEffectSpec("effect\\더스트샷.wav", 0)
+}
+
+func desperadoEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectDesperado)
+}
+
+func lightningSEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectLightningS)
+}
+
+func blindSEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectBlindS)
+}
+
+func poisonSEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectPoisonS)
+}
+
+func freezingSEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectFreezingS)
+}
+
+func flareSEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectFlareS)
+}
+
+func rapidShowerEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectRapidShower)
+}
+
+func magicalBulletEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectMagicalBullet)
+}
+
+func spreadAttackEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectSpreadAttack)
+}
+
+func trackCastingEffectSpec() EffectSpec {
+	return strEffectSpecAttached("트랙킹", "", false)
+}
+
+func trackingEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectTracking)
+}
+
+func tripleActionEffectSpec() EffectSpec {
+	return gunslingerSpriteEffectSpec(effectTripleAction)
+}
+
+func bullseyeEffectSpec() EffectSpec {
+	return strEffectSpecAttached("불스아이", "", false)
+}

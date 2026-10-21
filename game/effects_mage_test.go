@@ -249,11 +249,11 @@ func TestSightFlamesStayAtOrbitHeight(t *testing.T) {
 
 func TestMageSoulStrikeFlight(t *testing.T) {
 	effect := worldEffect{actorOrigin: modelPoint3{x: 10}, projectileDirection: modelPoint3{x: 20}}
-	a, b := soulStrikePosition(effect, 1, 90), soulStrikePosition(effect, 20, 90)
+	a, b := splineProjectilePosition(effect, 1, 90), splineProjectilePosition(effect, 20, 90)
 	if a.z <= 0 || b.z <= a.z || b.x <= a.x {
 		t.Fatal("Soul Strike must curve outward while moving toward the target")
 	}
-	end := soulStrikePosition(effect, 40, 90)
+	end := splineProjectilePosition(effect, 40, 90)
 	if math.Abs(end.x-30.7) > 1e-6 || math.Abs(end.z-.4) > 1e-6 {
 		t.Fatalf("unexpected native spline endpoint: %+v", end)
 	}
