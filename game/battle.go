@@ -425,7 +425,7 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	}
 	m.battle().AddActionDamageFloaters(ctx, action, target, targetOK, targetLocal, sourceLocal, x, y, hitAt)
 	if sourceLocal {
-		m.maybeSendPetHuntingTalk(ctx, now)
+		m.pets().MaybeSendHuntingTalk(ctx, now)
 	}
 }
 
@@ -1191,7 +1191,7 @@ func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
 		m.cancelAttackIntent()
 		m.pendingPickup = pickupIntent{}
 		m.skillSystem.Pending = skills.PendingTarget{}
-		m.ui.petContext.Close()
+		m.ui.pet.Context.Close()
 		m.ui.companions.HomunculusContext.Close()
 		m.ui.companions.MercenaryContext.Close()
 		m.ui.social.PlayerContext.Close()

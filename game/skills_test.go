@@ -1,6 +1,7 @@
 package game
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -397,7 +398,7 @@ func TestTeleportWaitsForMapChange(t *testing.T) {
 			}
 			readBotTestPackets(t, serverConn, want)
 			if tc.maps != nil {
-				mode.applyWarpPointList(ctx, network.WarpPointList{SkillID: skill.ID, MapNames: tc.maps})
+				mode.skills().ApplyWarpPointList(ctx, network.WarpPointList{SkillID: skill.ID, MapNames: tc.maps})
 				if tc.level == 2 {
 					if !mode.ui.teleportModal.IsOpen() {
 						t.Fatal("level-two Teleport did not open its destination dialog")
@@ -3799,7 +3800,7 @@ func TestWarpPortalListOpensDestinationModal(t *testing.T) {
 	ctx := client.Context{Session: &session.Session{Skills: session.Skills{List: []session.Skill{
 		{ID: 27, Level: 4, Type: skills.SkillTargetPlace, Range: 9},
 	}}}}
-	mode.applyWarpPointList(ctx, network.WarpPointList{SkillID: 27, MapNames: []string{"prontera", "geffen", "payon"}})
+	mode.skills().ApplyWarpPointList(ctx, network.WarpPointList{SkillID: 27, MapNames: []string{"prontera", "geffen", "payon"}})
 	if !mode.ui.teleportModal.IsOpen() {
 		t.Fatal("warp portal list should open the destination modal")
 	}
@@ -6089,5 +6090,146 @@ func TestAttackFocusTracksTargetAndAnimationStart(t *testing.T) {
 	mode.clearAttackFocus()
 	if mode.attackFocusID != 0 || !mode.attackFocusStart.IsZero() {
 		t.Fatalf("clear focus = id %d start %v", mode.attackFocusID, mode.attackFocusStart)
+	}
+}
+
+func TestGraffitiLifetimeAndRetainedTerrainMesh(t *testing.T) {
+	ctx := testutil.RogueSkillContext()
+	ctx.World.GND = &res.GND{Width: 20, Height: 20, Cells: make([]res.GNDCell, 400)}
+	for i := range ctx.World.GND.Cells {
+		ctx.World.GND.Cells[i].Heights = [4]float32{3, 3, 3, 3}
+	}
+	m := &WorldMode{mapScene: maps.System{Textures: map[string]*render.Image{
+		"__effectfile_effect/alpabet.bmp|blackkey=true": render.NewImage(256, 256),
+	}}}
+	entry := network.SkillUnitEntry{ID: 900, CreatorID: 2000000, X: 20, Y: 20, UnitID: 176, Visible: true, HasMessage: true, Message: "Hello"}
+	m.applySkillUnitEntry(ctx, entry)
+	projection := testutil.Projection(800, 600, 20, 20, 0)
+	frame := render.NewFrame(800, 600)
+	m.skills().DrawGraffiti(frame, ctx, projection)
+	writing := m.skillSystem.Graffiti[900]
+	if writing == nil || writing.Mesh == nil || writing.Mesh.VertexCount() != 18*18*4 || writing.Mesh.IndexCount() != 18*18*6 {
+		t.Fatalf("missing 18-cell ground writing: %+v", writing)
+	}
+	if math.Abs(writing.Angle-math.Pi) > 1e-9 {
+		t.Fatalf("native facing conversion = %g, want pi", writing.Angle)
+	}
+	vertices := reflect.ValueOf(writing.Mesh).Elem().FieldByName("vertices")
+	for i := 0; i < vertices.Len(); i++ {
+		if math.Abs(vertices.Index(i).FieldByName("Y").Float()-3.01) > .0001 {
+			t.Fatal("graffiti did not follow the ground")
+		}
+	}
+	cached := writing.Mesh
+	m.skills().DrawGraffiti(render.NewFrame(800, 600), ctx, projection)
+	if m.skillSystem.Graffiti[900].Mesh != cached {
+		t.Fatal("rebuilt unchanged graffiti")
+	}
+	entry.Message = "Replaced"
+	m.applySkillUnitEntry(ctx, entry)
+	if len(m.skillSystem.Graffiti) != 1 || m.skillSystem.Graffiti[900].Message != "Replaced" || m.skillSystem.Graffiti[900].Mesh != nil {
+		t.Fatal("entry refresh did not replace its text and geometry")
+	}
+	m.applySkillUnitDisappear(network.SkillUnitDisappear{ID: 900})
+	if len(m.skillSystem.Graffiti) != 0 {
+		t.Fatal("Remover/expiry left the writing visible")
+	}
+	entry.Visible = false
+	m.applySkillUnitEntry(ctx, entry)
+	if len(m.skillSystem.Graffiti) != 0 {
+		t.Fatal("hidden writing became visible")
+	}
+}
+
+func TestGraffitiReleasesImages(t *testing.T) {
+	ctx := testutil.RogueSkillContext()
+	ctx.World.GND = &res.GND{Width: 1, Height: 1, Cells: []res.GNDCell{{}}}
+	for _, event := range []string{"replacement", "removal", "hidden", "ordinary unit", "map change", "leave"} {
+		t.Run(event, func(t *testing.T) {
+			m := &WorldMode{mapScene: maps.System{Textures: map[string]*render.Image{
+				"__effectfile_effect/alpabet.bmp|blackkey=true": render.NewImage(256, 256),
+			}}}
+			entry := network.SkillUnitEntry{ID: 900, Visible: true, HasMessage: true, Message: "Hello"}
+			m.applySkillUnitEntry(ctx, entry)
+			m.skills().DrawGraffiti(render.NewFrame(800, 600), ctx, testutil.Projection(800, 600, 0, 0, 0))
+			pixels := reflect.ValueOf(m.skillSystem.Graffiti[900].Mesh).Elem().FieldByName("texture").Elem().FieldByName("pix")
+			if pixels.IsNil() {
+				t.Fatal("writing has no pixels before removal")
+			}
+			switch event {
+			case "replacement":
+				entry.Message = "Replaced"
+				m.applySkillUnitEntry(ctx, entry)
+			case "removal":
+				m.applySkillUnitDisappear(network.SkillUnitDisappear{ID: entry.ID})
+			case "hidden":
+				entry.Visible = false
+				m.applySkillUnitEntry(ctx, entry)
+			case "ordinary unit":
+				entry.HasMessage = false
+				m.applySkillUnitEntry(ctx, entry)
+			case "map change":
+				m.releaseMapTextures()
+			case "leave":
+				m.Leave()
+			}
+			if !pixels.IsNil() {
+				t.Fatal("writing retained its pixels instead of releasing its image group")
+			}
+			m.Leave()
+		})
+	}
+}
+
+func TestStarPlaceRequestOpensConfirmationAndAccepts(t *testing.T) {
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		conn, _ := listener.Accept()
+		accepted <- conn
+	}()
+
+	netClient := network.NewClient(20080910, false)
+	defer netClient.Close()
+	address := listener.Addr().(*net.TCPAddr)
+	if err := netClient.Connect(context.Background(), address.IP.String(), address.Port); err != nil {
+		t.Fatal(err)
+	}
+	serverConn := <-accepted
+	if serverConn == nil {
+		t.Fatal("server did not accept test client")
+	}
+	defer serverConn.Close()
+
+	ctx := client.Context{Network: netClient, ScreenW: 800, ScreenH: 600}
+	mode := &WorldMode{}
+	packet := network.Packet{ID: network.PacketZCStarPlace, Data: []byte{0x53, 0x02, 0x01}}
+	if next, stop := mode.handleNetworkPacket(ctx, packet, time.Now()); next != nil || stop {
+		t.Fatalf("star place request changed mode: next=%T stop=%t", next, stop)
+	}
+	if !mode.ui.starPlaceConfirm.IsOpen() {
+		t.Fatal("star place request did not open confirmation")
+	}
+	if !mode.ui.interactionModalOpen() {
+		t.Fatal("star place confirmation did not block world interactions")
+	}
+
+	mode.ui.starPlaceConfirm.Confirm(ctx)
+
+	if err := serverConn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	want := network.BuildAgreeStarPlacePacket(1)
+	got := make([]byte, len(want))
+	if _, err := io.ReadFull(serverConn, got); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("star place reply = %x, want %x", got, want)
 	}
 }

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kivutar/goro/game/pet"
+
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/battle"
@@ -32,6 +34,7 @@ import (
 )
 
 type WorldMode struct {
+	petSystem         pet.System
 	battleSystem      battle.System
 	actorSystem       actors.System
 	socialSystem      social.System
@@ -49,36 +52,26 @@ type WorldMode struct {
 	imageCache        map[string]image.Image
 	imageMiss         map[string]struct{}
 
-	cursorView      *scene.SpriteView
-	cursorViewMiss  bool
-	slotMachineView *scene.SpriteView
-	slotMachineMiss bool
-	cursorFallback  *render.Image
-	cursorAction    int
-	cursorStarted   time.Time
+	cursorView     *scene.SpriteView
+	cursorViewMiss bool
+	cursorFallback *render.Image
+	cursorAction   int
+	cursorStarted  time.Time
 
 	itemMarker   *render.Image
 	itemViews    map[itemSpriteKey]*scene.SpriteView
 	itemViewMiss map[itemSpriteKey]struct{}
 
-	pendingWarp       bool
-	deferredPackets   []network.Packet
-	pendingAttack     attackIntent
-	pendingPickup     pickupIntent
-	pendingPetCapture petCaptureState
-	petProperty       network.PetProperty
-	hasPetProperty    bool
-	petOldFullness    uint16
-	petLastTalk       time.Time
-	petInfoRequested  bool
-	petID             uint32
-	petSlotMachine    petSlotMachineState
-	lockedAttackID    uint32
-	attackFocusID     uint32
-	attackFocusStart  time.Time
-	scriptHighlight   actorHighlight
-	lastAttackAt      time.Time
-	lastChaseAt       time.Time
+	pendingWarp      bool
+	deferredPackets  []network.Packet
+	pendingAttack    attackIntent
+	pendingPickup    pickupIntent
+	lockedAttackID   uint32
+	attackFocusID    uint32
+	attackFocusStart time.Time
+	scriptHighlight  actorHighlight
+	lastAttackAt     time.Time
+	lastChaseAt      time.Time
 
 	scheduledSounds  []scheduledSound
 	scheduledStops   []scheduledActorStop
@@ -86,7 +79,6 @@ type WorldMode struct {
 	weather          weather.System
 
 	actorSoundFrames map[uint32]actorSoundFrame
-	graffiti         map[uint32]*groundGraffiti
 
 	ui              worldUI
 	mapFade         maps.Fade
@@ -96,6 +88,7 @@ type WorldMode struct {
 }
 
 type worldUI struct {
+	pet                  pet.Windows
 	battle               battle.Windows
 	npc                  npc.Windows
 	social               social.Windows
@@ -122,17 +115,14 @@ type worldUI struct {
 	changeCartWindow gameui.ChangeCartWindow
 	itemPickup       gameui.ItemPickupNotification
 
-	itemWindows     gameui.ItemWindows
-	identifyWindow  gameui.IdentifyWindow
-	cardWindow      gameui.CardCompositionWindow
-	makingArrow     gameui.MakingArrowWindow
-	makingItem      gameui.MakingItemWindow
-	repairItem      gameui.RepairItemWindow
-	weaponRefine    gameui.WeaponRefineWindow
-	petEggWindow    gameui.PetEggWindow
-	petInfoWindow   gameui.PetInfoWindow
-	petContext      gameui.PetContextMenu
-	petConfirm      gameui.ConfirmModal
+	itemWindows    gameui.ItemWindows
+	identifyWindow gameui.IdentifyWindow
+	cardWindow     gameui.CardCompositionWindow
+	makingArrow    gameui.MakingArrowWindow
+	makingItem     gameui.MakingItemWindow
+	repairItem     gameui.RepairItemWindow
+	weaponRefine   gameui.WeaponRefineWindow
+
 	statsWindow     gameui.StatsWindow
 	skillWindow     gameui.SkillWindow
 	questWindow     gameui.QuestWindow
@@ -177,8 +167,8 @@ func (u *worldUI) nonConsoleKeyboardInputBlockedExcept(ctx client.Context, excep
 		u.makingItem.IsOpen() ||
 		u.repairItem.IsOpen() ||
 		u.weaponRefine.IsOpen() ||
-		u.petEggWindow.IsOpen() ||
-		(except != &u.petInfoWindow.Window && u.petInfoWindow.KeyboardShortcutsBlocked()) ||
+		u.pet.Egg.IsOpen() ||
+		(except != &u.pet.Info.Window && u.pet.Info.KeyboardShortcutsBlocked()) ||
 		(except != &u.companions.HomunculusInfo.Window && u.companions.HomunculusInfo.KeyboardShortcutsBlocked()) ||
 		u.changeCartWindow.IsOpen() ||
 		u.itemWindows.KeyboardShortcutsBlocked() ||
@@ -566,7 +556,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	dead := scene.PlayerIsDead(ctx)
 	keyboardBlocked := m.ui.keyboardInputBlocked(ctx)
 	m.updateBotInput(ctx, !dead && !keyboardBlocked)
-	if m.updatePetSlotMachine(ctx) {
+	if m.pets().UpdateSlotMachine(ctx) {
 		return nil, nil
 	}
 	// Window.Update consumes pointer hover so that map input does not pass
@@ -587,7 +577,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 		if m.skills().CancelFromInput(ctx) {
 			return nil, nil
 		}
-		if m.cancelPetCaptureFromInput(ctx) {
+		if m.pets().CancelCaptureFromInput(ctx) {
 			return nil, nil
 		}
 		if m.openEscapeMenuFromInput(ctx) {
@@ -595,10 +585,10 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 		}
 		m.skills().AdjustPendingLevelFromWheel(ctx)
 	}
-	petContextConsumed := m.ui.petContext.Update(ctx)
-	if action := m.ui.petContext.PopAction(); action.Kind != gameui.PetContextActionNone {
+	petContextConsumed := m.ui.pet.Context.Update(ctx)
+	if action := m.ui.pet.Context.PopAction(); action.Kind != gameui.PetContextActionNone {
 		if !dead {
-			m.handlePetContextAction(ctx, action)
+			m.pets().HandleContextAction(ctx, action)
 		}
 		return nil, nil
 	}
@@ -674,7 +664,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if !dead && m.openPlayerContextFromInput(ctx, now) {
 		return nil, nil
 	}
-	if !m.mapPointerBlocked(ctx) && !m.ui.escapeMenu.IsOpen() && !m.ui.interactionModalOpen() && !m.ui.settingsWindow.IsOpen() && !m.ui.identifyWindow.IsOpen() && !m.ui.petEggWindow.IsOpen() && !m.ui.petConfirm.IsOpen() && !m.ui.companions.HomunculusConfirm.IsOpen() && !m.ui.companions.MercenaryConfirm.IsOpen() {
+	if !m.mapPointerBlocked(ctx) && !m.ui.escapeMenu.IsOpen() && !m.ui.interactionModalOpen() && !m.ui.settingsWindow.IsOpen() && !m.ui.identifyWindow.IsOpen() && !m.ui.pet.Egg.IsOpen() && !m.ui.pet.Confirm.IsOpen() && !m.ui.companions.HomunculusConfirm.IsOpen() && !m.ui.companions.MercenaryConfirm.IsOpen() {
 		m.updateCameraRotation(ctx)
 	}
 	if !dead && m.ui.escapeMenu.IsOpen() {
@@ -713,10 +703,10 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if m.ui.starPlaceConfirm.Update(ctx) {
 		return nil, nil
 	}
-	if m.ui.petConfirm.Update(ctx) {
+	if m.ui.pet.Confirm.Update(ctx) {
 		return nil, nil
 	}
-	if m.ui.petInfoWindow.Update(ctx) {
+	if m.ui.pet.Info.Update(ctx) {
 		return nil, nil
 	}
 	if m.ui.companions.HomunculusConfirm.Update(ctx) {
@@ -814,7 +804,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if m.ui.cardWindow.Update(ctx) {
 		return nil, nil
 	}
-	if m.ui.petEggWindow.Update(ctx) {
+	if m.ui.pet.Egg.Update(ctx) {
 		return nil, nil
 	}
 	if m.ui.inventoryBag.UpdateDrag(ctx, &m.ui.shortcutBar, &m.ui.storageWindow, &m.ui.cartWindow, &m.ui.social.TradeWindow, &m.ui.equipmentWindow, &m.ui.social.MailWindow) {
@@ -940,12 +930,12 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 			return nil, nil
 		}
 		playerX, playerY := scene.CurrentPlayerCell(ctx, now)
-		if actor, ok := m.hoveredVendingBoard(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now); ok {
+		if actor, ok := m.actors().HoveredVendingBoard(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now); ok {
 			glog.Debugf("click vending target mouse=%d,%d id=%d name=%q shop=%q player=%d,%d target=%d,%d", ctx.Input.MouseX, ctx.Input.MouseY, actor.ID, actor.Name, actor.VendingName, playerX, playerY, actor.X, actor.Y)
 			m.social().RequestVendingList(ctx, actor, "click")
 			return nil, nil
 		}
-		if actor, ok := m.hoveredChatRoomBoard(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now); ok {
+		if actor, ok := m.actors().HoveredChatRoomBoard(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now); ok {
 			glog.Debugf("click chat room target mouse=%d,%d id=%d name=%q room=%d title=%q player=%d,%d target=%d,%d", ctx.Input.MouseX, ctx.Input.MouseY, actor.ID, actor.Name, actor.ChatRoomID, actor.ChatRoomTitle, playerX, playerY, actor.X, actor.Y)
 			m.social().RequestChatRoomEnter(ctx, actor)
 			return nil, nil
@@ -1177,16 +1167,16 @@ func (m *WorldMode) nextWorldMode() *WorldMode {
 	next.ui.cartWindow = m.ui.cartWindow
 	next.ui.itemWindows = m.ui.itemWindows
 	next.ui.cardWindow = m.ui.cardWindow
-	next.ui.petEggWindow = m.ui.petEggWindow
-	next.ui.petInfoWindow = m.ui.petInfoWindow
+	next.ui.pet.Egg = m.ui.pet.Egg
+	next.ui.pet.Info = m.ui.pet.Info
 	next.ui.companions.HomunculusInfo = m.ui.companions.HomunculusInfo
 	next.ui.companions.HomunculusSkill = m.ui.companions.HomunculusSkill
 	next.ui.companions.MercenaryInfo = m.ui.companions.MercenaryInfo
 	next.ui.companions.MercenarySkill = m.ui.companions.MercenarySkill
-	next.petProperty = m.petProperty
-	next.hasPetProperty = m.hasPetProperty
-	next.petOldFullness = m.petOldFullness
-	next.petLastTalk = m.petLastTalk
+	next.petSystem.Property = m.petSystem.Property
+	next.petSystem.HasProperty = m.petSystem.HasProperty
+	next.petSystem.OldFullness = m.petSystem.OldFullness
+	next.petSystem.LastTalk = m.petSystem.LastTalk
 	next.ui.statsWindow = m.ui.statsWindow
 	next.ui.skillWindow = m.ui.skillWindow
 	next.ui.questWindow = m.ui.questWindow
@@ -1260,7 +1250,7 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 	if ctx.World.GND != nil {
 		m.mapScene.DrawGNDMeshes(screen, ctx.Resources, ctx.World.GND, ctx.World.RSW, projection)
 		m.mapScene.DrawGNDWater(screen, ctx.Resources, ctx.World.GND, ctx.World.RSW, projection, now, vertexFog)
-		m.drawGraffiti(screen, ctx, projection)
+		m.skills().DrawGraffiti(screen, ctx, projection)
 		if !ctx.Config.Render.NoUI {
 			m.drawTileCursor(screen, ctx, projection)
 		}
@@ -1309,7 +1299,7 @@ func (m *WorldMode) DrawOverlay(ctx client.Context, screen *render.Frame) {
 	m.mapFade.Draw(screen, now)
 	if !ctx.Config.Render.NoUI {
 		m.drawUIDragGhosts(screen, ctx)
-		m.drawPetSlotMachine(screen, ctx, now)
+		m.pets().DrawSlotMachine(screen, ctx, now)
 		m.drawROCursor(screen, ctx, projection, now)
 	}
 }
@@ -1537,10 +1527,10 @@ func sortedSceneDrawEntries(actors []scene.ActorDrawEntry, items []sceneItemDraw
 }
 
 func (m *WorldMode) releaseMapTextures() {
-	for id := range m.graffiti {
-		m.removeGraffiti(id)
+	for id := range m.skillSystem.Graffiti {
+		m.skills().RemoveGraffiti(id)
 	}
-	m.graffiti = nil
+	m.skillSystem.Graffiti = nil
 	if m.spriteUpscaler != nil {
 		m.spriteUpscaler.Close()
 		m.spriteUpscaler = nil

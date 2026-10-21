@@ -1,4 +1,4 @@
-package game
+package pet
 
 import (
 	"math"
@@ -28,22 +28,22 @@ const (
 	petSlotMachineFail
 )
 
-type petSlotMachineState struct {
-	active    bool
-	targetID  uint32
-	phase     petSlotMachinePhase
-	started   time.Time
-	attempted bool
-	result    bool
+type SlotMachineState struct {
+	Active    bool
+	TargetID  uint32
+	Phase     petSlotMachinePhase
+	Started   time.Time
+	Attempted bool
+	Result    bool
 }
 
-func (s *petSlotMachineState) setResult(success bool) {
-	s.phase = petSlotMachineSpinning
-	s.started = time.Now()
-	s.result = success
+func (s *SlotMachineState) setResult(success bool) {
+	s.Phase = petSlotMachineSpinning
+	s.Started = time.Now()
+	s.Result = success
 }
 
-func (m *WorldMode) openPetSlotMachine(ctx client.Context, targetID uint32) {
+func (m *System) OpenSlotMachine(ctx client.Context, targetID uint32) {
 	if ctx.Config.Render.NoUI {
 		if ctx.Network != nil {
 			if err := ctx.Network.SendTryCaptureMonster(targetID); err != nil {
@@ -52,7 +52,7 @@ func (m *WorldMode) openPetSlotMachine(ctx client.Context, targetID uint32) {
 		}
 		return
 	}
-	if m.loadPetSlotMachineView(ctx.Resources) == nil {
+	if m.loadSlotMachineView(ctx.Resources) == nil {
 		if ctx.Network != nil {
 			if err := ctx.Network.SendTryCaptureMonster(targetID); err != nil {
 				glog.Warnf("pet capture send failed target=%d: %v", targetID, err)
@@ -60,20 +60,20 @@ func (m *WorldMode) openPetSlotMachine(ctx client.Context, targetID uint32) {
 		}
 		return
 	}
-	m.petSlotMachine = petSlotMachineState{
-		active:   true,
-		targetID: targetID,
-		phase:    petSlotMachineWaiting,
-		started:  time.Now(),
+	m.SlotMachine = SlotMachineState{
+		Active:   true,
+		TargetID: targetID,
+		Phase:    petSlotMachineWaiting,
+		Started:  time.Now(),
 	}
 }
 
-func (m *WorldMode) updatePetSlotMachine(ctx client.Context) bool {
-	if !m.petSlotMachine.active || ctx.Input == nil {
+func (m *System) UpdateSlotMachine(ctx client.Context) bool {
+	if !m.SlotMachine.Active || ctx.Input == nil {
 		return false
 	}
 	if ctx.Input.JustPressed(input.KeyEscape) || ctx.Input.MouseJustPressed(input.MouseButtonRight) {
-		m.petSlotMachine = petSlotMachineState{}
+		m.SlotMachine = SlotMachineState{}
 		return true
 	}
 	if !ctx.Input.MouseJustPressed(input.MouseButtonLeft) {
@@ -83,32 +83,32 @@ func (m *WorldMode) updatePetSlotMachine(ctx client.Context) bool {
 	if !petSlotMachineContains(ctx.Input.MouseX, ctx.Input.MouseY, x, y) {
 		return true
 	}
-	if m.petSlotMachine.phase != petSlotMachineWaiting || m.petSlotMachine.attempted {
+	if m.SlotMachine.Phase != petSlotMachineWaiting || m.SlotMachine.Attempted {
 		return true
 	}
 	if ctx.Network == nil {
-		m.ui.console.AddErrorMessage("Capture failed: not connected.")
+		m.bindings.Console.AddErrorMessage("Capture failed: not connected.")
 		return true
 	}
-	if err := ctx.Network.SendTryCaptureMonster(m.petSlotMachine.targetID); err != nil {
-		m.ui.console.AddErrorMessage("Capture failed.")
-		glog.Warnf("pet capture send failed target=%d: %v", m.petSlotMachine.targetID, err)
+	if err := ctx.Network.SendTryCaptureMonster(m.SlotMachine.TargetID); err != nil {
+		m.bindings.Console.AddErrorMessage("Capture failed.")
+		glog.Warnf("pet capture send failed target=%d: %v", m.SlotMachine.TargetID, err)
 		return true
 	}
-	m.petSlotMachine.attempted = true
-	glog.Debugf("pet capture try target=%d", m.petSlotMachine.targetID)
+	m.SlotMachine.Attempted = true
+	glog.Debugf("pet capture try target=%d", m.SlotMachine.TargetID)
 	return true
 }
 
-func (m *WorldMode) drawPetSlotMachine(screen *render.Frame, ctx client.Context, now time.Time) {
-	if !m.petSlotMachine.active {
+func (m *System) DrawSlotMachine(screen *render.Frame, ctx client.Context, now time.Time) {
+	if !m.SlotMachine.Active {
 		return
 	}
-	view := m.loadPetSlotMachineView(ctx.Resources)
+	view := m.loadSlotMachineView(ctx.Resources)
 	if view == nil || view.Act == nil || len(view.Act.Actions) == 0 {
 		return
 	}
-	actionIndex, motion, visible := m.petSlotMachineFrame(view.Act, now)
+	actionIndex, motion, visible := m.slotMachineFrame(view.Act, now)
 	if !visible {
 		return
 	}
@@ -137,8 +137,8 @@ func (m *WorldMode) drawPetSlotMachine(screen *render.Frame, ctx client.Context,
 	screen.DrawImage(billboard.Image, &opts)
 }
 
-func (m *WorldMode) petSlotMachineFrame(act *res.ACT, now time.Time) (int, int, bool) {
-	phase := m.petSlotMachine.phase
+func (m *System) slotMachineFrame(act *res.ACT, now time.Time) (int, int, bool) {
+	phase := m.SlotMachine.Phase
 	actionIndex := int(phase)
 	if actionIndex < 0 || actionIndex >= len(act.Actions) {
 		return 0, 0, false
@@ -151,34 +151,34 @@ func (m *WorldMode) petSlotMachineFrame(act *res.ACT, now time.Time) (int, int, 
 	if delay <= 0 {
 		delay = 150
 	}
-	elapsed := float64(now.Sub(m.petSlotMachine.started) / time.Millisecond)
+	elapsed := float64(now.Sub(m.SlotMachine.Started) / time.Millisecond)
 	switch phase {
 	case petSlotMachineWaiting:
 		motion := int(math.Floor(elapsed/delay*2)) % len(action.Animations)
 		return actionIndex, motion, true
 	case petSlotMachineSpinning:
 		maxFrame := len(action.Animations)
-		if m.petSlotMachine.result {
+		if m.SlotMachine.Result {
 			maxFrame += 7
 		} else {
 			maxFrame += 3
 		}
 		motion := int(math.Floor(elapsed / delay))
 		if motion >= maxFrame {
-			if m.petSlotMachine.result {
-				m.petSlotMachine.phase = petSlotMachineSuccess
+			if m.SlotMachine.Result {
+				m.SlotMachine.Phase = petSlotMachineSuccess
 			} else {
-				m.petSlotMachine.phase = petSlotMachineFail
+				m.SlotMachine.Phase = petSlotMachineFail
 			}
-			m.petSlotMachine.started = now
-			return m.petSlotMachineFrame(act, now)
+			m.SlotMachine.Started = now
+			return m.slotMachineFrame(act, now)
 		}
 		return actionIndex, motion % len(action.Animations), true
 	case petSlotMachineSuccess, petSlotMachineFail:
 		motion := int(math.Floor(elapsed / delay))
 		if motion >= len(action.Animations) {
 			if elapsed >= float64(len(action.Animations))*delay+500 {
-				m.petSlotMachine = petSlotMachineState{}
+				m.SlotMachine = SlotMachineState{}
 				return actionIndex, len(action.Animations) - 1, false
 			}
 			return actionIndex, len(action.Animations) - 1, true
@@ -189,7 +189,7 @@ func (m *WorldMode) petSlotMachineFrame(act *res.ACT, now time.Time) (int, int, 
 	}
 }
 
-func (m *WorldMode) loadPetSlotMachineView(manager *res.Manager) *scene.SpriteView {
+func (m *System) loadSlotMachineView(manager *res.Manager) *scene.SpriteView {
 	if manager == nil || m.slotMachineMiss {
 		return nil
 	}

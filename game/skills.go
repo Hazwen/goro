@@ -395,10 +395,10 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 
 func (m *WorldMode) applySkillUnitEntry(ctx client.Context, entry network.SkillUnitEntry) {
 	if entry.HasMessage {
-		m.applyGraffitiEntry(ctx, entry)
+		m.skills().ApplyGraffitiEntry(ctx, entry)
 		return
 	}
-	m.removeGraffiti(entry.ID)
+	m.skills().RemoveGraffiti(entry.ID)
 	if m.skills().ApplySkillUnitModelEntry(entry) {
 		if entry.UnitID == 148 { // Shock Wave Trap owns its looping STR.
 			m.effects().AddCellLifetime(ctx, effects.Shockwave, entry.ID, int(entry.X), int(entry.Y), time.Now(), effects.SkillUnitEffectFallbackDuration, true)
@@ -440,7 +440,7 @@ func (m *WorldMode) applySkillUnitDisappear(disappear network.SkillUnitDisappear
 	if disappear.ID == 0 {
 		return
 	}
-	m.removeGraffiti(disappear.ID)
+	m.skills().RemoveGraffiti(disappear.ID)
 	removedEffects := m.effects().RemoveUnit(disappear.ID)
 	removedModel := m.skills().RemoveSkillUnitModelOnly(disappear.ID)
 	if removedEffects || removedModel {
@@ -785,6 +785,9 @@ func (m *WorldMode) skills() *skills.System {
 	m.skillSystem.Bind(skills.Bindings{
 		ChangeCart:          &m.ui.changeCartWindow,
 		TextPrompt:          &m.ui.skillTextPrompt,
+		Console:             &m.ui.console,
+		TeleportModal:       &m.ui.teleportModal,
+		StarPlaceConfirm:    &m.ui.starPlaceConfirm,
 		Error:               m.ui.console.AddErrorMessage,
 		RequestWalk:         m.requestWalk,
 		WalkBlocked:         func() { m.setWalkCooldown(walkRequestCooldown) },

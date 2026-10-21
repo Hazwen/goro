@@ -1,4 +1,4 @@
-package game
+package scene_test
 
 import (
 	"math"

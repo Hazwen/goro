@@ -37,6 +37,9 @@ type PendingTextTarget struct {
 type Bindings struct {
 	ChangeCart          *gameui.ChangeCartWindow
 	TextPrompt          *gameui.TextPromptWindow
+	Console             *gameui.ChatConsole
+	TeleportModal       *gameui.TeleportModal
+	StarPlaceConfirm    *gameui.ConfirmModal
 	Error               func(string, ...any)
 	RequestWalk         func(client.Context, int, int, string) bool
 	WalkBlocked         func()
@@ -48,6 +51,7 @@ type Bindings struct {
 }
 
 type System struct {
+	Graffiti        map[uint32]*groundGraffiti
 	Pending         PendingTarget
 	PendingText     PendingTextTarget
 	Units           map[uint32]skillUnitModel

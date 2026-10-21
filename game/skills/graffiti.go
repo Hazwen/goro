@@ -1,4 +1,4 @@
-package game
+package skills
 
 import (
 	"image"
@@ -15,30 +15,30 @@ import (
 )
 
 type groundGraffiti struct {
-	x, y    int
-	angle   float64
-	message string
-	mesh    *render.WorldMesh
-	images  render.ImageGroup
+	X, Y    int
+	Angle   float64
+	Message string
+	Mesh    *render.WorldMesh
+	Images  render.ImageGroup
 }
 
-func (m *WorldMode) applyGraffitiEntry(ctx client.Context, entry network.SkillUnitEntry) {
-	m.removeGraffiti(entry.ID)
+func (m *System) ApplyGraffitiEntry(ctx client.Context, entry network.SkillUnitEntry) {
+	m.RemoveGraffiti(entry.ID)
 	if ctx.Config.Headless || entry.ID == 0 || !entry.Visible || entry.Message == "" {
 		return
 	}
-	if m.graffiti == nil {
-		m.graffiti = make(map[uint32]*groundGraffiti)
+	if m.Graffiti == nil {
+		m.Graffiti = make(map[uint32]*groundGraffiti)
 	}
 	// CGraffiSkill uses the viewer's facing when the writing first appears.
 	angle := scene.DegreesToRadians(float64(effects.EffectActorDirection(ctx, scene.LocalSkillTarget(ctx), time.Now())*45 + 180))
-	m.graffiti[entry.ID] = &groundGraffiti{x: int(entry.X), y: int(entry.Y), angle: angle, message: entry.Message}
+	m.Graffiti[entry.ID] = &groundGraffiti{X: int(entry.X), Y: int(entry.Y), Angle: angle, Message: entry.Message}
 }
 
-func (m *WorldMode) removeGraffiti(id uint32) {
-	if writing := m.graffiti[id]; writing != nil {
-		writing.images.Release()
-		delete(m.graffiti, id)
+func (m *System) RemoveGraffiti(id uint32) {
+	if writing := m.Graffiti[id]; writing != nil {
+		writing.Images.Release()
+		delete(m.Graffiti, id)
 	}
 }
 
@@ -86,32 +86,32 @@ func graffitiTexture(atlas image.Image, message string) *render.Image {
 	return render.NewImageFromImage(out)
 }
 
-func (m *WorldMode) drawGraffiti(screen *render.Frame, ctx client.Context, projection scene.Projection) {
-	for _, writing := range m.graffiti {
-		if math.Abs(float64(writing.x)-projection.PlayerX) > maps.RSMRenderRadius()*2 ||
-			math.Abs(float64(writing.y)-projection.PlayerY) > maps.RSMRenderRadius()*2 {
+func (m *System) DrawGraffiti(screen *render.Frame, ctx client.Context, projection scene.Projection) {
+	for _, writing := range m.Graffiti {
+		if math.Abs(float64(writing.X)-projection.PlayerX) > maps.RSMRenderRadius()*2 ||
+			math.Abs(float64(writing.Y)-projection.PlayerY) > maps.RSMRenderRadius()*2 {
 			continue
 		}
-		if writing.mesh == nil {
-			atlas := m.effects().EffectFileTexture(ctx.Resources, "effect/alpabet.bmp")
+		if writing.Mesh == nil {
+			atlas := m.bindings.Effects.EffectFileTexture(ctx.Resources, "effect/alpabet.bmp")
 			if atlas == nil {
 				continue
 			}
-			texture := writing.images.Add(graffitiTexture(atlas.RGBA(), writing.message))
-			writing.mesh = graffitiMesh(ctx, writing, texture)
+			texture := writing.Images.Add(graffitiTexture(atlas.RGBA(), writing.Message))
+			writing.Mesh = graffitiMesh(ctx, writing, texture)
 		}
-		screen.DrawWorldMesh(writing.mesh)
+		screen.DrawWorldMesh(writing.Mesh)
 	}
 }
 
 func graffitiMesh(ctx client.Context, writing *groundGraffiti, texture *render.Image) *render.WorldMesh {
 	vertices := make([]render.Vertex3D, 0, 18*18*4)
 	indices := make([]uint16, 0, 18*18*6)
-	sin, cos := math.Sincos(writing.angle)
+	sin, cos := math.Sincos(writing.Angle)
 	// Follow the terrain one cell at a time, as CGraffiSkill::Render does.
 	for y := 0; y < 18; y++ {
 		for x := 0; x < 18; x++ {
-			cx, cy := writing.x+x-9, writing.y+y-9
+			cx, cy := writing.X+x-9, writing.Y+y-9
 			if cx < 0 || cy < 0 {
 				continue
 			}
@@ -122,7 +122,7 @@ func graffitiMesh(ctx client.Context, writing *groundGraffiti, texture *render.I
 			base := uint16(len(vertices))
 			for _, offset := range [4][2]int{{0, 0}, {1, 0}, {1, 1}, {0, 1}} {
 				dx, dy := float64(x+offset[0]-9), float64(y+offset[1]-9)
-				wx, wy := float64(writing.x)+dx, float64(writing.y)+dy
+				wx, wy := float64(writing.X)+dx, float64(writing.Y)+dy
 				// Match the GND mesh's diagonal from corner 0 to corner 3.
 				tx, ty := float64(cx%2+offset[0])/2, float64(cy%2+offset[1])/2
 				height := float64(cell.Heights[0])*(1-max(tx, ty)) + float64(cell.Heights[3])*min(tx, ty)

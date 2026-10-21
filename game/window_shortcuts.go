@@ -29,7 +29,7 @@ func (m *WorldMode) windowShortcutAllowed(ctx client.Context, code input.KeyCode
 		case gpucontext.KeyC:
 			target = &m.ui.social.ChatRoomCreate.Window
 		case gpucontext.KeyJ:
-			target = &m.ui.petInfoWindow.Window
+			target = &m.ui.pet.Info.Window
 		case gpucontext.KeyR:
 			target = &m.ui.companions.HomunculusInfo.Window
 		case gpucontext.KeyO:
@@ -75,10 +75,10 @@ func (m *WorldMode) toggleWindowFromInput(ctx client.Context) bool {
 				m.ui.social.ChatRoomCreate.Open(ctx)
 			}
 		case gpucontext.KeyJ:
-			if m.ui.petInfoWindow.IsOpen() {
-				m.ui.petInfoWindow.Close()
-			} else if m.petID != 0 {
-				m.openPetInfo(ctx)
+			if m.ui.pet.Info.IsOpen() {
+				m.ui.pet.Info.Close()
+			} else if m.petSystem.ID != 0 {
+				m.pets().OpenInfo(ctx)
 			}
 		case gpucontext.KeyR:
 			if plainCtrlDown(ctx.Input) {

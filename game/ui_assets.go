@@ -129,7 +129,7 @@ func drawBillboardPreview(screen previewRenderTarget, billboard *scene.Billboard
 	if screen == nil || billboard == nil || billboard.Image == nil || width <= 0 || height <= 0 {
 		return
 	}
-	bounds := visibleImageBounds(billboard.Image)
+	bounds := scene.VisibleImageBounds(billboard.Image)
 	if bounds.Empty() {
 		return
 	}

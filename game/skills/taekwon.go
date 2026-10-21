@@ -1,4 +1,4 @@
-package game
+package skills
 
 import (
 	"image/color"
@@ -17,18 +17,18 @@ const (
 	starPlaceConfirmFallback  = "You cannot change a map's designation once it is designated. Are you sure that you want to designate this map?"
 )
 
-func (m *WorldMode) applyStarPlaceRequest(ctx client.Context, place network.StarPlace) {
+func (m *System) ApplyStarPlaceRequest(ctx client.Context, place network.StarPlace) {
 	message := starPlaceConfirmFallback
 	if ctx.Resources != nil {
 		message = taekwonMessageString(ctx, starPlaceConfirmMessageID, message)
 	}
-	m.ui.starPlaceConfirm.Open(ctx, "Feeling the Sun, Moon and Stars", message, func() {
+	m.bindings.StarPlaceConfirm.Open(ctx, "Feeling the Sun, Moon and Stars", message, func() {
 		if ctx.Network == nil {
-			m.ui.console.AddErrorMessage("Place registration failed: not connected.")
+			m.bindings.Console.AddErrorMessage("Place registration failed: not connected.")
 			return
 		}
 		if err := ctx.Network.SendAgreeStarPlace(place.Place); err != nil {
-			m.ui.console.AddErrorMessage("Place registration failed.")
+			m.bindings.Console.AddErrorMessage("Place registration failed.")
 			glog.Warnf("star gladiator place confirmation failed place=%d: %v", place.Place, err)
 			return
 		}
@@ -39,7 +39,7 @@ func (m *WorldMode) applyStarPlaceRequest(ctx client.Context, place network.Star
 	glog.Debugf("star gladiator place confirmation opened place=%d", place.Place)
 }
 
-func (m *WorldMode) applyTaekwonMission(ctx client.Context, mission network.TaekwonMission) {
+func (m *System) ApplyTaekwonMission(ctx client.Context, mission network.TaekwonMission) {
 	progress := int(mission.Progress)
 	template := "Taekwon mission: %s (%d%)"
 	if ctx.Resources != nil {
@@ -49,7 +49,7 @@ func (m *WorldMode) applyTaekwonMission(ctx client.Context, mission network.Taek
 	}
 	message := strings.Replace(template, "%s", mission.MonsterName, 1)
 	message = strings.Replace(message, "%d%", strconv.Itoa(progress)+"%", 1)
-	m.ui.console.AddColoredMessage(taekwonAnnouncementColor, "%s", message)
+	m.bindings.Console.AddColoredMessage(taekwonAnnouncementColor, "%s", message)
 	glog.Debugf("taekwon mission monster=%q id=%d progress=%d result=%d", mission.MonsterName, mission.MonsterID, mission.Progress, mission.Result)
 }
 

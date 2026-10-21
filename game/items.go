@@ -550,7 +550,7 @@ func (m *WorldMode) drawInventoryItemIcon(screen *render.Frame, manager *res.Man
 		m.drawFallbackInventoryItemIcon(screen, x, y)
 		return
 	}
-	bounds := visibleImageBounds(billboard.Image)
+	bounds := scene.VisibleImageBounds(billboard.Image)
 	if bounds.Empty() {
 		m.drawFallbackInventoryItemIcon(screen, x, y)
 		return
@@ -700,38 +700,6 @@ func (m *WorldMode) drawFallbackInventoryItemIcon(screen *render.Frame, x, y int
 	opts.GeoM.Translate(float64(x), float64(y))
 	opts.Filter = scene.SpriteDrawFilter()
 	screen.DrawImage(img, &opts)
-}
-
-func visibleImageBounds(img *render.Image) image.Rectangle {
-	rgba := img.RGBA()
-	if rgba == nil {
-		return image.Rectangle{}
-	}
-	bounds := rgba.Bounds()
-	visible := image.Rectangle{Min: bounds.Max, Max: bounds.Min}
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			if rgba.RGBAAt(x, y).A == 0 {
-				continue
-			}
-			if x < visible.Min.X {
-				visible.Min.X = x
-			}
-			if y < visible.Min.Y {
-				visible.Min.Y = y
-			}
-			if x+1 > visible.Max.X {
-				visible.Max.X = x + 1
-			}
-			if y+1 > visible.Max.Y {
-				visible.Max.Y = y + 1
-			}
-		}
-	}
-	if visible.Min.X > visible.Max.X || visible.Min.Y > visible.Max.Y {
-		return image.Rectangle{}
-	}
-	return visible.Inset(-1).Intersect(bounds)
 }
 
 func (m *WorldMode) itemSpriteView(manager *res.Manager, itemID uint16, identified bool) *scene.SpriteView {

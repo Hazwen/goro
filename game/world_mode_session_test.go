@@ -1298,3 +1298,14 @@ func mapTextureFixture(t *testing.T) (*WorldMode, client.Context) {
 	t.Helper()
 	return &WorldMode{mapScene: maps.System{Textures: make(map[string]*render.Image), TextureMiss: make(map[string]struct{})}}, testutil.MapTextureContext(t)
 }
+
+func TestMapInfoNotifyAddsServerRestrictionToConsole(t *testing.T) {
+	mode := &WorldMode{}
+
+	mode.applyMapInfoNotify(network.MapInfoNotify{Result: 1})
+
+	messages := mode.ui.console.Messages()
+	if len(messages) != 1 || messages[0].Text != "Saved point cannot be memorized." {
+		t.Fatalf("console messages = %+v", messages)
+	}
+}

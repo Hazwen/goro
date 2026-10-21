@@ -3,6 +3,8 @@ package game
 import (
 	"time"
 
+	"github.com/kivutar/goro/game/pet"
+
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/npc"
 	"github.com/kivutar/goro/game/scene"
@@ -28,7 +30,7 @@ func (m *WorldMode) startServerProgress(ctx client.Context, progress network.Pro
 	m.pendingPickup = pickupIntent{}
 	m.skillSystem.Pending = skills.PendingTarget{}
 	m.skillSystem.PendingText = skills.PendingTextTarget{}
-	m.pendingPetCapture = petCaptureState{}
+	m.petSystem.PendingCapture = pet.CaptureState{}
 	m.clearLocalActorAction(ctx)
 }
 
@@ -57,7 +59,7 @@ func (u *worldUI) npcInputAvailable() bool {
 		!u.escapeMenu.IsOpen() &&
 		!u.interactionModalOpen() &&
 		!u.social.PartyInfo.IsOpen() &&
-		!u.petConfirm.IsOpen() &&
+		!u.pet.Confirm.IsOpen() &&
 		!u.companions.HomunculusConfirm.IsOpen() &&
 		!u.companions.MercenaryConfirm.IsOpen() &&
 		!u.inventoryBag.KeyboardShortcutsBlocked()

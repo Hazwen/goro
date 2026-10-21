@@ -1,4 +1,4 @@
-package game
+package client_test
 
 import (
 	"testing"

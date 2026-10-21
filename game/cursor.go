@@ -6,6 +6,8 @@ import (
 	"math"
 	"time"
 
+	"github.com/kivutar/goro/game/pet"
+
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/actors"
@@ -160,7 +162,7 @@ func (s *roCursorState) frameAt(action int, info cursorActionInfo, start, now ti
 
 func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Projection, now time.Time) int {
 	mouseX, mouseY := ctx.Input.MouseX, ctx.Input.MouseY
-	if m.petSlotMachine.active {
+	if m.petSystem.SlotMachine.Active {
 		return cursorActionClick
 	}
 	if m.npc().CutinPointerBlocked(ctx) {
@@ -179,17 +181,17 @@ func (m *WorldMode) cursorDesiredAction(ctx client.Context, projection scene.Pro
 		}
 		return cursorActionTarget
 	}
-	if m.pendingPetCapture.active {
-		actor, ok := clickedSkillTarget(ctx, projection, petCaptureTargetSkill(), mouseX, mouseY, now, m.actorSystem.ActorDeaths)
+	if m.petSystem.PendingCapture.Active {
+		actor, ok := clickedSkillTarget(ctx, projection, pet.CaptureTargetSkill(), mouseX, mouseY, now, m.actorSystem.ActorDeaths)
 		if ok && (!cursorSnapTargets(ctx) || m.cursorActorSnapEligible(ctx, projection, actor, now)) {
 			return cursorActionTarget2
 		}
 		return cursorActionTarget
 	}
-	if _, ok := m.hoveredVendingBoard(ctx, projection, mouseX, mouseY, now); ok {
+	if _, ok := m.actors().HoveredVendingBoard(ctx, projection, mouseX, mouseY, now); ok {
 		return cursorActionClick
 	}
-	if _, ok := m.hoveredChatRoomBoard(ctx, projection, mouseX, mouseY, now); ok {
+	if _, ok := m.actors().HoveredChatRoomBoard(ctx, projection, mouseX, mouseY, now); ok {
 		return cursorActionClick
 	}
 	if item, ok := clickedGroundItem(ctx, projection, mouseX, mouseY, now); ok && (!cursorSnapItems(ctx) || cursorGroundItemSnapEligible(ctx, projection, item, now)) {
@@ -267,8 +269,8 @@ func (m *WorldMode) pendingTargetCursorSkill() (session.Skill, bool) {
 	if m.skillSystem.Pending.Skill.ID != 0 {
 		return m.skillSystem.Pending.Skill, true
 	}
-	if m.pendingPetCapture.active {
-		return petCaptureTargetSkill(), true
+	if m.petSystem.PendingCapture.Active {
+		return pet.CaptureTargetSkill(), true
 	}
 	return session.Skill{}, false
 }
@@ -279,7 +281,7 @@ func (m *WorldMode) drawPendingTargetBanner(screen *render.Frame, ctx client.Con
 		return
 	}
 	name := skills.SkillLabel(skill)
-	if ctx.Resources != nil && skill.ID != petCaptureSkillID {
+	if ctx.Resources != nil && skill.ID != pet.CaptureSkillID {
 		if displayName, ok := ctx.Resources.SkillDisplayName(int(skill.ID)); ok {
 			name = displayName
 		}
@@ -429,7 +431,7 @@ func uiPointerBlocked(ctx client.Context) bool {
 func (m *WorldMode) mapPointerBlocked(ctx client.Context) bool {
 	// The pet slot machine and NPC cut-ins are drawn outside the gogpu UI
 	// manager, so include them explicitly when gating map interactions.
-	return m.petSlotMachine.active || m.npc().CutinPointerBlocked(ctx) || uiPointerBlocked(ctx)
+	return m.petSystem.SlotMachine.Active || m.npc().CutinPointerBlocked(ctx) || uiPointerBlocked(ctx)
 }
 
 func hoveredCursorActor(ctx client.Context, projection scene.Projection, mouseX, mouseY int, now time.Time, deadActors map[uint32]time.Time) (world.Actor, bool) {

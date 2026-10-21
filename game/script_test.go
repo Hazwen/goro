@@ -977,7 +977,7 @@ func TestNPCDialogModalPriorityForKeyboardAndGamepad(t *testing.T) {
 			mode.ui.npc.Dialog.Update(ctx) // Publish before testing keyboard dispatch.
 			modal := map[string]*gameui.ConfirmModal{
 				"friend": &mode.ui.social.FriendRequest, "trade": &mode.ui.social.TradeRequest,
-				"party": &mode.ui.social.PartyInfo, "pet": &mode.ui.petConfirm,
+				"party": &mode.ui.social.PartyInfo, "pet": &mode.ui.pet.Confirm,
 				"homunculus": &mode.ui.companions.HomunculusConfirm, "mercenary": &mode.ui.companions.MercenaryConfirm,
 			}[name]
 			modal.OpenAlert(ctx, name, "Confirm", nil)

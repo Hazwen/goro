@@ -153,7 +153,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if mission, ok, err := network.ParseTaekwonMission(pkt); err != nil {
 		glog.Errorf("parse taekwon mission 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyTaekwonMission(ctx, mission)
+		m.skills().ApplyTaekwonMission(ctx, mission)
 		return nil, false
 	}
 	if point, ok, err := network.ParseFamePointUpdate(pkt); err != nil {
@@ -171,7 +171,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if place, ok, err := network.ParseStarPlace(pkt); err != nil {
 		glog.Errorf("parse star place 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyStarPlaceRequest(ctx, place)
+		m.skills().ApplyStarPlaceRequest(ctx, place)
 		return nil, false
 	}
 	if whisper, ok, err := network.ParseWhisperMessage(pkt); err != nil {
@@ -410,43 +410,43 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if _, ok, err := network.ParsePetCaptureStart(pkt); err != nil {
 		glog.Errorf("parse pet capture start 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.startPetCapture(ctx)
+		m.pets().StartCapture(ctx)
 		return nil, false
 	}
 	if petCapture, ok, err := network.ParsePetCaptureResult(pkt); err != nil {
 		glog.Errorf("parse pet capture result 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyPetCaptureResult(ctx, petCapture)
+		m.pets().ApplyCaptureResult(ctx, petCapture)
 		return nil, false
 	}
 	if petProperty, ok, err := network.ParsePetProperty(pkt); err != nil {
 		glog.Errorf("parse pet property 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyPetProperty(ctx, petProperty)
+		m.pets().ApplyProperty(ctx, petProperty)
 		return nil, false
 	}
 	if petFeed, ok, err := network.ParsePetFeedResult(pkt); err != nil {
 		glog.Errorf("parse pet feed 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyPetFeedResult(ctx, petFeed)
+		m.pets().ApplyFeedResult(ctx, petFeed)
 		return nil, false
 	}
 	if petState, ok, err := network.ParsePetStateChange(pkt); err != nil {
 		glog.Errorf("parse pet state 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyPetStateChange(ctx, petState)
+		m.pets().ApplyStateChange(ctx, petState)
 		return nil, false
 	}
 	if petEggs, ok, err := network.ParsePetEggList(pkt); err != nil {
 		glog.Errorf("parse pet egg list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyPetEggList(ctx, petEggs)
+		m.pets().ApplyEggList(ctx, petEggs)
 		return nil, false
 	}
 	if petAction, ok, err := network.ParsePetAction(pkt); err != nil {
 		glog.Errorf("parse pet action 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyPetAction(ctx, petAction)
+		m.pets().ApplyAction(ctx, petAction)
 		return nil, false
 	}
 	if identifyList, ok, err := network.ParseItemIdentifyList(pkt); err != nil {
@@ -1316,13 +1316,13 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if warpList, ok, err := network.ParseWarpPointList(pkt); err != nil {
 		glog.Errorf("parse warp point list 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyWarpPointList(ctx, warpList)
+		m.skills().ApplyWarpPointList(ctx, warpList)
 		return nil, false
 	}
 	if memo, ok, err := network.ParseRememberWarpPointAck(pkt); err != nil {
 		glog.Errorf("parse remember warp point ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		m.applyRememberWarpPointAck(ctx, memo)
+		m.skills().ApplyRememberWarpPointAck(ctx, memo)
 		return nil, false
 	}
 	if fail, ok, err := network.ParseSkillFailAck(pkt); err != nil {
@@ -1418,4 +1418,10 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	}
 
 	return nil, false
+}
+
+func (m *WorldMode) applyMapInfoNotify(notify network.MapInfoNotify) {
+	message := maps.InfoNotifyMessage(notify.Result)
+	m.ui.console.AddErrorMessage("%s", message)
+	glog.Debugf("map info notification result=%d message=%q", notify.Result, message)
 }

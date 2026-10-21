@@ -1,4 +1,4 @@
-package game
+package actors_test
 
 import (
 	"testing"

@@ -3,6 +3,8 @@ package game
 import (
 	"testing"
 
+	"github.com/kivutar/goro/game/pet"
+
 	"github.com/gogpu/gpucontext"
 	"github.com/gogpu/ui/core/textfield"
 	"github.com/gogpu/ui/widget"
@@ -583,8 +585,8 @@ func TestMercenarySpriteKeyUsesGuildDefaultWeapon(t *testing.T) {
 func openCompanionInputTestWindow(ctx client.Context, m *WorldMode, name string) *gameui.Window {
 	switch name {
 	case "pet":
-		m.ui.petInfoWindow.OpenInfo(ctx, network.PetProperty{Name: "Poring"})
-		return &m.ui.petInfoWindow.Window
+		m.ui.pet.Info.OpenInfo(ctx, network.PetProperty{Name: "Poring"})
+		return &m.ui.pet.Info.Window
 	case "homunculus":
 		m.ui.companions.HomunculusInfo.OpenInfo(ctx, ctx.Session.Homunculus)
 		return &m.ui.companions.HomunculusInfo.Window
@@ -691,8 +693,8 @@ func TestCompanionRenameKeepsKeyboardInput(t *testing.T) {
 			field.SetFocused(true)
 			if name == "pet" {
 				field.SetText("Fluffy")
-				mode.applyPetProperty(ctx, network.PetProperty{Name: "Poring", Fullness: 80})
-				mode.applyPetStateChange(ctx, network.PetStateChange{Type: petStateHunger, Data: 79})
+				mode.pets().ApplyProperty(ctx, network.PetProperty{Name: "Poring", Fullness: 80})
+				mode.pets().ApplyStateChange(ctx, network.PetStateChange{Type: pet.StateHunger, Data: 79})
 			}
 			if prepareKeyboardTestText(mode, ctx, gpucontext.KeyW, "w") || mode.ui.console.Active() {
 				t.Fatal("gameplay or chat stole text intended for the rename field")
