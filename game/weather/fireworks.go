@@ -1,4 +1,4 @@
-package game
+package weather
 
 import (
 	"image/color"
@@ -112,19 +112,19 @@ func (s *mapWeatherFireworkState) spawn(index int, world *worldstate.World, cent
 	rocket.textureIndex = textureIndex
 }
 
-func (s *mapWeatherFireworkState) scheduleSounds(m *WorldMode, now time.Time) {
+func (s *mapWeatherFireworkState) scheduleSounds(m *System, now time.Time, scheduleSound func(time.Time, ...string)) {
 	for i := range s.rockets {
 		starts := s.rockets[i].launchTime
-		m.scheduleMapWeatherSound(i*2, starts, now, pokJukLaunchSFX)
-		m.scheduleMapWeatherSound(i*2+1, starts.Add(pokJukWeatherRiseDuration), now, pokJukExplosionSFX, pokJukLaunchSFX)
+		m.scheduleMapWeatherSound(i*2, starts, now, scheduleSound, pokJukLaunchSFX)
+		m.scheduleMapWeatherSound(i*2+1, starts.Add(pokJukWeatherRiseDuration), now, scheduleSound, pokJukExplosionSFX, pokJukLaunchSFX)
 	}
 }
 
-func (s *mapWeatherFireworkState) draw(screen *render.Frame, mode *WorldMode, ctx client.Context, projection scene.Projection, now time.Time) {
+func (s *mapWeatherFireworkState) draw(screen *render.Frame, fx *effects.System, ctx client.Context, projection scene.Projection, now time.Time) {
 	textures := [3]*render.Image{
-		mode.effects().EffectFileTexture(ctx.Resources, "effect/pok1.tga"),
-		mode.effects().EffectFileTexture(ctx.Resources, "effect/pok2.tga"),
-		mode.effects().EffectFileTexture(ctx.Resources, "effect/pok3.tga"),
+		fx.EffectFileTexture(ctx.Resources, "effect/pok1.tga"),
+		fx.EffectFileTexture(ctx.Resources, "effect/pok2.tga"),
+		fx.EffectFileTexture(ctx.Resources, "effect/pok3.tga"),
 	}
 	options := effects.TexturedEffectBillboardDrawOptions(true, true)
 	options.DisableFog = true

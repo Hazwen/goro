@@ -1,4 +1,4 @@
-package game
+package weather
 
 import (
 	"image/color"
@@ -159,24 +159,24 @@ func weatherCloudParamsForEffect(effectID int) (mapWeatherCloudParams, bool) {
 	}
 }
 
-func (m *WorldMode) drawMapWeatherCloudEffect(screen *render.Frame, ctx client.Context, projection scene.Projection, effectID int, now time.Time) {
+func (m *System) drawMapWeatherCloudEffect(screen *render.Frame, ctx client.Context, projection scene.Projection, effectID int, now time.Time, fx *effects.System) {
 	params, ok := weatherCloudParamsForEffect(effectID)
 	if !ok || ctx.World == nil {
 		return
 	}
 	key := normalizeMapNameForWeather(ctx.World.MapName)
 	centerX, centerY := mapWeatherCloudCenter(ctx.World, projection, now)
-	m.mapWeatherCloud.ensure(key, params, ctx.World, centerX, centerY, now)
-	m.mapWeatherCloud.update(params, ctx.World, centerX, centerY, now)
+	m.cloud.ensure(key, params, ctx.World, centerX, centerY, now)
+	m.cloud.update(params, ctx.World, centerX, centerY, now)
 	options := effects.TexturedEffectBillboardDrawOptions(params.additive, params.overlay)
 	options.DisableFog = params.disableFog
-	for index := range m.mapWeatherCloud.clouds {
-		cloud := &m.mapWeatherCloud.clouds[index]
+	for index := range m.cloud.clouds {
+		cloud := &m.cloud.clouds[index]
 		alpha := mapWeatherCloudAlpha(*cloud, params)
 		if alpha <= 0 {
 			continue
 		}
-		texture := m.effects().EffectFileTextureWithBlackKey(ctx.Resources, params.textureFiles[cloud.textureIndex%len(params.textureFiles)], params.blackKey)
+		texture := fx.EffectFileTextureWithBlackKey(ctx.Resources, params.textureFiles[cloud.textureIndex%len(params.textureFiles)], params.blackKey)
 		if texture == nil {
 			continue
 		}

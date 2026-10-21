@@ -1,4 +1,4 @@
-package game
+package weather
 
 import (
 	"math"
@@ -10,6 +10,14 @@ import (
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 )
+
+// System owns the weather particles and sound cycles for the current map.
+// Its zero value is ready to use; replace it when entering a new map.
+type System struct {
+	cloud     mapWeatherCloudState
+	fireworks mapWeatherFireworkState
+	sounds    map[int]time.Time
+}
 
 type mapWeatherKind int
 
@@ -83,7 +91,8 @@ func normalizeMapNameForWeather(name string) string {
 	return name
 }
 
-func (m *WorldMode) drawMapWeatherEffects(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
+// Draw renders map weather using the shared effects renderer and sound queue.
+func (m *System) Draw(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time, fx *effects.System, scheduleSound func(time.Time, ...string)) {
 	if screen == nil || ctx.World == nil || ctx.World.GND == nil {
 		return
 	}
@@ -91,23 +100,23 @@ func (m *WorldMode) drawMapWeatherEffects(screen *render.Frame, ctx client.Conte
 	effectID := mapWeatherEffectIDForMap(ctx.World.MapName)
 	switch kind {
 	case mapWeatherFireworks:
-		m.mapWeatherCloud.reset()
-		m.drawFireworksWeather(screen, ctx, projection, now)
+		m.cloud.reset()
+		m.drawFireworksWeather(screen, ctx, projection, now, fx, scheduleSound)
 	case mapWeatherLoopingEffect:
-		m.mapWeatherPokJuk.reset()
+		m.fireworks.reset()
 		if _, ok := weatherCloudParamsForEffect(effectID); ok {
-			m.drawMapWeatherCloudEffect(screen, ctx, projection, effectID, now)
+			m.drawMapWeatherCloudEffect(screen, ctx, projection, effectID, now, fx)
 			return
 		}
-		m.mapWeatherCloud.reset()
-		m.drawLoopingMapWeatherEffect(screen, ctx, projection, effectID, now)
+		m.cloud.reset()
+		m.drawLoopingMapWeatherEffect(screen, ctx, projection, effectID, now, fx)
 	default:
-		m.mapWeatherCloud.reset()
-		m.mapWeatherPokJuk.reset()
+		m.cloud.reset()
+		m.fireworks.reset()
 	}
 }
 
-func (m *WorldMode) drawLoopingMapWeatherEffect(screen *render.Frame, ctx client.Context, projection scene.Projection, effectID int, now time.Time) {
+func (m *System) drawLoopingMapWeatherEffect(screen *render.Frame, ctx client.Context, projection scene.Projection, effectID int, now time.Time, fx *effects.System) {
 	spec, ok := effects.Lookup(effectID)
 	if !ok {
 		return
@@ -126,42 +135,44 @@ func (m *WorldMode) drawLoopingMapWeatherEffect(screen *render.Frame, ctx client
 	worldY := projection.PlayerY
 	worldZ := scene.TerrainHeightAt(ctx.World, worldX-0.5, worldY-0.5) + 1
 	for componentIndex, component := range spec.Components {
-		duration := m.effects().WorldEffectResolvedComponentDuration(ctx, spec, component)
+		duration := fx.WorldEffectResolvedComponentDuration(ctx, spec, component)
 		if duration <= 0 {
 			duration = spec.Duration
 		}
 		componentStarts := loopingMapWeatherEffectStart(effectID+componentIndex*17, duration, now)
 		effect.Starts = componentStarts
 		progress := effects.WorldEffectComponentProgress(componentStarts, duration, now)
-		m.effects().DrawWorldEffectComponent(screen, ctx, projection, effect, component, componentIndex, worldX, worldY, worldZ, progress, duration, now)
+		fx.DrawWorldEffectComponent(screen, ctx, projection, effect, component, componentIndex, worldX, worldY, worldZ, progress, duration, now)
 	}
 }
 
-func (m *WorldMode) drawFireworksWeather(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time) {
+func (m *System) drawFireworksWeather(screen *render.Frame, ctx client.Context, projection scene.Projection, now time.Time, fx *effects.System, scheduleSound func(time.Time, ...string)) {
 	key := normalizeMapNameForWeather(ctx.World.MapName)
 	centerX, centerY := mapWeatherFireworkCenter(ctx.World, projection, now)
-	m.mapWeatherPokJuk.ensure(key, ctx.World, centerX, centerY, now)
-	m.mapWeatherPokJuk.update(ctx.World, centerX, centerY, now)
-	m.mapWeatherPokJuk.scheduleSounds(m, now)
-	m.mapWeatherPokJuk.draw(screen, m, ctx, projection, now)
+	m.fireworks.ensure(key, ctx.World, centerX, centerY, now)
+	m.fireworks.update(ctx.World, centerX, centerY, now)
+	m.fireworks.scheduleSounds(m, now, scheduleSound)
+	m.fireworks.draw(screen, fx, ctx, projection, now)
 }
 
-func (m *WorldMode) scheduleMapWeatherSound(index int, starts time.Time, now time.Time, paths ...string) {
+func (m *System) scheduleMapWeatherSound(index int, starts time.Time, now time.Time, scheduleSound func(time.Time, ...string), paths ...string) {
 	elapsed := now.Sub(starts)
 	if elapsed < 0 {
 		return
 	}
-	if m.mapWeatherSounds == nil {
-		m.mapWeatherSounds = make(map[int]time.Time)
+	if m.sounds == nil {
+		m.sounds = make(map[int]time.Time)
 	}
-	if m.mapWeatherSounds[index].Equal(starts) {
+	if m.sounds[index].Equal(starts) {
 		return
 	}
-	m.mapWeatherSounds[index] = starts
+	m.sounds[index] = starts
 	if elapsed > 120*time.Millisecond {
 		return
 	}
-	m.scheduleSound(now, paths...)
+	if scheduleSound != nil {
+		scheduleSound(now, paths...)
+	}
 }
 
 func loopingMapWeatherEffectStart(index int, duration time.Duration, now time.Time) time.Time {

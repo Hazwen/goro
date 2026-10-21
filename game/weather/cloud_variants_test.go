@@ -1,4 +1,4 @@
-package game
+package weather
 
 import (
 	"encoding/binary"
@@ -67,7 +67,7 @@ func TestAdditionalCloudVariantsMatchOriginalPlacementAndColor(t *testing.T) {
 		{effects.Cloud7, 320, -10, -8, 5, 45, 240.0 / 255, 0.6, color.RGBA{0, 0, 0, 255}},
 		{effects.Cloud8, 320, -10, -8, 5, 45, 240.0 / 255, 0.6, color.RGBA{255, 180, 180, 255}},
 	}
-	world := &worldstate.World{GND: testGNDWithTopHeights(64, 64, func(_, _ int) [4]float32 {
+	world := &worldstate.World{GND: testutil.GNDWithTopHeights(64, 64, func(_, _ int) [4]float32 {
 		return [4]float32{100, 100, 100, 100}
 	})}
 	for _, tt := range tests {
@@ -158,7 +158,7 @@ func TestMountainCloudAltitudeUsesGATUnitsAndCompletesFade(t *testing.T) {
 
 func TestEinbrochCloudsSpawnAboveTerrain(t *testing.T) {
 	params, _ := weatherCloudParamsForEffect(effects.Cloud4)
-	world := &worldstate.World{GND: testGNDWithTopHeights(64, 64, func(_, _ int) [4]float32 { return [4]float32{10, 10, 10, 10} })}
+	world := &worldstate.World{GND: testutil.GNDWithTopHeights(64, 64, func(_, _ int) [4]float32 { return [4]float32{10, 10, 10, 10} })}
 	state := mapWeatherCloudState{}
 	state.ensure("einbroch.rsw", params, world, 64, 64, time.Unix(100, 0))
 	for _, cloud := range state.clouds {
@@ -170,15 +170,24 @@ func TestEinbrochCloudsSpawnAboveTerrain(t *testing.T) {
 
 func TestAllCloudMapsRenderRealData(t *testing.T) {
 	manager := testutil.RealDataManager(t)
-	mode := &WorldMode{}
+	mode := &System{}
+	fx := &effects.System{}
 	for effectID, names := range referenceCloudMaps {
 		for _, mapName := range names {
 			t.Run(mapName, func(t *testing.T) {
-				gnd, _, err := loadGND(manager, mapName)
+				gndData, err := manager.ReadFile("data/" + mapName + ".gnd")
 				if err != nil {
 					t.Skipf("map geometry unavailable: %v", err)
 				}
-				gat, _, err := loadGAT(manager, mapName)
+				gnd, err := res.ParseGND(gndData)
+				if err != nil {
+					t.Skipf("map geometry unavailable: %v", err)
+				}
+				gatData, err := manager.ReadFile("data/" + mapName + ".gat")
+				if err != nil {
+					t.Fatal(err)
+				}
+				gat, err := res.ParseGAT(gatData)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -204,18 +213,18 @@ func TestAllCloudMapsRenderRealData(t *testing.T) {
 				projection := testutil.Projection(800, 600, float64(world.Player.X)+0.5, float64(world.Player.Y)+0.5, best)
 				frame := render.NewFrame(800, 600)
 				now := time.Unix(100, 0)
-				mode.drawMapWeatherEffects(frame, ctx, projection, now)
-				mode.drawMapWeatherEffects(frame, ctx, projection, now.Add(100*time.Millisecond))
+				mode.Draw(frame, ctx, projection, now, fx, nil)
+				mode.Draw(frame, ctx, projection, now.Add(100*time.Millisecond), fx, nil)
 				commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
 				params, _ := weatherCloudParamsForEffect(effectID)
-				if mode.mapWeatherCloud.effectID != effectID || commands.Len() != params.count {
-					t.Fatalf("effect %d: got %d billboards, want %d", mode.mapWeatherCloud.effectID, commands.Len(), params.count)
+				if mode.cloud.effectID != effectID || commands.Len() != params.count {
+					t.Fatalf("effect %d: got %d billboards, want %d", mode.cloud.effectID, commands.Len(), params.count)
 				}
 				t.Logf("%s: %d cloud billboards", mapName, commands.Len())
 				world.MapName = "prontera"
 				frame.BeginFrame()
-				mode.drawMapWeatherEffects(frame, ctx, projection, now.Add(200*time.Millisecond))
-				if len(mode.mapWeatherCloud.clouds) != 0 || commands.Len() != 0 {
+				mode.Draw(frame, ctx, projection, now.Add(200*time.Millisecond), fx, nil)
+				if len(mode.cloud.clouds) != 0 || commands.Len() != 0 {
 					t.Fatal("clouds survived leaving the map")
 				}
 			})

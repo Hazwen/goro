@@ -1,4 +1,4 @@
-package game
+package weather
 
 import (
 	"image/color"
@@ -9,7 +9,8 @@ import (
 	"github.com/kivutar/goro/res"
 )
 
-func sceneFogFromMap(manager *res.Manager, mapName string, cfg config.FogConfig) scene.SceneFog {
+// FogFromMap combines the map fog table with weather-specific colors.
+func FogFromMap(manager *res.Manager, mapName string, cfg config.FogConfig) scene.SceneFog {
 	if manager == nil || !cfg.Enabled {
 		return scene.SceneFog{}
 	}

@@ -1,4 +1,4 @@
-package game
+package weather
 
 import (
 	"math"
@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
+	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
 )
 
@@ -64,14 +65,23 @@ func TestAirshipCloudsUseClassicDensityAndPlacement(t *testing.T) {
 
 func TestAirshipCloudsRenderAndResetRealData(t *testing.T) {
 	manager := testutil.RealDataManager(t)
-	mode := &WorldMode{}
+	mode := &System{}
+	fx := &effects.System{}
 	for _, mapName := range []string{"airplane", "airplane_01"} {
 		t.Run(mapName, func(t *testing.T) {
-			gnd, _, err := loadGND(manager, mapName)
+			gndData, err := manager.ReadFile("data/" + mapName + ".gnd")
 			if err != nil {
 				t.Fatal(err)
 			}
-			gat, _, err := loadGAT(manager, mapName)
+			gnd, err := res.ParseGND(gndData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			gatData, err := manager.ReadFile("data/" + mapName + ".gat")
+			if err != nil {
+				t.Fatal(err)
+			}
+			gat, err := res.ParseGAT(gatData)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -82,10 +92,10 @@ func TestAirshipCloudsRenderAndResetRealData(t *testing.T) {
 			projection := testutil.Projection(800, 600, 239.5, 62.5, scene.TerrainHeightAt(world, 239, 62))
 			frame := render.NewFrame(800, 600)
 			now := time.Unix(100, 0)
-			mode.drawMapWeatherEffects(frame, ctx, projection, now)
-			mode.drawMapWeatherEffects(frame, ctx, projection, now.Add(100*time.Millisecond))
-			if mode.mapWeatherCloud.effectID != effects.Cloud5 || mode.mapWeatherCloud.key != mapName+".rsw" {
-				t.Fatalf("wrong map cloud state: key=%s effect=%d", mode.mapWeatherCloud.key, mode.mapWeatherCloud.effectID)
+			mode.Draw(frame, ctx, projection, now, fx, nil)
+			mode.Draw(frame, ctx, projection, now.Add(100*time.Millisecond), fx, nil)
+			if mode.cloud.effectID != effects.Cloud5 || mode.cloud.key != mapName+".rsw" {
+				t.Fatalf("wrong map cloud state: key=%s effect=%d", mode.cloud.key, mode.cloud.effectID)
 			}
 			commands := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards")
 			if commands.Len() == 0 {
@@ -94,8 +104,8 @@ func TestAirshipCloudsRenderAndResetRealData(t *testing.T) {
 			t.Logf("%s rendered %d cloud billboards", mapName, commands.Len())
 			world.MapName = "prontera"
 			frame.BeginFrame()
-			mode.drawMapWeatherEffects(frame, ctx, projection, now.Add(200*time.Millisecond))
-			if len(mode.mapWeatherCloud.clouds) != 0 || commands.Len() != 0 {
+			mode.Draw(frame, ctx, projection, now.Add(200*time.Millisecond), fx, nil)
+			if len(mode.cloud.clouds) != 0 || commands.Len() != 0 {
 				t.Fatal("airship clouds survived a change to a map without clouds")
 			}
 		})

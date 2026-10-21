@@ -1,4 +1,4 @@
-package game
+package weather
 
 import (
 	"image/color"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/game/effects"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/render"
 	worldstate "github.com/kivutar/goro/world"
@@ -144,7 +145,7 @@ func TestYunoCloudWeatherSpawnsInOuterSkyRing(t *testing.T) {
 	now := time.Unix(10, 0)
 	const centerX = 37.5
 	const centerY = 98.5
-	world := &worldstate.World{GND: testGNDWithTopHeights(64, 64, func(_, _ int) [4]float32 {
+	world := &worldstate.World{GND: testutil.GNDWithTopHeights(64, 64, func(_, _ int) [4]float32 {
 		return [4]float32{12, 12, 12, 12}
 	})}
 	state.ensure("yuno.rsw", params, world, centerX, centerY, now)
@@ -317,29 +318,43 @@ func TestPokJukWeatherTextureFallsBackToAvailableTexture(t *testing.T) {
 
 func TestScheduleMapWeatherSoundOnlyNearNewCycle(t *testing.T) {
 	now := time.Unix(10, 0)
-	mode := NewWorldMode()
-	mode.scheduleMapWeatherSound(0, now.Add(-time.Second), now, pokJukLaunchSFX)
-	if len(mode.scheduledSounds) != 0 {
-		t.Fatalf("scheduled stale weather sounds = %+v", mode.scheduledSounds)
+	mode := &System{}
+	var scheduled [][]string
+	schedule := func(at time.Time, paths ...string) {
+		if !at.Equal(now) {
+			t.Fatalf("sound scheduled at %v, want %v", at, now)
+		}
+		scheduled = append(scheduled, paths)
 	}
-	mode.scheduleMapWeatherSound(0, now.Add(-50*time.Millisecond), now, pokJukLaunchSFX)
-	if len(mode.scheduledSounds) != 1 || mode.scheduledSounds[0].paths[0] != pokJukLaunchSFX {
-		t.Fatalf("scheduled weather sounds = %+v", mode.scheduledSounds)
+	mode.scheduleMapWeatherSound(0, now.Add(-time.Second), now, schedule, pokJukLaunchSFX)
+	if len(scheduled) != 0 {
+		t.Fatalf("scheduled stale weather sounds = %+v", scheduled)
 	}
-	mode.scheduleMapWeatherSound(0, now.Add(-50*time.Millisecond), now, pokJukLaunchSFX)
-	if len(mode.scheduledSounds) != 1 {
-		t.Fatalf("weather sound scheduled twice = %+v", mode.scheduledSounds)
+	mode.scheduleMapWeatherSound(0, now.Add(-50*time.Millisecond), now, schedule, pokJukLaunchSFX)
+	if len(scheduled) != 1 || scheduled[0][0] != pokJukLaunchSFX {
+		t.Fatalf("scheduled weather sounds = %+v", scheduled)
+	}
+	mode.scheduleMapWeatherSound(0, now.Add(-50*time.Millisecond), now, schedule, pokJukLaunchSFX)
+	if len(scheduled) != 1 {
+		t.Fatalf("weather sound scheduled twice = %+v", scheduled)
 	}
 }
 
 func TestScheduleMapWeatherExplosionSoundUsesItemPokjukFallback(t *testing.T) {
 	now := time.Unix(10, 0)
-	mode := NewWorldMode()
-	mode.scheduleMapWeatherSound(1, now.Add(-50*time.Millisecond), now, pokJukExplosionSFX, pokJukLaunchSFX)
-	if len(mode.scheduledSounds) != 1 {
-		t.Fatalf("scheduled weather sounds = %+v", mode.scheduledSounds)
+	mode := &System{}
+	var scheduled [][]string
+	schedule := func(at time.Time, paths ...string) {
+		if !at.Equal(now) {
+			t.Fatalf("sound scheduled at %v, want %v", at, now)
+		}
+		scheduled = append(scheduled, paths)
 	}
-	got := mode.scheduledSounds[0].paths
+	mode.scheduleMapWeatherSound(1, now.Add(-50*time.Millisecond), now, schedule, pokJukExplosionSFX, pokJukLaunchSFX)
+	if len(scheduled) != 1 {
+		t.Fatalf("scheduled weather sounds = %+v", scheduled)
+	}
+	got := scheduled[0]
 	if len(got) != 2 || got[0] != pokJukExplosionSFX || got[1] != pokJukLaunchSFX {
 		t.Fatalf("explosion sound paths = %#v", got)
 	}

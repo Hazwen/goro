@@ -573,7 +573,7 @@ func TestSceneLightingScaleClampsLightBeforeEnvLikeRobrowser(t *testing.T) {
 }
 
 func TestSmoothGNDTopNormalsKeepsFlatTilesUniform(t *testing.T) {
-	gnd := testGNDWithTopHeights(2, 2, func(_, _ int) [4]float32 {
+	gnd := testutil.GNDWithTopHeights(2, 2, func(_, _ int) [4]float32 {
 		return [4]float32{0, 0, 0, 0}
 	})
 	normals := buildSmoothGNDTopNormals(gnd)
@@ -589,7 +589,7 @@ func TestSmoothGNDTopNormalsKeepsFlatTilesUniform(t *testing.T) {
 }
 
 func TestSmoothGNDTopNormalsVariesSlopedTileCorners(t *testing.T) {
-	gnd := testGNDWithTopHeights(3, 3, func(x, y int) [4]float32 {
+	gnd := testutil.GNDWithTopHeights(3, 3, func(x, y int) [4]float32 {
 		return [4]float32{
 			float32(x*y + y),
 			float32(x*3 + y*y + 2),
@@ -664,21 +664,6 @@ func TestTopGNDSurfaceBaseTintsUseNeighborTileColors(t *testing.T) {
 	if tints != want {
 		t.Fatalf("top GND tints = %+v, want %+v", tints, want)
 	}
-}
-
-func testGNDWithTopHeights(width, height int, fn func(x, y int) [4]float32) *res.GND {
-	gnd := &res.GND{
-		Width:    width,
-		Height:   height,
-		Cells:    make([]res.GNDCell, width*height),
-		Surfaces: []res.GNDSurface{{TextureID: 0, LightmapID: -1}},
-	}
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			gnd.Cells[x+y*width] = res.GNDCell{Top: 0, Front: -1, Right: -1, Heights: fn(x, y)}
-		}
-	}
-	return gnd
 }
 
 func TestGNDDrawBoundsUseCameraFootprint(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/login"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/game/weather"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -130,9 +131,7 @@ type WorldMode struct {
 	scheduledStops   []scheduledActorStop
 	scheduledResumes []scheduledWalkResume
 	mapSoundNext     map[int]time.Time
-	mapWeatherSounds map[int]time.Time
-	mapWeatherCloud  mapWeatherCloudState
-	mapWeatherPokJuk mapWeatherFireworkState
+	weather          weather.System
 	actorDeaths      map[uint32]time.Time
 	actorVanishes    map[uint32]actorVanishFade
 	actorSoundFrames map[uint32]actorSoundFrame
@@ -490,9 +489,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.scheduledSounds = nil
 	m.scheduledStops = nil
 	m.mapSoundNext = make(map[int]time.Time)
-	m.mapWeatherSounds = make(map[int]time.Time)
-	m.mapWeatherCloud = mapWeatherCloudState{}
-	m.mapWeatherPokJuk = mapWeatherFireworkState{}
+	m.weather = weather.System{}
 	m.effects().StarFlights = nil
 	m.actorDeaths = make(map[uint32]time.Time)
 	m.actorVanishes = make(map[uint32]actorVanishFade)
@@ -1573,7 +1570,7 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 	width, height := screen.Bounds().Dx(), screen.Bounds().Dy()
 	now := time.Now()
 	projection := m.sceneProjection(ctx, width, height, now)
-	fog := sceneFogFromMap(ctx.Resources, ctx.World.MapName, ctx.Config.Fog)
+	fog := weather.FogFromMap(ctx.Resources, ctx.World.MapName, ctx.Config.Fog)
 	clearWorldScene(screen, ctx.World.MapName)
 	var actorOverlays []scene.ActorDrawEntry
 	screen.SetCamera3D(projection.RenderCameraWithFog(fog))
@@ -1606,7 +1603,7 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 		m.drawSceneActorOverlays(screen, ctx, projection, now, actorOverlays)
 	}
 	m.drawRSWEffects(screen, ctx, projection, now)
-	m.drawMapWeatherEffects(screen, ctx, projection, now)
+	m.weather.Draw(screen, ctx, projection, now, m.effects(), m.scheduleSound)
 	m.effects().Draw(screen, ctx, projection, now, false)
 	m.drawDamageFloaters(screen, ctx, projection, now)
 

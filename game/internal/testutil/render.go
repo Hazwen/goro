@@ -15,3 +15,18 @@ func EffectRenderTestSprite() *scene.SpriteView {
 		},
 	}
 }
+
+func GNDWithTopHeights(width, height int, fn func(x, y int) [4]float32) *res.GND {
+	gnd := &res.GND{
+		Width:    width,
+		Height:   height,
+		Cells:    make([]res.GNDCell, width*height),
+		Surfaces: []res.GNDSurface{{TextureID: 0, LightmapID: -1}},
+	}
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			gnd.Cells[x+y*width] = res.GNDCell{Top: 0, Front: -1, Right: -1, Heights: fn(x, y)}
+		}
+	}
+	return gnd
+}

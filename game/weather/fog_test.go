@@ -1,4 +1,4 @@
-package game
+package weather
 
 import (
 	"image/color"
@@ -26,7 +26,7 @@ func TestSceneFogFromMapUsesReferenceClientScaleAndFullStrength(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fog := sceneFogFromMap(manager, "prontera", config.FogConfig{Enabled: true})
+	fog := FogFromMap(manager, "prontera", config.FogConfig{Enabled: true})
 	if !fog.Enabled {
 		t.Fatal("expected fog")
 	}
@@ -53,7 +53,7 @@ func TestSceneFogFromMapUsesEinbrochWeatherTint(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fog := sceneFogFromMap(manager, "einbroch.rsw", config.FogConfig{Enabled: true})
+	fog := FogFromMap(manager, "einbroch.rsw", config.FogConfig{Enabled: true})
 	if !fog.Enabled {
 		t.Fatal("expected fog")
 	}
