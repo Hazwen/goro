@@ -155,3 +155,115 @@ func (m *WorldMode) drawCastRingEffect(screen *render.Frame, ctx client.Context,
 	}
 	drawWorldCylinderBandRotated(screen, m.whitePixel, nil, x, y, z+0.035, component.bottomSize, component.topSize, component.height, tint, maxInt(component.circleSides, component.totalCircleSides), angleOffset)
 }
+
+func (m *WorldMode) drawGroundPlaneEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, worldX, worldY, progress float64, now time.Time) {
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil || ctx.World == nil {
+		return
+	}
+	alpha := effectBillboardAlpha(progress, component)
+	if alpha <= 0 {
+		return
+	}
+	size := component.sizeStart
+	if effect.size > 0 {
+		size = effect.size
+	}
+	if size <= 0 {
+		size = 1
+	}
+	half := size * 0.5
+	angle := groundSampleRotationAngle(effect, now)
+	uv := func(u, v float64) texturePoint {
+		sinA, cosA := math.Sin(angle), math.Cos(angle)
+		x, y := u-0.5, v-0.5
+		return texturePoint{
+			u: float32(x*cosA - y*sinA + 0.5),
+			v: float32(x*sinA + y*cosA + 0.5),
+		}
+	}
+	point := func(dx, dy float64) modelPoint3 {
+		x := worldX + dx
+		y := worldY + dy
+		return modelPoint3{x: x, y: terrainHeightAt(ctx.World, x-0.5, y-0.5) + component.posZ, z: y}
+	}
+	verts := [4]modelPoint3{
+		point(-half, -half),
+		point(half, -half),
+		point(half, half),
+		point(-half, half),
+	}
+	uvs := [4]texturePoint{
+		uv(0, 0),
+		uv(1, 0),
+		uv(1, 1),
+		uv(0, 1),
+	}
+	tint := effectComponentTint(component, alpha)
+	drawTexturedSurface3DWithOptions(screen, texture, verts, uvs, quadIndices012023, [4]color.RGBA{tint, tint, tint, tint}, groundSampleDrawOptions())
+}
+
+func groundSampleDrawOptions() *render.DrawTrianglesOptions {
+	return triangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
+}
+
+func groundSampleRotationAngle(effect worldEffect, now time.Time) float64 {
+	elapsed := math.Max(0, now.Sub(effect.starts).Seconds())
+	speed := effect.groundSampleRotationRadiansPerSecond
+	if speed <= 0 {
+		speed = groundSampleFallbackRotationRadiansPerSecond
+	}
+	return elapsed * speed
+}
+
+func (m *WorldMode) drawLockOnTargetEffect(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, worldX, worldY, worldZ float64, progress float64, now time.Time) {
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	alpha := effectComponentAlpha(progress, component)
+	if alpha <= 0 {
+		return
+	}
+	size := lockOnTargetSize(effect.starts, now)
+	half := size * 0.5
+	angle := float64(now.UnixMilli())*math.Pi/720 + math.Pi/4
+	sinA, cosA := math.Sin(angle), math.Cos(angle)
+	point := func(dx, dy float64) modelPoint3 {
+		x := dx*cosA - dy*sinA
+		y := dx*sinA + dy*cosA
+		return modelPoint3{x: worldX + x, y: worldZ + component.posZ, z: worldY + y}
+	}
+	verts := [4]modelPoint3{
+		point(-half, -half),
+		point(half, -half),
+		point(half, half),
+		point(-half, half),
+	}
+	uvs := [4]texturePoint{
+		{u: 0, v: 0},
+		{u: 1, v: 0},
+		{u: 1, v: 1},
+		{u: 0, v: 1},
+	}
+	tint := lockOnTargetTint(effect.starts, now)
+	tint.A = uint8(clampFloat(alpha, 0, 1) * 255)
+	options := triangleDrawOptions(render.FilterLinear, render.AddressClampToZero)
+	drawTexturedSurface3DWithOptions(screen, texture, verts, uvs, quadIndices012023, [4]color.RGBA{tint, tint, tint, tint}, options)
+}
+
+func lockOnTargetSize(starts, now time.Time) float64 {
+	elapsed := now.Sub(starts).Seconds() * 1000 / 50
+	elapsed = clampFloat(elapsed, 1, 5)
+	return (6 - elapsed) * 3
+}
+
+func lockOnTargetTint(starts, now time.Time) color.RGBA {
+	elapsed := int(now.Sub(starts) / (20 * time.Millisecond))
+	if elapsed < 0 {
+		elapsed = 0
+	}
+	factor := float64(20-(elapsed%20)) / 20
+	gb := uint8(clampFloat(factor, 0, 1) * 255)
+	return color.RGBA{R: 255, G: gb, B: gb, A: 255}
+}

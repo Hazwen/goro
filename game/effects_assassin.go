@@ -123,3 +123,15 @@ func (m *WorldMode) drawGrimtoothEffect(screen *render.Frame, ctx client.Context
 		screen.DrawTriangles3DOwned(vertices, indices, texture, triangleDrawOptions(render.FilterLinear, render.AddressRepeat))
 	}
 }
+
+func sonicBlowSkillActionSpec() skillActionSpec {
+	next := newSkillActionSpec(skillActorActionReadyFight, true, nil)
+	for hit := 8; hit >= 1; hit-- {
+		spec := newSkillActionSpec(skillActorActionAttack, false, &next)
+		if hit > 1 {
+			spec.speed = 30 * time.Millisecond
+		}
+		next = spec
+	}
+	return next
+}

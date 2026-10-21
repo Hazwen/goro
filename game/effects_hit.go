@@ -193,3 +193,71 @@ func (m *WorldMode) drawImpactParticles(screen *render.Frame, ctx client.Context
 		}
 	}
 }
+
+// BASH3D variants share this ray renderer across Paladin, Lord Knight, Champion, Ninja, and Gunslinger.
+func (m *WorldMode) drawSacrificeEffect(screen *render.Frame, ctx client.Context, _ sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	process := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1 - 24
+	alpha := min(process, 10)*20 - max(0, process-12)*15
+	if effect.effectID == effectBash3D2 || effect.effectID == effectKouenka {
+		process += 24
+		alpha = min(process, 10)*10 - max(0, process-11)*3
+	}
+	if process <= 0 || alpha <= 0 {
+		return
+	}
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil {
+		return
+	}
+	origin := effectWorldAnchor(ctx, effect, now)
+	origin.y += 2.4
+	distance := .4 * math.Pow(1.15, float64(process))
+	vertices, indices := []render.Vertex3D{}, []uint16{}
+	count := 20
+	widths := []float64{2, 5}
+	if effect.effectID == effectBash3D2 || effect.effectID == effectKouenka {
+		count, distance = 32, float64(2+3*process)/5
+		widths = []float64{1, 2}
+	}
+	if effect.effectID == effectBash3D3 || effect.effectID == effectBash3D4 || effect.effectID == effectBash3D5 {
+		count = 24
+	}
+	if effect.effectID == effectKouenka {
+		count = 8
+	}
+	for i := 0; i < count; i++ {
+		yaw := degreesToRadians(float64(90*(i%4) + 22*(i/4)))
+		roll := deterministicAngle(effect, i)
+		point := func(angle float64) modelPoint3 {
+			r := distance * math.Cos(angle)
+			return add3(origin, modelPoint3{x: r * math.Cos(roll), y: -r * math.Sin(roll), z: distance * math.Sin(angle)})
+		}
+		for layer, width := range widths {
+			tint := color.RGBA{0, 250, 250, uint8(alpha)}
+			if layer == 1 {
+				tint = color.RGBA{250, 0, 0, uint8(alpha)}
+			}
+			if effect.effectID == effectBash3D2 || effect.effectID == effectKouenka || effect.effectID == effectBash3D3 {
+				tint = color.RGBA{0, 0, 250, uint8(alpha)}
+				if layer == 1 {
+					tint = color.RGBA{250, 250, 0, uint8(alpha)}
+				}
+			} else if effect.effectID == effectBash3D4 || effect.effectID == effectBash3D5 {
+				tint = color.RGBA{50, 50, 50, uint8(alpha)}
+				if layer == 1 {
+					tint = color.RGBA{250, 250, 250, uint8(alpha)}
+				}
+			}
+			a, b := point(yaw-degreesToRadians(width)), point(yaw+degreesToRadians(width))
+			appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{origin, origin, b, a}, tint)
+			if count == 24 {
+				// Head Crush and Joint Beat use alpha blending for the wider ray.
+				screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(layer == 0, false))
+				vertices, indices = nil, nil
+			}
+		}
+	}
+	if len(indices) > 0 {
+		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
+	}
+}

@@ -1,6 +1,8 @@
 package db
 
-import "time"
+import (
+	"time"
+)
 
 func trueSightEffectSpec() EffectSpec {
 	spec := funcEffectSpec("TrueSight", 250*EffectFrameDuration, true)
@@ -31,4 +33,25 @@ func falconAssaultEffectSpec() EffectSpec {
 	spec.Components[0].Delay = spec.CameraShakeDelay
 	spec.Components[0].Duration = spec.Duration - spec.CameraShakeDelay
 	return spec
+}
+
+func sharpShootingCastEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 10 * time.Second,
+		Components: []EffectComponent{{
+			Kind:             EffectComponentFUNC,
+			FuncName:         "CastRing",
+			TextureName:      "ring_jadu",
+			AlphaMax:         0.9,
+			Fade:             true,
+			Rotate:           true,
+			BottomSize:       0.8,
+			TopSize:          2.45,
+			Height:           2.8,
+			PosZ:             0.08,
+			TotalCircleSides: 20,
+			CircleSides:      20,
+			AttachedEntity:   true,
+		}},
+	}
 }

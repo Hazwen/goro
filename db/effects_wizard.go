@@ -1,6 +1,8 @@
 package db
 
-import "time"
+import (
+	"time"
+)
 
 func iceWallEffectSpec() EffectSpec {
 	spec := funcEffectSpec("WizardSpikes", 9999*EffectFrameDuration, false)
@@ -91,4 +93,33 @@ func firePillarOnEffectSpec() EffectSpec {
 	spec := funcEffectSpec("FirePillar", 8000*EffectFrameDuration, false)
 	spec.Components[0].TextureFile = "effect/magic_red.tga"
 	return spec
+}
+
+func waterBallEffectSpec() EffectSpec {
+	return EffectSpec{
+		Duration: 500 * time.Millisecond,
+		SFX:      []string{"effect\\wizard_waterball_chulung.wav"},
+		Components: []EffectComponent{{
+			Kind: EffectComponent3D,
+			TextureFiles: []string{
+				"effect/water_out_a.bmp",
+				"effect/water_out_b.bmp",
+				"effect/water_out_c.bmp",
+			},
+			FrameDelay:       10 * time.Millisecond,
+			Duration:         500 * time.Millisecond,
+			FadeOut:          true,
+			PosXRand:         1.5,
+			PosZRand:         1.5,
+			PosY:             0,
+			PosYEnd:          3,
+			PosYSmooth:       true,
+			SizeStart:        effectTableSize(30.5),
+			SizeEnd:          effectTableSize(30.5),
+			RotateWithCamera: true,
+			BlendMode:        2,
+			BlendAdditive:    true,
+			AttachedEntity:   true,
+		}},
+	}
 }

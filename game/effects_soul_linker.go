@@ -342,13 +342,6 @@ func (m *WorldMode) drawEsmaHitTexture(screen *render.Frame, ctx client.Context,
 	}
 }
 
-type soulLightParticle struct {
-	position        modelPoint3
-	angles          [4]int
-	seed, age, kind int
-	radius, speed   float64
-}
-
 // PrimSoulParticle and PrimPeongUp share the same wandering motion. Keep
 // their history so neither frame rate nor camera movement resets a trail.
 type soulLights struct {
@@ -550,21 +543,4 @@ func (m *WorldMode) drawKaizelEffect(screen *render.Frame, ctx client.Context, c
 		}
 	}
 	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
-}
-
-func advanceWanderingAngles(particle *soulLightParticle, effect worldEffect, tick int) {
-	for axis := 0; axis < 4; axis += 2 {
-		a, target := &particle.angles[axis], &particle.angles[axis+1]
-		if *target > *a {
-			*a = min(*a+3, 359)
-			if *a > *target {
-				*target = hitEffectRandom(effect, particle.seed+tick*4+axis, max(*a, 1))
-			}
-		} else {
-			*a = max(*a-2, 0)
-			if *a <= *target {
-				*target = 359 - hitEffectRandom(effect, particle.seed+tick*4+axis, max(*a, 1))
-			}
-		}
-	}
 }

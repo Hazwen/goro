@@ -113,3 +113,58 @@ func (m *WorldMode) drawRisingParticlesEffect(screen *render.Frame, ctx client.C
 			position.x, position.z, position.y, particle.size*effectPixelRatio, -particle.angle, particle.alpha, 1, color.RGBA{255, 255, 255, 255}, options)
 	}
 }
+
+// Full Strip and Disarm share the equipment-particle burst.
+func (m *WorldMode) drawFullStrip(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
+	if now.Before(effect.starts) || frame > 108 {
+		return
+	}
+	for kind, path := range component.textureFiles {
+		texture := m.effectFileTexture(ctx.Resources, path)
+		if texture == nil {
+			continue
+		}
+		count, size := 16, float64(5+kind*4)*math.Sqrt2/5
+		if effect.effectID == effectRGCoin3 {
+			count, size = 4, math.Sqrt2
+		}
+		for i := 0; i < count; i++ {
+			seed := (kind*16 + i) * 4
+			n := frame + 1 - 18 - hitEffectRandom(effect, seed, 30)
+			alpha := min(n, 10)*25 - max(0, n-25)*7
+			if n <= 0 || alpha <= 0 {
+				continue
+			}
+			pitch := degreesToRadians(float64(hitEffectRandom(effect, seed+1, 360)))
+			yaw := degreesToRadians(float64(hitEffectRandom(effect, seed+2, 360)))
+			center := add3(effect.actorOrigin, effectParticlePoint(float64(12+n), 0, pitch, yaw))
+			roll := degreesToRadians(float64(hitEffectRandom(effect, seed+3, 360) + 3*(frame+1)))
+			drawTexturedEffectBillboardRotatedXY(screen, projection, texture, center.x, center.z, center.y, size, size, roll, color.RGBA{250, 100, 100, uint8(alpha)}, true)
+		}
+	}
+}
+
+type soulLightParticle struct {
+	position        modelPoint3
+	angles          [4]int
+	seed, age, kind int
+	radius, speed   float64
+}
+
+func advanceWanderingAngles(particle *soulLightParticle, effect worldEffect, tick int) {
+	for axis := 0; axis < 4; axis += 2 {
+		a, target := &particle.angles[axis], &particle.angles[axis+1]
+		if *target > *a {
+			*a = min(*a+3, 359)
+			if *a > *target {
+				*target = hitEffectRandom(effect, particle.seed+tick*4+axis, max(*a, 1))
+			}
+		} else {
+			*a = max(*a-2, 0)
+			if *a <= *target {
+				*target = 359 - hitEffectRandom(effect, particle.seed+tick*4+axis, max(*a, 1))
+			}
+		}
+	}
+}

@@ -162,56 +162,6 @@ func (m *WorldMode) drawTaekwonStop(screen *render.Frame, ctx client.Context, co
 	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
 }
 
-func (m *WorldMode) drawTaekwonDash(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, now time.Time) {
-	age := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
-	alpha := 12*min(age, 10) - 4*max(0, age-20)
-	piercing := effect.effectID == effectChemical4
-	if piercing {
-		alpha = 20*min(age, 10) - 2*max(0, age-20)
-	}
-	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
-	if alpha <= 0 || texture == nil {
-		return
-	}
-	angle := math.Atan2(effect.projectileDirection.z, effect.projectileDirection.x)
-	direction := modelPoint3{x: math.Cos(angle), z: math.Sin(angle)}
-	side := modelPoint3{x: math.Sin(angle), z: -math.Cos(angle)}
-	var vertices []render.Vertex3D
-	var indices []uint16
-	for i := 0; i < 32; i++ {
-		seed := i * 6
-		offset := float64(15 + hitEffectRandom(effect, seed, 11))
-		if i/4%2 == 0 {
-			offset = -offset
-		}
-		width := .3 + .1*float64(hitEffectRandom(effect, seed+1, 4))
-		length := float64(20 + hitEffectRandom(effect, seed+2, 31))
-		speed := 1.5 + .1*float64(hitEffectRandom(effect, seed+3, 21))
-		travel := float64(hitEffectRandom(effect, seed+4, 200)) + float64(age)*speed
-		if piercing {
-			width += .1
-			length += 10
-			travel += .025 * float64(age*(age+1))
-		}
-		travel = math.Mod(travel, 200) - 100
-		point := func(along, across float64) modelPoint3 {
-			p := add3(effect.actorOrigin, add3(mul3(direction, along/5), mul3(side, across/5)))
-			p.y += 1.2
-			return p
-		}
-		shade := uint8(225 - 20*hitEffectRandom(effect, seed+5, 3))
-		tint := color.RGBA{shade, shade, 255, uint8(alpha)}
-		if piercing {
-			tint.G, tint.B = 255, shade
-		}
-		appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{
-			point(travel+length, offset+width), point(travel, offset+width),
-			point(travel, offset-width), point(travel+length, offset-width),
-		}, tint)
-	}
-	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(false, false))
-}
-
 func taekwonSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
 	pose := func(action skillActorAction, frame int, duration time.Duration) skillActionSpec {
 		return skillActionSpec{defined: true, action: action, hasFrame: true, frame: frame, duration: duration}

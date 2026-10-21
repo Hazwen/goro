@@ -341,3 +341,72 @@ func (m *WorldMode) drawNativeSpriteEffect(screen *render.Frame, ctx client.Cont
 	}
 	m.drawSPREffect(screen, ctx, projection, effect, c, x, y, z, now)
 }
+
+func (m *WorldMode) drawAsuraGlyphs(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	mildWind := effect.effectID >= effectBeginAsura1 && effect.effectID <= effectBeginAsura7
+	if !mildWind && effect.asuraGlyphs == nil {
+		return
+	}
+	for !mildWind && effect.asuraGlyphs.count < 2 {
+		i := effect.asuraGlyphs.count
+		at := effect.starts.Add(time.Duration(1+20*i) * db.EffectFrameDuration)
+		if now.Before(at) {
+			break
+		}
+		effect.asuraGlyphs.origins[i] = effectWorldAnchor(ctx, effect, at)
+		effect.asuraGlyphs.count++
+	}
+	frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
+	champion := effect.effectID == effectBeginAsura11
+	spacing, radiusBase, shade := 12.0, 18.0, uint8(0)
+	if champion {
+		spacing, radiusBase, shade = 16, 24, 10
+	}
+	origin := effect.actorOrigin
+	if mildWind {
+		origin = effectWorldAnchor(ctx, effect, now)
+		shade = 255
+	}
+	right, _, _, ok := projection.BillboardBasis(origin.x, origin.z, origin.y)
+	if !ok {
+		return
+	}
+	for i, file := range component.textureFiles {
+		// The left and right primitives start at ticks 1 and 21; their
+		// internal delays make the six characters appear 20 ticks apart.
+		age := frame - 20*i
+		if mildWind {
+			age = frame + 1
+		}
+		if age <= 0 {
+			continue
+		}
+		texture := m.effectFileTexture(ctx.Resources, file)
+		position := origin
+		if !mildWind {
+			origin = effect.asuraGlyphs.origins[i/3]
+			position = add3(origin, mul3(right, (float64(i)-2.5)*spacing/5))
+		}
+		position.y += 6
+		radius := (radiusBase - .1*float64(min(age, 49))) * math.Pow(1.01, float64(clampInt(age-140, 0, 49)))
+		for layer := 10; layer >= 1; layer-- {
+			alpha := min(13*min(age, 19), 50+layer*20)
+			if layer < 10 {
+				alpha -= 5 * max(0, age-19)
+			} else {
+				alpha -= 5 * max(0, age-140)
+			}
+			if alpha <= 0 {
+				continue
+			}
+			size := math.Sqrt2 * (radius + float64(10-layer)*3) / 5
+			tint := color.RGBA{shade, shade, shade, uint8(alpha)}
+			if champion && layer == 10 {
+				tint.A = uint8(alpha / 2)
+				drawTexturedEffectBillboardRotatedXY(screen, projection, texture, position.x, position.z, position.y, size, size, 0, tint, false)
+				tint.A = uint8(alpha)
+			}
+			drawTexturedEffectBillboardRotatedXY(screen, projection, texture, position.x, position.z, position.y, size, size, 0, tint, false)
+		}
+	}
+}

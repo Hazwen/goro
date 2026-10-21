@@ -2417,28 +2417,6 @@ var (
 	readyFightSkillActionSpec = newSkillActionSpec(skillActorActionReadyFight, false, &idleSkillActionSpec)
 )
 
-func sonicBlowSkillActionSpec() skillActionSpec {
-	next := newSkillActionSpec(skillActorActionReadyFight, true, nil)
-	for hit := 8; hit >= 1; hit-- {
-		spec := newSkillActionSpec(skillActorActionAttack, false, &next)
-		if hit > 1 {
-			spec.speed = 30 * time.Millisecond
-		}
-		next = spec
-	}
-	return next
-}
-
-func danceSkillActionSpec() skillActionSpec {
-	spec := newSkillActionSpec(skillActorActionSkill, true, nil)
-	spec.hasFrame = true
-	spec.frame = 1
-	spec.length = 3
-	spec.speed = 10 * db.EffectFrameDuration
-	spec.pingPong = true
-	return spec
-}
-
 func newSkillActionSpec(action skillActorAction, repeat bool, next *skillActionSpec) skillActionSpec {
 	return skillActionSpec{
 		defined: true,

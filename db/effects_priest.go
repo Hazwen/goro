@@ -1,6 +1,8 @@
 package db
 
-import "time"
+import (
+	"time"
+)
 
 func turnUndeadEffectSpec() EffectSpec {
 	spec := funcEffectSpec("TurnUndead", 250*EffectFrameDuration, true)
@@ -14,17 +16,5 @@ func turnUndeadEffectSpec() EffectSpec {
 func reviveEffectSpec() EffectSpec {
 	spec := funcEffectSpec("Revive", 250*EffectFrameDuration, true)
 	spec.Components[0].TextureFile = "effect/ring_yellow.tga"
-	return spec
-}
-
-func priestGroundEffectSpec(effectID int) EffectSpec {
-	spec := funcEffectSpec("PriestGround", 9999*EffectFrameDuration, true)
-	spec.Components[0].TextureFile = "effect/alpha_down.tga"
-	if effectID == effectBottomMagnus {
-		spec.Components[0].TextureFile = "effect/ring_red.tga"
-	}
-	if effectID == effectBottomBasilica {
-		spec.Duration = 29999 * EffectFrameDuration
-	}
 	return spec
 }

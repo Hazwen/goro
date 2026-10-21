@@ -115,3 +115,179 @@ func (m *WorldMode) drawThrowItemEffect(screen *render.Frame, ctx client.Context
 			tint, additive)
 	}
 }
+
+// Shield Boomerang and Monk Tanji share the native spinning-projectile primitive.
+type shieldImage struct {
+	position modelPoint3
+	angle    float64
+	alpha    int
+}
+
+type shieldFlight struct {
+	images         [4]shieldImage
+	tick, phase    int
+	heading, slope float64
+	distance       float64
+	oneWay         bool
+	deflection     float64
+}
+
+func initShieldBoomerang(ctx client.Context, effect *worldEffect) {
+	destination := effectWorldAnchor(ctx, *effect, effect.starts)
+	if _, ok, _ := actorForCombatID(ctx, effect.targetID); effect.targetID != 0 && ok {
+		effect.actorID, effect.targetID = effect.targetID, effect.actorID
+		effect.x, effect.y, _ = effectAnchor(ctx, effect.actorID)
+	}
+	origin := effectWorldAnchor(ctx, *effect, effect.starts)
+	delta := sub3(destination, origin)
+	distance := math.Hypot(delta.x, delta.z)
+	origin.y += 1.6
+	effect.shield = &shieldFlight{
+		images:  [4]shieldImage{{position: origin, alpha: 255, angle: -3 * math.Pi / 4}},
+		heading: math.Atan2(delta.z, delta.x), distance: distance,
+	}
+	if distance > 0 {
+		effect.shield.slope = .4 * delta.y / distance
+	}
+	// TANJI uses the same native primitive, with a delayed, one-way flight.
+	if effect.effectID == effectTanji {
+		effect.shield.tick = -15
+		effect.shield.oneWay = true
+		effect.shield.deflection = degreesToRadians(float64(hitEffectRandom(*effect, 0, 45)))
+		if hitEffectRandom(*effect, 1, 2) == 0 {
+			effect.shield.deflection *= -1
+		}
+		effect.shield.images[0].alpha = 5
+		effect.shield.images[0].angle = math.Pi / 4
+	}
+}
+
+func (flight *shieldFlight) advance(tick int, caster modelPoint3) {
+	for flight.tick < min(tick, 499) {
+		flight.tick++
+		if flight.tick <= 0 {
+			continue
+		}
+		current := &flight.images[0]
+		if flight.oneWay && flight.tick <= 10 {
+			current.alpha = min(255, current.alpha+25)
+		}
+		if flight.oneWay || flight.tick%3 == 0 {
+			flight.images[3] = flight.images[2]
+			flight.images[3].alpha = max(0, flight.images[3].alpha-25)
+			flight.images[2] = flight.images[1]
+			flight.images[2].alpha = max(0, flight.images[2].alpha-25)
+			flight.images[1] = *current
+			flight.images[1].alpha = max(0, current.alpha-150)
+		}
+		current.angle -= math.Pi / 12
+		switch flight.phase {
+		case 0:
+			if .4*float64(flight.tick) > flight.distance {
+				flight.phase = 1
+				if flight.oneWay {
+					flight.phase = 2
+					flight.heading += flight.deflection
+				}
+			}
+			current.position.y += flight.slope
+		case 1:
+			want := math.Atan2(caster.z-current.position.z, caster.x-current.position.x)
+			want = math.Mod(want+2*math.Pi, 2*math.Pi)
+			flight.heading = math.Mod(flight.heading+2*math.Pi, 2*math.Pi)
+			if math.Abs(want-flight.heading) > degreesToRadians(4) {
+				flight.heading = math.Mod(flight.heading+degreesToRadians(5), 2*math.Pi)
+			} else {
+				flight.phase = 2
+			}
+		case 2:
+			current.alpha = max(0, current.alpha-12)
+			current.position.y -= flight.slope
+		}
+		speed := .4
+		if flight.oneWay && flight.phase == 2 {
+			speed *= 3
+		}
+		current.position.x += speed * math.Cos(flight.heading)
+		current.position.z += speed * math.Sin(flight.heading)
+	}
+}
+
+func drawShieldImage(screen *render.Frame, projection sceneProjection, texture *render.Image, particle shieldImage, size float64, additive bool) {
+	if particle.alpha <= 0 {
+		return
+	}
+	p := particle.position
+	drawTexturedEffectBillboardRotatedXY(screen, projection, texture, p.x, p.z, p.y,
+		size, size, particle.angle, color.RGBA{255, 255, 255, uint8(min(255, particle.alpha))}, additive)
+}
+
+func (m *WorldMode) drawShieldBoomerangEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if texture == nil || effect.shield == nil {
+		return
+	}
+	tick := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
+	size := 7 * math.Sqrt2 / 5
+	if effect.shield.oneWay {
+		tick -= 15
+		size = effect.size
+		if size == 0 {
+			size = 2 * math.Sqrt2 / 5
+		}
+	}
+	effect.shield.advance(tick, effectWorldAnchor(ctx, effect, now))
+	for _, particle := range effect.shield.images {
+		drawShieldImage(screen, projection, texture, particle, size, effect.shield.oneWay)
+	}
+}
+
+func (m *WorldMode) drawTaekwonDash(screen *render.Frame, ctx client.Context, component worldEffectComponent, effect worldEffect, now time.Time) {
+	age := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
+	alpha := 12*min(age, 10) - 4*max(0, age-20)
+	piercing := effect.effectID == effectChemical4
+	if piercing {
+		alpha = 20*min(age, 10) - 2*max(0, age-20)
+	}
+	texture := m.effectFileTexture(ctx.Resources, component.textureFile)
+	if alpha <= 0 || texture == nil {
+		return
+	}
+	angle := math.Atan2(effect.projectileDirection.z, effect.projectileDirection.x)
+	direction := modelPoint3{x: math.Cos(angle), z: math.Sin(angle)}
+	side := modelPoint3{x: math.Sin(angle), z: -math.Cos(angle)}
+	var vertices []render.Vertex3D
+	var indices []uint16
+	for i := 0; i < 32; i++ {
+		seed := i * 6
+		offset := float64(15 + hitEffectRandom(effect, seed, 11))
+		if i/4%2 == 0 {
+			offset = -offset
+		}
+		width := .3 + .1*float64(hitEffectRandom(effect, seed+1, 4))
+		length := float64(20 + hitEffectRandom(effect, seed+2, 31))
+		speed := 1.5 + .1*float64(hitEffectRandom(effect, seed+3, 21))
+		travel := float64(hitEffectRandom(effect, seed+4, 200)) + float64(age)*speed
+		if piercing {
+			width += .1
+			length += 10
+			travel += .025 * float64(age*(age+1))
+		}
+		travel = math.Mod(travel, 200) - 100
+		point := func(along, across float64) modelPoint3 {
+			p := add3(effect.actorOrigin, add3(mul3(direction, along/5), mul3(side, across/5)))
+			p.y += 1.2
+			return p
+		}
+		shade := uint8(225 - 20*hitEffectRandom(effect, seed+5, 3))
+		tint := color.RGBA{shade, shade, 255, uint8(alpha)}
+		if piercing {
+			tint.G, tint.B = 255, shade
+		}
+		appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{
+			point(travel+length, offset+width), point(travel, offset+width),
+			point(travel, offset-width), point(travel+length, offset-width),
+		}, tint)
+	}
+	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(false, false))
+}

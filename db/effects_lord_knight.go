@@ -1,6 +1,8 @@
 package db
 
-import "time"
+import (
+	"time"
+)
 
 const effectPierceBody = 502
 
@@ -16,12 +18,14 @@ func auraBladeEffectSpec() EffectSpec {
 	}
 }
 
-func lordKnightBurstEffectSpec(sound string, delay time.Duration) EffectSpec {
+func magnum2EffectSpec() EffectSpec {
 	return EffectSpec{
-		Duration: 51 * EffectFrameDuration,
-		SFX:      []string{sound}, SFXDelays: []time.Duration{delay},
+		Duration:  100 * EffectFrameDuration,
+		SFX:       []string{"permeter_attack.wav", "effect\\ef_magnumbreak.wav"},
+		SFXDelays: []time.Duration{20 * EffectFrameDuration, 30 * EffectFrameDuration},
 		Components: []EffectComponent{{
-			Kind: EffectComponentFUNC, FuncName: "Sacrifice", TextureFile: "effect/alpha_center.tga",
+			Kind: EffectComponentFUNC, FuncName: "SpiralPierce", TextureFile: "effect/ring_yellow.tga",
+			AttachedEntity: true,
 		}},
 	}
 }

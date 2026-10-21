@@ -461,3 +461,59 @@ func (m *WorldMode) skillEffectDirection(ctx client.Context, actorID uint32, dir
 	}
 	return direction
 }
+
+// Auto Guard and Preserve share the native shield geometry.
+func (m *WorldMode) drawGuardEffect(screen *render.Frame, ctx client.Context, _ sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
+	n := int(now.Sub(effect.starts)/db.EffectFrameDuration) + 1
+	alpha := min(100, n*20) - 6*max(0, n-26)
+	if alpha <= 0 {
+		return
+	}
+	origin := effectWorldAnchor(ctx, effect, now)
+	radiusBase := 7.8
+	facing := degreesToRadians(float64(90 + 45*effectActorDirection(ctx, effect.actorID, now)))
+	if effect.effectID == effectPreserve {
+		radiusBase = 10
+		facing = degreesToRadians(float64(90 + 45*effect.actorDirection + 10*(n-1)))
+	}
+	for layer := 0; layer < 3; layer++ {
+		path := component.textureFile
+		if layer == 2 {
+			path = component.textureFiles[0]
+		}
+		texture := m.effectFileTexture(ctx.Resources, path)
+		if texture == nil {
+			continue
+		}
+		vertices, indices := []render.Vertex3D{}, []uint16{}
+		radius, centerHeight := radiusBase+.2*float64(layer), radiusBase
+		if layer == 0 {
+			centerHeight += 2
+		}
+		if layer == 2 {
+			radius += .1 * float64(max(0, n-26))
+		}
+		for row := 0; row < 3; row++ {
+			pitch := degreesToRadians(float64(row*45 - 45))
+			halfSize := float64(3 - absInt(row-1))
+			for col := 0; col < 5; col++ {
+				yaw := facing + degreesToRadians(float64(col*45-90))
+				center := modelPoint3{x: radius * math.Cos(pitch) * math.Cos(yaw), y: radius*math.Sin(pitch) - centerHeight, z: radius * math.Cos(pitch) * math.Sin(yaw)}
+				var corners [4]modelPoint3
+				for i, offset := range [4][2]float64{{halfSize, halfSize}, {-halfSize, halfSize}, {-halfSize, -halfSize}, {halfSize, -halfSize}} {
+					x, y := offset[0], offset[1]
+					z := y * math.Cos(math.Pi/2+pitch)
+					point := add3(center, modelPoint3{
+						x: x*math.Cos(yaw-math.Pi/2) - z*math.Sin(yaw-math.Pi/2),
+						y: y * math.Sin(math.Pi/2+pitch),
+						z: x*math.Sin(yaw-math.Pi/2) + z*math.Cos(yaw-math.Pi/2),
+					})
+					corners[3-i] = add3(origin, modelPoint3{x: point.x / 5, y: -point.y / 5, z: point.z / 5})
+				}
+				green := []uint8{205, 155, 225}[layer]
+				appendEffectQuad(&vertices, &indices, texture, corners, color.RGBA{green, 255, green, uint8(alpha)})
+			}
+		}
+		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(layer < 2, false))
+	}
+}
