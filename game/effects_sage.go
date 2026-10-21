@@ -83,8 +83,12 @@ func (m *WorldMode) drawLandProtectorGroundEffect(screen *render.Frame, ctx clie
 	if texture == nil {
 		return
 	}
-	phase := (hitEffectRandom(effect, 0, 360) + 3*n) % 360
-	radius := 7 * (.9 + .1*math.Sin(degreesToRadians(float64(phase)))) / 5
+	speed, size := 3, 7.0
+	if effect.effectID == effectBottomSpider {
+		speed, size = 1, 12
+	}
+	phase := (hitEffectRandom(effect, 0, 360) + speed*n) % 360
+	radius := size * (.9 + .1*math.Sin(degreesToRadians(float64(phase)))) / 5
 	origin := modelPoint3{x: x, y: z + 2.0/5, z: y}
 	vertices, indices := []render.Vertex3D{}, []uint16{}
 	appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{

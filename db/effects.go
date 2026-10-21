@@ -390,6 +390,7 @@ const (
 	effectLightBlade        = 382
 	effectEnergyDrain3      = 383
 	effectLineLink2         = 384
+	effectLinkLight         = 385
 	effectTrueSight         = 386
 	effectFalconAssault     = 387
 	effectTripleAttack2     = 388
@@ -457,6 +458,7 @@ const (
 	effectCastSpin         = 501
 	effectSoulLink         = 503
 	effectChookgi2         = 504
+	effectMemorize         = 505
 	effectMapae            = effectItemAccel
 	effectItemPokJuk       = effectFirecracker
 	effectValentine05      = 509
@@ -464,6 +466,7 @@ const (
 	effectChemical2Dash    = 512
 	effectBottomHermode    = 517
 	effectCartTermination  = 518
+	effectDoubleCastBody   = 521
 	effectItemFastDown     = effectItemSlow
 	effectTarotCard1       = 523
 	effectTarotCard2       = 524
@@ -721,7 +724,7 @@ const (
 	effectGreedSound             = SkillEffectGreedSound
 	effectGospelGround           = SkillEffectGospelGround
 	effectSteelBodyRing          = SkillEffectSteelBodyRing
-	effectFogWallGround          = SkillEffectFogWallGround
+	effectFogWallGround          = 405
 	effectHermodeMusic           = SkillEffectHermodeMusic
 	effectBottomDissonanceGround = SkillEffectBottomDissonanceGround
 	effectBottomLullabyGround    = SkillEffectBottomLullabyGround
@@ -1762,37 +1765,6 @@ func portal5EffectSpec() EffectSpec {
 	}
 }
 
-func magicCrasher2EffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 1000 * time.Millisecond,
-		SFX:      []string{"effect\\swordman_provoke.wav"},
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "EffectBodyColor",
-			Duration:       1000 * time.Millisecond,
-			AttachedEntity: true,
-		}},
-	}
-}
-
-func spiderWebEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 5 * time.Second,
-		Components: []EffectComponent{{
-			Kind:           EffectComponentFUNC,
-			FuncName:       "SpiderWeb",
-			TextureFile:    "effect/spiderweb.tga",
-			Duration:       5 * time.Second,
-			AlphaMax:       0.7,
-			SizeStart:      1.5,
-			SizeEnd:        1.5,
-			PosZ:           0.05,
-			RenderBefore:   true,
-			AttachedEntity: false,
-		}},
-	}
-}
-
 func soulBreaker2EffectSpec() EffectSpec {
 	return EffectSpec{
 		Duration: 500 * time.Millisecond,
@@ -2080,28 +2052,6 @@ func teiHit1TEffectSpec() EffectSpec {
 	}
 }
 
-func energyDrainProjectileEffectSpec(tint color.RGBA, sizeStart, sizeEnd float64) EffectSpec {
-	return EffectSpec{
-		Duration: 600 * time.Millisecond,
-		Components: []EffectComponent{{
-			Kind:           EffectComponent3D,
-			SpriteFile:     "data/sprite/이팩트/particle1",
-			SpriteRepeat:   true,
-			Duration:       600 * time.Millisecond,
-			Duplicate:      5,
-			FromSrc:        true,
-			ToSrc:          true,
-			RotateToTarget: true,
-			Color:          tint,
-			SizeStart:      effectTableSize(sizeStart),
-			SizeEnd:        effectTableSize(sizeEnd),
-			PosZ:           5,
-			Arc:            3,
-			Retreat:        3,
-		}},
-	}
-}
-
 func transBlueBodyEffectSpec() EffectSpec {
 	return funcEffectSpec("TransBlueBody", 200*EffectFrameDuration, true)
 }
@@ -2231,35 +2181,6 @@ func soundOnlyEffectSpec(paths ...string) EffectSpec {
 
 func whitePulseEffectSpec() EffectSpec {
 	return EffectSpec{Duration: 500 * time.Millisecond}
-}
-
-func fogWallGroundEffectSpec() EffectSpec {
-	return EffectSpec{
-		Duration: 1500 * time.Millisecond,
-		Components: []EffectComponent{
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "FlatColorTile",
-				Color:          color.RGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 153},
-				SizeStart:      1,
-				RenderBefore:   true,
-				AttachedEntity: false,
-			},
-			{
-				Kind:           EffectComponentFUNC,
-				FuncName:       "GroundTexture",
-				TextureFile:    "effect/lens_w.bmp",
-				Duration:       1500 * time.Millisecond,
-				SizeStart:      0.5,
-				SizeEnd:        0.5,
-				AlphaMax:       0.7,
-				PosZ:           0.4,
-				BlendAdditive:  true,
-				RenderBefore:   true,
-				AttachedEntity: false,
-			},
-		},
-	}
 }
 
 func sharpShootingCastEffectSpec() EffectSpec {
@@ -4008,8 +3929,9 @@ var EffectSpecs = map[int]EffectSpec{
 	effectMagicCrasher:      magicCrasherEffectSpec(),
 	effectMagicPower:        soundOnlyEffectSpec("effect\\마법력 증폭.wav"),
 	effectLightBlade:        funcEffectSpec("LightBlade", 99999999*EffectFrameDuration, true),
-	effectEnergyDrain3:      energyDrainProjectileEffectSpec(color.RGBA{R: 178, G: 255, B: 178, A: 255}, 140, 170),
-	effectLineLink2:         soundOnlyEffectSpec("effect\\소울 체인지.wav"),
+	effectEnergyDrain3:      hpConversionEffectSpec(),
+	effectLineLink2:         soulChangeLinkEffectSpec(),
+	effectLinkLight:         funcEffectSpec("EffectBodyColor", 200*EffectFrameDuration, true),
 	effectTrueSight:         trueSightEffectSpec(),
 	effectFalconAssault:     falconAssaultEffectSpec(),
 	effectSharpShootingCast: sharpShootingCastEffectSpec(),
@@ -4033,7 +3955,7 @@ var EffectSpecs = map[int]EffectSpec{
 	effectMagicCrasher2:     magicCrasher2EffectSpec(),
 	effectBottomSpider:      spiderWebEffectSpec(),
 	effectSoulBurn:          strEffectSpecAttached("소울번", "", false),
-	effectSoulChange:        strEffectSpecAttached("사랑효과", "", false),
+	effectSoulChange:        strEffectSpecAttached("사람효과", "", false),
 	effectSoulBreaker2:      soulBreaker2EffectSpec(),
 	effectReflectBody:       soulLinkerBodyEffectSpec("ReflectBody", "effect\\t_마법반사.wav", 200),
 	effectFourWayBody:       soulLinkerBodyEffectSpec("FourWayBody", "", 100),
@@ -4075,6 +3997,8 @@ var EffectSpecs = map[int]EffectSpec{
 	effectPreserve:          soundOnlyEffectSpec("effect\\black_maximize_power_sword_bic.wav"),
 	effectCastSpin:          funcEffectSpec("CastSpin", 500*time.Millisecond, true),
 	effectChookgi2:          spiritSphereEffectSpec(),
+	effectMemorize:          memorizeEffectSpec(),
+	effectDoubleCastBody:    funcEffectSpec("EffectBodyColor", 120*EffectFrameDuration, true),
 	effectMapae:             strEffectSpecAttached("mapae", "effect\\mapae.wav", false),
 	effectItemPokJuk:        strEffectSpecAttached("itempokjuk", "effect\\itempokjuk.wav", false),
 	effectValentine05:       sprEffectSpec("05vallentine", "", true, false),

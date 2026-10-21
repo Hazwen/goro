@@ -392,6 +392,7 @@ const (
 	effectLightBlade        = 382
 	effectEnergyDrain3      = 383
 	effectLineLink2         = 384
+	effectLinkLight         = 385
 	effectTrueSight         = 386
 	effectFalconAssault     = 387
 	effectTripleAttack2     = 388
@@ -459,6 +460,7 @@ const (
 	effectCastSpin         = 501
 	effectSoulLink         = 503
 	effectChookgi2         = 504
+	effectMemorize         = 505
 	effectMapae            = effectItemAccel
 	effectItemPokJuk       = effectFirecracker
 	effectValentine05      = 509
@@ -466,6 +468,7 @@ const (
 	effectChemical2Dash    = 512
 	effectBottomHermode    = 517
 	effectCartTermination  = 518
+	effectDoubleCastBody   = 521
 	effectItemFastDown     = effectItemSlow
 	effectTarotCard1       = 523
 	effectTarotCard2       = 524
@@ -722,7 +725,7 @@ const (
 	effectMaximizeSounds         = db.SkillEffectMaximizeSounds
 	effectGreedSound             = db.SkillEffectGreedSound
 	effectGospelGround           = db.SkillEffectGospelGround
-	effectFogWallGround          = db.SkillEffectFogWallGround
+	effectFogWallGround          = 405
 	effectHermodeMusic           = db.SkillEffectHermodeMusic
 	effectBottomDissonanceGround = db.SkillEffectBottomDissonanceGround
 	effectBottomLullabyGround    = db.SkillEffectBottomLullabyGround
@@ -1022,7 +1025,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	if notify.Result == 0 {
 		return
 	}
-	if notify.SkillID == db.SkillHWSouldrain {
+	if notify.SkillID == db.SkillHWSouldrain || notify.SkillID == db.SkillPFSoulchange {
 		if _, ok, _ := actorForCombatID(ctx, notify.SourceID); !ok {
 			return
 		}
@@ -1054,6 +1057,7 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	m.applyClownSkill(ctx, notify, now)
 	m.applyAlchemistSkill(ctx, notify, now)
 	m.applyHighWizardSkill(ctx, notify, now)
+	m.applyProfessorSkill(ctx, notify, now)
 	m.applyWinkCharm(ctx, notify)
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
@@ -1317,7 +1321,8 @@ func (m *WorldMode) applyGroundSkillNotify(ctx client.Context, notify network.Gr
 	switch notify.SkillID {
 	case db.SkillALPneuma, db.SkillALWarp, db.SkillMGSafetywall, db.SkillMGFirewall, db.SkillPRSanctuary, db.SkillHPBasilica,
 		db.SkillWZFirepillar, db.SkillWZIcewall, db.SkillWZQuagmire,
-		db.SkillAMDemonstration, db.SkillAMCannibalize, db.SkillAMSpheremine, db.SkillHWGravitation:
+		db.SkillAMDemonstration, db.SkillAMCannibalize, db.SkillAMSpheremine, db.SkillHWGravitation,
+		db.SkillPFFogwall, db.SkillPFSpiderweb:
 		now := time.Now()
 		m.faceSkillSource(ctx, notify.SourceID, 0, int(notify.X), int(notify.Y))
 		if actor, ok, _ := actorForCombatID(ctx, notify.SourceID); ok {
@@ -1479,7 +1484,7 @@ func (m *WorldMode) removeWorldEffectsForActor(id uint32) bool {
 	active := m.worldEffects[:0]
 	removed := false
 	for _, effect := range m.worldEffects {
-		if effect.actorID == id || ((effect.effectID == effectLineLink || effect.effectID == effectMarionetteLink) && effect.targetID == id) {
+		if effect.actorID == id || ((effect.effectID == effectLineLink || effect.effectID == effectLineLink2 || effect.effectID == effectMarionetteLink) && effect.targetID == id) {
 			removed = true
 			continue
 		}
@@ -1721,6 +1726,10 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	}
 	if effectID == effectEnergyDrain2 {
 		initSoulDrain(ctx, &effect)
+	}
+	if effectID == effectEnergyDrain3 {
+		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
+		effect.hasActorTransform = true
 	}
 	if effectID == effectBackStab || effectID == effectTeiHit2 {
 		initImpactParticles(ctx, &effect)
@@ -1995,7 +2004,7 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		(skillID >= db.SkillBSIron && skillID <= db.SkillBSMaximize && skillID != db.SkillBSRepairweapon) || skillID == db.SkillBSAdrenaline2 ||
 		skillID == db.SkillWSMeltdown || skillID == db.SkillWSCartboost || skillID == db.SkillWSOverthrustmax ||
 		skillID == db.SkillWSCarttermination || skillID == db.SkillWSWeaponrefine ||
-		skillID == db.SkillAMDemonstration || skillID == db.SkillAMSpheremine || skillID == db.SkillAMPharmacy || skillID == db.SkillCRCultivation || skillID == db.SkillHWMagicpower {
+		skillID == db.SkillAMDemonstration || skillID == db.SkillAMSpheremine || skillID == db.SkillAMPharmacy || skillID == db.SkillCRCultivation || skillID == db.SkillHWMagicpower || skillID == db.SkillPFFogwall {
 		m.addWorldEffectAt(ctx, effectBashBegin, sourceID, starts)
 		return
 	}
@@ -2030,6 +2039,9 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 	}
 	switch skillID {
 	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation:
+		effectID = effectBeginSpell
+	case db.SkillPFHpconversion, db.SkillPFSoulchange, db.SkillPFSoulburn, db.SkillPFMindbreaker,
+		db.SkillPFMemorize, db.SkillPFSpiderweb, db.SkillPFDoublecasting:
 		effectID = effectBeginSpell
 	case db.SkillAMCallhomun, db.SkillAMRest, db.SkillAMResurrecthomun:
 		effectID = effectCoupleCasting
@@ -2554,7 +2566,7 @@ var skillUnitEffectSpecs = map[uint16]skillUnitEffectSpec{
 	179: {effectIDs: []int{effectGospelGround}},           // UNT_GOSPEL -> 370_ground
 	180: {effectIDs: []int{effectBottomBasilica}},         // UNT_BASILICA -> EF_BOTTOM_BASILICA
 	181: {},                                               // UNT_MOONLIT: the caster owns the sphere.
-	182: {effectIDs: []int{effectFogWallGround}},          // UNT_FOGWALL -> 405_ground
+	182: {effectIDs: []int{effectFogWallGround}},          // UNT_FOGWALL -> EF_BOTTOM_FOGWALL
 	183: {effectIDs: []int{effectBottomSpider}},           // UNT_SPIDERWEB -> EF_BOTTOM_SPIDER
 	184: {effectIDs: []int{effectGravitation}},            // UNT_GRAVITATION -> EF_GRAVITATION
 	185: {effectIDs: []int{effectBottomHermode}},          // UNT_HERMODE -> EF_BOTTOM_HERMODE
@@ -2832,6 +2844,10 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 	switch name {
 	case "SoulDrain":
 		return effectFuncSoulDrain
+	case "HPConversion":
+		return effectFuncHPConversion
+	case "SoulChangeLink":
+		return effectFuncSoulChangeLink
 	case "Gravitation":
 		return effectFuncGravitation
 	case "ChemicalProtection":

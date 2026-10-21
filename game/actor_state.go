@@ -363,10 +363,10 @@ func portal5BodyColorTint(tint color.RGBA, elapsed time.Duration) color.RGBA {
 }
 
 func magicCrasher2BodyColorTint(tint color.RGBA, actorID uint32, starts time.Time, elapsed time.Duration) color.RGBA {
-	if elapsed < 0 || elapsed >= time.Second {
+	if elapsed < 0 || elapsed/db.EffectFrameDuration > 60 {
 		return tint
 	}
-	bucket := uint64(elapsed / (50 * time.Millisecond))
+	bucket := uint64(elapsed / db.EffectFrameDuration)
 	seed := uint64(actorID)*0x9e3779b185ebca87 ^ uint64(starts.UnixNano()) ^ bucket*0xc2b2ae3d27d4eb4f
 	return multiplyTint(tint, randomBodyColorChannel(seed), randomBodyColorChannel(seed+1), randomBodyColorChannel(seed+2), 1)
 }

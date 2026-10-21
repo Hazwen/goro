@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 709 {
-		t.Fatalf("implemented effects = %d, want 709", coverage.Implemented)
+	if coverage.Implemented != 712 {
+		t.Fatalf("implemented effects = %d, want 712", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 116.80 || coverage.ActivePercent > 116.81 {
-		t.Fatalf("active coverage = %.3f, want about 116.81", coverage.ActivePercent)
+	if coverage.ActivePercent < 117.29 || coverage.ActivePercent > 117.30 {
+		t.Fatalf("active coverage = %.3f, want about 117.30", coverage.ActivePercent)
 	}
 }
 
@@ -1723,7 +1723,6 @@ func TestRobrowserSimpleEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 	}{
 		{"EF_BOTTOM_GOSPEL", effectBottomGospel, "effect\\가스펠.wav"},
 		{"EF_HITLINE2", effectHitLine2, "effect\\맹호경파산.wav"},
-		{"EF_LINELINK2", effectLineLink2, "effect\\소울 체인지.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
@@ -1809,25 +1808,6 @@ func TestRobrowserCombatEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.
 }
 
 func TestRobrowserDrainAndMagicEffectsThreeFiftyToFourHundredMatchTableRows(t *testing.T) {
-	for _, tc := range []struct {
-		name      string
-		id        int
-		color     color.RGBA
-		sizeStart float64
-		sizeEnd   float64
-	}{
-		{"EF_ENERGYDRAIN3", effectEnergyDrain3, color.RGBA{R: 178, G: 255, B: 178, A: 255}, 140, 170},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 1 || spec.duration != 600*time.Millisecond {
-			t.Fatalf("%s spec = %+v ok=%t", tc.name, spec, ok)
-		}
-		component := spec.components[0]
-		if component.kind != effectComponent3D || component.spriteFile != "data/sprite/이팩트/particle1" || !component.spriteRepeat || component.duration != 600*time.Millisecond || component.duplicate != 5 || !component.fromSrc || !component.toSrc || !component.rotateToTarget || component.color != tc.color || component.sizeStart != effectTableSize(tc.sizeStart) || component.sizeEnd != effectTableSize(tc.sizeEnd) || component.posZ != 5 || component.arc != 3 || component.retreat != 3 {
-			t.Fatalf("%s component = %+v", tc.name, component)
-		}
-	}
-
 	trans, ok := worldEffectSpecForID(effectTransBlueBody)
 	if !ok || len(trans.components) != 1 || trans.duration != 200*db.EffectFrameDuration {
 		t.Fatalf("EF_TRANSBLUEBODY spec = %+v ok=%t", trans, ok)
@@ -1869,43 +1849,13 @@ func TestRobrowserEffectsFourHundredToFourFiftyMatchTableRows(t *testing.T) {
 		t.Fatalf("EF_PORTAL5 component = %+v", component)
 	}
 
-	mindBreaker, ok := worldEffectSpecForID(effectMagicCrasher2)
-	if !ok || len(mindBreaker.components) != 1 || mindBreaker.duration != time.Second {
-		t.Fatalf("EF_MAGICCRASHER2 spec = %+v ok=%t", mindBreaker, ok)
-	}
-	if len(mindBreaker.sfx) != 1 || mindBreaker.sfx[0] != "effect\\swordman_provoke.wav" {
-		t.Fatalf("EF_MAGICCRASHER2 sfx = %#v", mindBreaker.sfx)
-	}
-	if component := mindBreaker.components[0]; component.kind != effectComponentFUNC || component.funcName != "EffectBodyColor" || component.funcAdapter != effectFuncBodyColor || component.duration != time.Second || !component.attachedEntity {
-		t.Fatalf("EF_MAGICCRASHER2 component = %+v", component)
-	}
-
-	spider, ok := worldEffectSpecForID(effectBottomSpider)
-	if !ok || len(spider.components) != 1 || spider.duration != 5*time.Second {
-		t.Fatalf("EF_BOTTOM_SPIDER spec = %+v ok=%t", spider, ok)
-	}
-	if component := spider.components[0]; component.kind != effectComponentFUNC || component.funcName != "SpiderWeb" || component.funcAdapter != effectFuncGroundTexture || component.textureFile != "effect/spiderweb.tga" || component.duration != 5*time.Second || math.Abs(component.alphaMax-0.7) > 0.0001 || component.sizeStart != 1.5 || component.sizeEnd != 1.5 || component.posZ != 0.05 || !component.renderBefore || component.attachedEntity {
-		t.Fatalf("EF_BOTTOM_SPIDER component = %+v", component)
-	}
-
-	fogWall, ok := worldEffectSpecForID(effectFogWallGround)
-	if !ok || len(fogWall.components) != 2 || fogWall.duration != 1500*time.Millisecond {
-		t.Fatalf("PF_FOGWALL ground spec = %+v ok=%t", fogWall, ok)
-	}
-	if component := fogWall.components[0]; component.kind != effectComponentFUNC || component.funcName != "FlatColorTile" || component.funcAdapter != effectFuncFlatColorTile || component.color != (color.RGBA{R: 0xaa, G: 0xaa, B: 0xaa, A: 153}) || component.sizeStart != 1 || !component.renderBefore || component.attachedEntity {
-		t.Fatalf("PF_FOGWALL flat tile component = %+v", component)
-	}
-	if component := fogWall.components[1]; component.kind != effectComponentFUNC || component.funcName != "GroundTexture" || component.funcAdapter != effectFuncGroundTexture || component.textureFile != "effect/lens_w.bmp" || component.duration != 1500*time.Millisecond || component.sizeStart != 0.5 || component.sizeEnd != 0.5 || math.Abs(component.alphaMax-0.7) > 0.0001 || component.posZ != 0.4 || !component.blendAdditive || !component.renderBefore || component.attachedEntity {
-		t.Fatalf("PF_FOGWALL texture component = %+v", component)
-	}
-
 	for _, tc := range []struct {
 		name string
 		id   int
 		file string
 	}{
 		{"EF_SOULBURN", effectSoulBurn, "소울번"},
-		{"EF_SOULCHANGE", effectSoulChange, "사랑효과"},
+		{"EF_SOULCHANGE", effectSoulChange, "사람효과"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 1 {

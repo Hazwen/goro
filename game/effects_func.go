@@ -101,6 +101,8 @@ const (
 	effectFuncSageGroundCast
 	effectFuncSoulDrain
 	effectFuncGravitation
+	effectFuncHPConversion
+	effectFuncSoulChangeLink
 )
 
 const (
@@ -110,6 +112,10 @@ const (
 
 func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, projection sceneProjection, effect worldEffect, component worldEffectComponent, componentIndex int, worldX, worldY, worldZ, progress float64, now time.Time) {
 	switch component.funcAdapter {
+	case effectFuncHPConversion:
+		m.drawHPConversion(screen, ctx, projection, component, effect, now)
+	case effectFuncSoulChangeLink:
+		m.drawSoulChangeLink(screen, ctx, component, effect, now)
 	case effectFuncSoulDrain:
 		m.drawSoulDrain(screen, ctx, projection, component, effect, now)
 	case effectFuncGravitation:

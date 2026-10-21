@@ -121,7 +121,7 @@ validate, then commit and push. Existing support is not proof of visual parity.
 - [x] Alchemist — all 20 skills audited; bottle flights, Chemical Protection, homunculus casts, Demonstration, Berserk Pitcher, and Twilight Alchemy reviewed twice and validated with client assets.
 - [x] Creator — all four active skills audited; potion bursts, Acid Demonstration, protection, and Cultivation reviewed twice and validated with client assets.
 - [x] High Wizard — all six skills audited; Soul Drain, Amplification, Magic Crasher, Napalm Vulcan, Ganbantein, and Gravitation reviewed twice and validated with client assets.
-- [ ] Professor
+- [x] Professor — all eight skills audited; particle trails, linking/body effects, ground units, casting, and sound timing reviewed twice and validated with client assets.
 - [ ] Assassin Cross
 - [ ] Stalker
 - [ ] Champion
@@ -273,6 +273,25 @@ alone; its renderer remains for the Professor audit. Both reviews, the full
 suite with client assets, and a normal build passed. No live playtest was
 performed; visual comparison remains useful for the procedural effects.
 
+Professor reference checks: dhxj and 2008 HighPriest agree on HP Conversion's
+five groups of three green particle trails and delayed blue expansion of the
+body. Soul Change now connects the actors with its two-color beam, flashes both
+bodies, and plays the STR on both participants; the Korean filename was
+incorrectly written as `사랑효과` instead of the original `사람효과`. Soul Burn
+adds Magic Crasher's flash, sound, and quake on the server-selected recipient,
+including the caster on failure. Its separate level-5 damage packet adds only
+the generic hit flash. Mind Breaker follows the 2008 transient random tint and
+tick-25 Provoke sound; later dhxj instead keeps the tint through the status.
+Memorize flashes yellow and plays Suffragium; Double Casting flashes red with
+an expanded body, the native release flare, and centered amplification sound.
+Wall of Fog uses the original translucent grey square walls and diagonals;
+Spider Web uses the pulsing ground texture. Both are owned by server units,
+without duplicate fields at cast notification. rAthena confirms the eight
+active skills, packet outcomes, and unit lifetimes. Mage/Sage skills inherit
+their earlier audits. Both reviews, full tests with client assets, and a normal
+build passed. No live playtest was performed; visual comparison remains useful,
+especially for the procedural trails and ground walls.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -281,8 +300,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `709`.
-- Catalog size relative to all numeric constants: about `61.8%`.
+- Goro effect catalog entries: `712`.
+- Catalog size relative to all numeric constants: about `62.1%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.

@@ -156,13 +156,26 @@ func (m *WorldMode) drawPriestGroundEffect(screen *render.Frame, ctx client.Cont
 			half, height, alpha, fade = 2.5, 16, 120, 1880
 			tint.R, tint.B = 235, 235
 		}
+		if effect.effectID == effectFogWallGround {
+			half, height, alpha, fade = 2.5, 32, 30, 29999
+			tint.R, tint.G, tint.B = 80, 80, 80
+		}
 		phase := degreesToRadians(float64((hitEffectRandom(effect, 0, 360) + tick) % 360))
 		height *= (.65 + .35*math.Sin(phase)) * math.Sin(degreesToRadians(float64(min(tick, 90))))
 		tint.A = uint8(max(0, alpha-2*max(0, tick-fade)))
 		appendPriestSquareBand(&vertices, &indices, texture, center, half/5, height/5, 0, 8*half/5, tint)
+		if effect.effectID == effectFogWallGround {
+			tint.A *= 2
+			for _, sign := range []float64{-1, 1} {
+				a := add3(center, modelPoint3{x: half / 5, z: sign * half / 5})
+				b := add3(center, modelPoint3{x: -half / 5, z: -sign * half / 5})
+				up := modelPoint3{y: height / 5}
+				appendEffectQuad(&vertices, &indices, texture, [4]modelPoint3{add3(a, up), add3(b, up), b, a}, tint)
+			}
+		}
 	}
 	if len(indices) > 0 {
-		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(effect.effectID != effectBottomSanc, false))
+		screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(effect.effectID != effectBottomSanc && effect.effectID != effectFogWallGround, false))
 	}
 }
 

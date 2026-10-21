@@ -72,6 +72,36 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 					blend = render.BlendLighter
 				}
 			}
+		case effectEnergyDrain3:
+			if frame >= 50 && frame <= 80 {
+				tint.R, tint.G, tint.B = uint8(250-2*frame), uint8(250-2*frame), 250
+				doubleBody = billboard.layerGroup == 0
+			}
+		case effectLinkLight:
+			if frame >= 40 && frame <= 70 {
+				tint.R, tint.G, tint.B = 200, 150, 50
+				if billboard.layerGroup == 0 {
+					blend = render.BlendLighter
+				}
+			}
+		case effectMemorize, effectDoubleCastBody:
+			end := 36
+			if effect.effectID == effectDoubleCastBody {
+				end = 51
+			}
+			if frame >= 10 && frame < end {
+				doubleBody = doubleBody || effect.effectID == effectDoubleCastBody && billboard.layerGroup == 0
+				tint.R, tint.G, tint.B = 255, 255, 255
+				if frame%2 == 0 {
+					tint.R, tint.G, tint.B = 250, 250, 100
+					if effect.effectID == effectDoubleCastBody {
+						tint.R, tint.G, tint.B = 255, 0, 0
+					}
+					if billboard.layerGroup == 0 {
+						blend = render.BlendLighter
+					}
+				}
+			}
 		case effectItemFast3:
 			if frame <= 150 {
 				tint.R, tint.G, tint.B = 250, 120, 120

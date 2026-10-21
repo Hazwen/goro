@@ -657,7 +657,7 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 		return true
 	case db.SkillLKSpiralpierce, db.SkillLKHeadcrush, db.SkillLKJointbeat:
 		return true
-	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation:
+	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation, db.SkillPFSoulburn:
 		return true
 	case db.SkillCRShieldcharge, db.SkillCRShieldboomerang, db.SkillCRHolycross, db.SkillCRGrandcross, db.SkillPaPressure, db.SkillPaSacrifice, db.SkillPaShieldchain,
 		db.SkillKNPierce, db.SkillKNBrandishspear, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNBowlingbash, db.SkillKNChargeatk:

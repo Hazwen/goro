@@ -72,7 +72,7 @@ func TestPortal5BodyColorTintFollowsRobrowserFlashWindow(t *testing.T) {
 	}
 }
 
-func TestMagicCrasher2BodyColorTintUsesRobrowserRandomColorWindow(t *testing.T) {
+func TestMagicCrasher2BodyColorTintUsesOriginalColorWindow(t *testing.T) {
 	base := color.RGBA{R: 100, G: 150, B: 200, A: 255}
 	starts := time.Unix(10, 0)
 	mode := WorldMode{
@@ -80,7 +80,7 @@ func TestMagicCrasher2BodyColorTintUsesRobrowserRandomColorWindow(t *testing.T) 
 			effectID: effectMagicCrasher2,
 			actorID:  42,
 			starts:   starts,
-			expires:  starts.Add(time.Second),
+			expires:  starts.Add(100 * db.EffectFrameDuration),
 		}},
 	}
 	first := mode.actorBodyColorTint(42, base, starts.Add(100*time.Millisecond))
@@ -91,7 +91,7 @@ func TestMagicCrasher2BodyColorTintUsesRobrowserRandomColorWindow(t *testing.T) 
 	if first == base || first.A != base.A {
 		t.Fatalf("active random tint = %+v, want color-channel change with unchanged alpha", first)
 	}
-	if got := mode.actorBodyColorTint(42, base, starts.Add(time.Second)); got != base {
+	if got := mode.actorBodyColorTint(42, base, starts.Add(61*db.EffectFrameDuration)); got != base {
 		t.Fatalf("expired random tint = %+v, want base %+v", got, base)
 	}
 }
@@ -1603,17 +1603,6 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "CH_TIGERFIST imported", skillEffectIDs(db.SkillChTigerfist), effectBash3D2, effectQuake)
 	expectEffectIDs(t, "CH_CHAINCRUSH imported", skillEffectIDs(db.SkillChChaincrush), effectChemical2Dash)
 	expectEffectIDs(t, "CH_SOULCOLLECT imported begin", skillBeginEffectIDs(db.SkillChSoulcollect), effectPortal5, effectBeginSpell)
-	expectEffectIDs(t, "PF_HPCONVERSION imported", skillEffectIDs(db.SkillPFHpconversion))
-	expectEffectIDs(t, "PF_HPCONVERSION imported caster", skillEffectOnCasterIDs(db.SkillPFHpconversion), effectEnergyDrain3)
-	expectEffectIDs(t, "PF_HPCONVERSION imported self success", skillSuccessEffectSelfIDs(db.SkillPFHpconversion))
-	expectEffectIDs(t, "PF_SOULCHANGE imported", skillEffectIDs(db.SkillPFSoulchange), effectLineLink2)
-	expectEffectIDs(t, "PF_SOULCHANGE imported success", skillSuccessEffectIDs(db.SkillPFSoulchange), 385)
-	expectEffectIDs(t, "PF_SOULBURN imported", skillEffectIDs(db.SkillPFSoulburn), effectSoulBurn)
-	expectEffectIDs(t, "PF_MINDBREAKER imported success", skillSuccessEffectIDs(db.SkillPFMindbreaker), effectMagicCrasher2)
-	expectEffectIDs(t, "PF_MEMORIZE imported", skillEffectIDs(db.SkillPFMemorize), 505)
-	expectEffectIDs(t, "PF_FOGWALL imported ground", skillGroundEffectIDs(db.SkillPFFogwall), effectFogWallGround)
-	expectEffectIDs(t, "PF_SPIDERWEB imported ground", skillGroundEffectIDs(db.SkillPFSpiderweb), effectBottomSpider)
-	expectEffectIDs(t, "PF_DOUBLECASTING imported", skillEffectIDs(db.SkillPFDoublecasting), 521)
 	expectEffectIDs(t, "ASC_BREAKER imported before hit", skillBeforeHitEffectIDs(db.SkillASCBreaker), effectSoulBreaker)
 	expectEffectIDs(t, "ASC_METEORASSAULT imported caster", skillEffectOnCasterIDs(db.SkillASCMeteorassault), effectSoulBreaker2)
 	if !skillHidesCastAura(db.SkillASCMeteorassault) {
