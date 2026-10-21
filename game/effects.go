@@ -415,6 +415,10 @@ const (
 	effectSoulBurn          = 406
 	effectSoulChange        = 407
 	effectSoulBreaker2      = 409
+	effectPeong             = 411
+	effectPressedBody       = 413
+	effectSpinedBody        = 414
+	effectKickedBody        = 415
 	effectReflectBody       = 419
 	effectBabyBody          = 420
 	effectBabyBody2         = 421
@@ -425,11 +429,19 @@ const (
 	effectQuakeBody         = 426
 	effectAsuraBodyMonster  = 427
 	effectHitLine4          = 429
+	effectHitLine5          = 430
 	effectHitLine6          = 431
+	effectStormKick         = 435
+	effectChemical3         = 439
 	effectAssumptio2        = 440
 	effectBlueCasting       = 441
+	effectRun               = 442
+	effectStopRun           = 443
 	effectStopEffect        = 444
 	effectJumpBody          = 445
+	effectLandBody          = 446
+	effectFoot3             = 447
+	effectFoot4             = 448
 )
 
 const (
@@ -441,7 +453,10 @@ const (
 	effectDarkCasting      = 454
 	effectNPCPowerUp       = 456
 	effectJumpKick         = 457
+	effectQuakeBody2       = 458
+	effectStormKick3       = 461
 	effectStormKick4       = 462
+	effectSpinedBody2      = 466
 	effectBeginAsura1      = 467
 	effectBeginAsura2      = 468
 	effectBeginAsura3      = 469
@@ -780,6 +795,8 @@ type worldEffect struct {
 	soulLights                           *soulLights
 	blueCasting                          *blueCasting
 	asuraGlyphs                          *asuraGlyphs
+	taekwonJump                          *taekwonJumpParticles
+	taekwonRun                           *taekwonRunTrail
 	twilight                             *twilightParticles
 	itemLevel                            int
 	coinTrails                           *[5][]modelPoint3
@@ -1060,15 +1077,10 @@ func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.
 	m.applyAlchemistSkill(ctx, notify, now)
 	m.applyHighWizardSkill(ctx, notify, now)
 	m.applyProfessorSkill(ctx, notify, now)
+	m.applyTaekwonSkill(ctx, notify, now)
 	m.applyWinkCharm(ctx, notify)
 	for _, sound := range db.SkillEffects[notify.SkillID].SFX {
 		m.scheduleSoundAtActor(now, notify.TargetID, sound)
-	}
-	if notify.SkillID == db.SkillTKSevenwind && notify.Amount >= 1 && notify.Amount <= 7 {
-		effectID := effectBeginAsura1 + int(notify.Amount) - 1
-		if m.addWorldEffectAt(ctx, effectID, notify.TargetID, now) {
-			glog.Debugf("mild wind effect skill=%d target=%d effect=%d level=%d", notify.SkillID, notify.TargetID, effectID, notify.Amount)
-		}
 	}
 	effectIDs := skillEffectIDs(notify.SkillID)
 	if notify.SkillID == db.SkillALHeal {
@@ -1139,6 +1151,9 @@ func (m *WorldMode) applySkillCastNotify(ctx client.Context, notify network.Skil
 		}
 	}
 	if notify.DelayTime == 0 {
+		if notify.SkillID == db.SkillTKHighjump {
+			m.startSkillCastSourceAnimation(ctx, notify, 0, now)
+		}
 		return
 	}
 	duration := time.Duration(notify.DelayTime) * time.Millisecond
@@ -1234,6 +1249,19 @@ func (m *WorldMode) startSkillCastSourceAnimation(ctx client.Context, notify net
 func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID uint32, skillID uint16, duration time.Duration, now time.Time) {
 	source, ok, _ := actorForCombatID(ctx, sourceID)
 	if !ok {
+		return
+	}
+	if skillID == db.SkillTKHighjump && res.HasPlayerJobToken(int(source.Job)) {
+		m.startSkillActionAnimation(ctx, sourceID, source, taekwonJumpSequence(true), now, duration)
+		if isLocalActor(ctx, sourceID) {
+			m.removeWorldEffect(effectLandBody, ctx.World.Player.ID)
+			m.removeWorldEffect(effectJumpBody, ctx.World.Player.ID)
+			sourceID = localSkillTarget(ctx)
+		}
+		m.removeWorldEffect(effectLandBody, sourceID)
+		m.removeWorldEffect(effectJumpBody, sourceID)
+		m.addWorldEffectAt(ctx, effectJumpBody, sourceID, now)
+		m.addWorldEffectAt(ctx, effectPeong, sourceID, now)
 		return
 	}
 	if skillID == db.SkillDCWinkcharm {
@@ -1771,6 +1799,19 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	if effectID == effectGrimtooth || effectID == effectThrowItem6 || effectID == effectThrowItem3 || isAlchemistBottle(effectID) {
 		initDirectedEffect(ctx, &effect)
 	}
+	if effectID == effectHitLine5 {
+		effect.projectileDirection = sub3(effectWorldAnchor(ctx, effect, starts), effectWorldAnchor(ctx, worldEffect{actorID: targetID}, starts))
+	}
+	if effectID == effectChemical3 || effectID == effectStormKick || effectID == effectStormKick3 || effectID == effectFoot3 || effectID == effectFoot4 {
+		if effectID == effectChemical3 {
+			destination := effectWorldAnchor(ctx, effect, starts)
+			effect.actorID, effect.targetID = targetID, actorID
+			effect.x, effect.y, _ = effectAnchor(ctx, effect.actorID)
+			effect.projectileDirection = sub3(destination, effectWorldAnchor(ctx, effect, starts))
+		}
+		effect.actorOrigin = effectWorldAnchor(ctx, effect, starts)
+		effect.hasActorTransform = true
+	}
 	if effectID == effectShieldBoomer || effectID == effectTanji {
 		initShieldBoomerang(ctx, &effect)
 	}
@@ -1809,6 +1850,12 @@ func (m *WorldMode) addWorldEffectBetweenAtDuration(ctx client.Context, effectID
 	}
 	if effectID == effectBeginAsura || effectID == effectBeginAsura11 {
 		effect.asuraGlyphs = &asuraGlyphs{}
+	}
+	if effectID == effectRun {
+		effect.taekwonRun = &taekwonRunTrail{position: effectWorldAnchor(ctx, effect, starts)}
+	}
+	if effectID == effectPeong {
+		effect.taekwonJump = &taekwonJumpParticles{tick: 35}
 	}
 	m.worldEffects = append(m.worldEffects, effect)
 	m.scheduleWorldEffectSound(starts, spec, effect)
@@ -2043,6 +2090,8 @@ func (m *WorldMode) addSkillCastEffects(ctx client.Context, skillID uint16, prop
 		effectID = effectBeginSpell6
 	}
 	switch skillID {
+	case db.SkillTKRun, db.SkillTKSevenwind, db.SkillTKMission:
+		effectID = effectBlueCasting
 	case db.SkillACConcentration:
 		effectID = effectIncAgiDex
 	case db.SkillSTChasewalk:
@@ -2250,6 +2299,7 @@ const (
 	skillActorActionAttack3
 	skillActorActionPickup
 	skillActorActionReadyFight
+	skillActorActionWalk
 )
 
 type skillActionSpec struct {
@@ -2327,6 +2377,8 @@ func (s skillActionSpec) actionFamilyForActorWithResources(manager *res.Manager,
 	switch s.action {
 	case skillActorActionIdle:
 		return spriteActionIdle
+	case skillActorActionWalk:
+		return spriteActionWalk
 	case skillActorActionAttack:
 		return attackActionFamilyForActorWithResources(manager, actor)
 	case skillActorActionAttack1:
@@ -2422,6 +2474,9 @@ func importedSkillEffectSpec(skillID uint16) skillEffectSpec {
 }
 
 func importedSkillActionSpec(skillID uint16) (skillActionSpec, bool) {
+	if spec, ok := taekwonSkillActionSpec(skillID); ok {
+		return spec, true
+	}
 	if db.IsSoulLinkSkill(skillID) {
 		return skillActionSpec{defined: true, action: skillActorActionSkill, hasFrame: true, frame: 3, duration: 2 * time.Second}, true
 	}
@@ -2997,6 +3052,16 @@ func effectFuncAdapterForName(name string) effectFuncAdapter {
 		return effectFuncSniper
 	case "AsuraGlyphs":
 		return effectFuncAsuraGlyphs
+	case "TaekwonStorm":
+		return effectFuncTaekwonStorm
+	case "TaekwonStop":
+		return effectFuncTaekwonStop
+	case "TaekwonDash":
+		return effectFuncTaekwonDash
+	case "TaekwonFoot":
+		return effectFuncTaekwonFoot
+	case "TaekwonJump":
+		return effectFuncTaekwonJump
 	case "ChainCrush":
 		return effectFuncChainCrush
 	case "TripleAttack":

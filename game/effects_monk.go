@@ -179,10 +179,11 @@ type asuraGlyphs struct {
 }
 
 func (m *WorldMode) drawAsuraGlyphs(screen *render.Frame, ctx client.Context, projection sceneProjection, component worldEffectComponent, effect worldEffect, now time.Time) {
-	if effect.asuraGlyphs == nil {
+	mildWind := effect.effectID >= effectBeginAsura1 && effect.effectID <= effectBeginAsura7
+	if !mildWind && effect.asuraGlyphs == nil {
 		return
 	}
-	for effect.asuraGlyphs.count < 2 {
+	for !mildWind && effect.asuraGlyphs.count < 2 {
 		i := effect.asuraGlyphs.count
 		at := effect.starts.Add(time.Duration(1+20*i) * db.EffectFrameDuration)
 		if now.Before(at) {
@@ -198,6 +199,10 @@ func (m *WorldMode) drawAsuraGlyphs(screen *render.Frame, ctx client.Context, pr
 		spacing, radiusBase, shade = 16, 24, 10
 	}
 	origin := effect.actorOrigin
+	if mildWind {
+		origin = effectWorldAnchor(ctx, effect, now)
+		shade = 255
+	}
 	right, _, _, ok := projection.BillboardBasis(origin.x, origin.z, origin.y)
 	if !ok {
 		return
@@ -206,12 +211,18 @@ func (m *WorldMode) drawAsuraGlyphs(screen *render.Frame, ctx client.Context, pr
 		// The left and right primitives start at ticks 1 and 21; their
 		// internal delays make the six characters appear 20 ticks apart.
 		age := frame - 20*i
+		if mildWind {
+			age = frame + 1
+		}
 		if age <= 0 {
 			continue
 		}
 		texture := m.effectFileTexture(ctx.Resources, file)
-		origin = effect.asuraGlyphs.origins[i/3]
-		position := add3(origin, mul3(right, (float64(i)-2.5)*spacing/5))
+		position := origin
+		if !mildWind {
+			origin = effect.asuraGlyphs.origins[i/3]
+			position = add3(origin, mul3(right, (float64(i)-2.5)*spacing/5))
+		}
 		position.y += 6
 		radius := (radiusBase - .1*float64(min(age, 49))) * math.Pow(1.01, float64(clampInt(age-140, 0, 49)))
 		for layer := 10; layer >= 1; layer-- {

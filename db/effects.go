@@ -413,6 +413,10 @@ const (
 	effectSoulBurn          = 406
 	effectSoulChange        = 407
 	effectSoulBreaker2      = 409
+	effectPeong             = 411
+	effectPressedBody       = 413
+	effectSpinedBody        = 414
+	effectKickedBody        = 415
 	effectReflectBody       = 419
 	effectBabyBody          = 420
 	effectBabyBody2         = 421
@@ -423,11 +427,19 @@ const (
 	effectQuakeBody         = 426
 	effectAsuraBodyMonster  = 427
 	effectHitLine4          = 429
+	effectHitLine5          = 430
 	effectHitLine6          = 431
+	effectStormKick         = 435
+	effectChemical3         = 439
 	effectAssumptio2        = 440
 	effectBlueCasting       = 441
+	effectRun               = 442
+	effectStopRun           = 443
 	effectStopEffect        = 444
 	effectJumpBody          = 445
+	effectLandBody          = 446
+	effectFoot3             = 447
+	effectFoot4             = 448
 )
 
 const (
@@ -439,7 +451,10 @@ const (
 	effectDarkCasting      = 454
 	effectNPCPowerUp       = 456
 	effectJumpKick         = 457
+	effectQuakeBody2       = 458
+	effectStormKick3       = 461
 	effectStormKick4       = 462
+	effectSpinedBody2      = 466
 	effectBeginAsura1      = 467
 	effectBeginAsura2      = 468
 	effectBeginAsura3      = 469
@@ -2070,37 +2085,49 @@ func darkJupitelHitEffectSpec() EffectSpec {
 }
 
 func mildWindEffectSpec(texture string) EffectSpec {
-	components := []EffectComponent{
-		mildWindComponent(texture, 1, 1, 1, 1, 300, 100),
-		mildWindComponent(texture, 0.2, 0.7, 0.7, 1, 220, 20),
-		mildWindComponent(texture, 0.2, 0.5, 0.5, 1, 350, 100),
-		mildWindComponent(texture, 0.2, 0.3, 0.3, 1, 400, 100),
-		mildWindComponent(texture, 0.2, 0.1, 0.1, 1, 450, 100),
-	}
-	return EffectSpec{
-		Duration:   time.Second,
-		SFX:        []string{"effect\\t_바람방출.wav"},
-		Components: components,
-	}
+	return EffectSpec{Duration: 300 * EffectFrameDuration, Components: []EffectComponent{{
+		Kind: EffectComponentFUNC, FuncName: "AsuraGlyphs", TextureFiles: []string{texture},
+		AttachedEntity: true,
+	}}}
 }
 
-func mildWindComponent(texture string, alphaMax, red, green, blue, sizeStart, sizeEnd float64) EffectComponent {
-	return EffectComponent{
-		Kind:           EffectComponent3D,
-		TextureFile:    texture,
-		Color:          color.RGBA{R: uint8(red * 255), G: uint8(green * 255), B: uint8(blue * 255), A: 255},
-		Duration:       time.Second,
-		AlphaMax:       alphaMax,
-		BlendMode:      2,
-		BlendAdditive:  true,
-		FadeIn:         true,
-		FadeOut:        true,
-		PosZ:           4,
-		SizeStart:      effectTableSize(sizeStart),
-		SizeEnd:        effectTableSize(sizeEnd),
-		SizeSmooth:     true,
+func taekwonStormEffectSpec(kick bool) EffectSpec {
+	spec := EffectSpec{Duration: 100 * EffectFrameDuration, Components: []EffectComponent{{
+		Kind: EffectComponentFUNC, FuncName: "TaekwonStorm",
+		TextureFiles:   []string{"effect/storm2.tga", "effect/cloud11.tga"},
 		AttachedEntity: true,
+	}}}
+	if kick {
+		spec.SFX = []string{"effect\\T_회오리차기.wav"}
+		spec.SFXDelays = []time.Duration{5 * EffectFrameDuration}
 	}
+	return spec
+}
+
+func taekwonStopEffectSpec() EffectSpec {
+	return EffectSpec{Duration: 100 * EffectFrameDuration,
+		SFX: []string{"effect\\T_효과음1.wav"}, Components: []EffectComponent{{
+			Kind: EffectComponentFUNC, FuncName: "TaekwonStop", TextureFile: "effect/magic_blue.tga", AttachedEntity: true,
+		}}}
+}
+
+func taekwonDashEffectSpec() EffectSpec {
+	return EffectSpec{Duration: 300 * EffectFrameDuration, Components: []EffectComponent{{
+		Kind: EffectComponentFUNC, FuncName: "TaekwonDash", TextureFile: "effect/line3.tga",
+	}}}
+}
+
+func taekwonJumpEffectSpec() EffectSpec {
+	return EffectSpec{Duration: 300 * EffectFrameDuration, Components: []EffectComponent{{
+		Kind: EffectComponentFUNC, FuncName: "TaekwonJump",
+		TextureFiles: []string{"effect/whitelight.tga", "effect/peong1.tga", "effect/peong2.tga", "effect/peong3.tga"},
+	}}}
+}
+
+func taekwonFootEffectSpec(texture string) EffectSpec {
+	return EffectSpec{Duration: 340 * EffectFrameDuration, Components: []EffectComponent{{
+		Kind: EffectComponentFUNC, FuncName: "TaekwonFoot", TextureFile: texture,
+	}}}
 }
 
 func soundOnlyEffectSpec(paths ...string) EffectSpec {
@@ -3890,6 +3917,13 @@ var EffectSpecs = map[int]EffectSpec{
 	effectSoulBurn:          strEffectSpecAttached("소울번", "", false),
 	effectSoulChange:        strEffectSpecAttached("사람효과", "", false),
 	effectSoulBreaker2:      soulBreakerEffectSpec(true),
+	effectPressedBody:       {Duration: 50 * EffectFrameDuration, SFX: []string{"effect\\T_내려찍기.wav"}, SFXDelays: []time.Duration{5 * EffectFrameDuration}},
+	effectSpinedBody:        {Duration: 50 * EffectFrameDuration},
+	effectSpinedBody2:       {Duration: 50 * EffectFrameDuration, SFX: []string{"effect\\T_돌려차기.wav"}, SFXDelays: []time.Duration{5 * EffectFrameDuration}},
+	effectKickedBody:        {Duration: 100 * EffectFrameDuration, SFX: []string{"effect\\EF_hit2.wav", "effect\\EF_hit4.wav"}, SFXDelays: []time.Duration{17 * EffectFrameDuration, 25 * EffectFrameDuration}},
+	effectHitLine5:          soulLinkerHitLinesEffectSpec(),
+	effectRun:               {Duration: 9999 * EffectFrameDuration},
+	effectStopRun:           {Duration: 30 * EffectFrameDuration},
 	effectReflectBody:       soulLinkerBodyEffectSpec("ReflectBody", "effect\\t_마법반사.wav", 200),
 	effectFourWayBody:       soulLinkerBodyEffectSpec("FourWayBody", "", 100),
 	effectAsuraBody:         soulLinkerBodyEffectSpec("AsuraBody", "", 500),
@@ -3905,18 +3939,26 @@ var EffectSpecs = map[int]EffectSpec{
 	effectBabyBody2:         bodySizeEffectSpec("EffectSmall", 5*time.Minute, 2.5),
 	effectGiantBody:         bodySizeEffectSpec("EffectBigTransition", 300*time.Millisecond, 7.5),
 	effectGiantBody2:        bodySizeEffectSpec("EffectBig", 5*time.Minute, 7.5),
-	effectQuakeBody:         soundOnlyEffectSpec("effect\\복호격.wav"),
+	effectQuakeBody:         {Duration: 14 * EffectFrameDuration},
+	effectQuakeBody2:        {Duration: 35 * EffectFrameDuration},
 	effectHitLine4:          soulLinkerHitLinesEffectSpec(),
 	effectAssumptio2:        strEffectSpecAttached("asum", "effect\\아숨프티오.wav", false),
-	effectStopEffect:        soundOnlyEffectSpec("effect\\t_효과음1.wav"),
-	effectJumpBody:          soundOnlyEffectSpec("effect\\t_회피2.wav"),
+	effectStormKick:         taekwonStormEffectSpec(true),
+	effectPeong:             taekwonJumpEffectSpec(),
+	effectStormKick3:        taekwonStormEffectSpec(false),
+	effectStopEffect:        taekwonStopEffectSpec(),
+	effectChemical3:         taekwonDashEffectSpec(),
+	effectFoot3:             taekwonFootEffectSpec("effect/foot_l2.tga"),
+	effectFoot4:             taekwonFootEffectSpec("effect/foot_r2.tga"),
+	effectJumpBody:          {Duration: 500 * EffectFrameDuration, SFX: []string{"effect\\T_회피2.wav"}, SFXDelays: []time.Duration{30 * EffectFrameDuration}},
+	effectLandBody:          {Duration: 35 * EffectFrameDuration},
 	effectDarkGrandCross:    {},
 	effectDarkSoulStrike:    darkSoulStrikeEffectSpec(),
 	effectDarkJupitelHit:    darkJupitelHitEffectSpec(),
 	effectNPCStop:           sprEffectSpec("스톱", "", true, false),
 	effectDarkCasting:       darkCastingEffectSpec(),
 	effectNPCPowerUp:        soundOnlyEffectSpec("effect\\mon_폭기.wav"),
-	effectJumpKick:          soundOnlyEffectSpec("effect\\t_날라차기.wav"),
+	effectJumpKick:          {Duration: 100 * EffectFrameDuration, SFX: []string{"effect\\T_날라차기.wav"}, SFXDelays: []time.Duration{5 * EffectFrameDuration}},
 	effectBeginAsura1:       mildWindEffectSpec("effect/hanmoon1.tga"),
 	effectBeginAsura2:       mildWindEffectSpec("effect/hanmoon2.tga"),
 	effectBeginAsura3:       mildWindEffectSpec("effect/hanmoon3.tga"),

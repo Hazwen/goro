@@ -88,6 +88,11 @@ const (
 	effectFuncTripleAttack
 	effectFuncChainCrush
 	effectFuncAsuraGlyphs
+	effectFuncTaekwonStorm
+	effectFuncTaekwonStop
+	effectFuncTaekwonDash
+	effectFuncTaekwonJump
+	effectFuncTaekwonFoot
 	effectFuncHitLine
 	effectFuncTurnUndead
 	effectFuncRevive
@@ -174,6 +179,16 @@ func (m *WorldMode) drawFuncEffect(screen *render.Frame, ctx client.Context, pro
 		m.drawSniperEffect(screen, ctx, component, effect, now)
 	case effectFuncAsuraGlyphs:
 		m.drawAsuraGlyphs(screen, ctx, projection, component, effect, now)
+	case effectFuncTaekwonStorm:
+		m.drawTaekwonStorm(screen, ctx, component, effect, now)
+	case effectFuncTaekwonStop:
+		m.drawTaekwonStop(screen, ctx, component, effect, now)
+	case effectFuncTaekwonDash:
+		m.drawTaekwonDash(screen, ctx, component, effect, now)
+	case effectFuncTaekwonFoot:
+		m.drawTaekwonFoot(screen, ctx, component, effect, now)
+	case effectFuncTaekwonJump:
+		m.drawTaekwonJump(screen, ctx, projection, component, effect, now)
 	case effectFuncChainCrush:
 		m.drawChainCrush(screen, ctx, component, effect, now)
 	case effectFuncTripleAttack:

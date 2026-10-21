@@ -528,7 +528,11 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 			m.addWorldEffectAt(ctx, effectAutoCounter, action.SourceID, now)
 		}
 		if action.SkillID > 0 {
-			m.startSkillActionAnimation(ctx, action.SourceID, source, skillAction(action.SkillID), now, attackDuration)
+			spec := skillAction(action.SkillID)
+			if action.SkillID == db.SkillTKCounter && source.Job == db.JobLinker {
+				spec = taekwonKickSequence(skillActorActionAttack3, [5]int{4, 5, 6, 7, 2}, 4)
+			}
+			m.startSkillActionAnimation(ctx, action.SourceID, source, spec, now, attackDuration)
 		} else if sourceLocal && res.HasPlayerJobToken(int(source.Job)) {
 			m.startCombatAnimationWithTimingAndNext(ctx, action.SourceID, source, attackFamily, now, attackDuration, readyFightAnimation(now.Add(attackDuration)))
 		} else {
@@ -555,6 +559,9 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 	}
 	releaseAt := now.Add(hitDelay)
 	hitAt := releaseAt
+	if !splash && (action.SkillID == db.SkillTKDownkick || action.SkillID == db.SkillTKTurnkick) {
+		hitAt = hitAt.Add(300 * time.Millisecond)
+	}
 	if action.SkillID == db.SkillPRTurnundead && !splash {
 		hitAt = hitAt.Add(500 * time.Millisecond)
 	}
@@ -660,6 +667,8 @@ func skillSplashAction(action network.ActorActionNotify) bool {
 	case db.SkillHWMagiccrasher, db.SkillHWNapalmvulcan, db.SkillHWGravitation, db.SkillPFSoulburn:
 		return true
 	case db.SkillASCBreaker, db.SkillASCMeteorassault:
+		return true
+	case db.SkillTKDownkick, db.SkillTKTurnkick, db.SkillTKCounter, db.SkillTKJumpkick:
 		return true
 	case db.SkillCRShieldcharge, db.SkillCRShieldboomerang, db.SkillCRHolycross, db.SkillCRGrandcross, db.SkillPaPressure, db.SkillPaSacrifice, db.SkillPaShieldchain,
 		db.SkillKNPierce, db.SkillKNBrandishspear, db.SkillKNSpearstab, db.SkillKNSpearboomerang, db.SkillKNBowlingbash, db.SkillKNChargeatk:
@@ -1484,6 +1493,8 @@ func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
 	case db.SkillAMBerserkpitcher, db.SkillCRSlimpitcher, db.SkillCRAciddemonstration:
 		return spriteActionPCAttack1
 	case db.SkillCRFullprotection, db.SkillSTChasewalk, db.SkillSTPreserve:
+		return spriteActionIdle
+	case db.SkillTKSevenwind, db.SkillTKMission:
 		return spriteActionIdle
 	case db.SkillAMTwilight1, db.SkillAMTwilight2, db.SkillAMTwilight3, db.SkillChSoulcollect, db.SkillMOCallspirits, db.SkillMOKitranslation:
 		return spriteActionPCSkill

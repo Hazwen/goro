@@ -119,53 +119,22 @@ func (m *WorldMode) applyTaekwonStatus(ctx client.Context, change network.Status
 	if id == 0 {
 		return
 	}
-
+	if isLocalActor(ctx, id) {
+		id = localSkillTarget(ctx)
+	}
+	now := time.Now()
 	switch change.StatusID {
 	case db.StatusRun:
-		effectID := 442 // EF_RUN; the reference effect currently only reserves the footprint hook.
-		if !change.Active {
-			effectID = effectStopEffect
+		if m.hasActiveWorldEffect(effectRun, id, now) {
+			m.addWorldEffectAt(ctx, effectStopRun, id, now)
 		}
-		if m.addWorldEffect(ctx, effectID, id) {
-			glog.Debugf("taekwon run status actor=%d active=%t effect=%d", id, change.Active, effectID)
-		}
+		m.removeWorldEffect(effectRun, id)
 		return
 	case db.StatusTing:
-		if m.addWorldEffect(ctx, effectQuakeBody, id) {
-			glog.Debugf("taekwon ting status actor=%d effect=%d", id, effectQuakeBody)
-		}
+		m.scheduleSoundAtActor(now, id, "effect\\T_벽튕김.wav")
+		m.addWorldEffectAt(ctx, effectQuakeBody, id, now)
+		m.removeWorldEffect(effectRun, id)
 		return
-	}
-
-	actionFamily, frame, ok := taekwonStanceAction(change.StatusID)
-	if !ok {
-		return
-	}
-	m.setCombatActorAction(ctx, id, actorAnimation{
-		actionFamily:   actionFamily,
-		started:        time.Now(),
-		play:           false,
-		hasPlay:        true,
-		holdFinal:      true,
-		fixedMotion:    frame,
-		hasFixedMotion: true,
-	})
-}
-
-func taekwonStanceAction(statusID uint16) (actionFamily, frame int, ok bool) {
-	switch statusID {
-	case db.StatusStormkickOn, db.StatusStormkickReady:
-		return spriteActionPCSkill, 0, true
-	case db.StatusDownkickOn, db.StatusDownkickReady:
-		return spriteActionPCSkill, 2, true
-	case db.StatusTurnkickOn, db.StatusTurnkickReady:
-		return spriteActionPCSkill, 3, true
-	case db.StatusCounterOn, db.StatusCounterReady:
-		return spriteActionPCSkill, 4, true
-	case db.StatusDodgeOn, db.StatusDodgeReady:
-		return spriteActionPickup, 1, true
-	default:
-		return 0, 0, false
 	}
 }
 

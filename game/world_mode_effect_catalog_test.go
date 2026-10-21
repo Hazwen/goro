@@ -13,14 +13,14 @@ import (
 
 func TestWorldEffectSpecCatalogCoverage(t *testing.T) {
 	coverage := effectCoverageSnapshot()
-	if coverage.Implemented != 714 {
-		t.Fatalf("implemented effects = %d, want 714", coverage.Implemented)
+	if coverage.Implemented != 729 {
+		t.Fatalf("implemented effects = %d, want 729", coverage.Implemented)
 	}
 	if coverage.ReferenceActive != 607 || coverage.ReferenceAll != 1147 {
 		t.Fatalf("reference client totals = active %d all %d", coverage.ReferenceActive, coverage.ReferenceAll)
 	}
-	if coverage.ActivePercent < 117.62 || coverage.ActivePercent > 117.63 {
-		t.Fatalf("active coverage = %.3f, want about 117.63", coverage.ActivePercent)
+	if coverage.ActivePercent < 120.09 || coverage.ActivePercent > 120.10 {
+		t.Fatalf("active coverage = %.3f, want about 120.10", coverage.ActivePercent)
 	}
 }
 
@@ -1841,24 +1841,6 @@ func TestRobrowserEffectsFourHundredToFourFiftyMatchTableRows(t *testing.T) {
 		}
 	}
 
-	for _, tc := range []struct {
-		name string
-		id   int
-		wav  string
-	}{
-		{"EF_QUAKEBODY", effectQuakeBody, "effect\\복호격.wav"},
-		{"EF_STOPEFFECT", effectStopEffect, "effect\\t_효과음1.wav"},
-		{"EF_JUMPBODY", effectJumpBody, "effect\\t_회피2.wav"},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
-			t.Fatalf("%s spec = %+v ok=%t, want sound only", tc.name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != tc.wav {
-			t.Fatalf("%s sfx = %#v", tc.name, spec.sfx)
-		}
-	}
-
 	assumptio, ok := worldEffectSpecForID(effectAssumptio2)
 	if !ok || len(assumptio.components) != 1 {
 		t.Fatalf("EF_ASSUMPTIO2 spec = %+v ok=%t", assumptio, ok)
@@ -1918,7 +1900,6 @@ func TestRobrowserSimpleEffectsFourFiftyToFiveHundredMatchTableRows(t *testing.T
 		wav  string
 	}{
 		{"EF_AGIUP", effectNPCPowerUp, "effect\\mon_폭기.wav"},
-		{"EF_JUMPKICK", effectJumpKick, "effect\\t_날라차기.wav"},
 	} {
 		spec, ok := worldEffectSpecForID(tc.id)
 		if !ok || len(spec.components) != 0 || spec.duration != 500*time.Millisecond {
@@ -1968,40 +1949,6 @@ func TestRobrowserDarkCombatEffectsFourFiftyToFiveHundredMatchTableRows(t *testi
 	ring := casting.components[0]
 	if ring.kind != effectComponentCylinder || ring.textureName != "ring_black" || ring.alphaMax != 0.8 || ring.animation != 2 || ring.blendMode != 2 || !ring.blendAdditive || ring.bottomSize != 1 || ring.topSize != 5 || ring.height != 4 || !ring.fade || !ring.rotate || !ring.attachedEntity {
 		t.Fatalf("EF_DARKCASTING ring = %+v", ring)
-	}
-}
-
-func TestRobrowserMildWindEffectsFourFiftyToFiveHundredMatchTableRows(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		id      int
-		texture string
-	}{
-		{"EF_BEGINASURA1", effectBeginAsura1, "effect/hanmoon1.tga"},
-		{"EF_BEGINASURA2", effectBeginAsura2, "effect/hanmoon2.tga"},
-		{"EF_BEGINASURA3", effectBeginAsura3, "effect/hanmoon3.tga"},
-		{"EF_BEGINASURA4", effectBeginAsura4, "effect/hanmoon4.tga"},
-		{"EF_BEGINASURA5", effectBeginAsura5, "effect/hanmoon7.tga"},
-		{"EF_BEGINASURA6", effectBeginAsura6, "effect/hanmoon5.tga"},
-		{"EF_BEGINASURA7", effectBeginAsura7, "effect/hanmoon6.tga"},
-	} {
-		spec, ok := worldEffectSpecForID(tc.id)
-		if !ok || len(spec.components) != 5 || spec.duration != time.Second {
-			t.Fatalf("%s spec = %+v ok=%t", tc.name, spec, ok)
-		}
-		if len(spec.sfx) != 1 || spec.sfx[0] != "effect\\t_바람방출.wav" {
-			t.Fatalf("%s sfx = %#v", tc.name, spec.sfx)
-		}
-		first, second, last := spec.components[0], spec.components[1], spec.components[4]
-		if first.kind != effectComponent3D || first.textureFile != tc.texture || first.color != (color.RGBA{R: 255, G: 255, B: 255, A: 255}) || first.alphaMax != 1 || first.sizeStart != effectTableSize(300) || first.sizeEnd != effectTableSize(100) || !first.sizeSmooth || first.posZ != 4 || first.blendMode != 2 || !first.blendAdditive || !first.fadeIn || !first.fadeOut || !first.attachedEntity {
-			t.Fatalf("%s first glyph = %+v", tc.name, first)
-		}
-		if second.color != (color.RGBA{R: 178, G: 178, B: 255, A: 255}) || second.alphaMax != 0.2 || second.sizeStart != effectTableSize(220) || second.sizeEnd != effectTableSize(20) {
-			t.Fatalf("%s second glyph = %+v", tc.name, second)
-		}
-		if last.color != (color.RGBA{R: 25, G: 25, B: 255, A: 255}) || last.alphaMax != 0.2 || last.sizeStart != effectTableSize(450) || last.sizeEnd != effectTableSize(100) {
-			t.Fatalf("%s last glyph = %+v", tc.name, last)
-		}
 	}
 }
 

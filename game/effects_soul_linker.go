@@ -165,6 +165,9 @@ func (m *WorldMode) drawSoulLinkerHitLines(screen *render.Frame, ctx client.Cont
 	if effect.effectID == effectHitLine6 {
 		count, start, randomDelay, fixedDelay, baseRadius, heightBase = 20, 0, 41, 30, .07/5, .6
 	}
+	if effect.effectID == effectHitLine5 {
+		count, start, randomDelay, fixedDelay, baseRadius = 12, 0, 21, 25, .06/5
+	}
 	for i := 0; i < count; i++ {
 		salt := i * 5
 		age := frame - (start + i/4) - fixedDelay - hitEffectRandom(effect, salt, randomDelay) + 1
@@ -172,8 +175,14 @@ func (m *WorldMode) drawSoulLinkerHitLines(screen *render.Frame, ctx client.Cont
 			continue
 		}
 		angle := deterministicAngle(effect, salt+1)
+		if effect.effectID == effectHitLine5 {
+			angle = math.Atan2(effect.projectileDirection.z, effect.projectileDirection.x) + degreesToRadians(float64(hitEffectRandom(effect, salt+1, 121)-60))
+		}
 		sin, cos := math.Sincos(angle)
 		distance := float64(6+hitEffectRandom(effect, salt+2, 6)) / 5
+		if effect.effectID == effectHitLine5 {
+			distance = float64(6+hitEffectRandom(effect, salt+2, 7)) / 5
+		}
 		height := heightBase + .1*float64(hitEffectRandom(effect, salt+3, 7))
 		alpha := float64(125 + hitEffectRandom(effect, salt+4, 121))
 		point := func(tick int) modelPoint3 {
@@ -395,20 +404,7 @@ func (p *soulLights) advance(ctx client.Context, effect worldEffect, right model
 				if (dodge && particle.age >= 102) || (!dodge && particle.age >= 90) {
 					continue
 				}
-				for axis := 0; axis < 4; axis += 2 {
-					a, target := &particle.angles[axis], &particle.angles[axis+1]
-					if *target > *a {
-						*a = min(*a+3, 359)
-						if *a > *target {
-							*target = hitEffectRandom(effect, particle.seed+p.tick*4+axis, max(*a, 1))
-						}
-					} else {
-						*a = max(*a-2, 0)
-						if *a <= *target {
-							*target = 359 - hitEffectRandom(effect, particle.seed+p.tick*4+axis, max(*a, 1))
-						}
-					}
-				}
+				advanceWanderingAngles(&particle, effect, p.tick)
 				x, z, y := particle.speed, particle.speed, particle.speed
 				if dodge {
 					x, z = .03/5, .03/5
@@ -554,4 +550,21 @@ func (m *WorldMode) drawKaizelEffect(screen *render.Frame, ctx client.Context, c
 		}
 	}
 	screen.DrawTriangles3DOwned(vertices, indices, texture, texturedEffectBillboardDrawOptions(true, false))
+}
+
+func advanceWanderingAngles(particle *soulLightParticle, effect worldEffect, tick int) {
+	for axis := 0; axis < 4; axis += 2 {
+		a, target := &particle.angles[axis], &particle.angles[axis+1]
+		if *target > *a {
+			*a = min(*a+3, 359)
+			if *a > *target {
+				*target = hitEffectRandom(effect, particle.seed+tick*4+axis, max(*a, 1))
+			}
+		} else {
+			*a = max(*a-2, 0)
+			if *a <= *target {
+				*target = 359 - hitEffectRandom(effect, particle.seed+tick*4+axis, max(*a, 1))
+			}
+		}
+	}
 }

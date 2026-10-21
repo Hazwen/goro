@@ -8,6 +8,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/render"
+	"github.com/kivutar/goro/res"
 )
 
 func blueBodyAlpha(bodyTime int) float64 {
@@ -50,6 +51,7 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 		eskeAge = 149
 	}
 	var shake [4]float64
+	squash, lift, turn, jump := 1.0, 0.0, 0.0, 0.0
 	zoomScale := 160 / normalizeSceneCameraZoom(projection.cameraZoom)
 	local := isLocalActor(ctx, entry.actor.ID) || ctx.World != nil && entry.actor.ID != 0 && entry.actor.ID == ctx.World.Player.ID
 	for _, effect := range m.worldEffects {
@@ -228,8 +230,53 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 			if frame >= 30 && frame < 60 {
 				fourWayAge = frame - 30
 			}
-		case effectQuakeBody3, effectQuakeBody4:
+		case effectPressedBody:
+			if frame >= 17 && frame < 50 {
+				age := frame - 17
+				squash = .4 - float64(hitEffectRandom(effect, frame, 6))*.01
+				if age <= 3 {
+					squash = 1 - .2*float64(age)
+				}
+			}
+		case effectKickedBody:
+			age := frame - 30
+			if age >= 0 && age <= 23 {
+				lift = .3 * math.Sin(degreesToRadians(float64(age*5)))
+				if age > 18 {
+					lift = .3
+				}
+				if age > 20 {
+					lift = float64(23-age) * .1
+				}
+			}
+		case effectSpinedBody, effectSpinedBody2:
+			age := frame * 2
+			if effect.effectID == effectSpinedBody2 {
+				age = frame - 14
+			}
+			if age >= 0 && age < 36 {
+				turn = degreesToRadians(180 - 180*math.Cos(degreesToRadians(float64(age*5))))
+			}
+		case effectJumpBody:
+			if frame > 35 {
+				jump = float64((frame - 35) * 20)
+				visibility *= float64(max(0, 255-(frame-35)*20)) / 255
+			}
+		case effectLandBody:
+			jump = float64(max(0, 25-frame) * 20)
+			visibility *= float64(clampInt((frame-10)*17, 0, 255)) / 255
+			if frame < 25 {
+				turn = degreesToRadians(180 - 180*math.Cos(degreesToRadians(float64((frame+11)*5))))
+			}
+		case effectQuakeBody, effectQuakeBody2, effectQuakeBody3, effectQuakeBody4:
 			start, end := 30, 50
+			randomRange, randomOffset := 21, 10
+			if effect.effectID == effectQuakeBody || effect.effectID == effectQuakeBody2 {
+				start, end = -1, 35
+				if res.HasPlayerJobToken(int(entry.actor.Job)) {
+					randomRange, randomOffset = 11, 5
+				}
+			}
 			if effect.effectID == effectQuakeBody4 {
 				start, end = 20, 59
 				if frame > start && frame <= end && frame%2 == 0 {
@@ -238,13 +285,13 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 			}
 			if frame > start && frame <= end {
 				for i := range shake {
-					shake[i] = float64(hitEffectRandom(effect, frame*4+i, 21)-10) * zoomScale
+					shake[i] = float64(hitEffectRandom(effect, frame*4+i, randomRange)-randomOffset) * zoomScale
 				}
 			}
 		}
 	}
 	reflectBody := entry.actor.Opt3State&db.Opt3Kaite != 0
-	if blue == 0 && soulAlpha == 0 && eskeAge < 0 && fourWayAge < 0 && shake == [4]float64{} && !reflectBody && !doubleBody && !weaponSpark {
+	if blue == 0 && soulAlpha == 0 && eskeAge < 0 && fourWayAge < 0 && shake == [4]float64{} && !reflectBody && !doubleBody && !weaponSpark && squash == 1 && lift == 0 && turn == 0 && jump == 0 {
 		m.drawActorSpriteBillboardTintAlpha3D(screen, projection, billboard, entry.worldX, entry.worldY, entry.worldZ, scale, visibility, shadow, tint, blend)
 		return
 	}
@@ -256,14 +303,23 @@ func (m *WorldMode) drawActorSpriteBodyEffects3D(ctx client.Context, screen *ren
 	w, h := float64(billboard.image.Bounds().Dx()), float64(billboard.image.Bounds().Dy())
 	left, top := -billboard.anchorX*scale+shake[2], -billboard.anchorY*scale+shake[0]
 	width, height := w*scale+shake[3]-shake[2], h*scale+shake[1]-shake[0]
+	top += height*(1-squash-lift) - jump*zoomScale
+	height *= squash
 	if w == 0 || h == 0 || width == 0 || height == 0 {
 		return
 	}
 	options := spriteBillboardTriangleDrawOptions()
 	options.Filter, options.Blend = render.FilterSprite, blend
 	alpha := visibility * float64(tint.A) / 255
+	center := modelPoint3{x: x, y: z, z: y}
+	if turn != 0 {
+		s, c := math.Sincos(turn)
+		// Rotate around the native body's pivot, 40 pixels above its feet.
+		center = add3(center, mul3(add3(mul3(right, -s), mul3(up, 1-c)), 40*zoomScale*units))
+		right, up = sub3(mul3(right, c), mul3(up, s)), add3(mul3(right, s), mul3(up, c))
+	}
 	cmd := worldSpriteBillboardCommand(m.spriteTexture(billboard.image), *options,
-		modelPoint3{x: x, y: z, z: y}, mul3(right, units*width/w), mul3(up, -units*height/h),
+		center, mul3(right, units*width/w), mul3(up, -units*height/h),
 		float32(w), float32(h), float32(-left*w/width), float32(-top*h/height), multiplyTint(tint, shadow, shadow, shadow, visibility))
 	cmd.DepthUpAxis = [3]float32{0, float32(-units * height / h), 0}
 	if weaponSpark {
@@ -352,7 +408,7 @@ func drawBodyExpansion(screen *render.Frame, cmd render.WorldBillboardCommand, b
 
 func (m *WorldMode) skillEffectDirection(ctx client.Context, actorID uint32, direction int, now time.Time) int {
 	for _, effect := range m.worldEffects {
-		if (effect.effectID != effectFalconAssault && effect.effectID != effectCastSpin) || now.Before(effect.starts) || effect.expired(now) {
+		if (effect.effectID != effectFalconAssault && effect.effectID != effectCastSpin && effect.effectID != effectStormKick) || now.Before(effect.starts) || effect.expired(now) {
 			continue
 		}
 		if effect.actorID != actorID && !(isLocalActor(ctx, actorID) && isLocalActor(ctx, effect.actorID)) {
@@ -361,6 +417,11 @@ func (m *WorldMode) skillEffectDirection(ctx client.Context, actorID uint32, dir
 		frame := int(now.Sub(effect.starts) / db.EffectFrameDuration)
 		turn := 0.0
 		switch effect.effectID {
+		case effectStormKick:
+			if frame > 47 {
+				continue
+			}
+			turn = float64(frame+1) * 30
 		case effectFalconAssault:
 			if frame < 30 || frame > 54 {
 				continue

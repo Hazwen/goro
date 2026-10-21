@@ -130,7 +130,7 @@ Where they disagree, verify the actual Sakexe binary before choosing behaviour.
 - [x] Assassin Cross — all five skills audited; slashes, poison particles, packet ownership, casting, poses, and sounds reviewed twice and validated with client assets.
 - [x] Stalker — all four skills audited; casting spin/smoke, body flashes, Preserve, and Full Strip reviewed twice and validated with client assets.
 - [x] Champion — all four added skills and shared sphere/Asura effects audited; native packet timing, poses, sounds, geometry, and body flashes reviewed twice and validated with client assets.
-- [ ] Taekwon
+- [x] Taekwon — all 17 skills audited; kick poses/body effects, Run footprints, High Jump, Mild Wind, and sounds reviewed twice and validated with client assets.
 - [ ] Star Gladiator
 - [ ] Ninja
 - [ ] Gunslinger
@@ -367,6 +367,25 @@ remains neutral. Skill-specific auras still take precedence. Both reviews,
 full tests with OldRO assets, and a normal build passed; no live playtest was
 performed for these corrections.
 
+Taekwon reference checks: dhxj's packet handlers, action table, body transforms,
+and procedural primitives were cross-checked with HighPriest, the actual
+2008 Sakexe, and rAthena's skill/status handlers. Ready poses come from skill
+notifications, not stance toggles. Heel Drop, Roundhouse, and Counter use their
+five selected ACT motions; secondary damage does not replay the release or
+inherit the primary hit's extra delay. Tornado Kick belongs to the no-damage
+notification. Run observes the server's status/no-damage ordering and leaves
+alternating footprints behind after stopping. High Jump separates takeoff,
+dust, and landing without moving the authoritative actor. Mild Wind uses a
+captured tornado plus one following white elemental glyph, reusing the Asura
+primitive. Passive recovery/party power remain server-owned; Mission retains
+its existing packet/UI handling and adds the original sound. Sakexe confirms
+the Korean Taekwon sound filenames where dhxj uses renamed English files.
+Both reviews, full tests with OldRO assets, and a normal build passed. Tests
+also check update-rate independence and male/female Taekwon-family ACT frames.
+No live visual comparison was performed. Body rotations use Goro's composed
+sprite layers rather than reproducing the original per-accessory pivot code;
+these transforms and the new procedural visuals need playtesting.
+
 Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 `src/DB/Effects/EffectTable.js`, `src/DB/Skills/SkillEffect.js`,
 `src/DB/Skills/SkillUnit.js`, and `src/DB/Items/ItemEffect.js`.
@@ -375,8 +394,8 @@ Previous catalog import source: roBrowser's `src/DB/Effects/EffectConst.js`,
 
 - Reference active numeric `EffectTable.js` entries: `607`.
 - Reference numeric effect constants: `1147`.
-- Goro effect catalog entries: `714`.
-- Catalog size relative to all numeric constants: about `62.2%`.
+- Goro effect catalog entries: `729`.
+- Catalog size relative to all numeric constants: about `63.6%`.
 - The catalog is not a strict subset of the active table: it also contains
   inactive, later-client, and synthetic routed effects. An exact active-table
   intersection report is still part of the backlog below.

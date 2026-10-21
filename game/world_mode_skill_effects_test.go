@@ -1612,7 +1612,7 @@ func TestImportedSkillEffectFallback(t *testing.T) {
 	expectEffectIDs(t, "WE_BABY imported", skillEffectIDs(db.SkillWEBaby), 408)
 	expectEffectIDs(t, "WE_CALLPARENT imported empty", skillEffectIDs(db.SkillWECallparent))
 	expectEffectIDs(t, "WE_CALLBABY imported empty", skillEffectIDs(db.SkillWECallbaby))
-	expectEffectIDs(t, "TK_JUMPKICK imported hit", skillHitEffectIDs(db.SkillTKJumpkick), effectJumpKick)
+	expectEffectIDs(t, "TK_JUMPKICK imported hit", skillHitEffectIDs(db.SkillTKJumpkick))
 	expectEffectIDs(t, "GS_INCREASING imported", skillEffectIDs(db.SkillGSIncreasing), effectNPCPowerUp)
 	expectEffectIDs(t, "GS_TRIPLEACTION imported", skillEffectIDs(db.SkillGSTripleaction), effectTripleAction)
 	expectEffectIDs(t, "GS_BULLSEYE imported", skillEffectIDs(db.SkillGSBullseye), effectBullseye)
