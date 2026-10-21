@@ -152,7 +152,7 @@ func (m *WorldMode) requestPickup(ctx client.Context, item worldstate.FloorItem,
 		m.setWalkCooldown(walkErrorCooldown)
 		return false
 	}
-	playerX, playerY := currentPlayerCell(ctx, time.Now())
+	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
 	if itemWithinPickupRange(playerX, playerY, item.X, item.Y) {
 		return m.sendPickupRequest(ctx, item, source)
 	}
@@ -194,7 +194,7 @@ func (m *WorldMode) updatePendingPickup(ctx client.Context, source string, logOu
 		m.pendingPickup = pickupIntent{}
 		return
 	}
-	playerX, playerY := currentPlayerCell(ctx, now)
+	playerX, playerY := scene.CurrentPlayerCell(ctx, now)
 	if !itemWithinPickupRange(playerX, playerY, item.X, item.Y) {
 		if logOutOfRange {
 			glog.Debugf("%s pending pickup still out of range item=%d player=%d,%d item=%d,%d", source, item.ID, playerX, playerY, item.X, item.Y)
@@ -229,7 +229,7 @@ func (m *WorldMode) processPendingPickup(ctx client.Context) {
 		m.pendingPickup = pickupIntent{}
 		return
 	}
-	playerX, playerY := currentPlayerCell(ctx, now)
+	playerX, playerY := scene.CurrentPlayerCell(ctx, now)
 	if !itemWithinPickupRange(playerX, playerY, item.X, item.Y) {
 		glog.Debugf("pending pickup became out of range item=%d player=%d,%d item=%d,%d", item.ID, playerX, playerY, item.X, item.Y)
 		m.pendingPickup.readyAt = time.Time{}
@@ -270,7 +270,7 @@ func (m *WorldMode) facePlayerTowardItem(ctx client.Context, item worldstate.Flo
 	if ctx.World == nil {
 		return
 	}
-	playerX, playerY := currentPlayerCell(ctx, time.Now())
+	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
 	dir := directionFromDelta(playerX, playerY, item.X, item.Y, ctx.World.Dir)
 	ctx.World.Player.Dir = dir
 	ctx.World.Dir = dir
@@ -287,7 +287,7 @@ func pickupApproachCell(ctx client.Context, item worldstate.FloorItem) (int, int
 	if walkTargetInBounds(ctx, item.X, item.Y) {
 		return item.X, item.Y, true
 	}
-	playerX, playerY := currentPlayerCell(ctx, time.Now())
+	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
 	bestX, bestY := 0, 0
 	bestDistance := math.Inf(1)
 	found := false

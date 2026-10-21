@@ -245,8 +245,8 @@ func (m *WorldMode) requestAttack(ctx client.Context, actor world.Actor, source 
 	}
 	now := time.Now()
 	attackRange := currentNormalAttackRange(ctx)
-	playerX, playerY := currentPlayerCell(ctx, now)
-	targetX, targetY := actorCurrentCell(actor, now)
+	playerX, playerY := scene.CurrentPlayerCell(ctx, now)
+	targetX, targetY := scene.ActorCurrentCell(actor, now)
 	if normalAttackTargetWithinRange(playerX, playerY, targetX, targetY, attackRange) {
 		m.sendAttackAction(ctx, actor, source)
 		return
@@ -328,8 +328,8 @@ func (m *WorldMode) updatePendingAttack(ctx client.Context, source string, logOu
 		return
 	}
 	attackRange := currentNormalAttackRange(ctx)
-	playerX, playerY := currentPlayerCell(ctx, now)
-	targetX, targetY := actorCurrentCell(actor, now)
+	playerX, playerY := scene.CurrentPlayerCell(ctx, now)
+	targetX, targetY := scene.ActorCurrentCell(actor, now)
 	if !normalAttackTargetWithinRange(playerX, playerY, targetX, targetY, attackRange) {
 		if logOutOfRange {
 			glog.Debugf("%s pending attack still out of range target=%d player=%d,%d target=%d,%d range=%d", source, actor.ID, playerX, playerY, targetX, targetY, attackRange)
@@ -371,8 +371,8 @@ func (m *WorldMode) processPendingAttack(ctx client.Context) {
 		return
 	}
 	attackRange := currentNormalAttackRange(ctx)
-	playerX, playerY := currentPlayerCell(ctx, now)
-	targetX, targetY := actorCurrentCell(actor, now)
+	playerX, playerY := scene.CurrentPlayerCell(ctx, now)
+	targetX, targetY := scene.ActorCurrentCell(actor, now)
 	if !normalAttackTargetWithinRange(playerX, playerY, targetX, targetY, attackRange) {
 		glog.Debugf("pending attack became out of range target=%d player=%d,%d target=%d,%d range=%d", actor.ID, playerX, playerY, targetX, targetY, attackRange)
 		m.pendingAttack.readyAt = time.Time{}
@@ -410,8 +410,8 @@ func (m *WorldMode) processLockedAttack(ctx client.Context) {
 		return
 	}
 	attackRange := currentNormalAttackRange(ctx)
-	playerX, playerY := currentPlayerCell(ctx, now)
-	targetX, targetY := actorCurrentCell(actor, now)
+	playerX, playerY := scene.CurrentPlayerCell(ctx, now)
+	targetX, targetY := scene.ActorCurrentCell(actor, now)
 	if normalAttackTargetWithinRange(playerX, playerY, targetX, targetY, attackRange) {
 		if !attackRetryDue(m.lastAttackAt, now) {
 			return
@@ -1500,7 +1500,7 @@ func (m *WorldMode) applyAttackFailureForDistance(ctx client.Context, failure ne
 	if ctx.Session != nil {
 		ctx.Session.AttackRange = attackRange
 	}
-	playerX, playerY := currentPlayerCell(ctx, time.Now())
+	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
 	glog.Debugf("attack distance failure target=%d server_player=%d,%d server_target=%d,%d range=%d client_player=%d,%d", failure.TargetID, failure.SourceX, failure.SourceY, failure.TargetX, failure.TargetY, attackRange, playerX, playerY)
 	ctx.World.SetPlayerPosition(failure.SourceX, failure.SourceY, ctx.World.Player.Dir)
 	if actor, ok := ctx.World.Actors[failure.TargetID]; ok {

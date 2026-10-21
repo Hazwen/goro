@@ -540,7 +540,7 @@ func (c skillController) targetCell(ctx client.Context, pending pendingSkillTarg
 	if !ok || scene.ActorHasStealth(actor) {
 		return 0, 0, false
 	}
-	x, y := actorCurrentCell(actor, now)
+	x, y := scene.ActorCurrentCell(actor, now)
 	return x, y, true
 }
 
@@ -555,7 +555,7 @@ func (c skillController) sendTarget(ctx client.Context, pending pendingSkillTarg
 }
 
 func (c skillController) chaseTargetIfNeeded(ctx client.Context, skill session.Skill, actor worldstate.Actor, source string) bool {
-	x, y := actorCurrentCell(actor, time.Now())
+	x, y := scene.ActorCurrentCell(actor, time.Now())
 	return c.chaseSkillTargetIfNeeded(ctx, pendingSkillTarget{skill: skill, targetID: actor.ID}, x, y, source)
 }
 

@@ -4,6 +4,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/kivutar/goro/client"
 	worldstate "github.com/kivutar/goro/world"
 )
 
@@ -149,4 +150,16 @@ func DirectionFromFloatDelta(fromX, fromY, toX, toY float64, fallback int) int {
 
 func TerrainHeightAtRenderPoint(world *worldstate.World, x, y float64) float64 {
 	return TerrainHeightAt(world, x-0.5, y-0.5)
+}
+
+func CurrentPlayerCell(ctx client.Context, now time.Time) (int, int) {
+	if ctx.World == nil {
+		return 0, 0
+	}
+	return ActorCurrentCell(ctx.World.Player, now)
+}
+
+func ActorCurrentCell(actor worldstate.Actor, now time.Time) (int, int) {
+	x, y := ActorRenderPosition(actor, now)
+	return int(math.Round(x)), int(math.Round(y))
 }

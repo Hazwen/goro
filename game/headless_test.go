@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -117,13 +118,21 @@ func TestHeadlessSongSkillsStillSendChat(t *testing.T) {
 
 func TestHeadlessBotWaitsForProgressAndCanRevive(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bot.lua")
-	if err := os.WriteFile(path, []byte(`
+	output := filepath.Join(t.TempDir(), "ticks.txt")
+	if err := os.WriteFile(path, []byte(fmt.Sprintf(`
+local function report(ticks)
+	local file = assert(io.open(%q, "w"))
+	file:write(ticks)
+	file:close()
+end
 ticks = 0
+report(ticks)
 function tick()
     ticks = ticks + 1
+    report(ticks)
     if goro.player().dead then assert(goro.revive()) end
 end
-`), 0600); err != nil {
+`, output)), 0600); err != nil {
 		t.Fatal(err)
 	}
 	networkClient, conn := newBotTestConnection(t, 20080910)
@@ -143,19 +152,17 @@ end
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer mode.bot.close()
+	defer mode.bot.Close()
 	update := func(want string) {
 		t.Helper()
-		mode.bot.nextTick = time.Time{}
+		mode.bot.NextTick = time.Time{}
 		if next, err := mode.Update(ctx); next != nil || err != nil {
 			t.Fatalf("headless update = %v, %v", next, err)
 		}
-		if mode.bot.disabled {
+		if mode.bot.Disabled {
 			t.Fatal("bot script failed")
 		}
-		if got := mode.bot.state.GetGlobal("ticks").String(); got != want {
-			t.Fatalf("bot ticks = %s, want %s", got, want)
-		}
+		assertScriptOutput(t, output, want)
 	}
 	mode.startServerProgress(ctx, network.ProgressBar{Duration: time.Hour}, time.Now())
 	update("0")

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/bot"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
@@ -151,7 +152,7 @@ type WorldMode struct {
 	pendingTradeName string
 	mapFade          mapFadeState
 	hoveredWalk      hoveredWalkCellCache
-	bot              *luaScript
+	bot              *bot.Script
 	companionAI      companionAISystem
 }
 
@@ -1188,7 +1189,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 		if m.handlePetCaptureClick(ctx, projection, now) {
 			return nil, nil
 		}
-		playerX, playerY := currentPlayerCell(ctx, now)
+		playerX, playerY := scene.CurrentPlayerCell(ctx, now)
 		if actor, ok := m.hoveredVendingBoard(ctx, projection, ctx.Input.MouseX, ctx.Input.MouseY, now); ok {
 			glog.Debugf("click vending target mouse=%d,%d id=%d name=%q shop=%q player=%d,%d target=%d,%d", ctx.Input.MouseX, ctx.Input.MouseY, actor.ID, actor.Name, actor.VendingName, playerX, playerY, actor.X, actor.Y)
 			m.requestVendingList(ctx, actor, "click")
@@ -1568,7 +1569,7 @@ func (m *WorldMode) requestNPCTalk(ctx client.Context, actor worldstate.Actor, s
 	if err := ctx.Network.SendNPCContact(actor.ID); err == nil {
 		m.setWalkCooldown(walkRequestCooldown)
 	} else {
-		playerX, playerY := currentPlayerCell(ctx, time.Now())
+		playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
 		glog.Warnf("%s npc talk failed target=%d player=%d,%d target=%d,%d: %v", source, actor.ID, playerX, playerY, actor.X, actor.Y, err)
 		m.setWalkCooldown(walkErrorCooldown)
 	}

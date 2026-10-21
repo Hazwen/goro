@@ -589,7 +589,7 @@ func TestTargetSkillRangeUsesMovingActorCurrentCell(t *testing.T) {
 		},
 	}
 
-	targetX, targetY := actorCurrentCell(target, now)
+	targetX, targetY := scene.ActorCurrentCell(target, now)
 	if !targetSkillWithinRangeCells(11, 10, targetX, targetY, 9) {
 		t.Fatal("moving target should be in range at its current rendered cell")
 	}

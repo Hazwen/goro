@@ -95,23 +95,16 @@ func playerAtWalkTarget(player worldstate.Actor, targetX, targetY int, now time.
 	return int(math.Round(x)) == targetX && int(math.Round(y)) == targetY
 }
 
-func currentPlayerCell(ctx client.Context, now time.Time) (int, int) {
-	if ctx.World == nil {
-		return 0, 0
-	}
-	return actorCurrentCell(ctx.World.Player, now)
-}
-
 func warpWalkTarget(ctx client.Context, actor worldstate.Actor, now time.Time) (int, int, bool) {
 	if ctx.World == nil {
 		return 0, 0, false
 	}
-	targetX, targetY := actorCurrentCell(actor, now)
+	targetX, targetY := scene.ActorCurrentCell(actor, now)
 	if ctx.World.GAT == nil {
 		return targetX, targetY, walkTargetInBounds(ctx, targetX, targetY)
 	}
 
-	playerX, playerY := currentPlayerCell(ctx, now)
+	playerX, playerY := scene.CurrentPlayerCell(ctx, now)
 	bestX, bestY := 0, 0
 	bestCost := int(^uint(0) >> 1)
 	found := false
@@ -146,11 +139,6 @@ func warpWalkTarget(ctx client.Context, actor worldstate.Actor, now time.Time) (
 	return bestX, bestY, found
 }
 
-func actorCurrentCell(actor worldstate.Actor, now time.Time) (int, int) {
-	x, y := scene.ActorRenderPosition(actor, now)
-	return int(math.Round(x)), int(math.Round(y))
-}
-
 func (m *WorldMode) requestWalk(ctx client.Context, targetX, targetY int, source string) bool {
 	if playerIsDead(ctx) {
 		return false
@@ -162,7 +150,7 @@ func (m *WorldMode) requestWalk(ctx client.Context, targetX, targetY int, source
 		m.setWalkCooldown(walkRequestCooldown)
 		return false
 	}
-	playerX, playerY := currentPlayerCell(ctx, time.Now())
+	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
 	glog.Debugf("%s walk request from=%d,%d to=%d,%d", source, playerX, playerY, targetX, targetY)
 	if err := ctx.Network.SendWalkToXY(targetX, targetY); err == nil {
 		m.walkSequence++
@@ -229,7 +217,7 @@ func (m *WorldMode) requestChangeDirection(ctx client.Context, targetX, targetY 
 	if ctx.World == nil {
 		return
 	}
-	playerX, playerY := currentPlayerCell(ctx, time.Now())
+	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
 	targetDir := directionFromDelta(playerX, playerY, targetX, targetY, ctx.World.Player.Dir)
 	headDir, bodyDir, ok := resolveTurnOnlyDirection(ctx.World.Player.Dir, int(ctx.World.Player.HeadDir), targetDir)
 	if !ok {

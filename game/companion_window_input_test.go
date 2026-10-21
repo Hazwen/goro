@@ -133,7 +133,7 @@ func TestCompanionRenameKeepsKeyboardInput(t *testing.T) {
 			if _, err := mode.Update(ctx); err != nil {
 				t.Fatal(err)
 			}
-			if mode.pendingSkill.skill.ID != 0 || mode.bot.keyboardAvailable {
+			if mode.pendingSkill.skill.ID != 0 || mode.bot.KeyboardAvailable {
 				t.Fatal("gameplay keyboard input remained active during rename")
 			}
 			if mode.ui.nonConsoleKeyboardInputBlockedExcept(ctx, w) {
