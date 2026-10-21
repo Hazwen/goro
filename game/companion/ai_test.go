@@ -1,9 +1,12 @@
-package game
+package companion
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,9 +36,9 @@ func TestCompanionAILoadsDefaultBeforeCustomUntilCommandTogglesCustom(t *testing
 		t.Fatal(err)
 	}
 	ctx := client.Context{Resources: manager, Session: session.New()}
-	mode := NewWorldMode()
+	mode := &System{}
 
-	ai, err := newCompanionAI(ctx, mode, companionAIHomunculus, time.Now())
+	ai, err := newCompanionAI(mode.snapshot(ctx, nil), mode.aiSystem(), companionAIHomunculus, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +52,7 @@ func TestCompanionAILoadsDefaultBeforeCustomUntilCommandTogglesCustom(t *testing
 	assertLuaGlobalNumber(t, ai.state, "source", 1)
 
 	ctx.Session.HomunculusCustomAI = true
-	customAI, err := newCompanionAI(ctx, mode, companionAIHomunculus, time.Now())
+	customAI, err := newCompanionAI(mode.snapshot(ctx, nil), mode.aiSystem(), companionAIHomunculus, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +80,7 @@ func TestCompanionAICustomModeDoesNotFallbackToDefault(t *testing.T) {
 	}
 	ctx := client.Context{Resources: manager, Session: session.New()}
 	ctx.Session.HomunculusCustomAI = true
-	if ai, err := newCompanionAI(ctx, NewWorldMode(), companionAIHomunculus, time.Now()); err == nil {
+	if ai, err := newCompanionAI(newCompanionAISnapshot(ctx, nil), &companionAISystem{}, companionAIHomunculus, time.Now()); err == nil {
 		ai.close()
 		t.Fatalf("custom AI loaded source=%q, want missing custom AI error", ai.source)
 	}
@@ -111,7 +114,7 @@ function AI(id) end
 	ctx := client.Context{Resources: manager, Session: session.New()}
 	ctx.Session.HomunculusCustomAI = true
 
-	ai, err := newCompanionAI(ctx, NewWorldMode(), companionAIHomunculus, time.Now())
+	ai, err := newCompanionAI(newCompanionAISnapshot(ctx, nil), &companionAISystem{}, companionAIHomunculus, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +200,7 @@ function AI(id) end
 			}
 			ctx := client.Context{Config: cfg, Resources: resources, Session: session.New()}
 			ctx.Session.HomunculusCustomAI = true
-			ai, err := newCompanionAI(ctx, NewWorldMode(), companionAIHomunculus, time.Now())
+			ai, err := newCompanionAI(newCompanionAISnapshot(ctx, nil), &companionAISystem{}, companionAIHomunculus, time.Now())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -246,7 +249,7 @@ function AI(id) end
 	ctx := client.Context{Resources: manager, Session: session.New()}
 	ctx.Session.HomunculusCustomAI = true
 
-	ai, err := newCompanionAI(ctx, NewWorldMode(), companionAIHomunculus, time.Now())
+	ai, err := newCompanionAI(newCompanionAISnapshot(ctx, nil), &companionAISystem{}, companionAIHomunculus, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +283,7 @@ func TestCompanionAILegacyTableForLoopUsesPairs(t *testing.T) {
 	ctx := client.Context{Resources: manager, Session: session.New()}
 	ctx.Session.HomunculusCustomAI = true
 
-	ai, err := newCompanionAI(ctx, NewWorldMode(), companionAIHomunculus, time.Now())
+	ai, err := newCompanionAI(newCompanionAISnapshot(ctx, nil), &companionAISystem{}, companionAIHomunculus, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,16 +313,16 @@ func TestCompanionAIReloadsWhenCustomToggleChanges(t *testing.T) {
 	world := worldstate.New()
 	world.Actors[300] = worldstate.Actor{ID: 300, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus}
 	ctx := client.Context{Resources: manager, Session: sessionState, World: world}
-	mode := NewWorldMode()
+	mode := &System{}
 
 	now := time.Now()
-	mode.updateCompanionAIKind(ctx, companionAIHomunculus, 300, now)
+	mode.updateCompanionAIKind(ctx, companionAIHomunculus, 300, nil, now)
 	if mode.companionAI.homunculus == nil || mode.companionAI.homunculus.source != "AI/AI.lua" {
 		t.Fatalf("homunculus AI = %+v, want default source", mode.companionAI.homunculus)
 	}
 
 	sessionState.HomunculusCustomAI = true
-	mode.updateCompanionAIKind(ctx, companionAIHomunculus, 300, now.Add(time.Millisecond))
+	mode.updateCompanionAIKind(ctx, companionAIHomunculus, 300, nil, now.Add(time.Millisecond))
 	if mode.companionAI.homunculus == nil || mode.companionAI.homunculus.source != "AI/USER_AI/AI.lua" {
 		t.Fatalf("homunculus AI = %+v, want custom source", mode.companionAI.homunculus)
 	}
@@ -375,11 +378,10 @@ end
 	world.Actors[300] = worldstate.Actor{ID: 300, X: 10, Y: 20, Job: 6001, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus, AttackRange: 7}
 	world.Actors[400] = worldstate.Actor{ID: 400, X: 11, Y: 20, Job: 1002, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob}
 	ctx := client.Context{Resources: manager, Session: sess, World: world, Started: time.Now()}
-	mode := NewWorldMode()
-	mode.actorLife = make(map[uint32]actorLife)
-	mode.setCompanionAIMessage(300, "3,400")
+	mode := &System{}
+	mode.SetMessage(300, "3,400")
 
-	ai, err := newCompanionAI(ctx, mode, companionAIHomunculus, time.Now().Add(-time.Second))
+	ai, err := newCompanionAI(mode.snapshot(ctx, nil), mode.aiSystem(), companionAIHomunculus, time.Now().Add(-time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -459,9 +461,8 @@ func TestCompanionSkillRangeFallsBackToRobrowserSkillInfo(t *testing.T) {
 		ObjectType:    scene.ActorObjectTypeHomunculus,
 	}
 	ctx := client.Context{Session: sess, World: world}
-	mode := NewWorldMode()
 
-	if got := mode.companionSkillRange(ctx, companionAIHomunculus, 300, db.SkillHvanCaprice, 3); got != 10 {
+	if got := companionSkillRange(ctx, companionAIHomunculus, 300, db.SkillHvanCaprice, 3); got != 10 {
 		t.Fatalf("caprice AI range = %d, want roBrowser attack range + 1", got)
 	}
 }
@@ -478,9 +479,8 @@ func TestCompanionSkillRangePrefersServerSkillInfo(t *testing.T) {
 	world := worldstate.New()
 	world.Actors[300] = worldstate.Actor{ID: 300, AttackRange: 1, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus}
 	ctx := client.Context{Session: sess, World: world}
-	mode := NewWorldMode()
 
-	if got := mode.companionSkillRange(ctx, companionAIHomunculus, 300, db.SkillHvanCaprice, 3); got != 5 {
+	if got := companionSkillRange(ctx, companionAIHomunculus, 300, db.SkillHvanCaprice, 3); got != 5 {
 		t.Fatalf("caprice server AI range = %d, want server range + 1", got)
 	}
 }
@@ -512,18 +512,17 @@ func TestCompanionAIGetVSkillAttackRangeUsesLearnedSkillInfo(t *testing.T) {
 		},
 	}
 	ctx := client.Context{Session: sess}
-	mode := NewWorldMode()
 
-	if got := callCompanionGetV(t, mode, ctx, companionAIHomunculus, 6, 300, int(db.SkillHvanCaprice)); got != 9 {
+	if got := callCompanionGetV(t, ctx, companionAIHomunculus, 6, 300, int(db.SkillHvanCaprice)); got != 9 {
 		t.Fatalf("V_SKILLATTACKRANGE caprice = %d, want roBrowser range 9", got)
 	}
-	if got := callCompanionGetV(t, mode, ctx, companionAIHomunculus, 6, 300, int(db.SkillHvanChaotic)); got != 4 {
+	if got := callCompanionGetV(t, ctx, companionAIHomunculus, 6, 300, int(db.SkillHvanChaotic)); got != 4 {
 		t.Fatalf("V_SKILLATTACKRANGE chaotic = %d, want server range 4", got)
 	}
-	if got := callCompanionGetV(t, mode, ctx, companionAIHomunculus, 14, 300, int(db.SkillMhStahlHorn), 4); got != 6 {
+	if got := callCompanionGetV(t, ctx, companionAIHomunculus, 14, 300, int(db.SkillMhStahlHorn), 4); got != 6 {
 		t.Fatalf("V_SKILLATTACKRANGE_LEVEL stahl horn = %d, want level 4 range 6", got)
 	}
-	if got := callCompanionGetV(t, mode, ctx, companionAIHomunculus, 6, 300, int(db.SkillMhEraserCutter)); got != 1 {
+	if got := callCompanionGetV(t, ctx, companionAIHomunculus, 6, 300, int(db.SkillMhEraserCutter)); got != 1 {
 		t.Fatalf("V_SKILLATTACKRANGE unlearned = %d, want 1", got)
 	}
 }
@@ -596,22 +595,21 @@ func TestCompanionActorMotionReturnsStandAfterWalkExpires(t *testing.T) {
 		Moving:        true,
 		MoveStarted:   now.Add(-time.Second),
 		MoveDuration:  100 * time.Millisecond,
-		AIMotion:      aiMotionMove,
+		AIMotion:      MotionMove,
 		HasAIMotion:   true,
 		HasObjectType: true,
 		ObjectType:    scene.ActorObjectTypeHomunculus,
 	}
 	ctx := client.Context{World: world}
-	mode := NewWorldMode()
 
-	if got := mode.companionActorMotion(ctx, 300, nil); got != aiMotionStand {
+	if got := companionActorMotion(ctx, 300, nil); got != MotionStand {
 		t.Fatalf("expired walk motion = %d, want stand", got)
 	}
 
 	actor := world.Actors[300]
 	actor.MoveStarted = now
 	world.Actors[300] = actor
-	if got := mode.companionActorMotion(ctx, 300, nil); got != aiMotionMove {
+	if got := companionActorMotion(ctx, 300, nil); got != MotionMove {
 		t.Fatalf("active walk motion = %d, want move", got)
 	}
 }
@@ -622,23 +620,22 @@ func TestCompanionActorMotionReturnsStandAfterActionExpires(t *testing.T) {
 		ID:              300,
 		X:               4,
 		Y:               0,
-		AIMotion:        aiMotionAttack,
+		AIMotion:        MotionAttack,
 		HasAIMotion:     true,
 		AIMotionExpires: time.Now().Add(-time.Millisecond),
 		HasObjectType:   true,
 		ObjectType:      scene.ActorObjectTypeHomunculus,
 	}
 	ctx := client.Context{World: world}
-	mode := NewWorldMode()
 
-	if got := mode.companionActorMotion(ctx, 300, nil); got != aiMotionStand {
+	if got := companionActorMotion(ctx, 300, nil); got != MotionStand {
 		t.Fatalf("expired attack motion = %d, want stand", got)
 	}
 
 	actor := world.Actors[300]
 	actor.AIMotionExpires = time.Now().Add(time.Second)
 	world.Actors[300] = actor
-	if got := mode.companionActorMotion(ctx, 300, nil); got != aiMotionAttack {
+	if got := companionActorMotion(ctx, 300, nil); got != MotionAttack {
 		t.Fatalf("active attack motion = %d, want attack", got)
 	}
 }
@@ -665,14 +662,14 @@ func assertLuaGlobalString(t *testing.T, L *lua.LState, name, want string) {
 	}
 }
 
-func callCompanionGetV(t *testing.T, mode *WorldMode, ctx client.Context, kind companionAIKind, args ...int) int {
+func callCompanionGetV(t *testing.T, ctx client.Context, kind companionAIKind, args ...int) int {
 	t.Helper()
 	L := lua.NewState()
 	defer L.Close()
 	for _, arg := range args {
 		L.Push(lua.LNumber(arg))
 	}
-	if got := mode.luaCompanionGetV(L, ctx, kind, nil); got != 1 {
+	if got := luaCompanionGetV(L, ctx, kind, nil, nil); got != 1 {
 		t.Fatalf("luaCompanionGetV returned %d values, want 1", got)
 	}
 	value, ok := L.Get(-1).(lua.LNumber)
@@ -680,4 +677,180 @@ func callCompanionGetV(t *testing.T, mode *WorldMode, ctx client.Context, kind c
 		t.Fatalf("luaCompanionGetV result = %s, want number", L.Get(-1).String())
 	}
 	return int(value)
+}
+
+func TestHomunculusAssistQueuesNearestMonsterAttack(t *testing.T) {
+	mode := &System{}
+	sess := &session.Session{
+		AccountID:            10,
+		HomunculusAggressive: true,
+		Homunculus: session.Companion{
+			ID:     300,
+			Active: true,
+		},
+	}
+	ctx := client.Context{
+		Session: sess,
+		World: &worldstate.World{
+			Actors: map[uint32]worldstate.Actor{
+				300: {ID: 300, X: 10, Y: 10, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
+				400: {ID: 400, X: 25, Y: 25, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob},
+				500: {ID: 500, X: 12, Y: 11, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob},
+			},
+		},
+	}
+
+	mode.aiSystem().maybeQueueAggressiveCompanionTarget(ctx, companionAIHomunculus, 300, nil)
+
+	if got := mode.aiSystem().msg[300]; got != "3,500" {
+		t.Fatalf("queued message = %q, want nearest monster attack", got)
+	}
+}
+
+func TestHomunculusStandByDoesNotQueueAggressiveAttack(t *testing.T) {
+	mode := &System{}
+	sess := &session.Session{
+		Homunculus: session.Companion{
+			ID:     300,
+			Active: true,
+		},
+	}
+	ctx := client.Context{
+		Session: sess,
+		World: &worldstate.World{
+			Actors: map[uint32]worldstate.Actor{
+				300: {ID: 300, X: 10, Y: 10, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
+				500: {ID: 500, X: 12, Y: 11, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob},
+			},
+		},
+	}
+
+	mode.aiSystem().maybeQueueAggressiveCompanionTarget(ctx, companionAIHomunculus, 300, nil)
+
+	if got := mode.aiSystem().msg[300]; got != "" {
+		t.Fatalf("passive mode queued message = %q", got)
+	}
+}
+
+func TestCompanionAIReadsSnapshotWhileWorldChanges(t *testing.T) {
+	sess := &session.Session{
+		AccountID:  10,
+		Homunculus: session.Companion{ID: 300, Active: true, HP: 20, MaxHP: 30},
+	}
+	world := &worldstate.World{Actors: map[uint32]worldstate.Actor{
+		300: {ID: 300, X: 12, Y: 15, HasObjectType: true, ObjectType: scene.ActorObjectTypeHomunculus},
+		400: {ID: 400, HasObjectType: true, ObjectType: scene.ActorObjectTypeMob},
+	}}
+	ctx := client.Context{Session: sess, World: world}
+	liveVitals := map[uint32]Vitals{10: {HP: 80, MaxHP: 100}}
+	deaths := map[uint32]time.Time{400: time.Now()}
+	system := &System{bindings: Bindings{SnapshotLife: func() map[uint32]Vitals {
+		return maps.Clone(liveVitals)
+	}}}
+	ai := &companionAI{state: lua.NewState(), kind: companionAIHomunculus}
+	ai.snapshot = system.snapshot(ctx, deaths)
+	ai.registerAPI(ai.snapshot.ctx, system.aiSystem())
+	started := make(chan struct{})
+	release := make(chan struct{})
+	result := make(chan [4]int, 1)
+	ai.state.SetGlobal("waitForWorldChange", ai.state.NewFunction(func(L *lua.LState) int {
+		close(started)
+		<-release
+		return 0
+	}))
+	ai.state.SetGlobal("report", ai.state.NewFunction(func(L *lua.LState) int {
+		result <- [4]int{L.CheckInt(1), L.CheckInt(2), L.CheckInt(3), L.CheckInt(4)}
+		return 0
+	}))
+	if err := ai.state.DoString(`function AI(id)
+        waitForWorldChange()
+        report(GetV(8, 10), GetV(8, id), GetV(1, id), IsMonster(400))
+    end`); err != nil {
+		t.Fatal(err)
+	}
+	defer ai.close()
+	ai.startTick(300, ai.snapshot)
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		close(release)
+		t.Fatal("AI did not start")
+	}
+	sess.Homunculus.HP = 1
+	world.Actors[300] = worldstate.Actor{ID: 300, X: 90, Y: 90}
+	liveVitals[10] = Vitals{HP: 2}
+	delete(deaths, 400)
+	system.Bind(Bindings{SnapshotLife: func() map[uint32]Vitals {
+		panic("worker must not call game-thread bindings")
+	}})
+	close(release)
+	select {
+	case got := <-result:
+		if want := [4]int{80, 20, 12, 0}; got != want {
+			t.Fatalf("AI values = %v, want original snapshot %v", got, want)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("AI did not report its snapshot")
+	}
+}
+
+func TestCompanionMessagesSurviveConcurrentAccessAndRuntimeClose(t *testing.T) {
+	system := &System{}
+	system.SetMessage(300, "3,400")
+	system.SetMessage(300, "1,12,15")
+	old := system.aiSystem()
+	if got := old.consumeCompanionAIMessage(300, false); !slices.Equal(got, []int{3, 400}) {
+		t.Fatalf("first command = %v", got)
+	}
+	if got := old.consumeCompanionAIMessage(300, true); !slices.Equal(got, []int{1, 12, 15}) {
+		t.Fatalf("queued command = %v", got)
+	}
+
+	var workers sync.WaitGroup
+	workers.Go(func() {
+		for range 1000 {
+			old.setCompanionAIMessage(300, "3,400")
+			old.consumeCompanionAIMessage(300, false)
+		}
+	})
+	workers.Go(func() {
+		for range 1000 {
+			old.setCompanionAIMessage(300, "1,12,15")
+			old.consumeCompanionAIMessage(300, true)
+		}
+	})
+	for range 1000 {
+		old.clearMessages(300)
+	}
+	system.Close()
+	system.SetMessage(300, "1,20,25")
+	workers.Wait()
+	if got := system.aiSystem().consumeCompanionAIMessage(300, false); !slices.Equal(got, []int{1, 20, 25}) {
+		t.Fatalf("new runtime command changed by previous runtime: %v", got)
+	}
+}
+
+func TestDeletedCompanionClearsQueuedCommands(t *testing.T) {
+	for _, kind := range []companionAIKind{companionAIHomunculus, companionAIMercenary} {
+		t.Run(companionAIKindName(kind), func(t *testing.T) {
+			system := &System{bindings: Bindings{Windows: &Windows{}}}
+			ctx := client.Context{Session: &session.Session{
+				Homunculus: session.Companion{ID: 300, Active: true},
+				Mercenary:  session.Companion{ID: 400, Active: true},
+			}}
+			id := companionIDForAIKind(ctx, kind)
+			system.SetMessage(id, "3,500")
+			system.SetMessage(id, "1,12,15")
+			if kind == companionAIHomunculus {
+				system.ClearDeletedHomunculus(ctx)
+			} else {
+				system.ClearDeletedMercenary(ctx)
+			}
+			for _, response := range []bool{false, true} {
+				if got := system.aiSystem().consumeCompanionAIMessage(id, response); !slices.Equal(got, []int{0}) {
+					t.Fatalf("command remained after deletion: %v", got)
+				}
+			}
+		})
+	}
 }

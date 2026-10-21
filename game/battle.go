@@ -10,6 +10,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
@@ -75,7 +76,7 @@ func (m *WorldMode) humanoidSpriteViewForActor(ctx client.Context, actor world.A
 	if scene.IsLocalActor(ctx, actor.ID) {
 		return m.playerView
 	}
-	if actorIsMercenary(actor) {
+	if companion.IsMercenary(actor) {
 		return m.mercenaryHumanoidSpriteView(ctx, actor)
 	}
 	actor = actorWithVisualJob(actor)
@@ -106,7 +107,7 @@ func (m *WorldMode) nonPCResolvedAction(ctx client.Context, actor world.Actor, a
 }
 
 func (m *WorldMode) actorResolvedAction(ctx client.Context, actor world.Actor, actionFamily int) (res.ACTAction, bool) {
-	if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || actorIsMercenary(actor) {
+	if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || companion.IsMercenary(actor) {
 		view := m.humanoidSpriteViewForActor(ctx, actor)
 		if view == nil || view.body == nil {
 			return res.ACTAction{}, false
@@ -137,7 +138,7 @@ func (m *WorldMode) nonPCActionACT(ctx client.Context, actor world.Actor) *res.A
 }
 
 func (m *WorldMode) actorActionACT(ctx client.Context, actor world.Actor) *res.ACT {
-	if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || actorIsMercenary(actor) {
+	if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || companion.IsMercenary(actor) {
 		view := m.humanoidSpriteViewForActor(ctx, actor)
 		if view == nil || view.body == nil {
 			return nil
@@ -148,7 +149,7 @@ func (m *WorldMode) actorActionACT(ctx client.Context, actor world.Actor) *res.A
 }
 
 func (m *WorldMode) actorActionDuration(ctx client.Context, actor world.Actor, actionFamily int, fallback time.Duration) time.Duration {
-	if !res.HasPlayerJobToken(int(actor.Job)) && !actorIsMercenary(actor) && m.nonPCActorHasGR2Model(ctx, actor) {
+	if !res.HasPlayerJobToken(int(actor.Job)) && !companion.IsMercenary(actor) && m.nonPCActorHasGR2Model(ctx, actor) {
 		if action, ok := gr2ActionForActionFamily(actionFamily); ok {
 			if view := m.nonPCGR2ModelView(ctx, actor); view != nil {
 				if duration := view.actionDuration(action); duration > 0 {
@@ -604,16 +605,16 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 
 func (m *WorldMode) applyActorActionAIState(ctx client.Context, action network.ActorActionNotify, now time.Time) {
 	if action.SourceID != 0 {
-		motion := aiMotionAttack
+		motion := companion.MotionAttack
 		expires := now.Add(combatDuration(action.SourceSpeed, scene.DefaultAttackAnimationDuration))
 		if action.Action == network.ActorActionPickupItem || action.Action == network.ActionSitDown || action.Action == network.ActionStandUp {
-			motion = aiMotionStand
+			motion = companion.MotionStand
 			expires = time.Time{}
 		}
-		m.setActorAIMotion(ctx, action.SourceID, motion, action.TargetID, expires)
+		companion.SetActorMotion(ctx, action.SourceID, motion, action.TargetID, expires)
 	}
 	if action.TargetID != 0 && actionHasHitReaction(action) {
-		m.setActorAIMotion(ctx, action.TargetID, aiMotionStand, action.SourceID, time.Time{})
+		companion.SetActorMotion(ctx, action.TargetID, companion.MotionStand, action.SourceID, time.Time{})
 	}
 }
 
@@ -1391,7 +1392,7 @@ func (m *WorldMode) actorAnimation(id uint32, now time.Time) (actorAnimation, bo
 }
 
 func attackActionFamilyForActorWithResources(manager *res.Manager, actor world.Actor) int {
-	if actorIsMercenary(actor) {
+	if companion.IsMercenary(actor) {
 		return mercenaryAttackActionFamily(int(actor.Job), actor.Sex, int(actor.Weapon))
 	}
 	job := scene.ActorVisualJob(actor)
@@ -1421,7 +1422,7 @@ func skillActionFamilyForActorWithResources(manager *res.Manager, actor world.Ac
 }
 
 func skillCastActionFamilyForActor(actor world.Actor, skillID uint16) int {
-	if actorIsMercenary(actor) {
+	if companion.IsMercenary(actor) {
 		return spriteActionPCSkill
 	}
 	if !res.HasPlayerJobToken(int(actor.Job)) {
@@ -1462,7 +1463,7 @@ func skillTargetUsesHitReaction(action network.ActorActionNotify, sourceLocal, t
 }
 
 func hurtActionFamilyForActor(actor world.Actor) int {
-	if actorIsMercenary(actor) {
+	if companion.IsMercenary(actor) {
 		return spriteActionPCHurt
 	}
 	if res.HasPlayerJobToken(int(actor.Job)) {
@@ -1472,8 +1473,8 @@ func hurtActionFamilyForActor(actor world.Actor) int {
 }
 
 func deathActionFamilyForActor(actor world.Actor) int {
-	if actorIsMercenary(actor) {
-		if mercenaryUsesArcherActions(actor.Job) {
+	if companion.IsMercenary(actor) {
+		if companion.MercenaryUsesArcherActions(actor.Job) {
 			return spriteActionNonPCDeath
 		}
 		return spriteActionPCDeath
@@ -1657,7 +1658,7 @@ func attackApproachCellFromTarget(ctx client.Context, sourceX, sourceY, targetX,
 			}
 			x := targetX + dx
 			y := targetY + dy
-			if !walkTargetInBounds(ctx, x, y) {
+			if !scene.WalkTargetInBounds(ctx, x, y) {
 				continue
 			}
 			if ctx.World.GAT != nil && !ctx.World.GAT.Walkable(x, y) {
@@ -1706,7 +1707,7 @@ func rangedAttackApproachCellFromTargetMatching(ctx client.Context, sourceX, sou
 			if inRange != nil && !inRange(x, y, targetX, targetY, attackRange) {
 				continue
 			}
-			if !walkTargetInBounds(ctx, x, y) {
+			if !scene.WalkTargetInBounds(ctx, x, y) {
 				continue
 			}
 			if ctx.World.GAT != nil && !ctx.World.GAT.Walkable(x, y) {
@@ -1858,8 +1859,8 @@ func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
 		m.pendingPickup = pickupIntent{}
 		m.pendingSkill = pendingSkillTarget{}
 		m.ui.petContext.Close()
-		m.ui.homunculusContext.Close()
-		m.ui.mercenaryContext.Close()
+		m.ui.companions.HomunculusContext.Close()
+		m.ui.companions.MercenaryContext.Close()
 		m.ui.playerContext.Close()
 		m.ui.escapeMenu.OpenDeath(ctx)
 	} else {
@@ -1877,7 +1878,7 @@ func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {
 	} else {
 		m.startCombatAnimation(ctx, id, actionFamily, now, visibleDuration)
 	}
-	m.setActorAIMotion(ctx, id, aiMotionDead, 0, time.Time{})
+	companion.SetActorMotion(ctx, id, companion.MotionDead, 0, time.Time{})
 	if !local {
 		if m.actorDeaths == nil {
 			m.actorDeaths = make(map[uint32]time.Time)
@@ -1912,7 +1913,7 @@ func (m *WorldMode) applyActorResurrection(ctx client.Context, resurrection netw
 	} else {
 		m.clearActorDeath(resurrection.ID)
 	}
-	m.setActorAIMotion(ctx, resurrection.ID, aiMotionStand, 0, time.Time{})
+	companion.SetActorMotion(ctx, resurrection.ID, companion.MotionStand, 0, time.Time{})
 	glog.Debugf("actor resurrected id=%d type=%d", resurrection.ID, resurrection.Type)
 }
 
@@ -2241,7 +2242,7 @@ func (m *WorldMode) homunculusLifeForDisplay(ctx client.Context, actor world.Act
 	}
 	if !life.hasHunger && hom.Hunger > 0 {
 		life.hunger = hom.Hunger
-		life.maxHunger = homunculusHungerMax
+		life.maxHunger = companion.HungerMax
 		life.hasHunger = true
 	}
 	if life.maxHP <= 0 || life.hp < 0 {
@@ -2344,4 +2345,19 @@ func localPlayerLifeForDisplay(ctx client.Context) (actorLife, bool) {
 		hasSP:  maxSP > 0,
 		player: true,
 	}, true
+}
+
+func mercenaryAttackActionFamily(job int, sex byte, weapon int) int {
+	weapon = companion.MercenaryWeaponForAppearance(job, weapon)
+	if weapon <= 0 {
+		return spriteActionPCAttack1
+	}
+	switch db.PlayerWeaponAction(companion.MercenaryWeaponBaseJob(job), companion.MercenarySexForJob(job, sex), weapon) {
+	case db.PlayerWeaponActionAttack2:
+		return spriteActionPCAttack2
+	case db.PlayerWeaponActionAttack3:
+		return spriteActionPCAttack3
+	default:
+		return spriteActionPCAttack1
+	}
 }

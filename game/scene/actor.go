@@ -2,6 +2,7 @@ package scene
 
 import (
 	"math"
+	"strings"
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/res"
@@ -87,4 +88,15 @@ func IsMonsterLikeHoverActor(actor worldstate.Actor) bool {
 	}
 	job := int(actor.Job)
 	return job >= 1000 && (job < 6001 || job > 6047)
+}
+
+func SanitizeActorName(name string) string {
+	name = strings.TrimSpace(name)
+	if hash := strings.IndexByte(name, '#'); hash >= 0 {
+		name = strings.TrimSpace(name[:hash])
+	}
+	if strings.EqualFold(name, "actor") {
+		return ""
+	}
+	return name
 }

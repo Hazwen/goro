@@ -13,6 +13,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/bot"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
@@ -110,8 +111,6 @@ type WorldMode struct {
 	petLastTalk       time.Time
 	petInfoRequested  bool
 	petID             uint32
-	homDeleteID       uint32
-	mercDeleteID      uint32
 	petSlotMachine    petSlotMachineState
 	lockedAttackID    uint32
 	attackFocusID     uint32
@@ -153,10 +152,11 @@ type WorldMode struct {
 	mapFade          mapFadeState
 	hoveredWalk      hoveredWalkCellCache
 	bot              *bot.Script
-	companionAI      companionAISystem
+	companionSystem  companion.System
 }
 
 type worldUI struct {
+	companions           companion.Windows
 	minimap              gameui.Minimap
 	statusIcons          gameui.StatusIcons
 	pvpCounter           gameui.PvPCounter
@@ -204,14 +204,6 @@ type worldUI struct {
 	petInfoWindow        gameui.PetInfoWindow
 	petContext           gameui.PetContextMenu
 	petConfirm           gameui.ConfirmModal
-	homunculusInfo       gameui.HomunculusInfoWindow
-	homunculusSkill      gameui.HomunculusSkillWindow
-	homunculusContext    gameui.HomunculusContextMenu
-	homunculusConfirm    gameui.ConfirmModal
-	mercenaryInfo        gameui.MercenaryInfoWindow
-	mercenarySkill       gameui.MercenarySkillWindow
-	mercenaryContext     gameui.MercenaryContextMenu
-	mercenaryConfirm     gameui.ConfirmModal
 	statsWindow          gameui.StatsWindow
 	skillWindow          gameui.SkillWindow
 	questWindow          gameui.QuestWindow
@@ -271,7 +263,7 @@ func (u *worldUI) nonConsoleKeyboardInputBlockedExcept(ctx client.Context, excep
 		u.weaponRefine.IsOpen() ||
 		u.petEggWindow.IsOpen() ||
 		(except != &u.petInfoWindow.Window && u.petInfoWindow.KeyboardShortcutsBlocked()) ||
-		(except != &u.homunculusInfo.Window && u.homunculusInfo.KeyboardShortcutsBlocked()) ||
+		(except != &u.companions.HomunculusInfo.Window && u.companions.HomunculusInfo.KeyboardShortcutsBlocked()) ||
 		u.changeCartWindow.IsOpen() ||
 		u.itemWindows.KeyboardShortcutsBlocked() ||
 		u.shopWindow.KeyboardShortcutsBlocked() ||
@@ -297,8 +289,8 @@ func (u *worldUI) npcInputAvailable() bool {
 		!u.interactionModalOpen() &&
 		!u.partyInfo.IsOpen() &&
 		!u.petConfirm.IsOpen() &&
-		!u.homunculusConfirm.IsOpen() &&
-		!u.mercenaryConfirm.IsOpen() &&
+		!u.companions.HomunculusConfirm.IsOpen() &&
+		!u.companions.MercenaryConfirm.IsOpen() &&
 		!u.inventoryBag.KeyboardShortcutsBlocked()
 }
 
@@ -618,8 +610,8 @@ func (m *WorldMode) rebindPersistentUI(ctx client.Context) {
 	m.ui.chatShortcuts.Rebind(ctx, &m.ui.console, func() {
 		m.ui.emoteWindow.OpenWindow(ctx, &m.ui.console)
 	})
-	m.ui.homunculusSkill.Rebind(ctx, m)
-	m.ui.mercenarySkill.Rebind(ctx, m)
+	m.ui.companions.HomunculusSkill.Rebind(ctx, m)
+	m.ui.companions.MercenarySkill.Rebind(ctx, m)
 	m.ui.friendsWindow.Rebind(ctx)
 	m.ui.guildWindow.Rebind(ctx)
 	m.ui.guildMemberPrompt.Rebind(ctx)
@@ -630,8 +622,8 @@ func (m *WorldMode) rebindPersistentUI(ctx client.Context) {
 	m.ui.chatRoomCreate.Rebind(ctx)
 	m.ui.chatRoom.Rebind(ctx)
 	m.ui.settingsWindow.Rebind(ctx)
-	m.ui.homunculusInfo.Rebind(ctx)
-	m.ui.mercenaryInfo.Rebind(ctx)
+	m.ui.companions.HomunculusInfo.Rebind(ctx)
+	m.ui.companions.MercenaryInfo.Rebind(ctx)
 	m.ui.whisperWindows.Rebind(ctx)
 	m.ui.shortcutBar.ResetOverlay(ctx)
 }
@@ -723,7 +715,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 			dead := playerIsDead(ctx)
 			m.updateBotInput(ctx, !dead)
 			if !dead {
-				m.updateCompanionAI(ctx, now)
+				m.companions().Update(ctx, m.actorDeaths, now)
 			}
 			m.updateBot(ctx, now)
 		}
@@ -806,10 +798,10 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if !dead && m.openPetContextFromInput(ctx, now) {
 		return nil, nil
 	}
-	homunculusContextConsumed := m.ui.homunculusContext.Update(ctx)
-	if action := m.ui.homunculusContext.PopAction(); action.Kind != gameui.HomunculusContextActionNone {
+	homunculusContextConsumed := m.ui.companions.HomunculusContext.Update(ctx)
+	if action := m.ui.companions.HomunculusContext.PopAction(); action.Kind != gameui.HomunculusContextActionNone {
 		if !dead {
-			m.handleHomunculusContextAction(ctx, action)
+			m.companions().HandleHomunculusContextAction(ctx, action)
 		}
 		return nil, nil
 	}
@@ -819,10 +811,10 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if !dead && m.openHomunculusContextFromInput(ctx, now) {
 		return nil, nil
 	}
-	mercenaryContextConsumed := m.ui.mercenaryContext.Update(ctx)
-	if action := m.ui.mercenaryContext.PopAction(); action.Kind != gameui.MercenaryContextActionNone {
+	mercenaryContextConsumed := m.ui.companions.MercenaryContext.Update(ctx)
+	if action := m.ui.companions.MercenaryContext.PopAction(); action.Kind != gameui.MercenaryContextActionNone {
 		if !dead {
-			m.handleMercenaryContextAction(ctx, action)
+			m.companions().HandleMercenaryContextAction(ctx, action)
 		}
 		return nil, nil
 	}
@@ -872,7 +864,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if !dead && m.openPlayerContextFromInput(ctx, now) {
 		return nil, nil
 	}
-	if !m.mapPointerBlocked(ctx) && !m.ui.escapeMenu.IsOpen() && !m.ui.interactionModalOpen() && !m.ui.settingsWindow.IsOpen() && !m.ui.identifyWindow.IsOpen() && !m.ui.petEggWindow.IsOpen() && !m.ui.petConfirm.IsOpen() && !m.ui.homunculusConfirm.IsOpen() && !m.ui.mercenaryConfirm.IsOpen() {
+	if !m.mapPointerBlocked(ctx) && !m.ui.escapeMenu.IsOpen() && !m.ui.interactionModalOpen() && !m.ui.settingsWindow.IsOpen() && !m.ui.identifyWindow.IsOpen() && !m.ui.petEggWindow.IsOpen() && !m.ui.petConfirm.IsOpen() && !m.ui.companions.HomunculusConfirm.IsOpen() && !m.ui.companions.MercenaryConfirm.IsOpen() {
 		m.updateCameraRotation(ctx)
 	}
 	if !dead && m.ui.escapeMenu.IsOpen() {
@@ -917,21 +909,21 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if m.ui.petInfoWindow.Update(ctx) {
 		return nil, nil
 	}
-	if m.ui.homunculusConfirm.Update(ctx) {
+	if m.ui.companions.HomunculusConfirm.Update(ctx) {
 		return nil, nil
 	}
-	if m.ui.homunculusInfo.Update(ctx) {
-		if action := m.ui.homunculusInfo.PopAction(); action.Kind != gameui.HomunculusInfoActionNone {
-			m.handleHomunculusInfoAction(ctx, action)
+	if m.ui.companions.HomunculusInfo.Update(ctx) {
+		if action := m.ui.companions.HomunculusInfo.PopAction(); action.Kind != gameui.HomunculusInfoActionNone {
+			m.companions().HandleHomunculusInfoAction(ctx, action)
 		}
 		return nil, nil
 	}
-	if m.ui.mercenaryConfirm.Update(ctx) {
+	if m.ui.companions.MercenaryConfirm.Update(ctx) {
 		return nil, nil
 	}
-	if m.ui.mercenaryInfo.Update(ctx) {
-		if action := m.ui.mercenaryInfo.PopAction(); action.Kind != gameui.MercenaryInfoActionNone {
-			m.handleMercenaryInfoAction(ctx, action)
+	if m.ui.companions.MercenaryInfo.Update(ctx) {
+		if action := m.ui.companions.MercenaryInfo.PopAction(); action.Kind != gameui.MercenaryInfoActionNone {
+			m.companions().HandleMercenaryInfoAction(ctx, action)
 		}
 		return nil, nil
 	}
@@ -1027,10 +1019,10 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if m.ui.skillWindow.UpdateDrag(ctx, &m.ui.shortcutBar) {
 		return nil, nil
 	}
-	if m.ui.homunculusSkill.UpdateDrag(ctx, &m.ui.shortcutBar) {
+	if m.ui.companions.HomunculusSkill.UpdateDrag(ctx, &m.ui.shortcutBar) {
 		return nil, nil
 	}
-	if m.ui.mercenarySkill.UpdateDrag(ctx, &m.ui.shortcutBar) {
+	if m.ui.companions.MercenarySkill.UpdateDrag(ctx, &m.ui.shortcutBar) {
 		return nil, nil
 	}
 	if m.ui.guildWindow.UpdateDrag(ctx, &m.ui.shortcutBar) {
@@ -1075,10 +1067,10 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if m.ui.questWindow.Update(ctx) {
 		return nil, nil
 	}
-	if m.ui.homunculusSkill.Update(ctx, &m.ui.shortcutBar, m) {
+	if m.ui.companions.HomunculusSkill.Update(ctx, &m.ui.shortcutBar, m) {
 		return nil, nil
 	}
-	if m.ui.mercenarySkill.Update(ctx, &m.ui.shortcutBar, m) {
+	if m.ui.companions.MercenarySkill.Update(ctx, &m.ui.shortcutBar, m) {
 		return nil, nil
 	}
 	if m.ui.emoteWindow.Update(ctx, &m.ui.console) {
@@ -1165,7 +1157,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if dead {
 		return nil, nil
 	}
-	m.updateCompanionAI(ctx, now)
+	m.companions().Update(ctx, m.actorDeaths, now)
 	m.updateBot(ctx, now)
 
 	leftClick := !pointerBlocked && ctx.Input.MouseJustPressed(input.MouseButtonLeft)
@@ -1493,10 +1485,10 @@ func (m *WorldMode) nextWorldMode() *WorldMode {
 	next.ui.cardWindow = m.ui.cardWindow
 	next.ui.petEggWindow = m.ui.petEggWindow
 	next.ui.petInfoWindow = m.ui.petInfoWindow
-	next.ui.homunculusInfo = m.ui.homunculusInfo
-	next.ui.homunculusSkill = m.ui.homunculusSkill
-	next.ui.mercenaryInfo = m.ui.mercenaryInfo
-	next.ui.mercenarySkill = m.ui.mercenarySkill
+	next.ui.companions.HomunculusInfo = m.ui.companions.HomunculusInfo
+	next.ui.companions.HomunculusSkill = m.ui.companions.HomunculusSkill
+	next.ui.companions.MercenaryInfo = m.ui.companions.MercenaryInfo
+	next.ui.companions.MercenarySkill = m.ui.companions.MercenarySkill
 	next.petProperty = m.petProperty
 	next.hasPetProperty = m.hasPetProperty
 	next.petOldFullness = m.petOldFullness
@@ -1523,7 +1515,7 @@ func (m *WorldMode) nextWorldMode() *WorldMode {
 	next.ui.statusIcons = m.ui.statusIcons
 	next.ui.pvpCounter = m.ui.pvpCounter
 	next.ui.levelUpNotifications = m.ui.levelUpNotifications
-	m.companionAI.close()
+	m.companionSystem.Close()
 	return next
 }
 
@@ -1628,8 +1620,8 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 		m.ui.shopWindow.Publish(ctx)
 		m.ui.vendingWindow.Publish(ctx)
 		m.ui.skillWindow.Publish(ctx)
-		m.ui.homunculusSkill.Publish(ctx)
-		m.ui.mercenarySkill.Publish(ctx)
+		m.ui.companions.HomunculusSkill.Publish(ctx)
+		m.ui.companions.MercenarySkill.Publish(ctx)
 		m.drawHoveredGroundItemLabel(screen, ctx, projection, now)
 	}
 }
@@ -1670,8 +1662,8 @@ func (m *WorldMode) DrawUIOverlay(ctx client.Context, screen *render.Frame) {
 	m.ui.cartWindow.DrawTooltip(ctx, screen)
 	m.ui.itemWindows.DrawTooltip(ctx, screen)
 	m.ui.skillWindow.DrawTooltip(ctx, screen)
-	m.ui.homunculusSkill.DrawTooltip(ctx, screen)
-	m.ui.mercenarySkill.DrawTooltip(ctx, screen)
+	m.ui.companions.HomunculusSkill.DrawTooltip(ctx, screen)
+	m.ui.companions.MercenarySkill.DrawTooltip(ctx, screen)
 	m.ui.guildWindow.DrawTooltip(ctx, screen)
 	m.ui.shortcutBar.DrawTooltip(ctx, screen)
 	m.ui.itemPickup.Draw(screen, ctx, m, now)
@@ -1684,8 +1676,8 @@ func (m *WorldMode) drawUIDragGhosts(screen *render.Frame, ctx client.Context) {
 	m.ui.shopWindow.DrawDragGhost(screen, ctx, m)
 	m.ui.vendingWindow.DrawDragGhost(screen, ctx, m)
 	m.ui.skillWindow.DrawDragGhost(screen, ctx, m)
-	m.ui.homunculusSkill.DrawDragGhost(screen, ctx, m)
-	m.ui.mercenarySkill.DrawDragGhost(screen, ctx, m)
+	m.ui.companions.HomunculusSkill.DrawDragGhost(screen, ctx, m)
+	m.ui.companions.MercenarySkill.DrawDragGhost(screen, ctx, m)
 	m.ui.guildWindow.DrawDragGhost(screen, ctx, m)
 }
 

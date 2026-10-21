@@ -82,7 +82,7 @@ func (m *WorldMode) senseActor(ctx client.Context, class uint16, now time.Time) 
 
 func monsterInfoDisplayName(ctx client.Context, actor worldstate.Actor, matched bool, class uint16) string {
 	if matched {
-		if name := sanitizeActorName(actor.Name); name != "" {
+		if name := scene.SanitizeActorName(actor.Name); name != "" {
 			return name
 		}
 	}

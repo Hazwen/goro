@@ -101,7 +101,7 @@ func warpWalkTarget(ctx client.Context, actor worldstate.Actor, now time.Time) (
 	}
 	targetX, targetY := scene.ActorCurrentCell(actor, now)
 	if ctx.World.GAT == nil {
-		return targetX, targetY, walkTargetInBounds(ctx, targetX, targetY)
+		return targetX, targetY, scene.WalkTargetInBounds(ctx, targetX, targetY)
 	}
 
 	playerX, playerY := scene.CurrentPlayerCell(ctx, now)
@@ -146,7 +146,7 @@ func (m *WorldMode) requestWalk(ctx client.Context, targetX, targetY int, source
 	if ctx.PlayerHasEffectState(db.EffectStateHide) && learnedSkillLevel(ctx.Session, db.SkillRGTunneldrive) == 0 {
 		return false
 	}
-	if ctx.World == nil || ctx.Network == nil || !walkTargetInBounds(ctx, targetX, targetY) {
+	if ctx.World == nil || ctx.Network == nil || !scene.WalkTargetInBounds(ctx, targetX, targetY) {
 		m.setWalkCooldown(walkRequestCooldown)
 		return false
 	}
@@ -835,19 +835,6 @@ func directMovementPath(fromX, fromY, toX, toY int) []worldstate.WalkStep {
 		return []worldstate.WalkStep{{X: fromX, Y: fromY}}
 	}
 	return []worldstate.WalkStep{{X: fromX, Y: fromY}, {X: toX, Y: toY}}
-}
-
-func walkTargetInBounds(ctx client.Context, x, y int) bool {
-	if x < 0 || y < 0 {
-		return false
-	}
-	if ctx.World.GAT != nil {
-		return x < ctx.World.GAT.Width && y < ctx.World.GAT.Height
-	}
-	if ctx.World.GND != nil {
-		return x < ctx.World.GND.Width && y < ctx.World.GND.Height
-	}
-	return x <= 1023 && y <= 1023
 }
 
 func directionFromDelta(fromX, fromY, toX, toY int, fallback int) int {

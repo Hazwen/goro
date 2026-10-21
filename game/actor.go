@@ -9,6 +9,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
@@ -186,8 +187,8 @@ func upsertNetworkActor(ctx client.Context, entry network.ActorEntry) {
 	if scene.IsLocalActor(ctx, entry.ID) {
 		return
 	}
-	name := companionActorEntryName(ctx, entry)
-	applyCompanionActorEntry(ctx, entry)
+	name := companion.ActorEntryName(ctx, entry)
+	companion.ApplyActorEntry(ctx, entry)
 	dir := entry.Dir
 	if entry.Moving {
 		dir = directionFromDelta(entry.FromX, entry.FromY, entry.ToX, entry.ToY, dir)
@@ -330,8 +331,8 @@ type actorVanishFade struct {
 
 func (m *WorldMode) applyActorVanish(ctx client.Context, vanish network.ActorVanish) {
 	glog.Debugf("actor vanish id=%d reason=%d", vanish.ID, vanish.Reason)
-	pendingHomunculusDelete := m.homDeleteID != 0 && vanish.ID == m.homDeleteID
-	pendingMercenaryDelete := m.mercDeleteID != 0 && vanish.ID == m.mercDeleteID
+	pendingHomunculusDelete := m.companionSystem.HomunculusDeleteID != 0 && vanish.ID == m.companionSystem.HomunculusDeleteID
+	pendingMercenaryDelete := m.companionSystem.MercenaryDeleteID != 0 && vanish.ID == m.companionSystem.MercenaryDeleteID
 	if m.attackFocusID == vanish.ID {
 		m.clearAttackFocus()
 	}
@@ -350,10 +351,10 @@ func (m *WorldMode) applyActorVanish(ctx client.Context, vanish network.ActorVan
 	m.effects().RemoveLevel99AuraEffects(vanish.ID)
 	m.removeActorNow(ctx, vanish.ID)
 	if pendingHomunculusDelete {
-		m.clearDeletedHomunculus(ctx)
+		m.companions().ClearDeletedHomunculus(ctx)
 	}
 	if pendingMercenaryDelete {
-		m.clearDeletedMercenary(ctx)
+		m.companions().ClearDeletedMercenary(ctx)
 	}
 }
 
@@ -687,7 +688,7 @@ func worldActorForSelectedCharacter(ctx client.Context) worldstate.Actor {
 }
 
 func applyActorNameAck(ctx client.Context, ack network.ActorNameAck) {
-	name := sanitizeActorName(ack.Name)
+	name := scene.SanitizeActorName(ack.Name)
 	if name == "" || ctx.World == nil {
 		return
 	}
@@ -998,7 +999,7 @@ func (m *WorldMode) actorShadowSuppressed(actor worldstate.Actor, now time.Time)
 		if anim.actionFamily == deathActionFamilyForActor(actor) {
 			return true
 		}
-		return anim.actionFamily == scene.SpriteActionSit && (res.HasPlayerJobToken(int(actor.Job)) || actorIsMercenary(actor))
+		return anim.actionFamily == scene.SpriteActionSit && (res.HasPlayerJobToken(int(actor.Job)) || companion.IsMercenary(actor))
 	}
 	return false
 }
@@ -1052,15 +1053,15 @@ func actorDisplayPrimaryName(ctx client.Context, actor worldstate.Actor, isPlaye
 		return ""
 	}
 	if isPlayer {
-		if name := sanitizeActorName(selectedCharacterName(ctx.Session)); name != "" {
+		if name := scene.SanitizeActorName(selectedCharacterName(ctx.Session)); name != "" {
 			return actorDisplayNameWithParty(ctx, actor, name, true)
 		}
-		return actorDisplayNameWithParty(ctx, actor, sanitizeActorName(actor.Name), true)
+		return actorDisplayNameWithParty(ctx, actor, scene.SanitizeActorName(actor.Name), true)
 	}
 	if isWarpActor(actor) {
 		return ""
 	}
-	if name := sanitizeActorName(actor.Name); name != "" {
+	if name := scene.SanitizeActorName(actor.Name); name != "" {
 		return actorDisplayNameWithParty(ctx, actor, name, false)
 	}
 	if res.HasPlayerJobToken(int(actor.Job)) || ctx.Resources == nil {
@@ -1128,7 +1129,7 @@ func actorIsPartyMember(s *session.Session, actor worldstate.Actor, actorName st
 		if member.AccountID == actor.ID {
 			return true
 		}
-		if actorName != "" && strings.EqualFold(sanitizeActorName(member.Name), actorName) {
+		if actorName != "" && strings.EqualFold(scene.SanitizeActorName(member.Name), actorName) {
 			return true
 		}
 	}
@@ -1169,7 +1170,7 @@ func (m *WorldMode) hoveredActorDisplayLabels(ctx client.Context, actor worldsta
 	if scene.IsLocalActor(ctx, actor.ID) {
 		return actorDisplayLabels(ctx, actor, true)
 	}
-	if name := sanitizeActorName(actor.Name); name != "" {
+	if name := scene.SanitizeActorName(actor.Name); name != "" {
 		return actorDisplayLabels(ctx, actor, false)
 	}
 	if shouldUseServerNameForHoverActor(actor) {
@@ -1243,17 +1244,6 @@ func selectedCharacterName(s *session.Session) string {
 	return s.SelectedCharacter().Name
 }
 
-func sanitizeActorName(name string) string {
-	name = strings.TrimSpace(name)
-	if hash := strings.IndexByte(name, '#'); hash >= 0 {
-		name = strings.TrimSpace(name[:hash])
-	}
-	if strings.EqualFold(name, "actor") {
-		return ""
-	}
-	return name
-}
-
 func displayNameFromResource(name string) string {
 	name = strings.TrimSpace(strings.TrimSuffix(name, ".spr"))
 	name = strings.TrimSuffix(name, ".act")
@@ -1317,7 +1307,7 @@ func actorVisibleNameLabels(labels []string) []string {
 	out := make([]string, 0, len(labels))
 	for i, label := range labels {
 		if i == 0 {
-			label = sanitizeActorName(label)
+			label = scene.SanitizeActorName(label)
 		} else {
 			label = strings.TrimSpace(label)
 		}
@@ -1352,7 +1342,7 @@ func actorCastBarY(baseY, scale float64) float64 {
 
 func (m *WorldMode) drawActorSprite3D(screen *render.Frame, ctx client.Context, projection scene.Projection, entry scene.ActorDrawEntry, cameraYaw float64, shadow float64) bool {
 	actor := entry.Actor
-	if actorIsMercenary(actor) {
+	if companion.IsMercenary(actor) {
 		return m.drawMercenarySprite3D(screen, ctx, projection, entry, cameraYaw, shadow)
 	}
 	if !res.HasPlayerJobToken(int(actor.Job)) {

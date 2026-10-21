@@ -163,3 +163,16 @@ func ActorCurrentCell(actor worldstate.Actor, now time.Time) (int, int) {
 	x, y := ActorRenderPosition(actor, now)
 	return int(math.Round(x)), int(math.Round(y))
 }
+
+func WalkTargetInBounds(ctx client.Context, x, y int) bool {
+	if x < 0 || y < 0 {
+		return false
+	}
+	if ctx.World.GAT != nil {
+		return x < ctx.World.GAT.Width && y < ctx.World.GAT.Height
+	}
+	if ctx.World.GND != nil {
+		return x < ctx.World.GND.Width && y < ctx.World.GND.Height
+	}
+	return x <= 1023 && y <= 1023
+}

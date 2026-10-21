@@ -5,6 +5,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
@@ -83,7 +84,7 @@ func (s skillActionSpec) actionFamilyForActorWithResources(manager *res.Manager,
 	if s.action == skillActorActionNone {
 		return -1
 	}
-	mercenary := actorIsMercenary(actor)
+	mercenary := companion.IsMercenary(actor)
 	if !res.HasPlayerJobToken(scene.ActorVisualJob(actor)) && !mercenary {
 		return spriteActionNonPCAttack
 	}

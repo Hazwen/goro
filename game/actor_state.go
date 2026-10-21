@@ -8,6 +8,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
@@ -115,7 +116,7 @@ func (m *WorldMode) applyActorBladeStopSide(ctx client.Context, actorID, lookID 
 			state.actionFamily = scene.SpriteActionSit
 		}
 		started := now
-		if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || actorIsMercenary(actor) {
+		if res.HasPlayerJobToken(scene.ActorVisualJob(actor)) || companion.IsMercenary(actor) {
 			state.loopIdle = false
 			state.headTurn, state.headDir = true, actor.HeadDir
 			if view := m.humanoidSpriteViewForActor(ctx, actor); view != nil {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
@@ -4196,7 +4197,7 @@ func TestRemotePlayerDeathRemainsUntilResurrection(t *testing.T) {
 	if _, ok := mode.actorAnims[300]; ok {
 		t.Fatal("remote player death animation remained after resurrection")
 	}
-	if actor := world.Actors[300]; !actor.HasAIMotion || actor.AIMotion != aiMotionStand {
+	if actor := world.Actors[300]; !actor.HasAIMotion || actor.AIMotion != companion.MotionStand {
 		t.Fatalf("resurrected player motion = %+v, want standing", actor)
 	}
 }

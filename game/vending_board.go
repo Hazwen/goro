@@ -20,7 +20,7 @@ func (m *WorldMode) drawVendingBoardLabels(screen *render.Frame, ctx client.Cont
 		if !actorHasVending(entry.Actor) {
 			continue
 		}
-		label := sanitizeActorName(entry.Actor.VendingName)
+		label := scene.SanitizeActorName(entry.Actor.VendingName)
 		labelY := actorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
 		drawBoardLabel(screen, entry.Actor.VendingName, entry.ScreenX, labelY, icon)
 	}
@@ -35,7 +35,7 @@ func (m *WorldMode) drawChatRoomBoardLabels(screen *render.Frame, ctx client.Con
 		icon := m.chatRoomBoardIcon(ctx.Resources, entry.Actor.ChatRoomPublic)
 		labelY := actorSpriteTopY(entry.ScreenY, entry.Scale) - boardLabelGap - boardLabelHeight(label)
 		if actorHasVending(entry.Actor) {
-			vendingLabel := sanitizeActorName(entry.Actor.VendingName)
+			vendingLabel := scene.SanitizeActorName(entry.Actor.VendingName)
 			labelY -= boardLabelHeight(vendingLabel) + boardLabelGap
 		}
 		drawBoardLabel(screen, label, entry.ScreenX, labelY, icon)
@@ -43,7 +43,7 @@ func (m *WorldMode) drawChatRoomBoardLabels(screen *render.Frame, ctx client.Con
 }
 
 func chatRoomBoardLabel(actor worldstate.Actor) string {
-	title := sanitizeActorName(actor.ChatRoomTitle)
+	title := scene.SanitizeActorName(actor.ChatRoomTitle)
 	if title == "" {
 		return ""
 	}
@@ -87,7 +87,7 @@ func (b vendingBoardBounds) contains(x, y float64) bool {
 }
 
 func drawBoardLabel(screen *render.Frame, label string, centerX, topY float64, icon *render.Image) {
-	label = sanitizeActorName(label)
+	label = scene.SanitizeActorName(label)
 	if label == "" {
 		return
 	}
@@ -242,7 +242,7 @@ func (m *WorldMode) hoveredChatRoomBoard(ctx client.Context, projection scene.Pr
 }
 
 func vendingBoardActorBounds(ctx client.Context, projection scene.Projection, actor worldstate.Actor, now time.Time) (vendingBoardBounds, bool) {
-	label := sanitizeActorName(actor.VendingName)
+	label := scene.SanitizeActorName(actor.VendingName)
 	if label == "" || ctx.World == nil {
 		return vendingBoardBounds{}, false
 	}
@@ -271,7 +271,7 @@ func (m *WorldMode) chatRoomBoardActorBounds(ctx client.Context, projection scen
 }
 
 func boardLabelBounds(label string, centerX, topY float64) (vendingBoardBounds, bool) {
-	label = sanitizeActorName(label)
+	label = scene.SanitizeActorName(label)
 	if label == "" {
 		return vendingBoardBounds{}, false
 	}
@@ -284,14 +284,14 @@ func boardLabelBounds(label string, centerX, topY float64) (vendingBoardBounds, 
 }
 
 func boardLabelHeight(label string) float64 {
-	if sanitizeActorName(label) == "" {
+	if scene.SanitizeActorName(label) == "" {
 		return 0
 	}
 	return boardLabelH
 }
 
 func trimBoardLabel(label string, maxWidth int) string {
-	label = sanitizeActorName(label)
+	label = scene.SanitizeActorName(label)
 	if label == "" || maxWidth <= 0 {
 		return ""
 	}

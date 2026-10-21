@@ -284,7 +284,7 @@ func itemWithinPickupRange(playerX, playerY, itemX, itemY int) bool {
 }
 
 func pickupApproachCell(ctx client.Context, item worldstate.FloorItem) (int, int, bool) {
-	if walkTargetInBounds(ctx, item.X, item.Y) {
+	if scene.WalkTargetInBounds(ctx, item.X, item.Y) {
 		return item.X, item.Y, true
 	}
 	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
@@ -294,7 +294,7 @@ func pickupApproachCell(ctx client.Context, item worldstate.FloorItem) (int, int
 	for dy := -1; dy <= 1; dy++ {
 		for dx := -1; dx <= 1; dx++ {
 			x, y := item.X+dx, item.Y+dy
-			if !walkTargetInBounds(ctx, x, y) {
+			if !scene.WalkTargetInBounds(ctx, x, y) {
 				continue
 			}
 			dist := float64((playerX-x)*(playerX-x) + (playerY-y)*(playerY-y))

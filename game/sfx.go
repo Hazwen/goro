@@ -8,6 +8,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
@@ -384,12 +385,12 @@ func combatHitSFXRoll(action network.ActorActionNotify) uint32 {
 }
 
 func actorUsesWeaponSounds(actor worldstate.Actor) bool {
-	return res.HasPlayerJobToken(int(actor.Job)) || actorIsMercenary(actor)
+	return res.HasPlayerJobToken(int(actor.Job)) || companion.IsMercenary(actor)
 }
 
 func actorWeaponForSounds(actor worldstate.Actor) int {
-	if actorIsMercenary(actor) {
-		return mercenaryWeaponForAppearance(int(actor.Job), int(actor.Weapon))
+	if companion.IsMercenary(actor) {
+		return companion.MercenaryWeaponForAppearance(int(actor.Job), int(actor.Weapon))
 	}
 	return int(actor.Weapon)
 }

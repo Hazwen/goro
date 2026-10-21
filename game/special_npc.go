@@ -29,7 +29,7 @@ func specialNPCVisualForActor(actor worldstate.Actor) specialNPCVisual {
 }
 
 func normalizeSpecialNPCActorName(name string) string {
-	name = sanitizeActorName(name)
+	name = scene.SanitizeActorName(name)
 	if i := strings.IndexByte(name, '#'); i >= 0 {
 		name = name[:i]
 	}

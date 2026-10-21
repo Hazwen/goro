@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
+	worldstate "github.com/kivutar/goro/world"
 )
 
 func loadPlayerHumanoidSpriteView(manager *res.Manager, character session.Character, sex byte, admin bool) (*humanoidSpriteView, string) {
@@ -108,8 +110,8 @@ func loadHumanoidSpriteViewWithAppearance(manager *res.Manager, appearance human
 }
 
 func loadMercenaryHumanoidSpriteView(manager *res.Manager, appearance humanoidAppearance, label string) (*humanoidSpriteView, string) {
-	appearance.sex = mercenarySexForJob(appearance.job, appearance.sex)
-	appearance.weapon = mercenaryWeaponForAppearance(appearance.job, appearance.weapon)
+	appearance.sex = companion.MercenarySexForJob(appearance.job, appearance.sex)
+	appearance.weapon = companion.MercenaryWeaponForAppearance(appearance.job, appearance.weapon)
 	resourceName := ""
 	if manager != nil {
 		resourceName, _ = manager.NonPCResourceName(appearance.job)
@@ -201,7 +203,7 @@ func loadMercenaryWeaponOverlaySpriteView(manager *res.Manager, resourceName str
 			return view, status
 		}
 	}
-	return loadWeaponOverlaySpriteView(manager, mercenaryWeaponBaseJob(job), sex, viewID, secondLayer, label)
+	return loadWeaponOverlaySpriteView(manager, companion.MercenaryWeaponBaseJob(job), sex, viewID, secondLayer, label)
 }
 
 func loadShieldOverlaySpriteView(manager *res.Manager, job int, sex byte, shield int, label string) (*scene.SpriteView, string) {
@@ -380,4 +382,19 @@ func readFirstResource(manager *res.Manager, candidates []string) ([]byte, strin
 		}
 	}
 	return nil, "", fmt.Errorf("not found")
+}
+
+func mercenarySpriteKeyForActor(actor worldstate.Actor) actorSpriteKey {
+	return actorSpriteKey{
+		job:         int(actor.Job),
+		head:        int(actor.Head),
+		sex:         companion.MercenarySexForJob(int(actor.Job), actor.Sex),
+		bodyPalette: int(actor.BodyPal),
+		headPalette: int(actor.HeadPal),
+		weapon:      companion.MercenaryWeaponForAppearance(int(actor.Job), int(actor.Weapon)),
+		shield:      int(actor.Shield),
+		headTop:     int(actor.HeadTop),
+		headMid:     int(actor.HeadMid),
+		headLow:     int(actor.HeadLow),
+	}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
@@ -74,11 +75,11 @@ func visibleMercenaryActorID(ctx client.Context) uint32 {
 		return 0
 	}
 	if ctx.Session != nil && ctx.Session.Mercenary.ID != 0 {
-		if actor, ok := ctx.World.Actors[ctx.Session.Mercenary.ID]; ok && actorIsMercenary(actor) {
+		if actor, ok := ctx.World.Actors[ctx.Session.Mercenary.ID]; ok && companion.IsMercenary(actor) {
 			return actor.ID
 		}
 	}
-	return findCompanionActorID(ctx, scene.ActorObjectTypeMercenary)
+	return companion.FindActorID(ctx, scene.ActorObjectTypeMercenary)
 }
 
 func (m *WorldMode) applySkillNoDamageNotify(ctx client.Context, notify network.SkillNoDamageNotify) {

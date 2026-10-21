@@ -10,6 +10,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/companion"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
@@ -41,7 +42,7 @@ func TestHeadlessCombatKeepsStateWithoutVisuals(t *testing.T) {
 	mode.applyActorActionNotify(ctx, network.ActorActionNotify{
 		SourceID: 300, TargetID: sess.AccountID, SourceSpeed: 600, TargetSpeed: 250, Damage: 10,
 	})
-	if actor := world.Actors[300]; actor.AITargetID != sess.AccountID || actor.AIMotion != aiMotionAttack {
+	if actor := world.Actors[300]; actor.AITargetID != sess.AccountID || actor.AIMotion != companion.MotionAttack {
 		t.Fatalf("monster combat state was lost: %+v", actor)
 	}
 	if anim := mode.actorAnims[300]; anim.duration != 600*time.Millisecond {

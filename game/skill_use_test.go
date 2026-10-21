@@ -203,7 +203,7 @@ func TestChangeCartSkillOpensSelector(t *testing.T) {
 }
 
 func TestSessionSkillFromNetworkUsesDBMaxBeforeResourceMax(t *testing.T) {
-	skill := sessionSkillFromNetwork(network.SkillInfo{
+	skill := scene.SessionSkillFromNetwork(network.SkillInfo{
 		ID:         db.SkillHTBlitzbeat,
 		Level:      10,
 		Upgradable: true,

@@ -977,7 +977,7 @@ func TestNPCDialogModalPriorityForKeyboardAndGamepad(t *testing.T) {
 			modal := map[string]*gameui.ConfirmModal{
 				"friend": &mode.ui.friendRequest, "trade": &mode.ui.tradeRequest,
 				"party": &mode.ui.partyInfo, "pet": &mode.ui.petConfirm,
-				"homunculus": &mode.ui.homunculusConfirm, "mercenary": &mode.ui.mercenaryConfirm,
+				"homunculus": &mode.ui.companions.HomunculusConfirm, "mercenary": &mode.ui.companions.MercenaryConfirm,
 			}[name]
 			modal.OpenAlert(ctx, name, "Confirm", nil)
 			ctx.Input.EndFrame()

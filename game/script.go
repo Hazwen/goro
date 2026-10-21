@@ -55,7 +55,7 @@ func (m *WorldMode) scriptSkill(ctx client.Context, id uint32, skill session.Ski
 	if ctx.World == nil {
 		return false
 	}
-	skill = normalizeSessionSkillLevelCap(skill)
+	skill = scene.NormalizeSessionSkillLevelCap(skill)
 	if requestedLevel != -1 {
 		if requestedLevel < 1 || requestedLevel > skill.Level {
 			glog.Debugf("script skill invalid level skill=%d requested=%d learned=%d", skill.ID, requestedLevel, skill.Level)
@@ -131,7 +131,7 @@ func (m *WorldMode) botKeyPress(ctx client.Context, code input.KeyCode) {
 
 func (m *WorldMode) scriptWalk(ctx client.Context, x, y int) bool {
 	now := time.Now()
-	if ctx.World == nil || ctx.Network == nil || !m.walkReady(now) || !walkTargetInBounds(ctx, x, y) {
+	if ctx.World == nil || ctx.Network == nil || !m.walkReady(now) || !scene.WalkTargetInBounds(ctx, x, y) {
 		return false
 	}
 	if ctx.World.GAT != nil && !ctx.World.GAT.Walkable(x, y) {
