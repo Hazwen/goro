@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/binary"
 	"fmt"
 	"testing"
 	"time"
@@ -172,6 +173,35 @@ func TestCurrentNormalAttackRangeUsesEquippedBowAndVultureEye(t *testing.T) {
 	}
 }
 
+func TestServerAttackRangeSurvivesEquipmentUpdates(t *testing.T) {
+	ctx := client.Context{
+		Session: &session.Session{Skills: session.Skills{List: []session.Skill{{ID: 44, Level: 3}}}},
+		World:   worldstate.New(),
+	}
+	mode := NewWorldMode()
+	for _, want := range []int{12, 3, 1} {
+		data := make([]byte, 4)
+		binary.LittleEndian.PutUint16(data, network.PacketZCAttackRange)
+		binary.LittleEndian.PutUint16(data[2:], uint16(want))
+		mode.handleNetworkPacket(ctx, network.Packet{ID: network.PacketZCAttackRange, Data: data}, time.Now())
+		checkRange := func() {
+			t.Helper()
+			if got := currentNormalAttackRange(ctx); got != want || ctx.Session.AttackRange != want || ctx.World.Player.AttackRange != want {
+				t.Fatalf("attack range = %d, session=%d player=%d; want server range %d", got, ctx.Session.AttackRange, ctx.World.Player.AttackRange, want)
+			}
+		}
+		checkRange()
+		applyInventoryItemList(ctx, []network.InventoryItem{
+			{Index: 1, ItemID: 1701, Location: db.EquipWeapon, WearLocation: db.EquipWeapon, Equip: true, Equipped: true},
+		})
+		checkRange()
+		applyInventoryEquipAck(ctx, network.InventoryEquipAck{Index: 1, Location: db.EquipWeapon, Success: true, Unequip: true})
+		checkRange()
+		applyInventoryEquipAck(ctx, network.InventoryEquipAck{Index: 1, Location: db.EquipWeapon, Success: true})
+		checkRange()
+	}
+}
+
 func TestClassSpecificBowViewIDAddsArrowProjectileEffect(t *testing.T) {
 	actor := worldstate.Actor{Job: db.JobArcher, Weapon: 73}
 	effectID, ok := normalAttackBeforeHitEffectID(nil, actor)
@@ -201,6 +231,9 @@ func TestApplyAttackFailureForDistanceStoresServerRange(t *testing.T) {
 
 	if sessionState.AttackRange != 7 {
 		t.Fatalf("session attack range = %d, want server range 7", sessionState.AttackRange)
+	}
+	if world.Player.AttackRange != 7 {
+		t.Fatalf("player attack range = %d, want server range 7", world.Player.AttackRange)
 	}
 }
 

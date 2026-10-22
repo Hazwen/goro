@@ -1391,6 +1391,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		m.applySkillNoDamageNotify(ctx, skill)
 		return nil, false
 	}
+	if attackRange, ok, err := network.ParseAttackRange(pkt); err != nil {
+		glog.Errorf("parse attack range 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		applyAttackRange(ctx, attackRange)
+		return nil, false
+	}
 	if failure, ok, err := network.ParseAttackFailureForDistance(pkt); err != nil {
 		glog.Errorf("parse attack distance failure 0x%04X: %v", pkt.ID, err)
 	} else if ok {

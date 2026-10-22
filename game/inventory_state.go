@@ -322,7 +322,6 @@ func rebuildLocalEquipmentAppearance(ctx client.Context) {
 	if !sawEquipment {
 		return
 	}
-	ctx.Session.AttackRange = normalAttackRangeFromEquippedItems(ctx.Session, ctx.Resources)
 	if !hasWeapon {
 		weapon = 0
 	}

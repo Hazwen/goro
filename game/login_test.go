@@ -290,7 +290,9 @@ func TestLoginPacketFlowHandsBootstrapStateToWorld(t *testing.T) {
 	mode.Enter(ctx)
 	enter := make([]byte, 11)
 	binary.LittleEndian.PutUint16(enter, 0x0073)
-	stream := append(enter, testParameterChangePacket(network.StatusSpeed, 112).Data...)
+	stream := []byte{0x3A, 0x01, 9, 0}
+	stream = append(stream, enter...)
+	stream = append(stream, testParameterChangePacket(network.StatusSpeed, 112).Data...)
 	stream = append(stream, testMapChangePacket("geffen", 81, 179).Data...)
 	if _, err := server.Write(stream); err != nil {
 		t.Fatal(err)
@@ -304,6 +306,9 @@ func TestLoginPacketFlowHandsBootstrapStateToWorld(t *testing.T) {
 	}
 	if !ctx.Session.Playing || ctx.World.MapName != "geffen" || ctx.Session.PlayerX != 81 || ctx.Session.PlayerY != 179 || ctx.World.Player.Speed != 112 {
 		t.Fatalf("login bootstrap was not applied: session=%+v player=%+v", ctx.Session.Movement, ctx.World.Player)
+	}
+	if ctx.Session.AttackRange != 9 || ctx.World.Player.AttackRange != 9 {
+		t.Fatalf("login lost server attack range: session=%d player=%d", ctx.Session.AttackRange, ctx.World.Player.AttackRange)
 	}
 	// Even after the fade has elapsed, an opaque frame must be presented first.
 	time.Sleep(550 * time.Millisecond)

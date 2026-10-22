@@ -1091,11 +1091,19 @@ func actionDealsDamage(action network.ActorActionNotify) bool {
 	return action.Damage > 0 || action.LeftDamage > 0
 }
 
-func (m *WorldMode) applyAttackFailureForDistance(ctx client.Context, failure network.AttackFailureForDistance) {
-	attackRange := scene.MaxInt(1, failure.AttackRange)
+func applyAttackRange(ctx client.Context, attackRange int) {
+	attackRange = scene.MaxInt(1, attackRange)
 	if ctx.Session != nil {
 		ctx.Session.AttackRange = attackRange
 	}
+	if ctx.World != nil {
+		ctx.World.Player.AttackRange = attackRange
+	}
+}
+
+func (m *WorldMode) applyAttackFailureForDistance(ctx client.Context, failure network.AttackFailureForDistance) {
+	attackRange := scene.MaxInt(1, failure.AttackRange)
+	applyAttackRange(ctx, attackRange)
 	playerX, playerY := scene.CurrentPlayerCell(ctx, time.Now())
 	glog.Debugf("attack distance failure target=%d server_player=%d,%d server_target=%d,%d range=%d client_player=%d,%d", failure.TargetID, failure.SourceX, failure.SourceY, failure.TargetX, failure.TargetY, attackRange, playerX, playerY)
 	ctx.World.SetPlayerPosition(failure.SourceX, failure.SourceY, ctx.World.Player.Dir)
@@ -1141,12 +1149,10 @@ func (m *WorldMode) applyRecovery(ctx client.Context, recovery network.Recovery)
 }
 
 func currentNormalAttackRange(ctx client.Context) int {
-	attackRange := 1
-	if ctx.Session != nil {
-		attackRange = scene.MaxInt(attackRange, ctx.Session.AttackRange)
-		attackRange = scene.MaxInt(attackRange, normalAttackRangeFromEquippedItems(ctx.Session, ctx.Resources))
+	if ctx.Session != nil && ctx.Session.AttackRange > 0 {
+		return ctx.Session.AttackRange
 	}
-	return scene.MaxInt(1, attackRange)
+	return normalAttackRangeFromEquippedItems(ctx.Session, ctx.Resources)
 }
 
 func (m *WorldMode) startActorDeath(ctx client.Context, id uint32) {

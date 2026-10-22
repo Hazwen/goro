@@ -32,7 +32,7 @@ type Session struct {
 	PendingGuildName     string
 	SnapTargets          bool
 	SnapItems            bool
-	AttackRange          int
+	AttackRange          int // Server-reported range; zero until received.
 	CharServers          []CharServer
 	CharServerIndex      int
 	Characters           []Character

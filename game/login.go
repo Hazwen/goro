@@ -213,6 +213,12 @@ func applyLoginWorldPacket(ctx client.Context, pkt network.Packet, console *game
 }
 
 func applyLoginParameterChange(ctx client.Context, pkt network.Packet) (bool, error) {
+	if attackRange, ok, err := network.ParseAttackRange(pkt); err != nil {
+		return true, fmt.Errorf("parse attack range: %w", err)
+	} else if ok {
+		applyAttackRange(ctx, attackRange)
+		return true, nil
+	}
 	if change, ok, err := network.ParseCoupleStatus(pkt); err != nil {
 		return true, fmt.Errorf("parse couple status: %w", err)
 	} else if ok {
