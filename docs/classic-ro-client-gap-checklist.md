@@ -21,7 +21,7 @@ separate validation section and must not be implemented blindly.
 - [x] Add focused rendering and packet tests for self, party, detection, GM, ordinary viewers, PvP, and WoE.
 - [ ] Compare the full flow visually against a running 2008 client and server.
 
-The 2008 executable differs from classic-ro-client and the later dhxj source:
+The 2008 executable differs from classic-ro-client:
 Hiding keeps a shadow for self/GM, Cloaking hides even self and party bodies,
 Clairvoyance reveals a black body without a shadow, and Invisible remains
 unseen. The later translucent party view is deliberately not imported.

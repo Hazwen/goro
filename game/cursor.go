@@ -287,7 +287,7 @@ func (m *WorldMode) drawPendingTargetBanner(screen *render.Frame, ctx client.Con
 		}
 	}
 	width, height := screen.Bounds().Dx(), screen.Bounds().Dy()
-	// HighPriest places the skill name at 46/480 of the viewport height.
+	// Scale the skill name's vertical position from a 480-pixel viewport.
 	y := float64(46 * height / 480)
 	render.DrawUITextBanner(screen, name, float64(width)/2, y, float64(scene.MinInt(520, width)), color.RGBA{R: 50, G: 255, B: 50, A: 255}, 12, false)
 }

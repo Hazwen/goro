@@ -19,7 +19,7 @@ original 2008 executable.
 | Books | classic-ro-client's `Windows.book_window` and roBrowser's `MakeReadBook` are singletons. | Keep one reader. Reading closes only the originating item description. |
 | Mail reader/composer | classic-ro-client's `Windows.read_mail_window` and roBrowser's `ReadMail` are singletons. | Keep the existing mail flow and its attachment/transaction state. |
 | Equipment inspection | roBrowser's `Item.js` updates `PlayerViewEquip.getUI()` with the latest response. | Keep one inspected equipment window; its item descriptions can be opened independently. |
-| Monster information / Sense | classic-ro-client's `Windows.monster_info_window`, roBrowser's `Sense`, and the later dhxj snapshot's `UI/UIMonsterInfo.cpp` hold one window. | Keep one Sense result window. |
+| Monster information / Sense | classic-ro-client's `Windows.monster_info_window` and roBrowser's `Sense` hold one window. | Keep one Sense result window. |
 | Shop, storage, vending, trade, NPC dialogs | The references tie these windows to their current server interaction. | Keep each existing server interaction; do not duplicate a transaction by cloning its window. |
 | Confirmation/input dialogs | Goro already has multiple instances of the same dialog types for different purposes. | Keep their modal and server-specific lifecycle. |
 
@@ -33,10 +33,6 @@ Reference entry points:
 - `~/src/robr/src/UI/Components/Mail/ReadMail.js`
 - `~/src/robr/src/Engine/MapEngine/Item.js`
 - `~/src/open-midgard/src/ui/UIWindowMgr.cpp`
-
-The dhxj snapshot's original `UIWindowMgr.cpp` is mostly absent and its later
-CEGUI replacements contain empty window cases. It is not sufficient evidence
-for original-client instance limits.
 
 ## Ownership and input
 

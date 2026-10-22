@@ -494,7 +494,7 @@ func TestAssassinCrossPacketSequence(t *testing.T) {
 			t.Fatalf("Soul Breaker must snapshot caster to victim at release: %+v", e)
 		}
 		if m.scheduledSounds[0].at.Sub(start) != 20*db.EffectFrameDuration || !m.scheduledSounds[0].positioned || !m.cameraShakeEnd.IsZero() {
-			t.Fatal("Soul Breaker must play its delayed sound without HighPriest's extra Asura sound/quake")
+			t.Fatal("Soul Breaker must play its delayed sound without an extra Asura sound or camera shake")
 		}
 		for _, skill := range []uint16{379, 406} {
 			a.SkillID, a.Action = skill, 5
@@ -4633,7 +4633,7 @@ func TestProcessNonPCMotionSoundSchedulesIdleACTSound(t *testing.T) {
 	}
 }
 
-func TestSpatialSoundGainUsesDHXJAndClassicRODistanceCurve(t *testing.T) {
+func TestSpatialSoundGainUsesClampedInverseDistance(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		dist float64
