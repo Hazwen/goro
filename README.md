@@ -244,7 +244,6 @@ These are tutorials on how to setup a development environment.
 - [rAthena server setup](docs/rathena-setup.md)
 - [Hercules server setup](docs/hercules-setup.md)
 - [Client setup](docs/client-setup.md)
-- [Homunculus and mercenary support](docs/companions-20080910.md)
 - [Lua bot scripting](docs/bot-scripting.md)
 
 Runtime data is discovered from, in order:
@@ -294,7 +293,7 @@ Currently implemented (not a claim of complete reference-client parity):
  * Battle and Gameplay
    * Enemies
    * Classic PvP map targeting and rank counter
-   * [War of Emperium (2008 FE/SE client behavior)](docs/woe-20080910.md)
+   * War of Emperium (2008 FE/SE client behavior)
    * Path finding
    * Continuous held-click walking
    * Drops
@@ -341,7 +340,7 @@ Currently implemented (not a claim of complete reference-client parity):
    * Card composition
    * Trading
    * Vending
-   * [Legacy mail with item and Zeny attachments](docs/legacy-mail-20080910.md)
+   * Legacy mail with item and Zeny attachments
    * Show equipment
    * Alchemist crafting
    * Blacksmith repair and weapon refinement

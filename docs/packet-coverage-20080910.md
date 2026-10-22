@@ -128,9 +128,6 @@ packet. eAthena and Hercules both gate `clif_displayexp()` behind
 packet to the 2008 Sakray profile; `@showexp` remains the server text-message
 path for green EXP percentage lines.
 
-See [homunculus and mercenary support](companions-20080910.md) for the current
-companion UI, AI, skill, and visual coverage.
-
 | Opcode | Direction | Status | Scope | Goro refs |
 |---:|---|---|---|---|
 | `0x022E` | S->C | implemented | 2008 full homunculus property and legacy refresh path | companion_packets.go, packet.go |
