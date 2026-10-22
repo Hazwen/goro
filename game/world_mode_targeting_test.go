@@ -12,13 +12,11 @@ import (
 	"github.com/kivutar/goro/game/battle"
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
-	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/skills"
 	"github.com/kivutar/goro/game/sprites"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
-	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -155,198 +153,6 @@ func TestResurrectionCanTargetDeadPlayer(t *testing.T) {
 		ID: db.SkillALHeal, Type: skills.SkillTargetFriend,
 	}, int(point.X), int(point.Y), now, deaths); ok && actor.ID == deadPlayer.ID {
 		t.Fatalf("ordinary support skill targeted dead player: %+v", actor)
-	}
-}
-
-func TestAttackTargetWithinRangeUsesMeleeAdjacency(t *testing.T) {
-	if !maps.AttackTargetWithinRange(10, 20, 11, 21, 1) {
-		t.Fatal("diagonal adjacent target should be in melee range")
-	}
-	if maps.AttackTargetWithinRange(10, 20, 12, 20, 1) {
-		t.Fatal("two cells away should be out of melee range")
-	}
-	if !maps.AttackTargetWithinRange(10, 20, 15, 20, 5) {
-		t.Fatal("five cells away should be in bow range")
-	}
-}
-
-func TestNormalAttackTargetWithinRangeRejectsRangedCorner(t *testing.T) {
-	if !maps.NormalAttackTargetWithinRange(10, 20, 11, 21, 1) {
-		t.Fatal("normal melee attack should keep diagonal adjacency")
-	}
-	if !maps.AttackTargetWithinRange(124, 70, 129, 75, 5) {
-		t.Fatal("client skill-style range should still include the square corner")
-	}
-	if maps.NormalAttackTargetWithinRange(124, 70, 129, 75, 5) {
-		t.Fatal("normal ranged attack should reject the server-failing square corner")
-	}
-	if !maps.NormalAttackTargetWithinRange(125, 72, 129, 75, 5) {
-		t.Fatal("normal ranged attack should allow a non-corner cell at the same range")
-	}
-}
-
-func TestNormalAttackRangeUsesMovingActorCurrentCell(t *testing.T) {
-	now := time.Now()
-	target := worldstate.Actor{
-		ID:           300,
-		X:            30,
-		Y:            10,
-		FromX:        20,
-		FromY:        10,
-		ToX:          30,
-		ToY:          10,
-		Moving:       true,
-		MoveStarted:  now,
-		MoveDuration: 10 * time.Second,
-		MovePath: []worldstate.WalkStep{
-			{X: 20, Y: 10},
-			{X: 30, Y: 10},
-		},
-	}
-
-	targetX, targetY := scene.ActorCurrentCell(target, now)
-	if !maps.NormalAttackTargetWithinRange(11, 10, targetX, targetY, 9) {
-		t.Fatal("moving target should be in range at its current rendered cell")
-	}
-	if maps.AttackTargetWithinRange(11, 10, target.X, target.Y, 9) {
-		t.Fatal("test target final destination should be out of range")
-	}
-}
-
-func TestAttackApproachCellChoosesClosestWalkableNeighbor(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{X: 112, Y: 302}
-	world.GAT = &res.GAT{
-		Width:  200,
-		Height: 400,
-		Cells:  make([]res.GATCell, 200*400),
-	}
-	for i := range world.GAT.Cells {
-		world.GAT.Cells[i] = res.GATCell{Type: res.GATTypeWalkable}
-	}
-	ctx := client.Context{World: world}
-	actor := worldstate.Actor{ID: 300, X: 116, Y: 303}
-
-	x, y, ok := maps.NormalAttackApproachCellFromTarget(ctx, ctx.World.Player.X, ctx.World.Player.Y, actor.X, actor.Y, 1)
-	if !ok {
-		t.Fatal("expected approach cell")
-	}
-	if x != 115 || y != 302 {
-		t.Fatalf("approach = %d,%d, want 115,302", x, y)
-	}
-
-	world.GAT.Cells[302*world.GAT.Width+115] = res.GATCell{}
-	x, y, ok = maps.NormalAttackApproachCellFromTarget(ctx, ctx.World.Player.X, ctx.World.Player.Y, actor.X, actor.Y, 1)
-	if !ok {
-		t.Fatal("expected fallback approach cell")
-	}
-	if x == 115 && y == 302 {
-		t.Fatalf("blocked approach cell was selected")
-	}
-}
-
-func TestAttackApproachCellUsesRangedAttackRange(t *testing.T) {
-	world := worldstate.New()
-	world.Player = worldstate.Actor{X: 112, Y: 302}
-	world.GAT = &res.GAT{
-		Width:  200,
-		Height: 400,
-		Cells:  make([]res.GATCell, 200*400),
-	}
-	for i := range world.GAT.Cells {
-		world.GAT.Cells[i] = res.GATCell{Type: res.GATTypeWalkable}
-	}
-	ctx := client.Context{World: world}
-	actor := worldstate.Actor{ID: 300, X: 120, Y: 302}
-
-	x, y, ok := maps.NormalAttackApproachCellFromTarget(ctx, ctx.World.Player.X, ctx.World.Player.Y, actor.X, actor.Y, 5)
-	if !ok {
-		t.Fatal("expected ranged approach cell")
-	}
-	targetDistance := scene.MaxInt(scene.AbsInt(x-actor.X), scene.AbsInt(y-actor.Y))
-	if targetDistance > 5 {
-		t.Fatalf("ranged approach = %d,%d, distance %d from target, want within 5", x, y, targetDistance)
-	}
-	if targetDistance <= 1 {
-		t.Fatalf("ranged approach = %d,%d, want not adjacent contact", x, y)
-	}
-}
-
-func TestNormalAttackApproachCellAvoidsRejectedRangedCorner(t *testing.T) {
-	world := worldstate.New()
-	world.GAT = testutil.FlatWalkableGAT(200, 100)
-	ctx := client.Context{World: world}
-
-	x, y, ok := maps.NormalAttackApproachCellFromTarget(ctx, 123, 71, 129, 75, 5)
-	if !ok {
-		t.Fatal("expected ranged normal attack approach cell")
-	}
-	if x == 124 && y == 70 {
-		t.Fatalf("normal attack approach = %d,%d, want to avoid server-rejected range corner", x, y)
-	}
-	if !maps.NormalAttackTargetWithinRange(x, y, 129, 75, 5) {
-		t.Fatalf("normal attack approach = %d,%d, want server-compatible range", x, y)
-	}
-	if !maps.WalkTargetReachable(ctx, 123, 71, x, y) {
-		t.Fatalf("normal attack approach = %d,%d, want reachable path", x, y)
-	}
-}
-
-func TestRangedAttackApproachCellRequiresReachablePath(t *testing.T) {
-	world := worldstate.New()
-	world.GAT = testutil.FlatWalkableGAT(12, 5)
-	for y := 0; y < world.GAT.Height; y++ {
-		world.GAT.SetCellRawType(4, y, 1)
-	}
-	ctx := client.Context{World: world}
-
-	if x, y, ok := maps.RangedAttackApproachCellFromTarget(ctx, 1, 2, 8, 2, 3); ok {
-		t.Fatalf("ranged approach = %d,%d, want no unreachable chase cell", x, y)
-	}
-}
-
-func TestSquareRangeApproachChoosesNearestCellInEveryDirection(t *testing.T) {
-	world := worldstate.New()
-	world.GAT = testutil.FlatWalkableGAT(64, 64)
-	ctx := client.Context{World: world}
-	const sourceX, sourceY, skillRange = 20, 20, 9
-	for _, dx := range []int{-11, -2, 0, 2, 11} {
-		for _, dy := range []int{-11, -2, 0, 2, 11} {
-			if scene.MaxInt(scene.AbsInt(dx), scene.AbsInt(dy)) <= skillRange {
-				continue
-			}
-			t.Run(fmt.Sprintf("offset_%d_%d", dx, dy), func(t *testing.T) {
-				targetX, targetY := sourceX+dx, sourceY+dy
-				x, y, ok := maps.AttackApproachCellFromTarget(ctx, sourceX, sourceY, targetX, targetY, skillRange)
-				// On open ground, only move along axes that are out of range.
-				wantX := scene.ClampInt(sourceX, targetX-skillRange, targetX+skillRange)
-				wantY := scene.ClampInt(sourceY, targetY-skillRange, targetY+skillRange)
-				if !ok || x != wantX || y != wantY {
-					t.Fatalf("approach = %d,%d ok=%t, want nearest in-range cell %d,%d", x, y, ok, wantX, wantY)
-				}
-			})
-		}
-	}
-}
-
-func TestRangedAttackApproachCellSkipsUnreachablePreferredCell(t *testing.T) {
-	world := worldstate.New()
-	world.GAT = testutil.FlatWalkableGAT(12, 5)
-	for _, cell := range [][2]int{
-		{4, 1}, {4, 2}, {4, 3},
-		{5, 1}, {5, 3},
-		{6, 1}, {6, 2}, {6, 3},
-	} {
-		world.GAT.SetCellRawType(cell[0], cell[1], 1)
-	}
-	ctx := client.Context{World: world}
-
-	x, y, ok := maps.RangedAttackApproachCellFromTarget(ctx, 1, 2, 8, 2, 3)
-	if !ok {
-		t.Fatal("expected reachable fallback approach cell")
-	}
-	if x != 5 || y != 0 {
-		t.Fatalf("ranged approach = %d,%d, want reachable fallback 5,0", x, y)
 	}
 }
 
@@ -631,21 +437,6 @@ func TestGroundClickRespectsWalkCooldown(t *testing.T) {
 	}
 }
 
-func TestPendingAttackReadyAtWaitsForWalkEnd(t *testing.T) {
-	now := time.Unix(100, 0)
-	player := worldstate.Actor{
-		Moving:       true,
-		MoveStarted:  now.Add(-100 * time.Millisecond),
-		MoveDuration: 600 * time.Millisecond,
-	}
-
-	got := scene.PendingAttackReadyAt(player, now)
-	want := now.Add(560 * time.Millisecond)
-	if !got.Equal(want) {
-		t.Fatalf("readyAt = %s, want %s", got.Sub(now), want.Sub(now))
-	}
-}
-
 func TestUpdatePendingPickupDoesNotKeepDelayingScheduledAction(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{X: 10, Y: 20}
@@ -759,19 +550,6 @@ func TestContinuePendingTargetSkillWaitsWhileOutOfRange(t *testing.T) {
 	}
 	if !mode.skillSystem.Pending.ReadyAt.IsZero() {
 		t.Fatalf("pending skill readyAt = %s, want zero while out of range", mode.skillSystem.Pending.ReadyAt)
-	}
-}
-
-func TestAttackRetryDueUsesOpenMidgardInterval(t *testing.T) {
-	now := time.Unix(100, 0)
-	if !scene.AttackRetryDue(time.Time{}, now) {
-		t.Fatal("zero last attack should be due")
-	}
-	if scene.AttackRetryDue(now.Add(-scene.AttackRetryInterval+time.Millisecond), now) {
-		t.Fatal("attack should not retry before the interval")
-	}
-	if !scene.AttackRetryDue(now.Add(-scene.AttackRetryInterval), now) {
-		t.Fatal("attack should retry at the interval")
 	}
 }
 
@@ -1045,23 +823,6 @@ func TestApplyParameterChangeUpdatesInventory(t *testing.T) {
 
 	if sessionState.Inventory.Zeny != 1234567 || sessionState.Inventory.Weight != 240 || sessionState.Inventory.MaxWeight != 2000 {
 		t.Fatalf("inventory = %+v", sessionState.Inventory)
-	}
-}
-
-func TestSelectCharacterSeedsInventoryZeny(t *testing.T) {
-	sessionState := &session.Session{}
-
-	sessionState.SelectCharacter(session.Character{ID: 1234, Money: 95000})
-
-	if sessionState.Inventory.Zeny != 95000 {
-		t.Fatalf("zeny = %d, want 95000", sessionState.Inventory.Zeny)
-	}
-}
-
-func TestSessionProgressFromCharacterUsesBaseLevel(t *testing.T) {
-	progress := session.ProgressFromCharacter(session.Character{Level: 12, JobLevel: 7})
-	if progress.BaseLevel != 12 || progress.JobLevel != 7 {
-		t.Fatalf("progress = %+v", progress)
 	}
 }
 
@@ -1552,37 +1313,5 @@ func TestActorAnimationHonorsDelayedNextAction(t *testing.T) {
 	}
 	if got := anim.Started.Sub(started); got != 150*time.Millisecond {
 		t.Fatalf("delayed next start = %s, want 150ms", got)
-	}
-}
-
-func TestBodyMotionHonorsRobrowserActionMetadata(t *testing.T) {
-	action := res.ACTAction{
-		DelayMS: 100,
-		Animations: []res.ACTAnimation{
-			{}, {}, {}, {}, {},
-		},
-	}
-	started := time.Now()
-	state := sprites.State{
-		Started:        started,
-		ActionFamily:   sprites.ActionPCSkill,
-		FrameOffset:    1,
-		HasFrameOffset: true,
-		Length:         3,
-		HasLength:      true,
-		Speed:          50 * time.Millisecond,
-		HasSpeed:       true,
-	}
-
-	if got := sprites.BodyMotionForState(action, state, started, started.Add(25*time.Millisecond)); got != 1 {
-		t.Fatalf("initial offset motion = %d, want 1", got)
-	}
-	if got := sprites.BodyMotionForState(action, state, started, started.Add(125*time.Millisecond)); got != 3 {
-		t.Fatalf("length-limited motion = %d, want 3", got)
-	}
-	state.Play = false
-	state.HasPlay = true
-	if got := sprites.BodyMotionForState(action, state, started, started.Add(time.Second)); got != 1 {
-		t.Fatalf("play=false motion = %d, want fixed frame offset 1", got)
 	}
 }

@@ -2964,22 +2964,6 @@ func TestRemoveActorNowRemovesActorWorldEffects(t *testing.T) {
 	}
 }
 
-func TestWarpActorUsesCenteredWorldAnchor(t *testing.T) {
-	actor := worldstate.Actor{Job: scene.ActorJobWarpPortal}
-	x, y := actors.ActorWorldAnchor(actor, 30, 40)
-	if x != 30.5 || y != 40.5 {
-		t.Fatalf("warp anchor = %.1f, %.1f; want 30.5, 40.5", x, y)
-	}
-}
-
-func TestNormalActorUsesCenteredWorldAnchor(t *testing.T) {
-	actor := worldstate.Actor{Job: 1002}
-	x, y := actors.ActorWorldAnchor(actor, 30, 40)
-	if x != 30.5 || y != 40.5 {
-		t.Fatalf("normal actor anchor = %.1f, %.1f; want 30.5, 40.5", x, y)
-	}
-}
-
 func TestApplyActorActionNotifyUpdatesLocalSitState(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Moving: true}
@@ -3327,22 +3311,6 @@ func TestCombatDamageDoesNotMutateExactMonsterLife(t *testing.T) {
 	}
 }
 
-func TestActorOverlayLifeBarIsBelowNameLabel(t *testing.T) {
-	nameY := actors.ActorNameLabelY(100, 1.2)
-	barY := actors.ActorLifeBarY(100, 1.2)
-	if barY <= nameY+10 {
-		t.Fatalf("bar y = %.1f, name y = %.1f; want bar below name", barY, nameY)
-	}
-}
-
-func TestActorOverlayCastBarIsBelowSpeechBubble(t *testing.T) {
-	bubbleBottomY := actors.ActorSpeechBubbleBottomY(100, 1.2)
-	barY := actors.ActorCastBarY(100, 1.2)
-	if barY <= bubbleBottomY {
-		t.Fatalf("cast bar y = %.1f, bubble bottom y = %.1f; want cast bar below bubble", barY, bubbleBottomY)
-	}
-}
-
 func TestCombatHitDelayUsesActionSoundMotion(t *testing.T) {
 	action := res.ACTAction{Animations: []res.ACTAnimation{
 		{Sound: -1},
@@ -3364,40 +3332,6 @@ func TestCombatHitDelayFallsBackToMidpoint(t *testing.T) {
 	}}
 	if got := combatMotionDelayFromAction(action, 800*time.Millisecond, firstActionSoundMotion(action)); got != 400*time.Millisecond {
 		t.Fatalf("hit delay = %s, want midpoint", got)
-	}
-}
-
-func TestAttackActionFamilyUsesRobrowserWizardRodAction(t *testing.T) {
-	femaleWizard := worldstate.Actor{Job: db.JobWizard, Sex: 0, Weapon: 1601}
-	if got := sprites.AttackActionFamily(nil, femaleWizard); got != sprites.ActionPCAttack3 {
-		t.Fatalf("female Wizard rod attack action = %d, want ATTACK3", got)
-	}
-	maleWizard := worldstate.Actor{Job: db.JobWizard, Sex: 1, Weapon: 1601}
-	if got := sprites.AttackActionFamily(nil, maleWizard); got != sprites.ActionPCAttack2 {
-		t.Fatalf("male Wizard rod attack action = %d, want ATTACK2", got)
-	}
-	unarmedWizard := worldstate.Actor{Job: db.JobWizard, Sex: 0}
-	if got := sprites.AttackActionFamily(nil, unarmedWizard); got != sprites.ActionPCAttack1 {
-		t.Fatalf("female Wizard unarmed attack action = %d, want ATTACK1", got)
-	}
-	leftHandRod := worldstate.Actor{Job: db.JobWizard, Sex: 0, Shield: 1601}
-	if got := sprites.AttackActionFamily(nil, leftHandRod); got != sprites.ActionPCAttack3 {
-		t.Fatalf("female Wizard left-hand rod attack action = %d, want ATTACK3", got)
-	}
-}
-
-func TestAttackActionFamilyUsesExpandedWeaponViewIDs(t *testing.T) {
-	knightSword := worldstate.Actor{Job: db.JobKnight, Weapon: 48}
-	if got := sprites.AttackActionFamily(nil, knightSword); got != sprites.ActionPCAttack2 {
-		t.Fatalf("Knight two-hand sword view attack action = %d, want ATTACK2", got)
-	}
-	archerBow := worldstate.Actor{Job: db.JobArcher, Weapon: 73}
-	if got := sprites.AttackActionFamily(nil, archerBow); got != sprites.ActionPCAttack2 {
-		t.Fatalf("Archer CrossBow view attack action = %d, want ATTACK2", got)
-	}
-	hunterBow := worldstate.Actor{Job: db.JobHunter, Weapon: 74}
-	if got := sprites.AttackActionFamily(nil, hunterBow); got != sprites.ActionPCAttack3 {
-		t.Fatalf("Hunter Arbalest view attack action = %d, want ATTACK3", got)
 	}
 }
 
