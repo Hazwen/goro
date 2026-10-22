@@ -18,6 +18,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/scripts"
@@ -476,6 +477,9 @@ func (c *ChatConsole) submitCommand(ctx client.Context, text string) bool {
 	case "/mineffect":
 		c.submitLessEffects(ctx)
 		return true
+	case "/fog", "/aura":
+		c.submitVisualSetting(ctx, command)
+		return true
 	case "/hoai":
 		c.submitCompanionAI(ctx, true)
 		return true
@@ -592,6 +596,26 @@ func (c *ChatConsole) submitScreenshot(ctx client.Context) {
 		return
 	}
 	c.AddSystemMessage("Screenshot: %s", path)
+}
+
+func (c *ChatConsole) submitVisualSetting(ctx client.Context, command string) {
+	if ctx.Session == nil {
+		c.AddErrorMessage("%s failed: no session", strings.TrimPrefix(command, "/"))
+		return
+	}
+	setting, label := &ctx.Session.FogEnabled, "Fog"
+	if command == "/aura" {
+		setting, label = &ctx.Session.SimpleAura, "Simple Aura"
+	}
+	*setting = !*setting
+	status := "Off"
+	if *setting {
+		status = "On"
+	}
+	c.AddSystemMessage("%s: %s", label, status)
+	if _, err := ctx.Config.SaveVisualSettings(ctx.Session.FogEnabled, ctx.Session.SimpleAura); err != nil {
+		glog.Warnf("settings save failed: %v", err)
+	}
 }
 
 func (c *ChatConsole) submitLessEffects(ctx client.Context) {

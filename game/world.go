@@ -1249,7 +1249,11 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 	width, height := screen.Bounds().Dx(), screen.Bounds().Dy()
 	now := time.Now()
 	projection := m.sceneProjection(ctx, width, height, now)
-	fog := weather.FogFromMap(ctx.Resources, ctx.World.MapName, ctx.Config.Fog)
+	fogConfig := ctx.Config.Fog
+	if ctx.Session != nil {
+		fogConfig.Enabled = ctx.Session.FogEnabled
+	}
+	fog := weather.FogFromMap(ctx.Resources, ctx.World.MapName, fogConfig)
 	maps.ClearWorldScene(screen, ctx.World.MapName)
 	var actorOverlays []scene.ActorDrawEntry
 	screen.SetCamera3D(projection.RenderCameraWithFog(fog))

@@ -18,6 +18,8 @@ type Session struct {
 	BattleMode           bool
 	ScriptPath           string // Runtime override; empty uses the configured script.
 	LessEffects          bool
+	FogEnabled           bool
+	SimpleAura           bool
 	HomunculusCustomAI   bool
 	HomunculusAggressive bool
 	MercenaryCustomAI    bool
@@ -61,7 +63,7 @@ type Session struct {
 }
 
 func New() *Session {
-	return &Session{Whisper: DefaultWhisperSettings()}
+	return &Session{FogEnabled: true, Whisper: DefaultWhisperSettings()}
 }
 
 func (s *Session) SelectCharacter(character Character) {

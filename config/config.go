@@ -98,6 +98,7 @@ type GameplayConfig struct {
 	NoShift     bool
 	NoCtrl      bool
 	LessEffects bool
+	SimpleAura  bool
 	SnapTargets bool
 	SnapItems   bool
 	ForceUserAI bool
@@ -192,6 +193,17 @@ func NextScreenshotPath(now time.Time) (string, error) {
 		name = fmt.Sprintf("goro-%s-%02d.png", now.Format("20060102-150405"), i)
 		path = filepath.Join(dir, name)
 	}
+}
+
+func (cfg Config) SaveVisualSettings(fogEnabled, simpleAura bool) (string, error) {
+	return cfg.saveConfigValues(map[string]map[string]string{
+		"fog": {
+			"enabled": formatINIValueBool(fogEnabled),
+		},
+		"gameplay": {
+			"simple_aura": formatINIValueBool(simpleAura),
+		},
+	})
 }
 
 func (cfg Config) SaveUserSettings(settings UserSettings) (string, error) {
@@ -552,6 +564,8 @@ func applyConfigValue(cfg *Config, section, key, value string) error {
 		return setBool(value, &cfg.Gameplay.NoCtrl)
 	case "gameplay.lesseffects", "gameplay.lesseffect", "gameplay.mineffect", "gameplay.less_effects", "gameplay.less_effect":
 		return setBool(value, &cfg.Gameplay.LessEffects)
+	case "gameplay.simpleaura":
+		return setBool(value, &cfg.Gameplay.SimpleAura)
 	case "gameplay.snap", "gameplay.snaptargets", "gameplay.targetsnap":
 		return setBool(value, &cfg.Gameplay.SnapTargets)
 	case "gameplay.itemsnap", "gameplay.snapitems", "gameplay.itemsnapping":
@@ -619,7 +633,7 @@ func validateAnisotropy(level int) error {
 }
 
 func upsertINIValues(src string, values map[string]map[string]string) string {
-	sectionOrder := []string{"window", "render", "audio", "gameplay", "login", "chatshortcuts", "script", "ui"}
+	sectionOrder := []string{"window", "render", "audio", "fog", "gameplay", "login", "chatshortcuts", "script", "ui"}
 	seenSections := make(map[string]bool)
 	written := make(map[string]map[string]bool)
 	for section := range values {

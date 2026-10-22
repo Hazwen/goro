@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -91,6 +92,42 @@ func TestConsoleNoCtrlCommandTogglesSessionPreference(t *testing.T) {
 	console.submitText(ctx, "/noctrl")
 	if sessionState.NoCtrl {
 		t.Fatal("noctrl was not disabled")
+	}
+}
+
+func TestConsoleVisualCommandsStayLocalAndSave(t *testing.T) {
+	console := &ChatConsole{}
+	ctx := client.Context{
+		Config:  config.Config{ConfigPath: filepath.Join(t.TempDir(), "goro.ini")},
+		Session: session.New(),
+	}
+	for _, step := range []struct {
+		command         string
+		fog, simpleAura bool
+		message         string
+	}{
+		{" /FOG ", false, false, "Fog: Off"},
+		{"/aura", false, true, "Simple Aura: On"},
+		{"/fog", true, true, "Fog: On"},
+		{" /AURA ", true, false, "Simple Aura: Off"},
+	} {
+		if !console.SendText(ctx, step.command) {
+			t.Fatalf("%q fell through to server chat", step.command)
+		}
+		if ctx.Session.FogEnabled != step.fog || ctx.Session.SimpleAura != step.simpleAura || ctx.Session.LessEffects {
+			t.Fatalf("%q: fog=%t simple aura=%t less effects=%t", step.command, ctx.Session.FogEnabled, ctx.Session.SimpleAura, ctx.Session.LessEffects)
+		}
+		messages := console.Messages()
+		if got := messages[len(messages)-1].Text; got != step.message {
+			t.Fatalf("%q: message = %q, want %q", step.command, got, step.message)
+		}
+		saved, err := config.LoadConfig([]string{"--config", ctx.Config.ConfigPath})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if saved.Fog.Enabled != step.fog || saved.Gameplay.SimpleAura != step.simpleAura {
+			t.Fatalf("%q: saved fog=%t simple aura=%t", step.command, saved.Fog.Enabled, saved.Gameplay.SimpleAura)
+		}
 	}
 }
 
