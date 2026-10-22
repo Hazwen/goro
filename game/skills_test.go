@@ -4134,6 +4134,52 @@ func TestSpecialEffectNotifyMapsServerResultEffects(t *testing.T) {
 	}
 }
 
+func TestCookingListSelectionAndCancellation(t *testing.T) {
+	netClient, server := testutil.NewConnection(t, 20080910)
+	mode := NewWorldMode()
+	ctx := client.Context{Input: input.NewState(), Network: netClient, ScreenW: 800, ScreenH: 600}
+	press := func(key input.Key) {
+		ctx.Input.SetKey(key, true)
+		if !mode.ui.makingItem.Update(ctx) {
+			t.Fatalf("key %v was not consumed", key)
+		}
+		ctx.Input.EndFrame()
+		ctx.Input.SetKey(key, false)
+		ctx.Input.EndFrame()
+	}
+	for _, makeType := range []byte{1, 2, 3} {
+		data := []byte{0x5a, 0x02, 10, 0, makeType, 0, 0xe1, 0x2e, 0xe2, 0x2e}
+		packet := network.Packet{ID: network.PacketZCMakingItemList, Data: data}
+		mode.handleNetworkPacket(ctx, packet, time.Now())
+		if !mode.ui.makingItem.IsOpen() {
+			t.Fatal("cooking packet did not open the item selection window")
+		}
+		press(input.KeyArrowDown)
+		press(input.KeyEnter)
+		testutil.ReadPackets(t, server, []byte{0x5b, 0x02, makeType, 0, 0xe2, 0x2e})
+		if mode.ui.makingItem.IsOpen() {
+			t.Fatal("selection left the cooking window open")
+		}
+		mode.handleNetworkPacket(ctx, packet, time.Now())
+		press(input.KeyEscape)
+		testutil.ReadPackets(t, server, []byte{0x5b, 0x02, makeType, 0, 0xff, 0xff})
+		if mode.ui.makingItem.IsOpen() {
+			t.Fatal("cancellation left the cooking window open")
+		}
+	}
+	// Reopening the shared window for forging must restore its original reply.
+	data := []byte{0x8d, 0x01, 12, 0, 0xf5, 1, 0xe8, 3, 0xde, 3, 5, 0}
+	mode.handleNetworkPacket(ctx, network.Packet{ID: network.PacketZCMakableItemList, Data: data}, time.Now())
+	press(input.KeyEnter)
+	testutil.ReadPackets(t, server, []byte{0x8e, 0x01, 0xf5, 1, 0xe8, 3, 0xde, 3, 5, 0})
+	// An empty recipe list still releases the server's crafting menu.
+	mode.handleNetworkPacket(ctx, network.Packet{ID: network.PacketZCMakingItemList, Data: []byte{0x5a, 0x02, 6, 0, 1, 0}}, time.Now())
+	testutil.ReadPackets(t, server, []byte{0x5b, 0x02, 1, 0, 0xff, 0xff})
+	if mode.ui.makingItem.IsOpen() {
+		t.Fatal("empty cooking list left a window open")
+	}
+}
+
 func TestMakingItemWindowEnterConsumesBeforeConsole(t *testing.T) {
 	inputState := input.NewState()
 	netClient := network.NewClient(20080910, false)

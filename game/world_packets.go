@@ -485,6 +485,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		m.ui.makingItem.OpenList(ctx, makingList)
 		return nil, false
 	}
+	if makingList, ok, err := network.ParseMakingItemList(pkt); err != nil {
+		glog.Errorf("parse cooking item list 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		m.ui.makingItem.OpenList(ctx, makingList)
+		return nil, false
+	}
 	if makingAck, ok, err := network.ParseMakingItemAck(pkt); err != nil {
 		glog.Errorf("parse item creation ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {
