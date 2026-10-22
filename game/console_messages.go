@@ -118,3 +118,30 @@ func formatPickupConsoleMessage(manager *res.Manager, pickup network.ItemPickupA
 	}
 	return template
 }
+
+func formatMVPRewardMessage(manager *res.Manager, reward network.MVPReward) string {
+	message := func(id int, fallback string) string {
+		if manager != nil {
+			if text, ok := manager.MsgString(id); ok && text != "" {
+				return text
+			}
+		}
+		return fallback
+	}
+	switch reward.PacketID {
+	case network.PacketZCMVPItem:
+		name := fmt.Sprintf("item %d", reward.Value)
+		if manager != nil {
+			if text, ok := manager.ItemDisplayName(int(reward.Value), true); ok && text != "" {
+				name = text
+			}
+		}
+		return fmt.Sprintf("%s %s %s", message(143, "Congratulations! You are the MVP! Your reward item is"), name, message(144, "!!"))
+	case network.PacketZCMVPExp:
+		return fmt.Sprintf("%s %d %s", message(145, "Congratulations! You are the MVP! Your reward EXP Points are"), reward.Value, message(146, "!!"))
+	case network.PacketZCThrowMVPItem:
+		return message(147, "You are the MVP, but cannot obtain the reward because you are overweight.")
+	default:
+		return ""
+	}
+}

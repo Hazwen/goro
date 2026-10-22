@@ -900,6 +900,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		social.ApplyPartyChat(ctx, partyChat, &m.ui.console)
 		return nil, false
 	}
+	if pickup, ok, err := network.ParsePartyItemPickup(pkt); err != nil {
+		glog.Errorf("parse party item pickup 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		m.social().HandlePartyItemPickup(ctx, pickup)
+		return nil, false
+	}
 	if tradeRequest, ok, err := network.ParseTradeRequest(pkt); err != nil {
 		glog.Errorf("parse trade request 0x%04X: %v", pkt.ID, err)
 	} else if ok {
@@ -1389,6 +1395,17 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse mvp effect 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		m.applyMVPNotify(ctx, mvp)
+		return nil, false
+	}
+	if reward, ok, err := network.ParseMVPReward(pkt); err != nil {
+		glog.Errorf("parse mvp reward 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		message := formatMVPRewardMessage(ctx.Resources, reward)
+		if reward.PacketID == network.PacketZCThrowMVPItem {
+			m.ui.console.AddErrorMessage("%s", message)
+		} else {
+			m.ui.console.AddBlueMessage("%s", message)
+		}
 		return nil, false
 	}
 	if skill, ok, err := network.ParseSkillNoDamageNotify(pkt); err != nil {

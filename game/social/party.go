@@ -289,6 +289,26 @@ func ApplyPartyChat(ctx client.Context, chat network.PartyChat, console *gameui.
 	console.AddBlueMessage("%s", msg)
 }
 
+func (m *System) HandlePartyItemPickup(ctx client.Context, pickup network.PartyItemPickup) {
+	name := "Party member"
+	if ctx.Session != nil {
+		if member := findPartyMember(&ctx.Session.Party, pickup.AccountID); member != nil && member.Name != "" {
+			name = member.Name
+		}
+	}
+	itemName := gameui.ItemDisplayName(ctx.Resources, session.InventoryItem{
+		ItemID: pickup.ItemID, Identified: pickup.Identified, Type: pickup.Type,
+		Refine: pickup.Refine, Cards: pickup.Cards,
+	})
+	template := "%s has acquired %s."
+	if ctx.Resources != nil {
+		if text, ok := ctx.Resources.MsgString(1276); ok && text != "" {
+			template = text
+		}
+	}
+	m.bindings.Console.AddBlueMessage(template, name, itemName)
+}
+
 func upsertPartyMember(p *session.Party, member session.PartyMember) {
 	for i := range p.Members {
 		if p.Members[i].AccountID != member.AccountID {
