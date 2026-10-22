@@ -212,6 +212,29 @@ func (m *WorldMode) startSkillNoDamageSourceAnimation(ctx client.Context, notify
 func (m *WorldMode) startSkillCastSourceAnimation(ctx client.Context, notify network.SkillCastNotify, duration time.Duration, now time.Time) {
 	m.faceSkillSource(ctx, notify.SourceID, notify.TargetID, int(notify.X), int(notify.Y))
 	m.startSkillSourceCastAnimation(ctx, notify.SourceID, notify.SkillID, duration, now)
+	local := scene.IsLocalActor(ctx, notify.SourceID)
+	for id, anim := range m.actorSystem.ActorAnims {
+		if id == notify.SourceID || (local && scene.IsLocalActor(ctx, id)) {
+			for step := &anim; step != nil; step = step.Next {
+				step.Casting = true
+			}
+			m.actorSystem.ActorAnims[id] = anim
+		}
+	}
+}
+
+func (m *WorldMode) applySkillCastCancel(ctx client.Context, actorID uint32) {
+	if actorID == 0 {
+		return
+	}
+	m.battle().ClearActorCastBar(ctx, actorID)
+	m.effects().RemoveSkillCastEffects(ctx, actorID)
+	local := scene.IsLocalActor(ctx, actorID)
+	for id, anim := range m.actorSystem.ActorAnims {
+		if anim.Casting && (id == actorID || (local && scene.IsLocalActor(ctx, id))) {
+			m.clearActorAction(ctx, id)
+		}
+	}
 }
 
 func (m *WorldMode) startSkillSourceCastAnimation(ctx client.Context, sourceID uint32, skillID uint16, duration time.Duration, now time.Time) {

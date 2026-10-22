@@ -395,7 +395,6 @@ func (m *WorldMode) applyActorActionNotify(ctx client.Context, action network.Ac
 			m.addNormalAttackBeforeHitEffect(ctx, action, source, sourceOK, projectileAt, projectileDuration)
 		}
 		if dealsDamage {
-			m.battle().ClearActorCastBar(ctx, action.TargetID)
 			m.addNormalAttackHitEffect(ctx, action, target, targetOK, hitAt)
 			if actionHasHitReaction(action) && skillTargetUsesHitReaction(action, sourceLocal, targetLocal) {
 				hurtDuration := combatDuration(action.TargetSpeed, scene.DefaultHitAnimationDuration)

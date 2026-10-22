@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"time"
 
 	"github.com/kivutar/goro/client"
@@ -297,22 +298,40 @@ func (m *System) ReplaceCraftingResultEffect(ctx client.Context, notify network.
 	}
 }
 
+func (m *System) RemoveSkillCastEffects(ctx client.Context, sourceID uint32) {
+	if sourceID == 0 {
+		return
+	}
+	local := scene.IsLocalActor(ctx, sourceID)
+	m.Active = slices.DeleteFunc(m.Active, func(effect Instance) bool {
+		return effect.castSourceID == sourceID || (local && scene.IsLocalActor(ctx, effect.castSourceID))
+	})
+}
+
 func (m *System) AddSkillCastEffects(ctx client.Context, skillID uint16, property uint32, sourceID, targetID uint32, cellX, cellY int, duration time.Duration, starts time.Time, source string) {
 	if duration <= 0 || sourceID == 0 {
 		return
 	}
+	m.RemoveSkillCastEffects(ctx, sourceID)
+	first := len(m.Active)
+	defer func() {
+		// Target and ground markers belong to the caster too, not their anchor.
+		for i := first; i < len(m.Active); i++ {
+			m.Active[i].castSourceID = sourceID
+		}
+	}()
 	if targetID == 0 && (cellX != 0 || cellY != 0) {
 		markerSize := skillCastGroundSampleSize(skillID)
 		markerRotationSpeed := skillCastGroundSampleRotationRadiansPerSecond(skillID)
-		if m.AddCellRotationIfMissing(ctx, GroundSample, 0, cellX, cellY, starts, duration, markerSize, markerRotationSpeed) {
+		if m.addCellRotation(ctx, GroundSample, 0, cellX, cellY, starts, duration, markerSize, markerRotationSpeed) {
 			glog.Debugf("skill cast ground marker source=%s skill=%d src=%d cell=%d,%d delay_ms=%d", source, skillID, sourceID, cellX, cellY, duration.Milliseconds())
 		}
 	}
-	if m.AddBetweenIfMissing(ctx, CastRing, sourceID, 0, starts, duration) {
+	if m.AddBetweenDuration(ctx, CastRing, sourceID, 0, starts, duration) {
 		glog.Debugf("skill cast circle source=%s skill=%d src=%d target=%d delay_ms=%d", source, skillID, sourceID, targetID, duration.Milliseconds())
 	}
 	if targetID != 0 && targetID != sourceID {
-		if m.AddBetweenIfMissing(ctx, LockOnTarget, targetID, 0, starts, duration) {
+		if m.AddBetweenDuration(ctx, LockOnTarget, targetID, 0, starts, duration) {
 			glog.Debugf("skill cast target lockon source=%s skill=%d src=%d target=%d delay_ms=%d", source, skillID, sourceID, targetID, duration.Milliseconds())
 		}
 	}
@@ -384,7 +403,7 @@ func (m *System) AddSkillCastEffects(ctx client.Context, skillID uint16, propert
 	if effectID <= 0 {
 		return
 	}
-	if m.AddBetweenIfMissing(ctx, effectID, sourceID, targetID, starts, duration) {
+	if m.AddBetweenDuration(ctx, effectID, sourceID, targetID, starts, duration) {
 		glog.Debugf("skill cast aura source=%s skill=%d src=%d target=%d property=%d effect=%d delay_ms=%d", source, skillID, sourceID, targetID, property, effectID, duration.Milliseconds())
 	}
 }

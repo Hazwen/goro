@@ -799,6 +799,7 @@ type Instance struct {
 	EffectID                             int
 	ActorID                              uint32
 	TargetID                             uint32
+	castSourceID                         uint32
 	ServerTick                           uint32
 	ActorDirection                       int
 	ActorOrigin                          scene.Point3

@@ -1151,7 +1151,7 @@ func TestApplyActorActionNotifyStopsLocalPlayerMovementOnHit(t *testing.T) {
 	}
 }
 
-func TestApplyActorActionNotifyClearsLocalCastBarOnHit(t *testing.T) {
+func TestApplyActorActionNotifyPreservesLocalCastBarOnHit(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 15, Y: 20, Job: 2}
 	world.UpsertActor(worldstate.Actor{
@@ -1181,8 +1181,8 @@ func TestApplyActorActionNotifyClearsLocalCastBarOnHit(t *testing.T) {
 		Action:      0,
 	})
 
-	if len(mode.battleSystem.ActorCastBars) != 0 {
-		t.Fatalf("cast bars after hit = %+v, want cleared", mode.battleSystem.ActorCastBars)
+	if len(mode.battleSystem.ActorCastBars) != 2 {
+		t.Fatalf("cast bars after hit = %+v, want preserved until server cancellation", mode.battleSystem.ActorCastBars)
 	}
 }
 

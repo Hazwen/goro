@@ -1341,6 +1341,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		m.applySkillCastNotify(ctx, cast)
 		return nil, false
 	}
+	if actorID, ok, err := network.ParseSkillCastCancel(pkt); err != nil {
+		glog.Errorf("parse skill cast cancel 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		m.applySkillCastCancel(ctx, actorID)
+		return nil, false
+	}
 	if groundSkill, ok, err := network.ParseGroundSkillNotify(pkt); err != nil {
 		glog.Errorf("parse ground skill 0x%04X: %v", pkt.ID, err)
 	} else if ok {

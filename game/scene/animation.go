@@ -23,6 +23,7 @@ type ActorAnimation struct {
 	Speed          time.Duration
 	HasSpeed       bool
 	AutoCounter    bool
+	Casting        bool
 	KeepMovement   bool
 	Next           *ActorAnimation
 }

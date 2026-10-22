@@ -3591,6 +3591,75 @@ func TestSkillCastNotifyAddsDurationAura(t *testing.T) {
 	}
 }
 
+func TestSkillCastCancelClearsOnlyTheCasterPresentation(t *testing.T) {
+	for _, ground := range []bool{false, true} {
+		for _, cancelID := range []uint32{2000000, 150000, 300} {
+			t.Run(fmt.Sprintf("ground=%t/cancel=%d", ground, cancelID), func(t *testing.T) {
+				world := worldstate.New()
+				world.Player = worldstate.Actor{ID: 150000, X: 10, Y: 20, Job: db.JobMagician}
+				world.UpsertActor(worldstate.Actor{ID: 300, X: 11, Y: 20, Job: db.JobMagician})
+				world.UpsertActor(worldstate.Actor{ID: 400, X: 12, Y: 20, Job: 1002})
+				ctx := client.Context{Session: &session.Session{AccountID: 2000000, CharID: 150000}, World: world}
+				mode := NewWorldMode()
+				sourceID, otherID := uint32(2000000), uint32(300)
+				if cancelID == 300 {
+					sourceID, otherID = otherID, sourceID
+				}
+				cast := network.SkillCastNotify{SourceID: sourceID, TargetID: 400, SkillID: db.SkillMGFirebolt, Property: 3, DelayTime: 5000}
+				if ground {
+					cast.TargetID, cast.X, cast.Y, cast.SkillID = 0, 12, 20, db.SkillMGThunderstorm
+				}
+				mode.applySkillCastNotify(ctx, cast)
+				cast.SourceID = otherID
+				mode.applySkillCastNotify(ctx, cast)
+				if len(mode.effects().Active) != 6 {
+					t.Fatalf("two casts must each own three effects: %+v", mode.effects().Active)
+				}
+				mode.effects().AddAt(ctx, effects.IncAgility, sourceID, time.Now())
+				wantEffects := append([]effects.Instance(nil), mode.effects().Active[3:]...)
+				otherAnim := mode.actorSystem.ActorAnims[otherID]
+
+				data := []byte{0xB9, 0x01, 0, 0, 0, 0}
+				binary.LittleEndian.PutUint32(data[2:], cancelID)
+				packet := network.Packet{ID: network.PacketZCSkillCastCancel, Data: data}
+				mode.handleNetworkPacket(ctx, packet, time.Now())
+				mode.handleNetworkPacket(ctx, packet, time.Now())
+				if !reflect.DeepEqual(mode.effects().Active, wantEffects) {
+					t.Fatal("cancellation removed another cast/buff or left the cancelled cast's effects")
+				}
+				for _, id := range []uint32{sourceID, cancelID} {
+					if _, ok := mode.battleSystem.ActorCastBars[id]; ok {
+						t.Fatalf("cast bar still present for %d", id)
+					}
+					if _, ok := mode.actorSystem.ActorAnims[id]; ok {
+						t.Fatalf("cast animation still present for %d", id)
+					}
+				}
+				if _, ok := mode.battleSystem.ActorCastBars[otherID]; !ok || !reflect.DeepEqual(mode.actorSystem.ActorAnims[otherID], otherAnim) {
+					t.Fatal("another caster lost its bar or animation")
+				}
+			})
+		}
+	}
+}
+
+func TestSkillCastCancelPreservesReplacementAnimation(t *testing.T) {
+	for _, action := range []int{sprites.ActionPCHurt, sprites.ActionPCDeath, sprites.ActionPCSkill} {
+		ctx := client.Context{Session: &session.Session{AccountID: 2000000, CharID: 150000}, World: worldstate.New()}
+		ctx.World.Player = worldstate.Actor{ID: 150000, Job: db.JobMagician}
+		mode := NewWorldMode()
+		mode.applySkillCastNotify(ctx, network.SkillCastNotify{SourceID: 2000000, SkillID: db.SkillMGFirebolt, Property: 3, DelayTime: 5000})
+		replacement := scene.ActorAnimation{ActionFamily: action, Started: time.Now(), Duration: time.Second}
+		mode.setCombatActorAction(ctx, 2000000, replacement)
+		mode.applySkillCastCancel(ctx, 2000000)
+		for _, id := range []uint32{2000000, 150000} {
+			if got := mode.actorSystem.ActorAnims[id]; !reflect.DeepEqual(got, replacement) {
+				t.Fatalf("replacement animation %d for %d changed: %+v", action, id, got)
+			}
+		}
+	}
+}
+
 func TestArrowRepelCastUsesNativeFlash(t *testing.T) {
 	world := worldstate.New()
 	world.Player = worldstate.Actor{ID: 2000000, X: 10, Y: 20, Dir: 4}
