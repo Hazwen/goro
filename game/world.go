@@ -88,6 +88,7 @@ type WorldMode struct {
 }
 
 type worldUI struct {
+	preferences          windowPreferences
 	pet                  pet.Windows
 	battle               battle.Windows
 	npc                  npc.Windows
@@ -440,6 +441,9 @@ func (m *WorldMode) playMapBGM(ctx client.Context, rswName string) {
 }
 
 func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
+	if !ctx.Config.Headless {
+		defer m.SaveUISettings(ctx)
+	}
 	now := time.Now()
 	if m.mapFade.Phase == maps.FadeOut {
 		if !m.mapFade.Elapsed(now) {
@@ -477,6 +481,9 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 
 	if next, stop := m.handleNetworkPackets(ctx, now); stop {
 		return next, nil
+	}
+	if !ctx.Config.Headless {
+		m.restoreUISettings(ctx)
 	}
 	// Status presentation must follow server updates even when a window or
 	// modal consumes input for the rest of the frame.
@@ -1160,6 +1167,7 @@ func (m *WorldMode) nextWorldMode() *WorldMode {
 	next.camera.zoom = m.camera.zoom
 	next.camera.zoomTarget = m.camera.zoomTarget
 	next.ui.console = m.ui.console
+	next.ui.preferences = m.ui.preferences
 	next.ui.characterWindow = m.ui.characterWindow
 	next.ui.basicMenu = m.ui.basicMenu
 	next.ui.inventoryBag = m.ui.inventoryBag

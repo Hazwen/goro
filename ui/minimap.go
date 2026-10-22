@@ -148,7 +148,8 @@ func (m *Minimap) Update(ctx Context) bool {
 	drawPendingMarker := m.pendingMarker && !markerChanged
 	needsRedraw := fullRedraw || drawPendingMarker
 	if !m.window.IsOpen() {
-		m.window.OpenAt(x, y, m.widgetTree())
+		m.window.SetAutoPosition(x, y)
+		m.window.Open(ctx, m.widgetTree())
 		needsPublish = true
 	} else {
 		if m.window.SetAutoPosition(x, y) {
@@ -183,6 +184,8 @@ func (m *Minimap) Update(ctx Context) bool {
 	m.window.Update(ctx)
 	return wasDragging || m.window.dragging
 }
+
+func (m *Minimap) Hidden() bool { return m.hidden }
 
 func (m *Minimap) Toggle(ctx Context) {
 	m.hidden = !m.hidden

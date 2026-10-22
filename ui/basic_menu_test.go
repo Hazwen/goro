@@ -17,6 +17,22 @@ type inertOverlay struct {
 	widget.WidgetBase
 }
 
+func TestBasicMenuRestoreCollapsedAfterInitialization(t *testing.T) {
+	ctx := Context{Session: session.New(), ScreenW: 800, ScreenH: 600}
+	m := &BasicMenu{}
+	m.Rebind(ctx, BasicMenuCallbacks{})
+	m.SetCollapsed(true)
+	m.Update(ctx, BasicMenuCallbacks{})
+	if !m.Collapsed() || m.height != basicMenuToggleH || m.titleHeight != 0 || m.CloseOnEsc {
+		t.Fatalf("restored menu has incorrect geometry: %+v", m.Window)
+	}
+	m.SetCollapsed(false)
+	_, wantHeight := basicMenuSize(false)
+	if m.height != wantHeight {
+		t.Fatalf("expanded height = %d; want %d", m.height, wantHeight)
+	}
+}
+
 func newInertOverlay() *inertOverlay {
 	w := &inertOverlay{}
 	w.SetVisible(true)

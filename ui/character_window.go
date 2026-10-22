@@ -93,8 +93,22 @@ func (w *CharacterWindow) ToggleCompact() {
 	if !w.IsOpen() {
 		return
 	}
-	w.compact = !w.compact
-	w.SetSize(characterWindowWidth, w.windowHeight())
+	w.SetCompact(!w.compact)
+}
+
+func (w *CharacterWindow) Compact() bool { return w.compact }
+
+func (w *CharacterWindow) SetCompact(compact bool) {
+	if w.compact == compact {
+		return
+	}
+	w.compact = compact
+	if w.width != 0 {
+		w.SetSize(characterWindowWidth, w.windowHeight())
+	}
+	if !w.IsOpen() {
+		return
+	}
 	if !w.compact {
 		_, screenH := w.ctx.ScreenSize()
 		maxY := maxInt(windowScreenMargin, screenH-w.height-w.dragBottom-windowScreenMargin)

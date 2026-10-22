@@ -7,6 +7,7 @@ import (
 	"github.com/gogpu/ui/state"
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/ui/rotheme"
 )
@@ -326,6 +327,7 @@ func (w *Window) Open(ctx client.Context, content widget.Widget) {
 	w.ctx = ctx
 	w.open = true
 	w.ensurePosition(ctx)
+	w.keepOnScreen(ctx)
 	w.SetContent(content)
 }
 
@@ -649,6 +651,21 @@ func (w *Window) keepOnScreen(ctx client.Context) {
 	screenW, screenH := ctx.ScreenSize()
 	x := clampWindowInt(w.x, windowScreenMargin, maxInt(windowScreenMargin, screenW-w.width-windowScreenMargin))
 	y := clampWindowInt(w.y, windowScreenMargin, maxInt(windowScreenMargin, screenH-w.height-windowScreenMargin))
+	w.setPosition(ctx, x, y)
+}
+
+func (w *Window) savedPosition() config.WindowPosition {
+	if !w.userMoved {
+		return config.WindowPosition{}
+	}
+	return config.WindowPosition{X: w.x, Y: w.y, Set: true}
+}
+
+func (w *Window) restorePosition(ctx client.Context, position config.WindowPosition) {
+	screenW, screenH := ctx.ScreenSize()
+	x := clampWindowInt(position.X, windowScreenMargin, maxInt(windowScreenMargin, screenW-w.width-windowScreenMargin))
+	y := clampWindowInt(position.Y, windowScreenMargin, maxInt(windowScreenMargin, screenH-w.height-windowScreenMargin))
+	w.userMoved, w.positioned = true, true
 	w.setPosition(ctx, x, y)
 }
 

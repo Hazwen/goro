@@ -7,6 +7,7 @@ import (
 	"github.com/gogpu/ui/event"
 	"github.com/gogpu/ui/geometry"
 	"github.com/gogpu/ui/widget"
+	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -406,6 +407,9 @@ func TestShortcutBarDragPreservesPositionAndSlotInteractions(t *testing.T) {
 	actions := &skillWindowTestRenderer{}
 	bar.Publish(ctx, actions, nil)
 	x, y := bar.bounds(ctx)
+	if bar.SavedPosition().Set {
+		t.Fatal("automatic placement was saved as a dragged position")
+	}
 	ctx.Input.SetMousePosition(x+5, y+20)
 	ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
 	if !bar.Update(ctx, actions) || !app.WindowDragActive() {
@@ -473,6 +477,26 @@ func TestShortcutBarDragPreservesPositionAndSlotInteractions(t *testing.T) {
 	cover.Publish(ctx)
 	if bar.AcceptSkillDrop(ctx, skill, sx+10, sy+10) {
 		t.Fatal("shortcut accepted a drop through the window above it")
+	}
+}
+
+func TestShortcutBarRestorePosition(t *testing.T) {
+	ctx := Context{ScreenW: 1000, ScreenH: 700}
+	bar := &ShortcutBar{}
+	bar.SetVisibleRows(ctx, 3)
+	want := config.WindowPosition{X: 100, Y: 200, Set: true}
+	bar.RestorePosition(ctx, want)
+	ctx.UIManager = NewManager()
+	bar.Publish(ctx, nil, nil)
+	bar.ResetOverlay(ctx)
+	bar.Publish(ctx, nil, nil)
+	if got := bar.SavedPosition(); got != want {
+		t.Fatalf("published position = %+v, want %+v", got, want)
+	}
+	bar.RestorePosition(ctx, config.WindowPosition{X: 100000, Y: -100, Set: true})
+	want = config.WindowPosition{X: ctx.ScreenW - bar.window.width - windowScreenMargin, Y: windowScreenMargin, Set: true}
+	if got := bar.SavedPosition(); got != want {
+		t.Fatalf("offscreen position = %+v, want %+v", got, want)
 	}
 }
 

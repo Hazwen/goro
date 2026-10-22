@@ -9,6 +9,7 @@ import (
 	"github.com/gogpu/ui/geometry"
 	"github.com/gogpu/ui/primitives"
 	"github.com/gogpu/ui/widget"
+	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/input"
@@ -148,11 +149,7 @@ func (b *ShortcutBar) Publish(ctx Context, actions GameActions, assets AssetProv
 	b.actions = actions
 	b.assets = assets
 	w, h := shortcutBarWidth(), shortcutBarHeightForRows(b.visibleRowCount())
-	if b.window.EnsureWindow(w, h) {
-		b.window.CloseOnEsc = false
-		b.window.titleHeight = 0
-		b.window.setTitleButtonCount(0)
-	}
+	b.ensureWindow()
 	if !b.window.dragging {
 		x, y := b.bounds(ctx)
 		b.window.SetAutoPosition(x, y)
@@ -170,6 +167,27 @@ func (b *ShortcutBar) Publish(ctx Context, actions GameActions, assets AssetProv
 	b.window.Publish(ctx)
 }
 
+func (b *ShortcutBar) ensureWindow() {
+	if b.window.EnsureWindow(shortcutBarWidth(), shortcutBarHeightForRows(b.visibleRowCount())) {
+		b.window.CloseOnEsc = false
+		b.window.titleHeight = 0
+		b.window.setTitleButtonCount(0)
+	}
+}
+
+func (b *ShortcutBar) SavedPosition() config.WindowPosition { return b.window.savedPosition() }
+
+func (b *ShortcutBar) Dragging() bool { return b.window.dragging }
+
+func (b *ShortcutBar) RestorePosition(ctx Context, position config.WindowPosition) {
+	if !position.Set {
+		return
+	}
+	b.ensureWindow()
+	b.window.restorePosition(ctx, position)
+	b.Publish(ctx, b.actions, b.assets)
+}
+
 func (b *ShortcutBar) ResetOverlay(ctx Context) {
 	b.window.Unpublish(ctx)
 	b.window.Close()
@@ -181,6 +199,12 @@ func (b *ShortcutBar) visibleRowCount() int {
 		return shortcutMinRows
 	}
 	return clampShortcutRows(b.visibleRows)
+}
+
+func (b *ShortcutBar) VisibleRows() int { return b.visibleRowCount() }
+
+func (b *ShortcutBar) SetVisibleRows(ctx Context, rows int) {
+	b.setVisibleRows(ctx, rows)
 }
 
 func (b *ShortcutBar) setVisibleRows(ctx Context, rows int) {

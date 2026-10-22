@@ -33,6 +33,7 @@ type Config struct {
 	Script        ScriptConfig
 	Log           glog.LogConfig
 	ChatShortcuts ChatShortcuts
+	UI            UISettings
 }
 
 type WindowConfig struct {
@@ -457,6 +458,9 @@ func applyINI(cfg *Config, r io.Reader) error {
 }
 
 func applyConfigValue(cfg *Config, section, key, value string) error {
+	if section == "ui" {
+		return cfg.UI.apply(key, value)
+	}
 	if section == "chatshortcuts" {
 		digit, err := strconv.Atoi(key)
 		if err != nil || digit < 0 || digit > 9 {
@@ -615,7 +619,7 @@ func validateAnisotropy(level int) error {
 }
 
 func upsertINIValues(src string, values map[string]map[string]string) string {
-	sectionOrder := []string{"window", "render", "audio", "gameplay", "login", "chatshortcuts", "script"}
+	sectionOrder := []string{"window", "render", "audio", "gameplay", "login", "chatshortcuts", "script", "ui"}
 	seenSections := make(map[string]bool)
 	written := make(map[string]map[string]bool)
 	for section := range values {

@@ -16,6 +16,20 @@ import (
 	"github.com/kivutar/goro/ui/rotheme"
 )
 
+func TestCharacterRestoreCompactBeforeOpening(t *testing.T) {
+	ctx := Context{Session: session.New(), ScreenW: 800, ScreenH: 600}
+	w := &CharacterWindow{}
+	w.SetCompact(true)
+	w.Update(ctx)
+	if !w.Compact() || w.height != characterWindowCompactHeight {
+		t.Fatalf("restored height = %d", w.height)
+	}
+	w.ToggleCompact()
+	if w.Compact() || w.height != characterWindowHeight {
+		t.Fatalf("expanded height = %d", w.height)
+	}
+}
+
 func TestCharacterEXPPanelWrapsBothRowsInRoundedGreyContainer(t *testing.T) {
 	const width float32 = characterWindowWidth - 24
 	panel := characterEXPPanel(session.Progress{

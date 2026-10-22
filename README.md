@@ -117,10 +117,24 @@ Goro only searches the locations above; it does not automatically read or write
 config files in system or per-user directories such as `/etc` or `$XDG_CONFIG_HOME`.
 A missing explicit `--config` file is an error.
 
-In-game settings, remembered login IDs, and chat shortcuts are saved to the
+In-game settings, remembered login IDs, chat shortcuts, and window layout are saved to the
 `--config` file when supplied, otherwise to `--data-dir/goro.ini` when `--data-dir`
 is supplied, otherwise to `./goro.ini`. A missing data-directory or working-directory
 file is created when saving preferences.
+
+The `[ui]` section remembers which ordinary game windows are open, whether Basic
+Info and its button menu are collapsed, `shortcut_rows` (1–3), and `skill_tree`
+(`true` for the tree, `false` for the list). These choices determine window sizes;
+the console, shortcut bars, and Stats window also remember their dragged positions
+as `console_position = x,y`, `shortcut_position = x,y`, and `stats_position = x,y`.
+An empty position keeps automatic placement. NPC, shop, storage, and trade dialogs
+still open only through their normal interactions.
+
+Camera zoom is saved as `[ui] camera_zoom` and restored when entering the game.
+Maps with a fixed camera retain their prescribed zoom.
+
+During a session, ordinary windows also keep their dragged positions when closed
+and reopened.
 
 Example `goro.ini`:
 

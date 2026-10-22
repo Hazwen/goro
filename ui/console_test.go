@@ -9,6 +9,7 @@ import (
 	"github.com/gogpu/ui/geometry"
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/session"
 	worldstate "github.com/kivutar/goro/world"
@@ -399,6 +400,9 @@ func TestConsoleDragKeepsMessagesAndMovedInputBounds(t *testing.T) {
 		console.AddMessage("message %d", i)
 	}
 	console.Update(ctx)
+	if console.SavedPosition().Set {
+		t.Fatal("automatic placement was saved as a dragged position")
+	}
 	x, y := console.window.x, console.window.y
 	content := console.window.content
 	ctx.Input.SetMousePosition(x+100, y+60)
@@ -470,6 +474,24 @@ func TestConsoleDragKeepsMessagesAndMovedInputBounds(t *testing.T) {
 	ctx.Input.SetMousePosition(cover.x+20, cover.y+5)
 	if console.Update(ctx) || console.Active() {
 		t.Fatal("focused console blocked a click on the window above it")
+	}
+}
+
+func TestConsoleRestorePosition(t *testing.T) {
+	ctx := client.Context{ScreenW: 1000, ScreenH: 700, UIManager: NewManager()}
+	console := &ChatConsole{}
+	want := config.WindowPosition{X: 100, Y: 200, Set: true}
+	console.RestorePosition(ctx, want)
+	console.window.Close()
+	console.UpdatePresentation(ctx)
+	console.Rebind(ctx)
+	if got := console.SavedPosition(); got != want {
+		t.Fatalf("reopened position = %+v, want %+v", got, want)
+	}
+	console.RestorePosition(ctx, config.WindowPosition{X: -100, Y: 100000, Set: true})
+	want = config.WindowPosition{X: windowScreenMargin, Y: ctx.ScreenH - console.window.height - windowScreenMargin, Set: true}
+	if got := console.SavedPosition(); got != want {
+		t.Fatalf("offscreen position = %+v, want %+v", got, want)
 	}
 }
 

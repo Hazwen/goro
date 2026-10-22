@@ -168,10 +168,24 @@ func basicMenuSize(collapsed bool) (int, int) {
 }
 
 func (m *BasicMenu) toggleCollapsed() {
-	m.collapsed = !m.collapsed
+	m.SetCollapsed(!m.collapsed)
+}
+
+func (m *BasicMenu) Collapsed() bool { return m.collapsed }
+
+func (m *BasicMenu) SetCollapsed(collapsed bool) {
+	if m.collapsed == collapsed {
+		return
+	}
+	m.collapsed = collapsed
 	width, height := basicMenuSize(m.collapsed)
-	m.SetSize(width, height)
+	if m.width != 0 {
+		m.SetSize(width, height)
+	}
 	m.content = nil
+	if !m.IsOpen() {
+		return
+	}
 	m.SetContent(m.widgetTree())
 	m.Publish(m.ctx)
 }

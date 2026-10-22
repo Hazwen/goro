@@ -13,8 +13,67 @@ import (
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/input"
+	"github.com/kivutar/goro/session"
 	"github.com/kivutar/goro/ui/rotheme"
 )
+
+func TestGameWindowsKeepDraggedPositionWhenReopened(t *testing.T) {
+	stats := &StatsWindow{}
+	inventory := &InventoryBagWindow{}
+	skills := &SkillWindow{}
+	homunculus := &HomunculusSkillWindow{}
+	mercenary := &MercenarySkillWindow{}
+	cart := &CartWindow{}
+	storage := &StorageWindow{}
+	emotes := &EmoteWindow{}
+	equipment := &EquipmentWindow{}
+	for _, test := range []struct {
+		name   string
+		window *Window
+		open   func(Context)
+	}{
+		{"stats", &stats.Window, stats.OpenWindow},
+		{"inventory", &inventory.Window, inventory.Toggle},
+		{"skills", &skills.Window, skills.OpenWindow},
+		{"homunculus skills", &homunculus.Window, func(ctx Context) { homunculus.Open(ctx, nil) }},
+		{"mercenary skills", &mercenary.Window, func(ctx Context) { mercenary.Open(ctx, nil) }},
+		{"cart", &cart.Window, cart.OpenWindow},
+		{"storage", &storage.Window, storage.OpenWindow},
+		{"emotes", &emotes.Window, func(ctx Context) { emotes.OpenWindow(ctx, nil) }},
+		{"equipment", &equipment.Window, equipment.Toggle},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := Context{Input: input.NewState(), Session: session.New(), UIManager: NewManager(), ScreenW: 1600, ScreenH: 1000}
+			ctx.Session.Homunculus.Active, ctx.Session.Mercenary.Active = true, true
+			w := test.window
+			test.open(ctx)
+			ctx.Input.SetMousePosition(w.x+20, w.y+5)
+			ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
+			w.Update(ctx)
+			ctx.Input.EndFrame()
+			ctx.Input.SetMousePosition(720, 505)
+			w.Update(ctx)
+			ctx.Input.EndFrame()
+			ctx.Input.SetMouseButton(input.MouseButtonLeft, false)
+			w.Update(ctx)
+			ctx.Input.EndFrame()
+			if w.x != 700 || w.y != 500 {
+				t.Fatalf("dragged position = %d,%d", w.x, w.y)
+			}
+			w.Close()
+			test.open(ctx)
+			if w.x != 700 || w.y != 500 {
+				t.Fatalf("reopening reset position to %d,%d", w.x, w.y)
+			}
+			w.Close()
+			ctx.ScreenW, ctx.ScreenH = 800, 600
+			test.open(ctx)
+			if w.x != min(700, ctx.ScreenW-w.width-windowScreenMargin) || w.y != min(500, ctx.ScreenH-w.height-windowScreenMargin) {
+				t.Fatalf("reopened window did not fit the smaller screen: %d,%d %dx%d", w.x, w.y, w.width, w.height)
+			}
+		})
+	}
+}
 
 func TestWindowTitleSignalRelayoutKeepsHeader(t *testing.T) {
 	app := uiapp.New(uiapp.WithWindowProvider(gpucontext.NullWindowProvider{W: 800, H: 600}),

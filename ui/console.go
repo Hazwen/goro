@@ -16,6 +16,7 @@ import (
 	"github.com/gogpu/ui/state"
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/network"
@@ -241,6 +242,20 @@ func (c *ChatConsole) Publish(ctx client.Context) {
 	c.window.Publish(ctx)
 }
 
+func (c *ChatConsole) SavedPosition() config.WindowPosition { return c.window.savedPosition() }
+
+func (c *ChatConsole) Dragging() bool { return c.window.dragging }
+
+func (c *ChatConsole) RestorePosition(ctx client.Context, position config.WindowPosition) {
+	if !position.Set {
+		return
+	}
+	c.ctx = ctx
+	c.ensureWindow(ctx)
+	c.window.restorePosition(ctx, position)
+	c.window.Publish(ctx)
+}
+
 // Rebind reconnects the editor callbacks after the console is copied to a new
 // world mode, keeping the same field so its caret and selection survive.
 func (c *ChatConsole) Rebind(ctx client.Context) {
@@ -291,7 +306,7 @@ func (c *ChatConsole) ensureWindow(ctx client.Context) {
 	if !c.window.IsOpen() {
 		content := c.widgetTree(width, height)
 		c.cacheKey = key
-		c.window.OpenAt(x, y, content)
+		c.window.Open(ctx, content)
 		return
 	}
 	if c.cacheKey != key {
