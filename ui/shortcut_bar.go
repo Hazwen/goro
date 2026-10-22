@@ -31,6 +31,7 @@ const (
 	shortcutControlGap = 0
 	shortcutControlPad = 2
 	shortcutControlW   = int(rotheme.IconButtonSize)
+	shortcutGripWidth  = 10
 )
 
 var shortcutFunctionKeys = [...]input.Key{
@@ -73,13 +74,8 @@ type ShortcutBar struct {
 	visibleRows   int
 	activeRow     int
 	hotkeyVersion int
-	content       widget.Widget
-	root          widget.Widget
-	published     bool
-	rootX         int
-	rootY         int
-	rootW         int
-	rootH         int
+	window        Window
+	contentDirty  bool
 	charID        uint32
 	ctx           Context
 	actions       GameActions
@@ -103,7 +99,11 @@ func (b *ShortcutBar) Update(ctx Context, actions GameActions) bool {
 	if blocker, ok := actions.(KeyboardShortcutBlocker); ok && blocker.KeyboardShortcutsBlocked(ctx) {
 		return false
 	}
-	return b.pointInside(ctx, ctx.Input.MouseX, ctx.Input.MouseY)
+	consumed := b.window.Update(ctx)
+	if b.window.dragging {
+		b.hideTooltip()
+	}
+	return consumed
 }
 
 // UpdateKeyboardInput is separate from pointer dispatch: F1-F9 must still work
@@ -147,35 +147,33 @@ func (b *ShortcutBar) Publish(ctx Context, actions GameActions, assets AssetProv
 	b.ctx = ctx
 	b.actions = actions
 	b.assets = assets
-	b.ensureContent()
-	x, y := b.bounds(ctx)
 	w, h := shortcutBarWidth(), shortcutBarHeightForRows(b.visibleRowCount())
-	if b.root == nil || b.rootX != x || b.rootY != y || b.rootW != w || b.rootH != h {
-		old := b.root
-		b.rootX = x
-		b.rootY = y
-		b.rootW = w
-		b.rootH = h
-		b.root = positionedWidget(b.content, x, y, w, h)
-		if b.published && old != nil {
-			ctx.UIManager.RemoveOverlay(old)
-			ctx.UIManager.AddOverlay(b.root)
+	if b.window.EnsureWindow(w, h) {
+		b.window.CloseOnEsc = false
+		b.window.titleHeight = 0
+		b.window.setTitleButtonCount(0)
+	}
+	if !b.window.dragging {
+		x, y := b.bounds(ctx)
+		b.window.SetAutoPosition(x, y)
+		b.window.SetSize(w, h)
+		b.window.dragBounds = geometry.NewRect(0, 0, shortcutGripWidth, float32(h))
+		b.window.keepOnScreen(ctx)
+		if !b.window.IsOpen() {
+			b.window.Open(ctx, b.widgetTree())
+			b.contentDirty = false
+		} else if b.contentDirty {
+			b.window.SetContent(b.widgetTree())
+			b.contentDirty = false
 		}
 	}
-	if !b.published {
-		ctx.UIManager.AddOverlay(b.root)
-		b.published = true
-	}
+	b.window.Publish(ctx)
 }
 
 func (b *ShortcutBar) ResetOverlay(ctx Context) {
-	if b.published && ctx.UIManager != nil && b.root != nil {
-		ctx.UIManager.RemoveOverlay(b.root)
-	}
+	b.window.Unpublish(ctx)
+	b.window.Close()
 	b.hideTooltip()
-	b.published = false
-	b.root = nil
-	b.content = nil
 }
 
 func (b *ShortcutBar) visibleRowCount() int {
@@ -195,20 +193,8 @@ func (b *ShortcutBar) setVisibleRows(ctx Context, rows int) {
 }
 
 func (b *ShortcutBar) rebuild(ctx Context) {
-	oldRoot := b.root
-	b.content = nil
-	b.root = nil
-	b.rootX = 0
-	b.rootY = 0
-	b.rootW = 0
-	b.rootH = 0
+	b.contentDirty = true
 	b.hideTooltip()
-	if b.published {
-		if ctx.UIManager != nil && oldRoot != nil {
-			ctx.UIManager.RemoveOverlay(oldRoot)
-		}
-		b.published = false
-	}
 	b.Publish(ctx, b.actions, b.assets)
 	b.redraw()
 	b.invalidate(ctx)
@@ -355,6 +341,9 @@ func (b *ShortcutBar) activate(ctx Context, actions GameActions, slot int) bool 
 }
 
 func (b *ShortcutBar) slotAt(ctx Context, mx, my int) (int, bool) {
+	if b.window.IsOpen() && !b.window.pointInside(ctx, mx, my) {
+		return 0, false
+	}
 	for i := 0; i < b.visibleRowCount()*shortcutCols; i++ {
 		slot := (b.activeRow*shortcutCols + i) % shortcutTotalSlots
 		x, y := b.slotBounds(ctx, slot)
@@ -365,12 +354,10 @@ func (b *ShortcutBar) slotAt(ctx Context, mx, my int) (int, bool) {
 	return 0, false
 }
 
-func (b *ShortcutBar) pointInside(ctx Context, mx, my int) bool {
-	x, y := b.bounds(ctx)
-	return pointInRect(mx, my, x, y, shortcutBarWidth(), shortcutBarHeightForRows(b.visibleRowCount()))
-}
-
 func (b *ShortcutBar) bounds(ctx Context) (int, int) {
+	if b.window.userMoved {
+		return b.window.x, b.window.y
+	}
 	width, _ := ctx.ScreenSize()
 	return maxInt(windowScreenMargin, (width-shortcutBarWidth())/2), windowScreenMargin
 }
@@ -379,11 +366,11 @@ func (b *ShortcutBar) slotBounds(ctx Context, slot int) (int, int) {
 	x, y := b.bounds(ctx)
 	row := (slot/shortcutCols - b.activeRow + shortcutMaxRows) % shortcutMaxRows
 	col := slot % shortcutCols
-	return x + shortcutPad + col*(shortcutSlot+shortcutGap), y + shortcutPad + row*(shortcutSlot+shortcutRowGap)
+	return x + shortcutGripWidth + shortcutPad + col*(shortcutSlot+shortcutGap), y + shortcutPad + row*(shortcutSlot+shortcutRowGap)
 }
 
 func shortcutBarWidth() int {
-	return shortcutGridWidth() + shortcutControlGap + shortcutControlW + shortcutControlPad
+	return shortcutGripWidth + shortcutGridWidth() + shortcutControlGap + shortcutControlW + shortcutControlPad
 }
 
 func shortcutGridWidth() int {
@@ -395,10 +382,7 @@ func shortcutBarHeightForRows(rows int) int {
 	return shortcutPad*2 + rows*shortcutSlot + maxInt(0, rows-1)*shortcutRowGap
 }
 
-func (b *ShortcutBar) ensureContent() {
-	if b.content != nil {
-		return
-	}
+func (b *ShortcutBar) widgetTree() widget.Widget {
 	visibleRows := b.visibleRowCount()
 	rows := make([]widget.Widget, 0, visibleRows)
 	for row := 0; row < visibleRows; row++ {
@@ -411,12 +395,20 @@ func (b *ShortcutBar) ensureContent() {
 			Gap(shortcutGap).
 			CrossAlign(primitives.CrossAxisStart))
 	}
-	b.content = Win(
+	return Win(
 		TitleBar(false),
 		Radius(0),
 		Size(float32(shortcutBarWidth()), float32(shortcutBarHeightForRows(visibleRows))),
 		Content(
 			primitives.HBox(
+				primitives.Box(
+					primitives.Expanded(primitives.Box()),
+					primitives.Box().Width(2).Height(24).Background(rotheme.Default.Colors.ButtonBorder).Rounded(1),
+					primitives.Expanded(primitives.Box()),
+				).
+					Width(shortcutGripWidth).
+					Height(float32(shortcutBarHeightForRows(visibleRows))).
+					CrossAlign(primitives.CrossAxisCenter),
 				primitives.Box(rows...).
 					Width(float32(shortcutGridWidth())).
 					Gap(shortcutRowGap).
@@ -640,10 +632,10 @@ func (b *ShortcutBar) hideTooltip() {
 }
 
 func (b *ShortcutBar) redraw() {
-	if redraw, ok := b.content.(interface{ SetNeedsRedraw(bool) }); ok {
+	if redraw, ok := b.window.content.(interface{ SetNeedsRedraw(bool) }); ok {
 		redraw.SetNeedsRedraw(true)
 	}
-	if redraw, ok := b.root.(interface{ SetNeedsRedraw(bool) }); ok {
+	if redraw, ok := b.window.placed.(interface{ SetNeedsRedraw(bool) }); ok {
 		redraw.SetNeedsRedraw(true)
 	}
 }

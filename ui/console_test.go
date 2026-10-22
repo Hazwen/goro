@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/gogpu/ui/event"
+	"github.com/gogpu/ui/geometry"
+	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/session"
@@ -386,6 +388,88 @@ func TestConsoleOutsideClickBlursAndPassesThrough(t *testing.T) {
 	}
 	if console.input != "hello" {
 		t.Fatalf("input = %q, want preserved draft", console.input)
+	}
+}
+
+func TestConsoleDragKeepsMessagesAndMovedInputBounds(t *testing.T) {
+	app := &windowDragTestApp{}
+	ctx := client.Context{Input: input.NewState(), UIApp: app, UIManager: NewManager(), ScreenW: 1000, ScreenH: 700}
+	console := &ChatConsole{input: "draft"}
+	for i := 0; i < 20; i++ {
+		console.AddMessage("message %d", i)
+	}
+	console.Update(ctx)
+	x, y := console.window.x, console.window.y
+	content := console.window.content
+	ctx.Input.SetMousePosition(x+100, y+60)
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
+	if !console.Update(ctx) || !app.WindowDragActive() {
+		t.Fatal("console message area did not start a captured drag")
+	}
+	ctx.Input.EndFrame()
+	ctx.Input.SetMousePosition(x+200, y-140)
+	console.AddMessage("message received while dragging")
+	console.Update(ctx)
+	ctx.Input.EndFrame()
+	console.Update(ctx)
+	if console.window.content != content || app.cancelToken != nil || !app.WindowDragActive() {
+		t.Fatal("new message interrupted the console drag")
+	}
+	if console.window.x != x+100 || console.window.y != y-200 {
+		t.Fatalf("console position = %d,%d", console.window.x, console.window.y)
+	}
+	ctx.Input.EndFrame()
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, false)
+	console.Update(ctx)
+	ctx.Input.EndFrame()
+	console.Update(ctx)
+	if app.WindowDragActive() || app.cancelToken != nil || console.window.content == content {
+		t.Fatal("release did not finish the drag and display the pending message")
+	}
+	console.Rebind(ctx)
+	if console.window.x != x+100 || console.window.y != y-200 || console.currentInput() != "draft" {
+		t.Fatal("rebind lost the console position or draft")
+	}
+	console.setActive(true)
+	ctx.Input.SetMousePosition(console.window.x+20, console.window.y+console.window.height-20)
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
+	if !console.Update(ctx) || !console.Active() || console.window.dragging {
+		t.Fatal("clicking the moved editor blurred chat or started a drag")
+	}
+	ctx.Input.EndFrame()
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, false)
+	ctx.Input.EndFrame()
+	ctx.Input.SetMousePosition(console.window.x+console.window.width-8-ROScrollbarGutter, console.window.y+60)
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
+	root := console.window.Widget()
+	root.Layout(widget.NewContext(), geometry.Constraints{})
+	pos := geometry.Pt(float32(ctx.Input.MouseX), float32(ctx.Input.MouseY))
+	scrollY := console.scrollY.Get()
+	root.Event(widget.NewContext(), event.NewMouseEvent(event.MousePress, event.ButtonLeft, event.ButtonStateLeft, pos, pos, event.ModNone))
+	if !console.Update(ctx) || console.window.dragging || console.scrollY.Get() >= scrollY {
+		t.Fatal("clicking the console scrollbar dragged the window or failed to scroll")
+	}
+	root.Event(widget.NewContext(), event.NewMouseEvent(event.MouseRelease, event.ButtonLeft, 0, pos, pos, event.ModNone))
+	ctx.Input.EndFrame()
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, false)
+	ctx.Input.EndFrame()
+	ctx.Input.SetMousePosition(x+20, y+consoleHeight-20)
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
+	if console.Update(ctx) || console.Active() {
+		t.Fatal("old console bounds still captured an outside click")
+	}
+	ctx.ScreenW, ctx.ScreenH = 500, 300
+	console.UpdatePresentation(ctx)
+	if console.window.x+console.window.width > ctx.ScreenW-windowScreenMargin || console.window.y+console.window.height > ctx.ScreenH-windowScreenMargin {
+		t.Fatal("console was left off screen after resizing")
+	}
+	console.setActive(true)
+	cover := NewWindow(100, 80)
+	cover.OpenAt(console.window.x+10, console.window.y+20, Win(Size(100, 80)))
+	cover.Publish(ctx)
+	ctx.Input.SetMousePosition(cover.x+20, cover.y+5)
+	if console.Update(ctx) || console.Active() {
+		t.Fatal("focused console blocked a click on the window above it")
 	}
 }
 

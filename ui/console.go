@@ -11,6 +11,7 @@ import (
 	"github.com/gogpu/gpucontext"
 	"github.com/gogpu/ui/core/scrollview"
 	"github.com/gogpu/ui/core/textfield"
+	"github.com/gogpu/ui/geometry"
 	"github.com/gogpu/ui/primitives"
 	"github.com/gogpu/ui/state"
 	"github.com/gogpu/ui/widget"
@@ -36,6 +37,7 @@ const (
 )
 
 var (
+	consoleBackground       = widget.RGBA8(14, 18, 24, 188)
 	consoleColorChat        = color.RGBA{R: 235, G: 242, B: 250, A: 255}
 	consoleColorSystem      = color.RGBA{R: 252, G: 221, B: 128, A: 255}
 	consoleColorBlue        = color.RGBA{R: 0, G: 255, B: 255, A: 255}
@@ -265,11 +267,13 @@ func (c *ChatConsole) clickedOutside(ctx client.Context) bool {
 	if ctx.Input == nil || !ctx.Input.MouseJustPressed(input.MouseButtonLeft) {
 		return false
 	}
-	x, y, width, height := consoleBounds(ctx.ScreenSize())
-	return !pointInRect(ctx.Input.MouseX, ctx.Input.MouseY, x, y, width, height)
+	return !c.window.pointInside(ctx, ctx.Input.MouseX, ctx.Input.MouseY)
 }
 
 func (c *ChatConsole) ensureWindow(ctx client.Context) {
+	if c.window.dragging {
+		return
+	}
 	screenW, screenH := ctx.ScreenSize()
 	x, y, width, height := consoleBounds(screenW, screenH)
 	key := c.renderKey(width, height)
@@ -277,10 +281,13 @@ func (c *ChatConsole) ensureWindow(ctx client.Context) {
 		c.window = NewWindow(width, height)
 		c.window.CloseOnEsc = false
 		c.window.titleHeight = 0
+		c.window.setTitleButtonCount(0)
+		c.window.SetBackground(consoleBackground)
 		c.window.SetFullRedraw(true)
 	}
 	c.window.SetAutoPosition(x, y)
 	c.window.SetSize(width, height)
+	c.window.keepOnScreen(ctx)
 	if !c.window.IsOpen() {
 		content := c.widgetTree(width, height)
 		c.cacheKey = key
@@ -975,6 +982,8 @@ func (c *ChatConsole) widgetTree(width, height int) widget.Widget {
 		CrossAlign(primitives.CrossAxisStretch)
 	messageHeight := maxInt(20, height-16-consoleFieldH-4)
 	c.messageH = messageHeight
+	// Leave the input field and scrollbar available for editing and scrolling.
+	c.window.dragBounds = geometry.NewRect(0, 0, float32(width-8-ROScrollbarGutter), float32(6+messageHeight))
 	messageList := primitives.Box(messageWidgets...).
 		Width(float32(contentWidth)).
 		Gap(1).
@@ -998,7 +1007,7 @@ func (c *ChatConsole) widgetTree(width, height int) widget.Widget {
 		Height(float32(height)).
 		PaddingXY(8, 6).
 		Gap(4).
-		Background(widget.RGBA8(14, 18, 24, 188)).
+		Background(consoleBackground).
 		BorderStyle(1, widget.RGBA8(180, 198, 218, 95)).
 		Rounded(WindowRadius).
 		CrossAlign(primitives.CrossAxisStretch)

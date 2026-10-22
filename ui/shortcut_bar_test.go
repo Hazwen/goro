@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/gogpu/gpucontext"
+	"github.com/gogpu/ui/event"
+	"github.com/gogpu/ui/geometry"
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/input"
@@ -73,7 +75,7 @@ func TestShortcutDropMarksShortcutOverlayDirty(t *testing.T) {
 	}
 	bar := &ShortcutBar{}
 	bar.Publish(ctx, nil, nil)
-	if bar.root == nil {
+	if bar.window.published == nil {
 		t.Fatal("shortcut bar root was not published")
 	}
 	x, y := bar.slotBounds(ctx, 0)
@@ -381,7 +383,7 @@ func TestShortcutPublishDoesNotKeepOverlayDirty(t *testing.T) {
 	}
 	bar := &ShortcutBar{}
 	bar.Publish(ctx, nil, nil)
-	if clear, ok := bar.root.(interface {
+	if clear, ok := bar.window.placed.(interface {
 		ClearRedraw()
 		ClearSceneDirty()
 	}); ok {
@@ -392,8 +394,85 @@ func TestShortcutPublishDoesNotKeepOverlayDirty(t *testing.T) {
 	}
 
 	bar.Publish(ctx, nil, nil)
-	if redraw, ok := bar.root.(interface{ NeedsRedraw() bool }); !ok || redraw.NeedsRedraw() {
+	if redraw, ok := bar.window.placed.(interface{ NeedsRedraw() bool }); !ok || redraw.NeedsRedraw() {
 		t.Fatal("shortcut publish dirtied an unchanged overlay")
+	}
+}
+
+func TestShortcutBarDragPreservesPositionAndSlotInteractions(t *testing.T) {
+	app := &windowDragTestApp{}
+	ctx := Context{Input: input.NewState(), UIApp: app, UIManager: NewManager(), ScreenW: 1000, ScreenH: 700, Session: &session.Session{}}
+	bar := &ShortcutBar{}
+	actions := &skillWindowTestRenderer{}
+	bar.Publish(ctx, actions, nil)
+	x, y := bar.bounds(ctx)
+	ctx.Input.SetMousePosition(x+5, y+20)
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
+	if !bar.Update(ctx, actions) || !app.WindowDragActive() {
+		t.Fatal("shortcut grip did not start a captured drag")
+	}
+	ctx.Input.EndFrame()
+	ctx.Input.SetMousePosition(x-95, y+220)
+	bar.Update(ctx, actions)
+	if bar.window.x != x-100 || bar.window.y != y+200 {
+		t.Fatalf("shortcut position = %d,%d", bar.window.x, bar.window.y)
+	}
+	content := bar.window.content
+	ctx.Input.SetKey(input.KeyF12, true)
+	bar.UpdateKeyboardInput(ctx, actions, false)
+	bar.Update(ctx, actions)
+	if bar.window.content != content || app.cancelToken != nil || !app.WindowDragActive() {
+		t.Fatal("changing shortcut row interrupted the drag")
+	}
+	ctx.Input.EndFrame()
+	ctx.Input.SetKey(input.KeyF12, false)
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, false)
+	bar.Update(ctx, actions)
+	ctx.Input.EndFrame()
+	bar.Update(ctx, actions)
+	if app.WindowDragActive() || app.cancelToken != nil || bar.window.content == content {
+		t.Fatal("release did not finish the drag and display the selected row")
+	}
+	x, y = bar.bounds(ctx)
+	bar.ResetOverlay(ctx)
+	bar.Publish(ctx, actions, nil)
+	if gotX, gotY := bar.bounds(ctx); gotX != x || gotY != y {
+		t.Fatal("overlay reset lost the shortcut position")
+	}
+	sx, sy := bar.slotBounds(ctx, shortcutCols)
+	skill := session.Skill{ID: 6, Level: 2, Type: 1}
+	ctx.Session.Skills.List = []session.Skill{skill}
+	if !bar.AcceptSkillDrop(ctx, skill, sx+10, sy+10) {
+		t.Fatal("skill drop missed the moved shortcut slot")
+	}
+	root := bar.window.Widget()
+	root.Layout(widget.NewContext(), geometry.Constraints{})
+	pos := geometry.Pt(float32(sx+10), float32(sy+10))
+	root.Event(widget.NewContext(), event.NewMouseEvent(event.MousePress, event.ButtonLeft, event.ButtonStateLeft, pos, pos, event.ModNone))
+	ctx.Input.SetMousePosition(sx+10, sy+10)
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
+	bar.Update(ctx, actions)
+	if bar.window.dragging || actions.used.ID != skill.ID {
+		t.Fatal("clicking the moved slot dragged the bar or failed to activate the skill")
+	}
+	ctx.Input.EndFrame()
+	ctx.Input.SetMouseButton(input.MouseButtonLeft, false)
+	bar.Update(ctx, actions)
+	bar.setVisibleRows(ctx, 3)
+	if gotX, gotY := bar.bounds(ctx); gotX != x || gotY != y {
+		t.Fatal("expanding shortcut rows reset the position")
+	}
+	ctx.ScreenH = 300
+	bar.Publish(ctx, actions, nil)
+	if bar.window.y+bar.window.height > ctx.ScreenH-windowScreenMargin {
+		t.Fatal("expanded shortcut bar was left off screen after resizing")
+	}
+	sx, sy = bar.slotBounds(ctx, shortcutCols)
+	cover := NewWindow(100, 80)
+	cover.OpenAt(sx, sy, Win(Size(100, 80)))
+	cover.Publish(ctx)
+	if bar.AcceptSkillDrop(ctx, skill, sx+10, sy+10) {
+		t.Fatal("shortcut accepted a drop through the window above it")
 	}
 }
 

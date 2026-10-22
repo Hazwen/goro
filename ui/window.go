@@ -269,6 +269,7 @@ type Window struct {
 	width        int
 	height       int
 	titleHeight  int
+	dragBounds   geometry.Rect
 	positioned   bool
 	userMoved    bool
 	dragging     bool
@@ -475,10 +476,7 @@ func (w *Window) Update(ctx client.Context) bool {
 		}
 		return true
 	}
-	inside := pointInRect(ctx.Input.MouseX, ctx.Input.MouseY, w.x, w.y, w.width, w.height)
-	if manager, ok := ctx.UIManager.(interface{ OverlayAt(int, int) widget.Widget }); ok && w.published != nil {
-		inside = manager.OverlayAt(ctx.Input.MouseX, ctx.Input.MouseY) == w.published
-	}
+	inside := w.pointInside(ctx, ctx.Input.MouseX, ctx.Input.MouseY)
 	if !ctx.Input.MouseJustPressed(input.MouseButtonLeft) {
 		return inside
 	}
@@ -486,7 +484,12 @@ func (w *Window) Update(ctx client.Context) bool {
 		return false
 	}
 	w.Raise(ctx)
-	if pointInRect(ctx.Input.MouseX, ctx.Input.MouseY, w.x, w.y, w.width, w.titleHeight) {
+	dragBounds := w.dragBounds
+	if dragBounds.IsEmpty() {
+		dragBounds = geometry.NewRect(0, 0, float32(w.width), float32(w.titleHeight))
+	}
+	if pointInRect(ctx.Input.MouseX-w.x, ctx.Input.MouseY-w.y,
+		int(dragBounds.Min.X), int(dragBounds.Min.Y), int(dragBounds.Width()), int(dragBounds.Height())) {
 		if w.titleButtonHit(ctx.Input.MouseX, ctx.Input.MouseY) {
 			return true
 		}
@@ -498,6 +501,13 @@ func (w *Window) Update(ctx client.Context) bool {
 		return true
 	}
 	return true
+}
+
+func (w *Window) pointInside(ctx client.Context, x, y int) bool {
+	if manager, ok := ctx.UIManager.(interface{ OverlayAt(int, int) widget.Widget }); ok && w.published != nil {
+		return manager.OverlayAt(x, y) == w.published
+	}
+	return pointInRect(x, y, w.x, w.y, w.width, w.height)
 }
 
 func (w *Window) ensurePosition(ctx client.Context) {
@@ -546,7 +556,7 @@ func (w *Window) placeNew(ctx client.Context, x, y int) {
 func (w *Window) setOpacity(opacity float32) {
 	changed := w.opacity != opacity
 	w.opacity = opacity
-	if w.titleHeight <= 0 {
+	if w.titleHeight <= 0 && w.dragBounds.IsEmpty() {
 		return
 	}
 	box, _ := w.content.(*primitives.BoxWidget)
@@ -633,6 +643,13 @@ func (w *Window) setPosition(ctx client.Context, x, y int) {
 	w.placed = nil
 	damage := windowFrameRect(oldX, oldY, w.width, w.height).Union(windowFrameRect(x, y, w.width, w.height)).Expand(windowDirtyPadding)
 	invalidateWindowRect(ctx, damage)
+}
+
+func (w *Window) keepOnScreen(ctx client.Context) {
+	screenW, screenH := ctx.ScreenSize()
+	x := clampWindowInt(w.x, windowScreenMargin, maxInt(windowScreenMargin, screenW-w.width-windowScreenMargin))
+	y := clampWindowInt(w.y, windowScreenMargin, maxInt(windowScreenMargin, screenH-w.height-windowScreenMargin))
+	w.setPosition(ctx, x, y)
 }
 
 func (w *Window) setDragPosition(ctx client.Context, x, y int) {
