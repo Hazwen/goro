@@ -2,6 +2,7 @@ package game
 
 import (
 	"encoding/binary"
+	"image/color"
 	"reflect"
 	"strings"
 	"testing"
@@ -10,10 +11,50 @@ import (
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
+	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/session"
 )
+
+func TestWhisperIgnoreListCommandAndReply(t *testing.T) {
+	netClient, server := testutil.NewConnection(t, 20080910)
+	ctx := client.Context{Network: netClient, Session: session.New()}
+	mode := NewWorldMode()
+	if !mode.ui.console.SendText(ctx, " /EX ") {
+		t.Fatal("list command fell through to public chat")
+	}
+	testutil.ReadPackets(t, server, []byte{0xd3, 0})
+	if len(mode.ui.console.Messages()) != 0 {
+		t.Fatal("displayed a list before the server replied")
+	}
+	data := make([]byte, 52)
+	copy(data, []byte{0xd4, 0, 52, 0})
+	copy(data[4:28], "Alice")
+	copy(data[28:52], "Bob %s")
+	mode.handleNetworkPacket(ctx, network.Packet{ID: 0x00d4, Data: data}, time.Now())
+	mode.handleNetworkPacket(ctx, network.Packet{ID: 0x00d4, Data: []byte{0xd4, 0, 4, 0}}, time.Now())
+	messages := mode.ui.console.Messages()
+	want := []string{"Whisper block list:", "Alice", "Bob %s", "Your whisper block list is empty."}
+	if len(messages) != len(want) {
+		t.Fatalf("messages = %+v", messages)
+	}
+	for i, message := range messages {
+		if message.Text != want[i] || message.Color != (color.RGBA{G: 255, B: 255, A: 255}) {
+			t.Errorf("message %d = %+v, want %q in cyan", i, message, want[i])
+		}
+	}
+	for _, command := range []string{`/ex "Bob Smith"`, `/in "Bob Smith"`} {
+		mode.ui.console.SendText(ctx, command)
+		packet := make([]byte, 27)
+		packet[0] = 0xcf
+		copy(packet[2:26], "Bob Smith")
+		if strings.HasPrefix(command, "/in") {
+			packet[26] = 1
+		}
+		testutil.ReadPackets(t, server, packet)
+	}
+}
 
 func TestPartyPickupShowsEquipmentDetails(t *testing.T) {
 	resources, err := res.NewManagerFS(fstest.MapFS{

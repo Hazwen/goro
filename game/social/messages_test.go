@@ -4,13 +4,32 @@ import (
 	"image/color"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
 	gameui "github.com/kivutar/goro/ui"
 )
+
+func TestWhisperIgnoreListUsesClientMessages(t *testing.T) {
+	table := strings.Repeat("unused#\n", 62) + "Nobody blocked.#\nBlocked names:#\n"
+	manager, err := res.NewManagerFS(fstest.MapFS{
+		"data/msgstringtable.txt": &fstest.MapFile{Data: []byte(table)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	console := &gameui.ChatConsole{}
+	social.AddWhisperIgnoreList(console, manager, nil)
+	social.AddWhisperIgnoreList(console, manager, []string{"Alice"})
+	messages := console.Messages()
+	if len(messages) != 3 || messages[0].Text != "Nobody blocked." || messages[1].Text != "Blocked names:" || messages[2].Text != "Alice" {
+		t.Fatalf("messages = %+v", messages)
+	}
+}
 
 func TestFormatConsoleMessageUsesMsgStringTable(t *testing.T) {
 	root := t.TempDir()

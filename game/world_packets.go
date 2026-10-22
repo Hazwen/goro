@@ -199,6 +199,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		social.AddWhisperIgnoreAck(&m.ui.console, ack)
 		return nil, false
 	}
+	if names, ok, err := network.ParseWhisperIgnoreList(pkt); err != nil {
+		glog.Errorf("parse whisper ignore list 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		social.AddWhisperIgnoreList(&m.ui.console, ctx.Resources, names)
+		return nil, false
+	}
 	if ack, ok, err := network.ParseChatRoomCreateAck(pkt); err != nil {
 		glog.Errorf("parse chat room create ack 0x%04X: %v", pkt.ID, err)
 	} else if ok {

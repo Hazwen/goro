@@ -201,6 +201,16 @@ func TestConsoleBreakGuildCommandIsHandledLocally(t *testing.T) {
 	}
 }
 
+func TestConsoleWhisperIgnoreListWithoutNetwork(t *testing.T) {
+	console := &ChatConsole{}
+	if !console.SendText(client.Context{}, "/ex") {
+		t.Fatal("list command fell through to public chat")
+	}
+	if messages := console.Messages(); len(messages) != 1 || messages[0].Text != "send failed: not connected" {
+		t.Fatalf("messages = %+v", messages)
+	}
+}
+
 func TestConsoleFameRankingCommandsWithoutNetwork(t *testing.T) {
 	for _, command := range []string{"/blacksmith", "/alchemist", "/taekwon"} {
 		console := &ChatConsole{input: command, active: true}

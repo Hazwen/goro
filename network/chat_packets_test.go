@@ -3,8 +3,32 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"slices"
 	"testing"
 )
+
+func TestParseWhisperIgnoreList(t *testing.T) {
+	for _, names := range [][]string{nil, {"Alice", "Bob Smith"}, {"123456789012345678901234"}} {
+		data := make([]byte, 4+24*len(names))
+		binary.LittleEndian.PutUint16(data, 0x00d4)
+		binary.LittleEndian.PutUint16(data[2:], uint16(len(data)))
+		for i, name := range names {
+			copy(data[4+24*i:4+24*(i+1)], name)
+		}
+		got, ok, err := ParseWhisperIgnoreList(Packet{ID: 0x00d4, Data: data})
+		if err != nil || !ok || !slices.Equal(got, names) {
+			t.Fatalf("names = %q, recognized=%t, err=%v; want %q", got, ok, err, names)
+		}
+	}
+	for _, data := range [][]byte{nil, {0xd4, 0}, {0xd4, 0, 4}, {0xd4, 0, 3, 0}, {0xd4, 0, 28, 0}, {0xd4, 0, 5, 0, 'A'}} {
+		if _, _, err := ParseWhisperIgnoreList(Packet{ID: 0x00d4, Data: data}); err == nil {
+			t.Errorf("accepted malformed list %x", data)
+		}
+	}
+	if _, ok, err := ParseWhisperIgnoreList(Packet{ID: 0x00d2}); ok || err != nil {
+		t.Fatalf("unrelated packet recognized=%t, err=%v", ok, err)
+	}
+}
 
 func TestChatRoomManagementPackets(t *testing.T) {
 	room := ChatRoomCreate{Title: "Room", Limit: 5, Password: " pass "}

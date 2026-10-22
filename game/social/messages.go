@@ -93,6 +93,26 @@ func AddWhisperIgnoreAck(console *gameui.ChatConsole, ack network.WhisperIgnoreA
 	console.AddSystemMessage("%s", whisperIgnoreAckSuccess(ack))
 }
 
+func AddWhisperIgnoreList(console *gameui.ChatConsole, manager *res.Manager, names []string) {
+	if console == nil {
+		return
+	}
+	messageID, heading := 63, "Whisper block list:"
+	if len(names) == 0 {
+		messageID, heading = 62, "Your whisper block list is empty."
+	}
+	if manager != nil {
+		if text, ok := manager.MsgString(messageID); ok && text != "" {
+			heading = text
+		}
+	}
+	messageColor := color.RGBA{G: 255, B: 255, A: 255}
+	console.AddColoredMessage(messageColor, "%s", heading)
+	for _, name := range names {
+		console.AddColoredMessage(messageColor, "%s", name)
+	}
+}
+
 func whisperIgnoreAckSuccess(ack network.WhisperIgnoreAck) string {
 	if ack.TargetAll {
 		if ack.Allow {

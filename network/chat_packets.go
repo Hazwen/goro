@@ -16,6 +16,7 @@ const (
 	PacketCZWhisper             uint16 = 0x0096
 	PacketCZWhisperIgnore       uint16 = 0x00CF
 	PacketCZWhisperIgnoreAll    uint16 = 0x00D0
+	PacketCZWhisperIgnoreList   uint16 = 0x00D3
 	PacketCZCreateChatRoom      uint16 = 0x00D5
 	PacketCZEnterChatRoom       uint16 = 0x00D9
 	PacketCZChangeChatRoom      uint16 = 0x00DE
@@ -28,6 +29,7 @@ const (
 	PacketZCAckWhisper          uint16 = 0x0098
 	PacketZCWhisperIgnoreAck    uint16 = 0x00D1
 	PacketZCWhisperAllAck       uint16 = 0x00D2
+	PacketZCWhisperIgnoreList   uint16 = 0x00D4
 	PacketZCAckCreateChatRoom   uint16 = 0x00D6
 	PacketZCChatRoomBoard       uint16 = 0x00D7
 	PacketZCDestroyChatRoom     uint16 = 0x00D8
@@ -191,6 +193,10 @@ func BuildWhisperIgnorePacket(name string, allow bool) []byte {
 
 func BuildWhisperIgnoreAllPacket(allow bool) []byte {
 	return []byte{byte(PacketCZWhisperIgnoreAll), byte(PacketCZWhisperIgnoreAll >> 8), whisperAllowByte(allow)}
+}
+
+func BuildWhisperIgnoreListPacket() []byte {
+	return []byte{byte(PacketCZWhisperIgnoreList), byte(PacketCZWhisperIgnoreList >> 8)}
 }
 
 func BuildCreateChatRoomPacket(room ChatRoomCreate) []byte {
@@ -412,6 +418,23 @@ func ParseWhisperIgnoreAck(packet Packet) (WhisperIgnoreAck, bool, error) {
 	}
 }
 
+func ParseWhisperIgnoreList(packet Packet) ([]string, bool, error) {
+	if packet.ID != PacketZCWhisperIgnoreList {
+		return nil, false, nil
+	}
+	data := packet.Data
+	if len(data) < 4 || int(binary.LittleEndian.Uint16(data[2:4])) != len(data) || (len(data)-4)%24 != 0 {
+		return nil, false, fmt.Errorf("ZC_WHISPER_LIST invalid length: %d", len(data))
+	}
+	names := make([]string, 0, (len(data)-4)/24)
+	for offset := 4; offset < len(data); offset += 24 {
+		if name := packetCString(data[offset : offset+24]); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names, true, nil
+}
+
 func ParseChatRoomCreateAck(packet Packet) (ChatRoomCreateAck, bool, error) {
 	if packet.ID != PacketZCAckCreateChatRoom {
 		return ChatRoomCreateAck{}, false, nil
@@ -619,6 +642,10 @@ func (c *Client) SendWhisperIgnoreAll(allow bool) error {
 		glog.Warnf("send CZ_SETTING_WHISPER_STATE failed opcode=0x%04X allow=%t client_date=%d: %v", ID(packet), allow, c.clientDate, err)
 	}
 	return err
+}
+
+func (c *Client) SendWhisperIgnoreList() error {
+	return c.Send(BuildWhisperIgnoreListPacket())
 }
 
 func (c *Client) SendCreateChatRoom(room ChatRoomCreate) error {

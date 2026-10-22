@@ -854,7 +854,7 @@ func (c *ChatConsole) submitWhisperIgnore(ctx client.Context, text string, allow
 		if allow {
 			c.AddErrorMessage("usage: /in character_name")
 		} else {
-			c.AddErrorMessage("usage: /ex character_name")
+			c.submitWhisperIgnoreList(ctx)
 		}
 		return
 	}
@@ -865,6 +865,16 @@ func (c *ChatConsole) submitWhisperIgnore(ctx client.Context, text string, allow
 	if err := ctx.Network.SendWhisperIgnore(name, allow); err != nil {
 		c.AddErrorMessage("send failed: %s", err)
 		return
+	}
+}
+
+func (c *ChatConsole) submitWhisperIgnoreList(ctx client.Context) {
+	if ctx.Network == nil {
+		c.AddErrorMessage("send failed: not connected")
+		return
+	}
+	if err := ctx.Network.SendWhisperIgnoreList(); err != nil {
+		c.AddErrorMessage("send failed: %s", err)
 	}
 }
 
