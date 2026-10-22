@@ -175,12 +175,15 @@ are already merged and excluded from the remaining work above.
 
   GM / Admin
 
-  - [ ] Broadcast/local broadcast, reset and GM hide requests: 0x0099, 0x019C, 0x0197, 0x019D (atcommands already provide alternatives)
-  - [ ] GM kick/kick all: 0x00CC, 0x00CE
-  - [ ] GM item/monster: 0x013F
-  - [ ] GM move map: 0x0140
-  - [ ] GM no-chat: 0x0149
-  - [ ] GM change map type: 0x0198
-  - [ ] GM shift/recall variants: 0x01BA, 0x01BB, 0x01BC, 0x01BD
-  - [ ] GM request account name: 0x01DF
-  - [ ] GM remote command/check: 0x0212, 0x0213
+  Updated 2026-10-22: 14 native request opcodes implemented, with kick/manner/status replies and player-menu actions. Packet layouts were checked against roBrowser, classic-ro-client, rAthena, eAthena, and Hercules; commands were tested over an isolated test connection, not against a live game server.
+
+  - [x] Broadcast/local broadcast, reset and GM hide requests: 0x0099, 0x019C, 0x0197, 0x019D
+  - [x] GM kick/kick all: 0x00CC, 0x00CE
+  - [x] GM item/monster: 0x013F
+  - [x] GM move map: 0x0140
+  - [x] GM no-chat: 0x0149 (`/mute <account ID> <minutes>`, `/unmute <account ID>`, and player-menu actions)
+  - [x] GM change map type: 0x0198
+  - [x] GM shift/summon by character name: 0x01BB, 0x01BD
+  - [x] GM manner penalty (`/rc`) and stat inspection (`/check`): 0x0212, 0x0213
+  - [ ] Deferred: account-name `/remove` and `/recall` variants (0x01BA, 0x01BC); rAthena treats their arguments as character names instead of account names.
+  - [ ] Deferred: GM account-name lookup (0x01DF); rAthena returns an empty account name. Server changes are outside this pass.

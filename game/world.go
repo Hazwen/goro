@@ -637,6 +637,9 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 		return nil, nil
 	}
 	switch action := playerAction; action.Kind {
+	case gameui.PlayerContextActionGMCommand:
+		m.ui.console.SendText(ctx, action.Command)
+		return nil, nil
 	case gameui.PlayerContextActionAddFriend:
 		m.social().SendAddFriend(ctx, action.Name)
 		return nil, nil

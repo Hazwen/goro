@@ -8,6 +8,7 @@ import (
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/companion"
+	"github.com/kivutar/goro/game/gm"
 	"github.com/kivutar/goro/game/login"
 	maps "github.com/kivutar/goro/game/map"
 	"github.com/kivutar/goro/game/npc"
@@ -59,6 +60,9 @@ func (m *WorldMode) handleNetworkPackets(ctx client.Context, now time.Time) (Mod
 // result stops the current frame when the packet changes modes or starts a map
 // transition.
 func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, now time.Time) (Mode, bool) {
+	if gm.HandlePacket(pkt, &m.ui.console) {
+		return nil, false
+	}
 	if m.handleQuestPacket(ctx, pkt) {
 		return nil, false
 	}

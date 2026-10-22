@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/game/actors"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/social"
 	"github.com/kivutar/goro/input"
@@ -52,6 +53,7 @@ func (m *WorldMode) openPlayerContextFromInput(ctx client.Context, now time.Time
 		CanAdopt:           social.CanRequestAdoption(ctx.Session, actor),
 		CanRequestAlliance: canManageGuildRelations,
 		CanDeclareHostile:  canManageGuildRelations,
+		ShowGM:             actors.LocalPlayerIsAdmin(ctx),
 	})
 	return true
 }
