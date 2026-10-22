@@ -18,6 +18,7 @@ const (
 type TextPromptAction struct {
 	Text      string
 	Submitted bool
+	Cancelled bool
 }
 
 type TextPromptWindow struct {
@@ -27,11 +28,20 @@ type TextPromptWindow struct {
 	placeholder string
 	value       string
 	maxLength   int
+	inputType   textfield.InputType
 	inputField  *textfield.Widget
 	action      TextPromptAction
 }
 
 func (w *TextPromptWindow) Open(ctx Context, title, label, placeholder string, maxLength int) {
+	w.openPrompt(ctx, title, label, placeholder, maxLength, textfield.TypeText)
+}
+
+func (w *TextPromptWindow) OpenPassword(ctx Context, title, label string, maxLength int) {
+	w.openPrompt(ctx, title, label, "Password", maxLength, textfield.TypePassword)
+}
+
+func (w *TextPromptWindow) openPrompt(ctx Context, title, label, placeholder string, maxLength int, inputType textfield.InputType) {
 	w.EnsureWindow(textPromptW, ROWindowTitleHeight+textPromptContentH+ROWindowFooterHeight)
 	w.ctx = ctx
 	w.title = title
@@ -39,6 +49,7 @@ func (w *TextPromptWindow) Open(ctx Context, title, label, placeholder string, m
 	w.placeholder = placeholder
 	w.value = ""
 	w.maxLength = maxLength
+	w.inputType = inputType
 	w.inputField = nil
 	w.action = TextPromptAction{}
 	w.Window.Open(ctx, w.widgetTree(ctx))
@@ -85,8 +96,7 @@ func (w *TextPromptWindow) Control(ctx Context, action string) {
 	case "confirm":
 		w.submit(ctx)
 	case "cancel":
-		w.Close()
-		w.Publish(ctx)
+		w.cancel(ctx)
 	}
 }
 
@@ -94,7 +104,7 @@ func (w *TextPromptWindow) widgetTree(ctx Context) widget.Widget {
 	return Win(
 		Title(w.title),
 		CloseButton(true),
-		OnClose(w.Close),
+		OnClose(func() { w.cancel(ctx) }),
 		Size(float32(w.width), float32(w.height)),
 		Content(
 			primitives.Box(
@@ -111,7 +121,7 @@ func (w *TextPromptWindow) widgetTree(ctx Context) widget.Widget {
 			rotheme.Button("OK", func() {
 				w.submit(ctx)
 			}),
-			rotheme.Button("Cancel", w.Close),
+			rotheme.Button("Cancel", func() { w.cancel(ctx) }),
 		),
 	)
 }
@@ -128,7 +138,7 @@ func (w *TextPromptWindow) input(ctx Context) *textfield.Widget {
 	}
 	w.inputField = rotheme.TextField(
 		w.value,
-		textfield.TypeText,
+		w.inputType,
 		func(value string) {
 			w.value = value
 		},
@@ -141,11 +151,26 @@ func (w *TextPromptWindow) input(ctx Context) *textfield.Widget {
 }
 
 func (w *TextPromptWindow) submit(ctx Context) {
-	text := strings.TrimSpace(w.value)
-	if text == "" {
+	if !w.IsOpen() {
 		return
 	}
+	text := w.value
+	if w.inputType != textfield.TypePassword {
+		text = strings.TrimSpace(text)
+		if text == "" {
+			return
+		}
+	}
 	w.action = TextPromptAction{Text: text, Submitted: true}
+	w.Close()
+	w.Publish(ctx)
+}
+
+func (w *TextPromptWindow) cancel(ctx Context) {
+	if !w.IsOpen() {
+		return
+	}
+	w.action = TextPromptAction{Cancelled: true}
 	w.Close()
 	w.Publish(ctx)
 }

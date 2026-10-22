@@ -217,6 +217,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		m.social().ApplyChatRoomDestroy(ctx, destroy)
 		return nil, false
 	}
+	if refused, ok, err := network.ParseChatRoomEnterRefused(pkt); err != nil {
+		glog.Errorf("parse chat room refusal 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		m.social().HandleChatRoomEnterRefused(ctx, refused)
+		return nil, false
+	}
 	if enter, ok, err := network.ParseChatRoomEnter(pkt); err != nil {
 		glog.Errorf("parse chat room enter 0x%04X: %v", pkt.ID, err)
 	} else if ok {

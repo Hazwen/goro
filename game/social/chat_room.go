@@ -13,16 +13,32 @@ import (
 )
 
 func (m *System) UpdateChatRoomWindows(ctx client.Context) bool {
+	password := &m.bindings.Windows.ChatRoomPassword
+	consumed := password.Update(ctx)
+	if action := password.PopAction(); action.Submitted {
+		m.enterChatRoom(ctx, action.Text)
+		return true
+	} else if action.Cancelled {
+		m.PendingChatRoom = network.ChatRoomCreate{}
+		m.pendingChatRoomID = 0
+		return true
+	}
+	if consumed || password.IsOpen() {
+		return true
+	}
+	if !m.bindings.Windows.ChatRoom.IsOpen() {
+		m.closeChatRoomSettings()
+	}
 	createConsumed := m.bindings.Windows.ChatRoomCreate.Update(ctx)
 	if action := m.bindings.Windows.ChatRoomCreate.PopAction(); action.Title != "" {
 		m.createChatRoomFromWindow(ctx, action)
 		return true
 	}
-	if createConsumed {
+	if createConsumed || m.bindings.Windows.ChatRoomCreate.IsOpen() {
 		return true
 	}
 	roomConsumed := m.bindings.Windows.ChatRoom.Update(ctx)
-	if action := m.bindings.Windows.ChatRoom.PopAction(); action.Leave || action.Message != "" {
+	if action := m.bindings.Windows.ChatRoom.PopAction(); action != (gameui.ChatRoomWindowAction{}) {
 		m.HandleChatRoomAction(ctx, action)
 		return true
 	}
@@ -32,11 +48,28 @@ func (m *System) UpdateChatRoomWindows(ctx client.Context) bool {
 func (m *System) createChatRoomFromWindow(ctx client.Context, action gameui.ChatRoomCreateWindowAction) {
 	room := network.ChatRoomCreate{
 		Title:    strings.TrimSpace(action.Title),
-		Password: strings.TrimSpace(action.Password),
+		Password: action.Password,
 		Limit:    action.Limit,
 		Public:   action.Public,
 	}
 	if room.Title == "" {
+		return
+	}
+	if action.Edit {
+		if !m.bindings.Windows.ChatRoom.IsOwner() {
+			return
+		}
+		if ctx.Network == nil {
+			m.bindings.Console.AddErrorMessage("Change chat room failed: not connected.")
+			return
+		}
+		if err := ctx.Network.SendChangeChatRoom(room); err != nil {
+			m.bindings.Console.AddErrorMessage("Change chat room failed.")
+			glog.Warnf("chat room change failed: %v", err)
+		}
+		return
+	}
+	if m.bindings.Windows.ChatRoom.IsOpen() {
 		return
 	}
 	if ctx.Network == nil {
@@ -138,7 +171,37 @@ func ActorHasChatRoom(actor worldstate.Actor) bool {
 }
 
 func (m *System) HandleChatRoomAction(ctx client.Context, action gameui.ChatRoomWindowAction) {
+	room := &m.bindings.Windows.ChatRoom
+	if action.Settings {
+		room.OpenSettings(ctx, &m.bindings.Windows.ChatRoomCreate)
+		return
+	}
+	if action.MakeOwner != "" || action.Kick != "" {
+		name := action.MakeOwner
+		if action.Kick != "" {
+			name = action.Kick
+		}
+		if !room.CanManageMember(name) {
+			return
+		}
+		if ctx.Network == nil {
+			room.AddError(ctx, "Member update failed: not connected.")
+			return
+		}
+		var err error
+		if action.Kick != "" {
+			err = ctx.Network.SendKickChatRoomMember(name)
+		} else {
+			err = ctx.Network.SendChangeChatRoomOwner(name)
+		}
+		if err != nil {
+			room.AddError(ctx, "Member update failed.")
+			glog.Warnf("chat room member update failed: %v", err)
+		}
+		return
+	}
 	if action.Leave {
+		m.closeChatRoomSettings()
 		if ctx.Network == nil {
 			m.bindings.Console.AddErrorMessage("Leave chat room failed: not connected.")
 			return
@@ -172,27 +235,35 @@ func (m *System) HandleChatRoomAction(ctx client.Context, action gameui.ChatRoom
 }
 
 func (m *System) RequestChatRoomEnter(ctx client.Context, actor worldstate.Actor) {
-	if actor.ChatRoomID == 0 {
+	if actor.ChatRoomID == 0 || m.pendingChatRoomID != 0 || m.bindings.Windows.ChatRoom.IsOpen() {
 		return
 	}
+	m.bindings.Windows.ChatRoomPassword.Close()
+	m.pendingChatRoomID = actor.ChatRoomID
+	m.PendingChatRoom = network.ChatRoomCreate{
+		Title: actor.ChatRoomTitle, Limit: actor.ChatRoomLimit, Public: actor.ChatRoomPublic,
+	}
 	if !actor.ChatRoomPublic {
-		m.bindings.Console.AddErrorMessage("Private chat rooms need a password.")
+		m.bindings.Windows.ChatRoomPassword.OpenPassword(ctx, "Enter Chat Room", actor.ChatRoomTitle, 8)
+		return
+	}
+	m.enterChatRoom(ctx, "")
+}
+
+func (m *System) enterChatRoom(ctx client.Context, password string) {
+	if m.pendingChatRoomID == 0 || m.bindings.Windows.ChatRoom.IsOpen() {
 		return
 	}
 	if ctx.Network == nil {
 		m.bindings.Console.AddErrorMessage("Enter chat room failed: not connected.")
-		return
-	}
-	if err := ctx.Network.SendEnterChatRoom(actor.ChatRoomID, ""); err != nil {
+	} else if err := ctx.Network.SendEnterChatRoom(m.pendingChatRoomID, password); err != nil {
 		m.bindings.Console.AddErrorMessage("Enter chat room failed.")
-		glog.Warnf("chat room enter failed room=%d title=%q: %v", actor.ChatRoomID, actor.ChatRoomTitle, err)
+		glog.Warnf("chat room enter failed room=%d: %v", m.pendingChatRoomID, err)
+	} else {
 		return
 	}
-	m.PendingChatRoom = network.ChatRoomCreate{
-		Title:  actor.ChatRoomTitle,
-		Limit:  actor.ChatRoomLimit,
-		Public: actor.ChatRoomPublic,
-	}
+	m.pendingChatRoomID = 0
+	m.PendingChatRoom = network.ChatRoomCreate{}
 }
 
 func (m *System) HandleChatRoomEnter(ctx client.Context, enter network.ChatRoomEnter) {
@@ -210,12 +281,15 @@ func (m *System) HandleChatRoomEnter(ctx client.Context, enter network.ChatRoomE
 	}
 	if !m.bindings.Windows.ChatRoom.IsOpen() {
 		room := m.PendingChatRoom
-		if room.Title == "" {
+		if room.Title == "" || enter.RoomID != m.pendingChatRoomID {
 			room = network.ChatRoomCreate{Title: "Chat Room", Limit: uint16(len(members)), Public: true}
 		}
 		m.bindings.Windows.ChatRoom.Open(ctx, room.Title, room.Limit, room.Public, members)
 	}
+	m.bindings.Windows.ChatRoom.RoomID = enter.RoomID
 	m.bindings.Windows.ChatRoom.SetMembers(ctx, members, owner)
+	m.bindings.Windows.ChatRoomPassword.Close()
+	m.pendingChatRoomID = 0
 	m.PendingChatRoom = network.ChatRoomCreate{}
 }
 
@@ -233,20 +307,30 @@ func (m *System) HandleChatRoomMemberLeave(ctx client.Context, leave network.Cha
 		return
 	}
 	name := strings.TrimSpace(leave.Name)
-	m.bindings.Windows.ChatRoom.RemoveMember(ctx, name, leave.Count)
 	messageID := 180
 	fallback := "%s left the chat room."
 	if leave.Kicked {
 		messageID = 181
 		fallback = "%s has been kicked out of the chat room."
 	}
+	if strings.EqualFold(name, scene.SelectedCharacterName(ctx.Session)) {
+		m.bindings.Windows.ChatRoom.Close()
+		m.closeChatRoomSettings()
+		if leave.Kicked {
+			m.bindings.Console.AddErrorMessage("%s", chatRoomMemberMessage(ctx, messageID, fallback, name))
+		}
+		return
+	}
+	m.bindings.Windows.ChatRoom.RemoveMember(ctx, name, leave.Count)
 	m.bindings.Windows.ChatRoom.AddSystem(ctx, chatRoomMemberMessage(ctx, messageID, fallback, name))
 }
 
 func (m *System) HandleChatRoomChange(ctx client.Context, change network.ChatRoomChange) {
-	if !m.bindings.Windows.ChatRoom.IsOpen() {
+	room := &m.bindings.Windows.ChatRoom
+	if !room.IsOpen() || (room.RoomID != 0 && room.RoomID != change.RoomID) {
 		return
 	}
+	room.RoomID = change.RoomID
 	m.bindings.Windows.ChatRoom.UpdateRoom(ctx, change.Title, change.Limit, change.Count, change.Public)
 }
 
@@ -255,6 +339,57 @@ func (m *System) HandleChatRoomRoleChange(ctx client.Context, role network.ChatR
 		return
 	}
 	m.bindings.Windows.ChatRoom.SetOwner(ctx, role.Name)
+	if !m.bindings.Windows.ChatRoom.IsOwner() {
+		m.closeChatRoomSettings()
+	}
+}
+
+func (m *System) closeChatRoomSettings() {
+	if m.bindings.Windows.ChatRoomCreate.Editing() {
+		m.bindings.Windows.ChatRoomCreate.Close()
+		m.bindings.Windows.ChatRoomCreate.PopAction()
+	}
+}
+
+func (m *System) CancelChatRoomRequests() {
+	m.bindings.Windows.ChatRoomPassword.Close()
+	m.bindings.Windows.ChatRoomPassword.PopAction()
+	m.closeChatRoomSettings()
+	m.pendingChatRoomID = 0
+	m.PendingChatRoom = network.ChatRoomCreate{}
+}
+
+func (m *System) HandleChatRoomEnterRefused(ctx client.Context, refusal network.ChatRoomEnterRefused) {
+	if refusal.Result == 3 {
+		return
+	}
+	m.pendingChatRoomID = 0
+	m.PendingChatRoom = network.ChatRoomCreate{}
+	m.bindings.Windows.ChatRoomPassword.Close()
+	messageID := 0
+	message := "Unable to enter the chat room."
+	switch refusal.Result {
+	case 0:
+		messageID, message = 67, "The chat room is full."
+	case 1:
+		messageID, message = 7, "Incorrect password."
+	case 2:
+		messageID, message = 68, "You have been kicked out of this chat room."
+	case 4:
+		messageID, message = 55, "Not enough Zeny to enter this chat room."
+	case 5:
+		messageID, message = 432, "Your level is too low to enter this chat room."
+	case 6:
+		messageID, message = 433, "Your level is too high to enter this chat room."
+	case 7:
+		messageID, message = 434, "Your job cannot enter this chat room."
+	}
+	if ctx.Resources != nil && messageID != 0 {
+		if text, ok := ctx.Resources.MsgString(messageID); ok && strings.TrimSpace(text) != "" {
+			message = text
+		}
+	}
+	m.bindings.Console.AddErrorMessage("%s", message)
 }
 
 func (m *System) AddChatRoomMessage(ctx client.Context, chat network.ChatMessage) {

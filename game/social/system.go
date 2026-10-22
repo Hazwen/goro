@@ -27,6 +27,7 @@ type Windows struct {
 	FriendSettings       gameui.FriendSettingsWindow
 	WhisperWindows       gameui.WhisperWindows
 	ChatRoomCreate       gameui.ChatRoomCreateWindow
+	ChatRoomPassword     gameui.TextPromptWindow
 	ChatRoom             gameui.ChatRoomWindow
 	PartySettings        gameui.PartySettingsWindow
 	PartyCreate          gameui.PartyCreateWindow
@@ -39,11 +40,12 @@ type Windows struct {
 }
 
 type System struct {
-	Mail             MailState
-	GuildAction      gameui.GuildMemberAction
-	GuildOpenPending bool
-	PendingChatRoom  network.ChatRoomCreate
-	PendingTradeName string
+	Mail              MailState
+	GuildAction       gameui.GuildMemberAction
+	GuildOpenPending  bool
+	PendingChatRoom   network.ChatRoomCreate
+	pendingChatRoomID uint32
+	PendingTradeName  string
 
 	guildEmblems map[uint32]guildEmblem
 	bindings     Bindings

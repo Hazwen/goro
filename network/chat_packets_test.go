@@ -1,9 +1,52 @@
 package network
 
 import (
+	"bytes"
 	"encoding/binary"
 	"testing"
 )
+
+func TestChatRoomManagementPackets(t *testing.T) {
+	room := ChatRoomCreate{Title: "Room", Limit: 5, Password: " pass "}
+	want := []byte{0xde, 0, 19, 0, 5, 0, 0, ' ', 'p', 'a', 's', 's', ' ', 0, 0, 'R', 'o', 'o', 'm'}
+	if got := BuildChangeChatRoomPacket(room); !bytes.Equal(got, want) {
+		t.Fatalf("settings = %x, want %x", got, want)
+	}
+	want = make([]byte, 30)
+	want[0] = 0xe0
+	copy(want[6:], "Alice")
+	if got := BuildChangeChatRoomOwnerPacket("Alice"); !bytes.Equal(got, want) {
+		t.Fatalf("owner = %x, want %x", got, want)
+	}
+	want = make([]byte, 26)
+	want[0] = 0xe2
+	copy(want[2:], "Alice")
+	if got := BuildKickChatRoomMemberPacket("Alice"); !bytes.Equal(got, want) {
+		t.Fatalf("kick = %x, want %x", got, want)
+	}
+	if BuildChangeChatRoomPacket(ChatRoomCreate{}) != nil || BuildChangeChatRoomOwnerPacket("") != nil || BuildKickChatRoomMemberPacket("") != nil {
+		t.Fatal("empty requests should not produce packets")
+	}
+	for _, password := range []string{"", " pass ", "12345678"} {
+		create := BuildCreateChatRoomPacket(ChatRoomCreate{Title: "Room", Limit: 5, Password: password})
+		join := BuildEnterChatRoomPacket(123, password)
+		if !bytes.Equal(create[7:15], join[6:14]) || !bytes.Equal(join[6:6+len(password)], []byte(password)) {
+			t.Fatalf("password changed between creation and joining: %q", password)
+		}
+	}
+}
+
+func TestParseChatRoomEnterRefused(t *testing.T) {
+	for result := byte(0); result <= 7; result++ {
+		refusal, ok, err := ParseChatRoomEnterRefused(Packet{ID: 0x00da, Data: []byte{0xda, 0, result}})
+		if err != nil || !ok || refusal.Result != result {
+			t.Fatalf("result %d: %+v, %v, %v", result, refusal, ok, err)
+		}
+	}
+	if _, _, err := ParseChatRoomEnterRefused(Packet{ID: 0x00da, Data: []byte{0xda, 0}}); err == nil {
+		t.Fatal("accepted a truncated refusal")
+	}
+}
 
 func TestParseTalkBoxChatContents(t *testing.T) {
 	data := make([]byte, 86)

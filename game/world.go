@@ -203,6 +203,7 @@ func (u *worldUI) interactionModalOpen() bool {
 		u.social.GuildAllianceRequest.IsOpen() ||
 		u.social.GuildRelationConfirm.IsOpen() ||
 		u.social.GuildMemberPrompt.IsOpen() ||
+		u.social.ChatRoomPassword.IsOpen() ||
 		u.social.TradeRequest.IsOpen() ||
 		u.social.AdoptionRequest.IsOpen() ||
 		u.starPlaceConfirm.IsOpen()
@@ -421,6 +422,7 @@ func (m *WorldMode) rebindPersistentUI(ctx client.Context) {
 	m.ui.social.PartyCreate.Rebind(ctx)
 	m.ui.social.PartyInvite.Rebind(ctx)
 	m.ui.social.ChatRoomCreate.Rebind(ctx)
+	m.ui.social.ChatRoomPassword.Rebind(ctx)
 	m.ui.social.ChatRoom.Rebind(ctx)
 	m.ui.settingsWindow.Rebind(ctx)
 	m.ui.companions.HomunculusInfo.Rebind(ctx)
@@ -1545,11 +1547,13 @@ func (m *WorldMode) releaseMapTextures() {
 
 // Leave also covers disconnects, character selection, and failed map loads.
 func (m *WorldMode) Leave() {
+	m.social().CancelChatRoomRequests()
 	m.releaseMapTextures()
 }
 
 func (m *WorldMode) startMapFadeOut(change network.MapChange, now time.Time) {
 	m.ui.npc.Cutin.Clear()
+	m.social().CancelChatRoomRequests()
 	// A queued cell (or message) belongs to the map where it was selected,
 	// even when the server warps us within the same loaded map.
 	m.skillSystem.Pending = skills.PendingTarget{}
