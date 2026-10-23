@@ -116,6 +116,7 @@ func (m *WorldMode) clearRemovedActorState(id uint32) {
 		m.clearScriptHighlight()
 	}
 	delete(m.actorSystem.ActorAnims, id)
+	delete(m.actorSystem.ComboDelays, id)
 	delete(m.actorSystem.ActorDeaths, id)
 	delete(m.actorSystem.ActorVanishes, id)
 	delete(m.actorSoundFrames, id)
@@ -144,6 +145,7 @@ func (m *WorldMode) cleanupDeadActors(ctx client.Context, now time.Time) {
 		m.effects().RemoveLevel99AuraEffects(id)
 		delete(m.actorSystem.ActorDeaths, id)
 		delete(m.actorSystem.ActorAnims, id)
+		delete(m.actorSystem.ComboDelays, id)
 		delete(m.actorSoundFrames, id)
 		delete(m.battleSystem.ActorLife, id)
 		delete(m.actorSystem.SpeechBubbles, id)

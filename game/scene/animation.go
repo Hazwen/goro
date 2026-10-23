@@ -24,6 +24,7 @@ type ActorAnimation struct {
 	HasSpeed       bool
 	AutoCounter    bool
 	Casting        bool
+	Combo          bool
 	KeepMovement   bool
 	Next           *ActorAnimation
 }

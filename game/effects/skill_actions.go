@@ -35,6 +35,7 @@ type SkillActionSpec struct {
 	Length        int
 	Speed         time.Duration
 	Duration      time.Duration
+	Combo         bool
 	Play          bool
 	Repeat        bool
 	PingPong      bool
@@ -131,6 +132,7 @@ func (s SkillActionSpec) ActorAnimationForActorWithResources(manager *res.Manage
 		Started:      started,
 		StartDelay:   s.Delay,
 		Duration:     duration,
+		Combo:        s.Combo,
 		Loop:         s.Repeat,
 		PingPong:     s.PingPong,
 		Play:         s.Play,

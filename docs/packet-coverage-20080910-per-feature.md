@@ -167,7 +167,7 @@ are already merged and excluded from the remaining work above.
   - [x] Novice dori-dori command, head motion, and recovery bonus: 0x01E7
   - [x] Original Super Novice public-chat prayer trigger and request: 0x01ED (server checks eligibility and grants Fury)
   - [x] Monk sphere notifications and visible sphere counts: 0x01D0, 0x01E1
-  - [ ] Combo timing notification: 0x01D2
+  - [x] Server combo-pose timing for Triple Attack, Chain Combo, Combo Finish and Tiger Fist: 0x01D2
   - [ ] Devotion links: 0x01CF
   - [ ] Server cast-cancellation notification: 0x01B9 (ZC_DISPEL means casting was canceled, not the Sage skill)
   - [x] Star Gladiator feel save confirmation: 0x0253, 0x0254

@@ -304,6 +304,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 	m.lastAttackAt = time.Time{}
 	m.lastChaseAt = time.Time{}
 	m.actorSystem.ActorAnims = make(map[uint32]scene.ActorAnimation)
+	m.actorSystem.ComboDelays = nil
 	m.effects().ActorBlurs = nil
 	m.battleSystem.DamageFloaters = nil
 	m.npcSystem.Progress = npc.ProgressState{}

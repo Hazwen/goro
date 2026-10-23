@@ -42,6 +42,7 @@ type System struct {
 	PetAccessoryViews map[PetAccessorySpriteKey]*scene.SpriteView
 	PetAccessoryMiss  map[PetAccessorySpriteKey]struct{}
 	ActorAnims        map[uint32]scene.ActorAnimation
+	ComboDelays       map[uint32]time.Duration
 	ActorDeaths       map[uint32]time.Time
 	ActorVanishes     map[uint32]VanishFade
 	ActorNameReqAt    map[uint32]time.Time

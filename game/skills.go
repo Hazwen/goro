@@ -22,6 +22,9 @@ import (
 
 func (m *WorldMode) startSkillActionAnimation(ctx client.Context, id uint32, actor worldstate.Actor, spec effects.SkillActionSpec, started time.Time, duration time.Duration) {
 	anim := spec.ActorAnimationForActorWithResources(ctx.Resources, actor, started, duration)
+	if delay, ok := m.actorSystem.ComboDelays[id]; ok && anim.Combo {
+		anim.Duration = delay
+	}
 	m.setActorAction(ctx, id, anim)
 	if ctx.Session == nil || !scene.IsLocalActor(ctx, id) {
 		return

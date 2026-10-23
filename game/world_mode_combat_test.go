@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math"
 	"net"
@@ -1657,7 +1658,7 @@ func TestMonkSkillResultsUseDedicatedPoses(t *testing.T) {
 		{db.SkillMOFingeroffensive, sprites.ActionPCSkill, 3, true},
 		{db.SkillMOChaincombo, sprites.ActionPCSkill, 5, false},
 		{db.SkillMOCombofinish, sprites.ActionPCAttack2, 3, true},
-		{db.SkillMOTripleattack, sprites.ActionPCAttack1, 0, true},
+		{db.SkillMOTripleattack, sprites.ActionPCAttack3, 0, true},
 		{db.SkillMOExplosionspirits, sprites.ActionPCSkill, 1, true},
 	} {
 		ctx := testutil.MonkEffectContext()
@@ -1670,6 +1671,147 @@ func TestMonkSkillResultsUseDedicatedPoses(t *testing.T) {
 		if _, active := m.actors().ActorAnimation(150000, anim.Started.Add(2*time.Second)); active {
 			t.Fatalf("skill %d pose never released", tc.skill)
 		}
+	}
+}
+
+func TestTripleAttackAnimationWithClientAssets(t *testing.T) {
+	ctx := testutil.MonkEffectContext()
+	ctx.Resources = testutil.RealDataManager(t)
+	start := time.Unix(100, 0)
+	for _, job := range []int16{db.JobMonk, db.JobMonkH} {
+		for _, sex := range []byte{0, 1} {
+			ctx.Session.Selected.Job, ctx.Session.Sex = job, sex
+			view, status := sprites.LoadPlayer(ctx.Resources, ctx.Session.Selected, sex, false)
+			if view == nil || view.Body == nil {
+				t.Fatalf("job %d sex %d: %s", job, sex, status)
+			}
+			actor, _, _ := scene.ActorForCombatID(ctx, ctx.Session.AccountID)
+			m := &WorldMode{}
+			m.startSkillActionAnimation(ctx, actor.ID, actor, effects.SkillAction(db.SkillMOTripleattack), start, 1500*time.Millisecond)
+			anim := m.actorSystem.ActorAnims[ctx.Session.CharID]
+			state := sprites.State{}
+			actors.ApplyActorAnimationToSpriteState(&state, anim, true)
+			for direction := 0; direction < 8; direction++ {
+				index, action, ok := sprites.ResolveAction(view.Body.Act, anim.ActionFamily, direction)
+				if !ok || index != 88+direction || len(action.Animations) < 8 {
+					t.Fatalf("job %d sex %d direction %d: action=%d frames=%d, want ACT 88+direction with eight frames", job, sex, direction, index, len(action.Animations))
+				}
+				for frame := 0; frame < 8; frame++ {
+					at := start.Add(time.Duration(frame)*4*db.EffectFrameDuration + time.Millisecond)
+					if got := sprites.BodyMotionForState(action, state, start, at); got != frame {
+						t.Fatalf("job %d sex %d direction %d: frame=%d, want %d", job, sex, direction, got, frame)
+					}
+				}
+				if got := sprites.BodyMotionForState(action, state, start, start.Add(time.Second)); got != 7 {
+					t.Fatalf("job %d sex %d direction %d: held frame=%d, want 7", job, sex, direction, got)
+				}
+			}
+		}
+	}
+}
+
+func TestComboDelayBeforeSkillResult(t *testing.T) {
+	for _, sourceID := range []uint32{2000000, 150000, 300} {
+		for _, skillID := range []uint16{db.SkillMOTripleattack, db.SkillMOChaincombo, db.SkillMOCombofinish, db.SkillChTigerfist} {
+			t.Run(fmt.Sprintf("%d/%d", sourceID, skillID), func(t *testing.T) {
+				ctx := testutil.MonkEffectContext()
+				m := &WorldMode{}
+				data := make([]byte, 10)
+				binary.LittleEndian.PutUint16(data, network.PacketZCComboDelay)
+				binary.LittleEndian.PutUint32(data[2:], sourceID)
+				binary.LittleEndian.PutUint32(data[6:], 1500)
+				m.handleNetworkPacket(ctx, network.Packet{ID: network.PacketZCComboDelay, Data: data}, time.Now())
+				targetID := uint32(300)
+				if sourceID == targetID {
+					targetID = 2000000
+				}
+				m.applyActorActionNotify(ctx, network.ActorActionNotify{
+					SourceID: sourceID, TargetID: targetID, SkillID: skillID,
+					SkillLevel: 5, SourceSpeed: 800, Damage: 100, HitCount: 1, Action: network.ActorActionSkill,
+				})
+				ids := []uint32{sourceID}
+				if scene.IsLocalActor(ctx, sourceID) {
+					ids = []uint32{ctx.Session.AccountID, ctx.Session.CharID}
+				}
+				for _, id := range ids {
+					anim := m.actorSystem.ActorAnims[id]
+					if !anim.Combo || anim.Duration != 1500*time.Millisecond {
+						t.Fatalf("actor %d: combo animation = %+v", id, anim)
+					}
+					if skillID == db.SkillMOTripleattack && (!anim.HasSpeed || anim.Speed != 4*db.EffectFrameDuration || anim.Length != 8) {
+						t.Fatalf("Triple Attack must play at a fixed speed before holding its final pose: %+v", anim)
+					}
+					if _, active := m.actors().ActorAnimation(id, anim.Started.Add(time.Second)); !active {
+						t.Fatal("combo pose ended at the ordinary attack duration")
+					}
+					if _, active := m.actors().ActorAnimation(id, anim.Started.Add(1500*time.Millisecond)); active {
+						t.Fatal("combo pose outlived the server delay")
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestComboDelayUpdatesExistingPose(t *testing.T) {
+	ctx := testutil.MonkEffectContext()
+	start := time.Unix(100, 0)
+	for _, sourceID := range []uint32{2000000, 300} {
+		for _, delay := range []uint32{0, 1200} {
+			m := &WorldMode{}
+			actor, _, _ := scene.ActorForCombatID(ctx, sourceID)
+			m.startSkillActionAnimation(ctx, sourceID, actor, effects.SkillAction(db.SkillMOTripleattack), start, 800*time.Millisecond)
+			before := m.actorSystem.ActorAnims[sourceID]
+			received := start.Add(200 * time.Millisecond)
+			m.actors().ApplyComboDelay(ctx, network.ActorComboDelay{ID: sourceID, DelayTime: delay}, received)
+			ids := []uint32{sourceID}
+			if scene.IsLocalActor(ctx, sourceID) {
+				ids = append(ids, ctx.Session.CharID)
+			}
+			for _, id := range ids {
+				after := m.actorSystem.ActorAnims[id]
+				if after.Started != before.Started || after.Speed != before.Speed || after.FrameOffset != before.FrameOffset {
+					t.Fatalf("delay restarted or retimed the animation: before=%+v after=%+v", before, after)
+				}
+				end := received.Add(time.Duration(delay) * time.Millisecond)
+				if after.Started.Add(after.Duration) != end {
+					t.Fatalf("combo end = %v, want %v", after.Started.Add(after.Duration), end)
+				}
+				if _, active := m.actors().ActorAnimation(id, end); active {
+					t.Fatal("combo pose did not expire")
+				}
+			}
+			// Zero is an explicit duration, not a request to use the default.
+			m.startSkillActionAnimation(ctx, sourceID, actor, effects.SkillAction(db.SkillMOChaincombo), received, 800*time.Millisecond)
+			if _, active := m.actors().ActorAnimation(sourceID, received); active != (delay > 0) {
+				t.Fatalf("cached delay %d: active=%v", delay, active)
+			}
+		}
+	}
+}
+
+func TestComboDelayLeavesOtherActionsUnchanged(t *testing.T) {
+	ctx := testutil.MonkEffectContext()
+	m := &WorldMode{}
+	start := time.Unix(100, 0)
+	actor, _, _ := scene.ActorForCombatID(ctx, 300)
+	m.startSkillActionAnimation(ctx, 300, actor, effects.SkillAction(db.SkillMOInvestigate), start, 800*time.Millisecond)
+	before := m.actorSystem.ActorAnims[300]
+	m.actors().ApplyComboDelay(ctx, network.ActorComboDelay{ID: 300, DelayTime: 2000}, start)
+	if after := m.actorSystem.ActorAnims[300]; !reflect.DeepEqual(after, before) {
+		t.Fatalf("combo packet changed an unrelated skill: %+v", after)
+	}
+	m.applyActorActionNotify(ctx, network.ActorActionNotify{SourceID: 300, TargetID: 2000000, SourceSpeed: 800, Damage: 1, HitCount: 1})
+	if anim := m.actorSystem.ActorAnims[300]; anim.Combo || anim.Duration != 800*time.Millisecond {
+		t.Fatalf("cached combo delay affected a normal attack: %+v", anim)
+	}
+	m.removeActorNow(ctx, 300)
+	if _, ok := m.actorSystem.ComboDelays[300]; ok {
+		t.Fatal("removed actor retained its combo delay")
+	}
+	m.actors().ApplyComboDelay(ctx, network.ActorComboDelay{ID: 300, DelayTime: 2000}, start)
+	if len(m.actorSystem.ComboDelays) != 0 {
+		t.Fatal("unknown actor's combo packet recreated its state")
 	}
 }
 

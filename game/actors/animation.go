@@ -10,6 +10,7 @@ import (
 	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/game/sprites"
+	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/res"
 	"github.com/kivutar/goro/world"
 )
@@ -106,6 +107,33 @@ func (m *System) ActorActionDuration(ctx client.Context, actor world.Actor, acti
 	return fallback
 }
 
+func (m *System) ApplyComboDelay(ctx client.Context, notify network.ActorComboDelay, now time.Time) {
+	_, ok, local := scene.ActorForCombatID(ctx, notify.ID)
+	if !ok {
+		return
+	}
+	ids := []uint32{notify.ID}
+	if local {
+		ids = []uint32{ctx.Session.AccountID, ctx.Session.CharID}
+	}
+	if m.ComboDelays == nil {
+		m.ComboDelays = make(map[uint32]time.Duration)
+	}
+	delay := time.Duration(notify.DelayTime) * time.Millisecond
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		// The server normally sends this before the skill result; retain it
+		// for the next combo pose and update an existing one without restarting it.
+		m.ComboDelays[id] = delay
+		if anim, ok := m.ActorAnims[id]; ok && anim.Combo {
+			anim.Duration = now.Add(delay).Sub(anim.Started)
+			m.ActorAnims[id] = anim
+		}
+	}
+}
+
 func (m *System) ActorAnimation(id uint32, now time.Time) (scene.ActorAnimation, bool) {
 	if m.ActorAnims == nil || id == 0 {
 		return scene.ActorAnimation{}, false
@@ -114,7 +142,7 @@ func (m *System) ActorAnimation(id uint32, now time.Time) (scene.ActorAnimation,
 	if !ok {
 		return scene.ActorAnimation{}, false
 	}
-	if anim.Duration <= 0 {
+	if anim.Duration <= 0 && !anim.Combo {
 		anim.Duration = scene.DefaultAttackAnimationDuration
 	}
 	if now.Before(anim.Started) {

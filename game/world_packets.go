@@ -1210,6 +1210,12 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		m.applyActorBladeStop(ctx, bladeStop)
 		return nil, false
 	}
+	if combo, ok, err := network.ParseActorComboDelay(pkt); err != nil {
+		glog.Errorf("parse actor combo delay 0x%04X: %v", pkt.ID, err)
+	} else if ok {
+		m.actors().ApplyComboDelay(ctx, combo, now)
+		return nil, false
+	}
 	if action, ok, err := network.ParseActorActionNotify(pkt); err != nil {
 		glog.Errorf("parse actor action 0x%04X: %v", pkt.ID, err)
 	} else if ok {
