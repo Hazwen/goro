@@ -11,6 +11,7 @@ import (
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/input"
 	gameui "github.com/kivutar/goro/ui"
+	worldstate "github.com/kivutar/goro/world"
 )
 
 func TestUISettingsRestoreAndRelog(t *testing.T) {
@@ -20,10 +21,28 @@ func TestUISettingsRestoreAndRelog(t *testing.T) {
 		FriendsOpen: true, QuestsOpen: true,
 		BasicInfoCompact: true, BasicMenuCollapsed: true,
 		SkillTree: true, ShortcutRows: 3, MinimapHidden: true,
-		ShortcutPosition: config.WindowPosition{X: 200, Y: 160, Set: true},
-		ConsolePosition:  config.WindowPosition{X: 40, Y: 320, Set: true},
-		StatsPosition:    config.WindowPosition{X: 200, Y: 80, Set: true},
-		CameraZoom:       scene.CameraZoom(),
+		ShortcutPosition:         config.WindowPosition{X: 200, Y: 160, Set: true},
+		ConsolePosition:          config.WindowPosition{X: 40, Y: 320, Set: true},
+		StatsPosition:            config.WindowPosition{X: 200, Y: 80, Set: true},
+		InventoryPosition:        config.WindowPosition{X: 40, Y: 60, Set: true},
+		EquipmentPosition:        config.WindowPosition{X: 50, Y: 60, Set: true},
+		SkillsPosition:           config.WindowPosition{X: 60, Y: 60, Set: true},
+		QuestsPosition:           config.WindowPosition{X: 70, Y: 60, Set: true},
+		FriendsPosition:          config.WindowPosition{X: 80, Y: 60, Set: true},
+		GuildPosition:            config.WindowPosition{X: 90, Y: 60, Set: true},
+		CartPosition:             config.WindowPosition{X: 100, Y: 60, Set: true},
+		WorldMapPosition:         config.WindowPosition{X: 110, Y: 60, Set: true},
+		EmotesPosition:           config.WindowPosition{X: 120, Y: 60, Set: true},
+		ChatShortcutsPosition:    config.WindowPosition{X: 130, Y: 60, Set: true},
+		SettingsPosition:         config.WindowPosition{X: 140, Y: 60, Set: true},
+		PetPosition:              config.WindowPosition{X: 150, Y: 60, Set: true},
+		HomunculusPosition:       config.WindowPosition{X: 160, Y: 60, Set: true},
+		HomunculusSkillsPosition: config.WindowPosition{X: 170, Y: 60, Set: true},
+		MercenaryPosition:        config.WindowPosition{X: 180, Y: 60, Set: true},
+		MercenarySkillsPosition:  config.WindowPosition{X: 190, Y: 60, Set: true},
+		BasicInfoPosition:        config.WindowPosition{X: 200, Y: 60, Set: true},
+		MinimapPosition:          config.WindowPosition{X: 210, Y: 60, Set: true},
+		CameraZoom:               scene.CameraZoom(),
 	}
 	if _, err := ctx.Config.SaveUISettings(want); err != nil {
 		t.Fatal(err)
@@ -50,6 +69,11 @@ func TestUISettingsRestoreAndRelog(t *testing.T) {
 	if got := next.ui.statsWindow.SavedPosition(); got != want.StatsPosition {
 		t.Fatalf("opening Stats after relog lost its position: %+v", got)
 	}
+	next.ui.equipmentWindow.Toggle(ctx)
+	if next.ui.equipmentWindow.SavedPosition() != want.EquipmentPosition {
+		t.Fatal("first opening Equipment after relog lost its saved position")
+	}
+	next.ui.equipmentWindow.Close()
 	// Map changes keep the existing windows and don't reapply saved defaults.
 	next.ui.inventoryBag.Toggle(ctx)
 	warped := next.nextWorldMode()
@@ -75,16 +99,18 @@ func TestUISettingsRestoreAndRelog(t *testing.T) {
 }
 
 func TestUIPositionsSaveAfterDrag(t *testing.T) {
-	for _, target := range []string{"console", "shortcuts", "stats"} {
+	for _, target := range []string{"console", "shortcuts", "stats", "inventory"} {
 		t.Run(target, func(t *testing.T) {
 			ctx := chatShortcutTestContext(t)
 			ctx.UIManager = gameui.NewManager()
 			initial := config.UISettings{ShortcutRows: 1,
-				CameraZoom:       scene.CameraZoom(),
-				ConsolePosition:  config.WindowPosition{X: 40, Y: 320, Set: true},
-				ShortcutPosition: config.WindowPosition{X: 200, Y: 160, Set: true},
-				StatsPosition:    config.WindowPosition{X: 300, Y: 80, Set: true},
-				StatsOpen:        target == "stats",
+				CameraZoom:        scene.CameraZoom(),
+				ConsolePosition:   config.WindowPosition{X: 40, Y: 320, Set: true},
+				ShortcutPosition:  config.WindowPosition{X: 200, Y: 160, Set: true},
+				StatsPosition:     config.WindowPosition{X: 300, Y: 80, Set: true},
+				StatsOpen:         target == "stats",
+				InventoryPosition: config.WindowPosition{X: 300, Y: 80, Set: true},
+				InventoryOpen:     target == "inventory",
 			}
 			if _, err := ctx.Config.SaveUISettings(initial); err != nil {
 				t.Fatal(err)
@@ -99,6 +125,9 @@ func TestUIPositionsSaveAfterDrag(t *testing.T) {
 			} else if target == "stats" {
 				x, y = 320, 85 // title bar
 				update = func() { m.ui.statsWindow.Update(ctx) }
+			} else if target == "inventory" {
+				x, y = 320, 85
+				update = func() { m.ui.inventoryBag.Update(ctx, nil, nil, nil, nil, nil, nil) }
 			}
 			ctx.Input.SetMousePosition(x, y)
 			ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
@@ -120,6 +149,8 @@ func TestUIPositionsSaveAfterDrag(t *testing.T) {
 				position = &want.ShortcutPosition
 			} else if target == "stats" {
 				position = &want.StatsPosition
+			} else if target == "inventory" {
+				position = &want.InventoryPosition
 			}
 			position.X += 30
 			position.Y -= 40
@@ -133,7 +164,14 @@ func TestUIPositionsSaveAfterDrag(t *testing.T) {
 func TestUISettingsWaitForCompanionsAndCart(t *testing.T) {
 	ctx := chatShortcutTestContext(t)
 	ctx.Config.UI = config.UISettings{PetOpen: true, HomunculusOpen: true, HomunculusSkillsOpen: true,
-		MercenaryOpen: true, MercenarySkillsOpen: true, CartOpen: true, ShortcutRows: 1}
+		MercenaryOpen: true, MercenarySkillsOpen: true, CartOpen: true, ShortcutRows: 1,
+		PetPosition:              config.WindowPosition{X: 40, Y: 60, Set: true},
+		HomunculusPosition:       config.WindowPosition{X: 50, Y: 60, Set: true},
+		HomunculusSkillsPosition: config.WindowPosition{X: 60, Y: 60, Set: true},
+		MercenaryPosition:        config.WindowPosition{X: 70, Y: 60, Set: true},
+		MercenarySkillsPosition:  config.WindowPosition{X: 80, Y: 60, Set: true},
+		CartPosition:             config.WindowPosition{X: 90, Y: 60, Set: true},
+	}
 	m := NewWorldMode()
 	m.restoreUISettings(ctx)
 	if m.ui.pet.Info.IsOpen() || m.ui.companions.HomunculusInfo.IsOpen() || m.ui.cartWindow.IsOpen() {
@@ -155,6 +193,11 @@ func TestUISettingsWaitForCompanionsAndCart(t *testing.T) {
 		!m.ui.companions.MercenarySkill.IsOpen() || !m.ui.cartWindow.IsOpen() {
 		t.Fatal("did not restore windows after their data arrived")
 	}
+	if got := m.uiSettings(); got.PetPosition != ctx.Config.UI.PetPosition ||
+		got.HomunculusPosition != ctx.Config.UI.HomunculusPosition || got.HomunculusSkillsPosition != ctx.Config.UI.HomunculusSkillsPosition ||
+		got.MercenaryPosition != ctx.Config.UI.MercenaryPosition || got.MercenarySkillsPosition != ctx.Config.UI.MercenarySkillsPosition || got.CartPosition != ctx.Config.UI.CartPosition {
+		t.Fatal("late data lost restored positions")
+	}
 	m.ui.companions.HomunculusInfo.Close()
 	m.ui.cartWindow.Close()
 	m.restoreUISettings(ctx)
@@ -162,6 +205,26 @@ func TestUISettingsWaitForCompanionsAndCart(t *testing.T) {
 	saved, err = ctx.Config.LoadUISettings()
 	if err != nil || saved.HomunculusOpen || saved.CartOpen {
 		t.Fatalf("reopened manually closed windows: %+v, %v", saved, err)
+	}
+}
+
+func TestUISettingsRestoreBasicInfoAndMinimapPositions(t *testing.T) {
+	ctx := chatShortcutTestContext(t)
+	ctx.World = worldstate.New()
+	ctx.Config.UI.BasicInfoPosition = config.WindowPosition{X: 100, Y: 70, Set: true}
+	ctx.Config.UI.MinimapPosition = config.WindowPosition{X: 400, Y: 50, Set: true}
+	m := NewWorldMode()
+	m.restoreUISettings(ctx)
+	m.ui.characterWindow.Update(ctx)
+	m.ui.basicMenu.FollowCharacterWindow(ctx, &m.ui.characterWindow)
+	m.ui.minimap.Update(ctx)
+	if m.ui.characterWindow.SavedPosition() != ctx.Config.UI.BasicInfoPosition || m.ui.minimap.SavedPosition() != ctx.Config.UI.MinimapPosition {
+		t.Fatal("HUD automatic placement overwrote restored positions")
+	}
+	m.ui.minimap.Toggle(ctx)
+	m.ui.minimap.Toggle(ctx)
+	if m.ui.minimap.SavedPosition() != ctx.Config.UI.MinimapPosition {
+		t.Fatal("showing the minimap lost its position")
 	}
 }
 

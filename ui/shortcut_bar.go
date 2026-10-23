@@ -175,7 +175,7 @@ func (b *ShortcutBar) ensureWindow() {
 	}
 }
 
-func (b *ShortcutBar) SavedPosition() config.WindowPosition { return b.window.savedPosition() }
+func (b *ShortcutBar) SavedPosition() config.WindowPosition { return b.window.SavedPosition() }
 
 func (b *ShortcutBar) Dragging() bool { return b.window.dragging }
 
@@ -184,7 +184,7 @@ func (b *ShortcutBar) RestorePosition(ctx Context, position config.WindowPositio
 		return
 	}
 	b.ensureWindow()
-	b.window.restorePosition(ctx, position)
+	b.window.RestorePosition(ctx, position)
 	b.Publish(ctx, b.actions, b.assets)
 }
 

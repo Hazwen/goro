@@ -18,6 +18,41 @@ type windowPreferences struct {
 	zoomChanged time.Time
 }
 
+type windowPositionBinding struct {
+	window interface {
+		SavedPosition() config.WindowPosition
+		RestorePosition(client.Context, config.WindowPosition)
+		Dragging() bool
+	}
+	position *config.WindowPosition
+}
+
+func (u *worldUI) windowPositions(s *config.UISettings) []windowPositionBinding {
+	return []windowPositionBinding{
+		{&u.console, &s.ConsolePosition},
+		{&u.shortcutBar, &s.ShortcutPosition},
+		{&u.statsWindow, &s.StatsPosition},
+		{&u.inventoryBag, &s.InventoryPosition},
+		{&u.equipmentWindow, &s.EquipmentPosition},
+		{&u.skillWindow, &s.SkillsPosition},
+		{&u.questWindow, &s.QuestsPosition},
+		{&u.social.FriendsWindow, &s.FriendsPosition},
+		{&u.social.GuildWindow, &s.GuildPosition},
+		{&u.cartWindow, &s.CartPosition},
+		{&u.worldMap, &s.WorldMapPosition},
+		{&u.emoteWindow, &s.EmotesPosition},
+		{&u.chatShortcuts, &s.ChatShortcutsPosition},
+		{&u.settingsWindow, &s.SettingsPosition},
+		{&u.pet.Info, &s.PetPosition},
+		{&u.companions.HomunculusInfo, &s.HomunculusPosition},
+		{&u.companions.HomunculusSkill, &s.HomunculusSkillsPosition},
+		{&u.companions.MercenaryInfo, &s.MercenaryPosition},
+		{&u.companions.MercenarySkill, &s.MercenarySkillsPosition},
+		{&u.characterWindow, &s.BasicInfoPosition},
+		{&u.minimap, &s.MinimapPosition},
+	}
+}
+
 func (m *WorldMode) restoreUISettings(ctx client.Context) {
 	if ctx.Session == nil {
 		return
@@ -38,9 +73,9 @@ func (m *WorldMode) restoreUISettings(ctx client.Context) {
 		m.ui.basicMenu.SetCollapsed(s.BasicMenuCollapsed)
 		m.ui.skillWindow.SetTreeMode(ctx, s.SkillTree)
 		m.ui.shortcutBar.SetVisibleRows(ctx, s.ShortcutRows)
-		m.ui.shortcutBar.RestorePosition(ctx, s.ShortcutPosition)
-		m.ui.console.RestorePosition(ctx, s.ConsolePosition)
-		m.ui.statsWindow.RestorePosition(ctx, s.StatsPosition)
+		for _, binding := range m.ui.windowPositions(&s) {
+			binding.window.RestorePosition(ctx, *binding.position)
+		}
 		if m.ui.minimap.Hidden() != s.MinimapHidden {
 			m.ui.minimap.Toggle(ctx)
 		}
@@ -124,7 +159,7 @@ func (m *WorldMode) restoreUISettings(ctx client.Context) {
 func (m *WorldMode) uiSettings() config.UISettings {
 	u := &m.ui
 	p := u.preferences.pending
-	return config.UISettings{
+	settings := config.UISettings{
 		InventoryOpen:        u.inventoryBag.IsOpen(),
 		EquipmentOpen:        u.equipmentWindow.IsOpen(),
 		StatsOpen:            u.statsWindow.IsOpen(),
@@ -147,11 +182,12 @@ func (m *WorldMode) uiSettings() config.UISettings {
 		BasicMenuCollapsed:   u.basicMenu.Collapsed(),
 		SkillTree:            u.skillWindow.TreeMode(),
 		ShortcutRows:         u.shortcutBar.VisibleRows(),
-		ShortcutPosition:     u.shortcutBar.SavedPosition(),
-		ConsolePosition:      u.console.SavedPosition(),
-		StatsPosition:        u.statsWindow.SavedPosition(),
 		CameraZoom:           m.camera.targetZoom(),
 	}
+	for _, binding := range u.windowPositions(&settings) {
+		*binding.position = binding.window.SavedPosition()
+	}
+	return settings
 }
 
 func (m *WorldMode) SaveUISettings(ctx client.Context) {
@@ -167,8 +203,12 @@ func (m *WorldMode) saveUISettings(ctx client.Context, retry bool) {
 	if !p.loaded || ctx.Config.Headless || ctx.Config.ConfigPath == "" {
 		return
 	}
-	if !retry && (m.ui.console.Dragging() || m.ui.shortcutBar.Dragging() || m.ui.statsWindow.Dragging()) {
-		return
+	if !retry {
+		for _, binding := range m.ui.windowPositions(&p.last) {
+			if binding.window.Dragging() {
+				return
+			}
+		}
 	}
 	next := m.uiSettings()
 	if next.CameraZoom != p.zoomTarget {

@@ -6,7 +6,6 @@ import (
 
 	"github.com/gogpu/ui/primitives"
 	"github.com/gogpu/ui/widget"
-	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
@@ -44,19 +43,6 @@ type statRow struct {
 	value    int
 	bonus    int
 	cost     int
-}
-
-func (w *StatsWindow) SavedPosition() config.WindowPosition { return w.savedPosition() }
-
-func (w *StatsWindow) Dragging() bool { return w.dragging }
-
-func (w *StatsWindow) RestorePosition(ctx Context, position config.WindowPosition) {
-	if !position.Set {
-		return
-	}
-	w.EnsureWindow(statsWindowWidth, statsWindowHeight)
-	w.restorePosition(ctx, position)
-	w.Publish(ctx)
 }
 
 func (w *StatsWindow) Toggle(ctx Context) {

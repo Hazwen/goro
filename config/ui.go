@@ -9,32 +9,50 @@ import (
 
 // UISettings stores window choices, positions, and camera zoom.
 type UISettings struct {
-	InventoryOpen        bool
-	EquipmentOpen        bool
-	StatsOpen            bool
-	SkillsOpen           bool
-	QuestsOpen           bool
-	FriendsOpen          bool
-	GuildOpen            bool
-	CartOpen             bool
-	WorldMapOpen         bool
-	EmotesOpen           bool
-	ChatShortcutsOpen    bool
-	SettingsOpen         bool
-	PetOpen              bool
-	HomunculusOpen       bool
-	HomunculusSkillsOpen bool
-	MercenaryOpen        bool
-	MercenarySkillsOpen  bool
-	MinimapHidden        bool
-	BasicInfoCompact     bool
-	BasicMenuCollapsed   bool
-	SkillTree            bool
-	ShortcutRows         int
-	ShortcutPosition     WindowPosition
-	ConsolePosition      WindowPosition
-	StatsPosition        WindowPosition
-	CameraZoom           float64
+	InventoryOpen            bool
+	EquipmentOpen            bool
+	StatsOpen                bool
+	SkillsOpen               bool
+	QuestsOpen               bool
+	FriendsOpen              bool
+	GuildOpen                bool
+	CartOpen                 bool
+	WorldMapOpen             bool
+	EmotesOpen               bool
+	ChatShortcutsOpen        bool
+	SettingsOpen             bool
+	PetOpen                  bool
+	HomunculusOpen           bool
+	HomunculusSkillsOpen     bool
+	MercenaryOpen            bool
+	MercenarySkillsOpen      bool
+	MinimapHidden            bool
+	BasicInfoCompact         bool
+	BasicMenuCollapsed       bool
+	SkillTree                bool
+	ShortcutRows             int
+	ShortcutPosition         WindowPosition
+	ConsolePosition          WindowPosition
+	StatsPosition            WindowPosition
+	InventoryPosition        WindowPosition
+	EquipmentPosition        WindowPosition
+	SkillsPosition           WindowPosition
+	QuestsPosition           WindowPosition
+	FriendsPosition          WindowPosition
+	GuildPosition            WindowPosition
+	CartPosition             WindowPosition
+	WorldMapPosition         WindowPosition
+	EmotesPosition           WindowPosition
+	ChatShortcutsPosition    WindowPosition
+	SettingsPosition         WindowPosition
+	PetPosition              WindowPosition
+	HomunculusPosition       WindowPosition
+	HomunculusSkillsPosition WindowPosition
+	MercenaryPosition        WindowPosition
+	MercenarySkillsPosition  WindowPosition
+	BasicInfoPosition        WindowPosition
+	MinimapPosition          WindowPosition
+	CameraZoom               float64
 }
 
 // An unset position keeps the window's automatic placement.
@@ -91,14 +109,34 @@ func (s *UISettings) boolFields() map[string]*bool {
 	}
 }
 
+func (s *UISettings) positionFields() map[string]*WindowPosition {
+	return map[string]*WindowPosition{
+		"shortcut_position":          &s.ShortcutPosition,
+		"console_position":           &s.ConsolePosition,
+		"stats_position":             &s.StatsPosition,
+		"inventory_position":         &s.InventoryPosition,
+		"equipment_position":         &s.EquipmentPosition,
+		"skills_position":            &s.SkillsPosition,
+		"quests_position":            &s.QuestsPosition,
+		"friends_position":           &s.FriendsPosition,
+		"guild_position":             &s.GuildPosition,
+		"cart_position":              &s.CartPosition,
+		"world_map_position":         &s.WorldMapPosition,
+		"emotes_position":            &s.EmotesPosition,
+		"chat_shortcuts_position":    &s.ChatShortcutsPosition,
+		"settings_position":          &s.SettingsPosition,
+		"pet_position":               &s.PetPosition,
+		"homunculus_position":        &s.HomunculusPosition,
+		"homunculus_skills_position": &s.HomunculusSkillsPosition,
+		"mercenary_position":         &s.MercenaryPosition,
+		"mercenary_skills_position":  &s.MercenarySkillsPosition,
+		"basic_info_position":        &s.BasicInfoPosition,
+		"minimap_position":           &s.MinimapPosition,
+	}
+}
+
 func (s *UISettings) apply(key, value string) error {
 	switch key {
-	case "shortcutposition":
-		return s.ShortcutPosition.parse(value)
-	case "consoleposition":
-		return s.ConsolePosition.parse(value)
-	case "statsposition":
-		return s.StatsPosition.parse(value)
 	case "camerazoom":
 		zoom, err := strconv.ParseFloat(value, 64)
 		if err != nil || zoom < 0 || math.IsNaN(zoom) || math.IsInf(zoom, 0) {
@@ -118,6 +156,11 @@ func (s *UISettings) apply(key, value string) error {
 	for name, field := range s.boolFields() {
 		if normalizeKey(name) == key {
 			return setBool(value, field)
+		}
+	}
+	for name, field := range s.positionFields() {
+		if normalizeKey(name) == key {
+			return field.parse(value)
 		}
 	}
 	return fmt.Errorf("unknown UI setting %q", key)
@@ -147,14 +190,14 @@ func (cfg Config) SaveUISettings(settings UISettings) (string, error) {
 		return "", fmt.Errorf("camera_zoom must be finite and non-negative")
 	}
 	values := map[string]string{
-		"shortcut_rows":     strconv.Itoa(settings.ShortcutRows),
-		"shortcut_position": settings.ShortcutPosition.iniValue(),
-		"console_position":  settings.ConsolePosition.iniValue(),
-		"stats_position":    settings.StatsPosition.iniValue(),
-		"camera_zoom":       strconv.FormatFloat(settings.CameraZoom, 'f', -1, 64),
+		"shortcut_rows": strconv.Itoa(settings.ShortcutRows),
+		"camera_zoom":   strconv.FormatFloat(settings.CameraZoom, 'f', -1, 64),
 	}
 	for key, value := range settings.boolFields() {
 		values[key] = formatINIValueBool(*value)
+	}
+	for key, position := range settings.positionFields() {
+		values[key] = position.iniValue()
 	}
 	return cfg.saveConfigValues(map[string]map[string]string{"ui": values})
 }

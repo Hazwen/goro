@@ -12,6 +12,7 @@ import (
 	"github.com/gogpu/ui/uitest"
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/input"
 	"github.com/kivutar/goro/session"
 	"github.com/kivutar/goro/ui/rotheme"
@@ -46,7 +47,12 @@ func TestGameWindowsKeepDraggedPositionWhenReopened(t *testing.T) {
 			ctx := Context{Input: input.NewState(), Session: session.New(), UIManager: NewManager(), ScreenW: 1600, ScreenH: 1000}
 			ctx.Session.Homunculus.Active, ctx.Session.Mercenary.Active = true, true
 			w := test.window
+			position := config.WindowPosition{X: 150, Y: 80, Set: true}
+			w.RestorePosition(ctx, position)
 			test.open(ctx)
+			if w.SavedPosition() != position {
+				t.Fatalf("first open lost the restored position: %+v", w.SavedPosition())
+			}
 			ctx.Input.SetMousePosition(w.x+20, w.y+5)
 			ctx.Input.SetMouseButton(input.MouseButtonLeft, true)
 			w.Update(ctx)
@@ -72,6 +78,23 @@ func TestGameWindowsKeepDraggedPositionWhenReopened(t *testing.T) {
 				t.Fatalf("reopened window did not fit the smaller screen: %d,%d %dx%d", w.x, w.y, w.width, w.height)
 			}
 		})
+	}
+}
+
+func TestWindowRestoredBeforeInitializationClampsWhenOpened(t *testing.T) {
+	ctx := Context{ScreenW: 800, ScreenH: 600}
+	position := config.WindowPosition{X: 1400, Y: 900, Set: true}
+	var window Window
+	window.RestorePosition(ctx, position)
+	window.EnsureWindow(300, 200)
+	if window.IsOpen() || window.SavedPosition() != position {
+		t.Fatal("initialization lost or prematurely clamped the saved position")
+	}
+	window.SetAutoPosition(20, 20)
+	window.Open(ctx, nil)
+	want := config.WindowPosition{X: 800 - 300 - windowScreenMargin, Y: 600 - 200 - windowScreenMargin, Set: true}
+	if window.SavedPosition() != want {
+		t.Fatalf("opened position = %+v, want %+v", window.SavedPosition(), want)
 	}
 }
 

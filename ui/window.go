@@ -293,7 +293,12 @@ func (w *Window) EnsureWindow(width, height int) bool {
 	if w.width != 0 {
 		return false
 	}
+	position := w.SavedPosition()
 	*w = NewWindow(width, height)
+	if position.Set {
+		w.x, w.y = position.X, position.Y
+		w.userMoved, w.positioned = true, true
+	}
 	return true
 }
 
@@ -654,19 +659,27 @@ func (w *Window) keepOnScreen(ctx client.Context) {
 	w.setPosition(ctx, x, y)
 }
 
-func (w *Window) savedPosition() config.WindowPosition {
+func (w *Window) Dragging() bool { return w.dragging }
+
+func (w *Window) SavedPosition() config.WindowPosition {
 	if !w.userMoved {
 		return config.WindowPosition{}
 	}
 	return config.WindowPosition{X: w.x, Y: w.y, Set: true}
 }
 
-func (w *Window) restorePosition(ctx client.Context, position config.WindowPosition) {
-	screenW, screenH := ctx.ScreenSize()
-	x := clampWindowInt(position.X, windowScreenMargin, maxInt(windowScreenMargin, screenW-w.width-windowScreenMargin))
-	y := clampWindowInt(position.Y, windowScreenMargin, maxInt(windowScreenMargin, screenH-w.height-windowScreenMargin))
+// RestorePosition also works before a closed window has been initialized.
+// Open clamps the saved coordinates once the window's dimensions are known.
+func (w *Window) RestorePosition(ctx client.Context, position config.WindowPosition) {
+	if !position.Set {
+		return
+	}
 	w.userMoved, w.positioned = true, true
-	w.setPosition(ctx, x, y)
+	w.setPosition(ctx, position.X, position.Y)
+	if w.IsOpen() {
+		w.keepOnScreen(ctx)
+	}
+	w.Publish(ctx)
 }
 
 func (w *Window) setDragPosition(ctx client.Context, x, y int) {

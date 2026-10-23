@@ -55,7 +55,8 @@ func (w *CharacterWindow) Update(ctx Context) bool {
 	}
 	if !w.IsOpen() {
 		w.snapshot = characterWindowSnapshot(ctx.Session)
-		w.OpenAt(characterWindowX, characterWindowY, w.widgetTree(ctx))
+		w.SetAutoPosition(characterWindowX, characterWindowY)
+		w.Open(ctx, w.widgetTree(ctx))
 	}
 	nextSnapshot := characterWindowSnapshot(ctx.Session)
 	if nextSnapshot != w.snapshot {

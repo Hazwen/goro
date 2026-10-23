@@ -243,7 +243,7 @@ func (c *ChatConsole) Publish(ctx client.Context) {
 	c.window.Publish(ctx)
 }
 
-func (c *ChatConsole) SavedPosition() config.WindowPosition { return c.window.savedPosition() }
+func (c *ChatConsole) SavedPosition() config.WindowPosition { return c.window.SavedPosition() }
 
 func (c *ChatConsole) Dragging() bool { return c.window.dragging }
 
@@ -253,7 +253,7 @@ func (c *ChatConsole) RestorePosition(ctx client.Context, position config.Window
 	}
 	c.ctx = ctx
 	c.ensureWindow(ctx)
-	c.window.restorePosition(ctx, position)
+	c.window.RestorePosition(ctx, position)
 	c.window.Publish(ctx)
 }
 
