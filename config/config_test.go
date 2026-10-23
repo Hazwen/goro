@@ -210,7 +210,7 @@ func TestVisualSettingsSurviveOtherSettingsAndRespectCLI(t *testing.T) {
 	if _, err := cfg.SaveUISettings(UISettings{ShortcutRows: 3}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cfg.SaveVisualSettings(false, true); err != nil {
+	if _, err := cfg.SaveVisualSettings(false, true, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := cfg.SaveUserSettings(UserSettings{VSync: true}); err != nil {
@@ -220,15 +220,15 @@ func TestVisualSettingsSurviveOtherSettingsAndRespectCLI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saved.Fog.Enabled || !saved.Gameplay.SimpleAura || !saved.Render.VSync || saved.UI.ShortcutRows != 3 {
+	if saved.Fog.Enabled || !saved.Gameplay.SimpleAura || !saved.Gameplay.NoEffects || !saved.Render.VSync || saved.UI.ShortcutRows != 3 {
 		t.Fatalf("preferences overwritten: fog=%t simple aura=%t vsync=%t shortcut rows=%d", saved.Fog.Enabled, saved.Gameplay.SimpleAura, saved.Render.VSync, saved.UI.ShortcutRows)
 	}
-	overridden, err := LoadConfig([]string{"--config", cfg.ConfigPath, "--fog=true"})
+	overridden, err := LoadConfig([]string{"--config", cfg.ConfigPath, "--fog=true", "--no-effects=false"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !overridden.Fog.Enabled {
-		t.Fatal("saved fog preference overrode the command line")
+	if !overridden.Fog.Enabled || overridden.Gameplay.NoEffects {
+		t.Fatal("saved visual preferences overrode the command line")
 	}
 }
 

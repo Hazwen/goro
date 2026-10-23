@@ -2,12 +2,15 @@ package actors_test
 
 import (
 	"math"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/kivutar/goro/game/actors"
+	"github.com/kivutar/goro/game/effects"
 	"github.com/kivutar/goro/game/internal/testutil"
 	"github.com/kivutar/goro/game/scene"
+	"github.com/kivutar/goro/render"
 	"github.com/kivutar/goro/res"
 	worldstate "github.com/kivutar/goro/world"
 )
@@ -135,6 +138,37 @@ func TestWarpActorUsesCenteredWorldAnchor(t *testing.T) {
 	x, y := actors.ActorWorldAnchor(actor, 30, 40)
 	if x != 30.5 || y != 40.5 {
 		t.Fatalf("warp anchor = %.1f, %.1f; want 30.5, 40.5", x, y)
+	}
+}
+
+func TestDisabledEffectsKeepVisibleWarpMarkers(t *testing.T) {
+	ctx := testutil.ArcherEffectContext()
+	ctx.World.Actors = map[uint32]worldstate.Actor{
+		300: {ID: 300, Job: scene.ActorJobWarpPortal, X: 10, Y: 20},
+		301: {ID: 301, Job: scene.ActorJobHiddenWarpNPC, X: 10, Y: 20},
+	}
+	m := &actors.System{ShadowView: testutil.EffectRenderTestSprite()}
+	m.Bind(actors.Bindings{Effects: &effects.System{}})
+	projection := testutil.Projection(800, 600, 10.5, 20.5, 0)
+	for _, hidden := range []bool{false, true, false} {
+		ctx.Session.NoEffects = hidden
+		frame := render.NewFrame(800, 600)
+		entries := m.CollectSceneActorEntries(frame, ctx, projection)
+		if len(entries) != 2 {
+			t.Fatalf("draw entries = %d, want player and visible portal only", len(entries))
+		}
+		for _, entry := range entries {
+			if entry.Actor.ID != 300 {
+				continue
+			}
+			if entry.CastShadow != hidden || hidden && entry.ShadowScale != 3 {
+				t.Fatalf("hidden=%t: portal shadow=%t scale=%g", hidden, entry.CastShadow, entry.ShadowScale)
+			}
+			m.DrawActorShadowEntry(frame, ctx, projection, entry)
+		}
+		if drew := reflect.ValueOf(frame).Elem().FieldByName("worldBillboards").Len() > 0; drew != hidden {
+			t.Fatalf("hidden=%t: portal marker drawn=%t", hidden, drew)
+		}
 	}
 }
 

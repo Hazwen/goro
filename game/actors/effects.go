@@ -175,8 +175,10 @@ func (m *System) SetActorStateEffect(ctx client.Context, actorID uint32, effectI
 		m.bindings.Effects.Remove(effectID, actorID)
 		return
 	}
-	m.bindings.Effects.AddIfMissing(ctx, effectID, actorID)
 	now := time.Now()
+	if !m.bindings.Effects.HasActive(effectID, actorID, now) {
+		m.bindings.Effects.AddPersistentBetween(ctx, effectID, actorID, 0, now)
+	}
 	for i := range m.bindings.Effects.Active {
 		effect := &m.bindings.Effects.Active[i]
 		if effect.EffectID == effectID && effect.ActorID == actorID && !effect.Expired(now) {

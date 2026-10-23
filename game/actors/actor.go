@@ -618,6 +618,9 @@ func (m *System) CollectSceneActorEntries(screen *render.Frame, ctx client.Conte
 	}
 	visible := entries[:0]
 	for _, entry := range entries {
+		if npc.IsWarpActor(entry.Actor) && !effects.Enabled(ctx) {
+			entry.CastShadow, entry.ShadowScale = true, 3
+		}
 		entry.Actor.Dir = m.SkillEffectDirection(ctx, entry.Actor.ID, entry.Actor.Dir, now)
 		entry.Stealth = actorStealthView(ctx, entry.Actor, entry.IsPlayer)
 		// The local gauges remain visible even when the body is absent.

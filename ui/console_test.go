@@ -102,19 +102,21 @@ func TestConsoleVisualCommandsStayLocalAndSave(t *testing.T) {
 		Session: session.New(),
 	}
 	for _, step := range []struct {
-		command         string
-		fog, simpleAura bool
-		message         string
+		command                    string
+		fog, simpleAura, noEffects bool
+		message                    string
 	}{
-		{" /FOG ", false, false, "Fog: Off"},
-		{"/aura", false, true, "Simple Aura: On"},
-		{"/fog", true, true, "Fog: On"},
-		{" /AURA ", true, false, "Simple Aura: Off"},
+		{" /FOG ", false, false, false, "Fog: Off"},
+		{"/aura", false, true, false, "Simple Aura: On"},
+		{" /EFFECT ", false, true, true, "Effects: Off"},
+		{"/fog", true, true, true, "Fog: On"},
+		{" /AURA ", true, false, true, "Simple Aura: Off"},
+		{"/effect", true, false, false, "Effects: On"},
 	} {
 		if !console.SendText(ctx, step.command) {
 			t.Fatalf("%q fell through to server chat", step.command)
 		}
-		if ctx.Session.FogEnabled != step.fog || ctx.Session.SimpleAura != step.simpleAura || ctx.Session.LessEffects {
+		if ctx.Session.FogEnabled != step.fog || ctx.Session.SimpleAura != step.simpleAura || ctx.Session.NoEffects != step.noEffects || ctx.Session.LessEffects {
 			t.Fatalf("%q: fog=%t simple aura=%t less effects=%t", step.command, ctx.Session.FogEnabled, ctx.Session.SimpleAura, ctx.Session.LessEffects)
 		}
 		messages := console.Messages()
@@ -125,7 +127,7 @@ func TestConsoleVisualCommandsStayLocalAndSave(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if saved.Fog.Enabled != step.fog || saved.Gameplay.SimpleAura != step.simpleAura {
+		if saved.Fog.Enabled != step.fog || saved.Gameplay.SimpleAura != step.simpleAura || saved.Gameplay.NoEffects != step.noEffects {
 			t.Fatalf("%q: saved fog=%t simple aura=%t", step.command, saved.Fog.Enabled, saved.Gameplay.SimpleAura)
 		}
 	}

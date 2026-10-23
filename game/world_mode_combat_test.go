@@ -29,6 +29,114 @@ import (
 	worldstate "github.com/kivutar/goro/world"
 )
 
+func TestHiddenEffectsDoNotStartSoundsOrCameraShake(t *testing.T) {
+	ctx := testutil.KnightEffectContext()
+	start := time.Unix(100, 0)
+	for _, spawn := range []string{"actor", "ground", "ground lifetime", "persistent actor", "persistent ground"} {
+		for _, hidden := range []bool{false, true} {
+			ctx.Session.NoEffects = hidden
+			m := &WorldMode{}
+			for _, id := range []int{effects.MagnumBreak, effects.QuakeMagnum} {
+				switch spawn {
+				case "actor":
+					m.effects().AddAt(ctx, id, 300, start)
+				case "ground":
+					m.effects().AddCell(ctx, id, 300, 10, 20, start, 0, 0)
+				case "ground lifetime":
+					m.effects().AddCellLifetime(ctx, id, 300, 10, 20, start, time.Second, false)
+				case "persistent actor":
+					m.effects().AddPersistentBetween(ctx, id, 300, 0, start)
+				case "persistent ground":
+					m.effects().AddCellLifetime(ctx, id, 300, 10, 20, start, time.Second, true)
+				}
+			}
+			want := 2
+			if hidden && !strings.HasPrefix(spawn, "persistent") {
+				want = 0
+			}
+			if len(m.effects().Active) != want {
+				t.Fatalf("%s hidden=%t: active=%d, want %d", spawn, hidden, len(m.effects().Active), want)
+			}
+			if audible := len(m.scheduledSounds) > 0; audible == hidden {
+				t.Fatalf("%s hidden=%t: sound scheduled=%t", spawn, hidden, audible)
+			}
+			if shaking := !m.cameraShakeEnd.IsZero(); shaking == hidden {
+				t.Fatalf("%s hidden=%t: camera shake=%t", spawn, hidden, shaking)
+			}
+		}
+	}
+}
+
+func TestDisabledTransientEffectsDoNotInitializeOrScheduleSounds(t *testing.T) {
+	for _, name := range []string{"Mammonite", "Soul Strike", "Throw Shuriken"} {
+		t.Run(name, func(t *testing.T) {
+			for _, hidden := range []bool{false, true} {
+				ctx := testutil.KnightEffectContext()
+				ctx.Session.NoEffects = hidden
+				m := &WorldMode{}
+				start := time.Unix(100, 0)
+				if name == "Mammonite" {
+					m.effects().AddAt(ctx, effects.Mammonite, 300, start)
+				} else {
+					skill := db.SkillMGSoulstrike
+					if name == "Throw Shuriken" {
+						skill = db.SkillNJSyuriken
+					}
+					m.addSkillBeforeHitEffect(ctx, network.ActorActionNotify{SkillID: skill, SourceID: 2000000, TargetID: 300, HitCount: 5}, start)
+				}
+				if hidden {
+					if len(m.effects().Active)+len(m.scheduledSounds)+len(m.effects().StrEffectMiss) != 0 {
+						t.Fatal("disabled effect initialized resources, created an instance, or scheduled sounds")
+					}
+				} else if len(m.effects().Active) != 1 || len(m.scheduledSounds) == 0 {
+					t.Fatal("enabled effect lost its visuals or sounds")
+				}
+			}
+		})
+	}
+}
+
+func TestDisabledEffectsKeepServerOwnedState(t *testing.T) {
+	ctx := testutil.KnightEffectContext()
+	ctx.Session.NoEffects = true
+	m := &WorldMode{}
+	m.actors().SetActorStateEffect(ctx, 300, effects.Sight, true)
+	m.actors().SetActorStateEffect(ctx, 300, effects.Sight, true)
+	m.effects().ApplyActorDevotion(ctx, network.ActorDevotion{SourceID: 2000000, Targets: [5]uint32{300}})
+	m.applyClownGypsySkill(ctx, network.SkillNoDamageNotify{SkillID: db.SkillCGMarionette, SourceID: 2000000, TargetID: 300}, time.Now())
+	if len(m.effects().Active) != 5 || len(m.scheduledSounds) != 0 {
+		t.Fatalf("expected silent Sight, Devotion, Marionette and two glows: effects=%d sounds=%d", len(m.effects().Active), len(m.scheduledSounds))
+	}
+	for _, effect := range m.effects().Active {
+		if !effect.Persistent || !effect.Expires.IsZero() {
+			t.Fatalf("effect %d lost its server-owned lifetime", effect.EffectID)
+		}
+	}
+	m.effects().AddAt(ctx, effects.SightTrasher, 300, time.Now())
+	if m.effects().HasActive(effects.Sight, 300, time.Now()) {
+		t.Fatal("suppressed Sight Trasher left Sight active")
+	}
+	m.effects().RemoveActor(300)
+	if len(m.effects().Active) != 1 || m.effects().Active[0].EffectID != effects.PinkBody {
+		t.Fatal("hidden effects or links survived their owner leaving")
+	}
+}
+
+func TestKaenEffectTogglePreservesUnitAndSuppressesSound(t *testing.T) {
+	for _, hidden := range []bool{false, true} {
+		ctx := testutil.KnightEffectContext()
+		ctx.Session.NoEffects = hidden
+		m := &WorldMode{}
+		start := time.Unix(100, 0)
+		for id := uint32(1); id <= 32; id++ {
+			m.effects().AddCellLifetime(ctx, effects.Kaen, id, 10, 20, start, time.Minute, true)
+		}
+		if len(m.effects().Active) != 32 || (len(m.scheduledSounds) > 0) == hidden {
+			t.Fatalf("hidden=%t: active=%d sounds=%d", hidden, len(m.effects().Active), len(m.scheduledSounds))
+		}
+	}
+}
+
 func TestAcolyteHealAmountAndOffensiveTiming(t *testing.T) {
 	ctx := testutil.KnightEffectContext()
 	for _, tc := range []struct {

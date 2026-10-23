@@ -477,7 +477,7 @@ func (c *ChatConsole) submitCommand(ctx client.Context, text string) bool {
 	case "/mineffect":
 		c.submitLessEffects(ctx)
 		return true
-	case "/fog", "/aura":
+	case "/fog", "/aura", "/effect":
 		c.submitVisualSetting(ctx, command)
 		return true
 	case "/hoai":
@@ -604,16 +604,23 @@ func (c *ChatConsole) submitVisualSetting(ctx client.Context, command string) {
 		return
 	}
 	setting, label := &ctx.Session.FogEnabled, "Fog"
-	if command == "/aura" {
+	switch command {
+	case "/aura":
 		setting, label = &ctx.Session.SimpleAura, "Simple Aura"
+	case "/effect":
+		setting, label = &ctx.Session.NoEffects, "Effects"
 	}
 	*setting = !*setting
+	enabled := *setting
+	if command == "/effect" {
+		enabled = !enabled
+	}
 	status := "Off"
-	if *setting {
+	if enabled {
 		status = "On"
 	}
 	c.AddSystemMessage("%s: %s", label, status)
-	if _, err := ctx.Config.SaveVisualSettings(ctx.Session.FogEnabled, ctx.Session.SimpleAura); err != nil {
+	if _, err := ctx.Config.SaveVisualSettings(ctx.Session.FogEnabled, ctx.Session.SimpleAura, ctx.Session.NoEffects); err != nil {
 		glog.Warnf("settings save failed: %v", err)
 	}
 }

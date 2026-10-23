@@ -18,6 +18,7 @@ type Session struct {
 	BattleMode           bool
 	ScriptPath           string // Runtime override; empty uses the configured script.
 	LessEffects          bool
+	NoEffects            bool
 	FogEnabled           bool
 	SimpleAura           bool
 	HomunculusCustomAI   bool

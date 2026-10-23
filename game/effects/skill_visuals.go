@@ -506,12 +506,6 @@ func (m *System) AddSkillUnitEffects(ctx client.Context, entry network.SkillUnit
 	now := time.Now()
 	for _, effectID := range effectIDs {
 		if m.AddCellLifetime(ctx, effectID, entry.ID, int(entry.X), int(entry.Y), now, SkillUnitEffectFallbackDuration, true) {
-			if entry.UnitID == 189 {
-				effect := m.Active[len(m.Active)-1]
-				if HitEffectRandom(effect, 0, 8) == 0 {
-					m.scheduleSoundAtWorldEffect(now, effect, "effect\\화염진.wav")
-				}
-			}
 			glog.Debugf("skill unit effect unit=%d id=%d creator=%d cell=%d,%d effect=%d", entry.UnitID, entry.ID, entry.CreatorID, entry.X, entry.Y, effectID)
 		}
 	}

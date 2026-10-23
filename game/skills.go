@@ -514,10 +514,7 @@ func (m *WorldMode) applyClownGypsySkill(ctx client.Context, notify network.Skil
 			return
 		}
 		m.effects().RemoveMarionetteLinks(source)
-		if m.effects().AddBetween(ctx, effects.MarionetteLink, source, target, now) {
-			effect := &m.effects().Active[len(m.effects().Active)-1]
-			effect.Persistent, effect.Expires = true, time.Time{}
-		}
+		m.effects().AddPersistentBetween(ctx, effects.MarionetteLink, source, target, now)
 		m.actors().SetActorStateEffect(ctx, source, effects.PinkBody, true)
 		m.actors().SetActorStateEffect(ctx, target, effects.PinkBody, true)
 	}

@@ -163,7 +163,7 @@ contains them.
 ### Graphics options and small rendering details
 
 - [x] Expose runtime fog and aura controls: `/fog` toggles map fog and `/aura` simplifies level-99 auras; both save to `goro.ini`.
-- [ ] Expose full effect-visibility controls. `/mineffect` already toggles simplified effects.
+- [x] Expose `/effect` to hide optional visual effects while retaining essential feedback and portal markers; keep `/mineffect` for simplified effects.
 - [ ] Implement Hallucination's full-screen ripple/distortion effect.
 - [ ] Ensure screen distortion affects the scene without corrupting UI input or allocating render targets every frame.
 - [ ] Consider smoothly fading the existing Taekwon Soul Link/Eske night tint instead of switching it abruptly.

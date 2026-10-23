@@ -98,6 +98,7 @@ type GameplayConfig struct {
 	NoShift     bool
 	NoCtrl      bool
 	LessEffects bool
+	NoEffects   bool
 	SimpleAura  bool
 	SnapTargets bool
 	SnapItems   bool
@@ -195,13 +196,14 @@ func NextScreenshotPath(now time.Time) (string, error) {
 	}
 }
 
-func (cfg Config) SaveVisualSettings(fogEnabled, simpleAura bool) (string, error) {
+func (cfg Config) SaveVisualSettings(fogEnabled, simpleAura, noEffects bool) (string, error) {
 	return cfg.saveConfigValues(map[string]map[string]string{
 		"fog": {
 			"enabled": formatINIValueBool(fogEnabled),
 		},
 		"gameplay": {
 			"simple_aura": formatINIValueBool(simpleAura),
+			"no_effects":  formatINIValueBool(noEffects),
 		},
 	})
 }
@@ -394,6 +396,7 @@ func parseCLI(cfg *Config, args []string) error {
 	fs.BoolVar(&cfg.Gameplay.NoShift, "no-shift", cfg.Gameplay.NoShift, "allow support skills to target enemies without holding Shift")
 	fs.BoolVar(&cfg.Gameplay.NoCtrl, "no-ctrl", cfg.Gameplay.NoCtrl, "keep attacking with one click without holding Ctrl")
 	fs.BoolVar(&cfg.Gameplay.LessEffects, "mineffect", cfg.Gameplay.LessEffects, "use simpler visual effects")
+	fs.BoolVar(&cfg.Gameplay.NoEffects, "no-effects", cfg.Gameplay.NoEffects, "hide optional visual effects")
 	fs.BoolVar(&cfg.Gameplay.SnapTargets, "snap", cfg.Gameplay.SnapTargets, "magnetize attack and enemy skill cursors to targets")
 	fs.BoolVar(&cfg.Gameplay.SnapItems, "itemsnap", cfg.Gameplay.SnapItems, "magnetize pickup cursor to floor items")
 	fs.BoolVar(&cfg.Gameplay.SnapItems, "item-snap", cfg.Gameplay.SnapItems, "magnetize pickup cursor to floor items")
@@ -566,6 +569,8 @@ func applyConfigValue(cfg *Config, section, key, value string) error {
 		return setBool(value, &cfg.Gameplay.LessEffects)
 	case "gameplay.simpleaura":
 		return setBool(value, &cfg.Gameplay.SimpleAura)
+	case "gameplay.noeffects":
+		return setBool(value, &cfg.Gameplay.NoEffects)
 	case "gameplay.snap", "gameplay.snaptargets", "gameplay.targetsnap":
 		return setBool(value, &cfg.Gameplay.SnapTargets)
 	case "gameplay.itemsnap", "gameplay.snapitems", "gameplay.itemsnapping":

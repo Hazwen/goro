@@ -15,6 +15,7 @@ func TestSelectCharacterClearsCharacterScopedState(t *testing.T) {
 	s.NoShift = true
 	s.NoCtrl = true
 	s.LessEffects = true
+	s.NoEffects = true
 	s.FogEnabled = true
 	s.SimpleAura = true
 	s.HomunculusCustomAI = true
@@ -76,7 +77,7 @@ func TestSelectCharacterClearsCharacterScopedState(t *testing.T) {
 	if !s.NoShift || !s.NoCtrl || !s.LessEffects || !s.HomunculusCustomAI || !s.HomunculusAggressive || !s.MercenaryCustomAI || !s.MercenaryAggressive || !s.SnapTargets || !s.SnapItems || !s.Whisper.Configured {
 		t.Fatalf("client settings were not preserved: %+v", s)
 	}
-	if !s.FogEnabled || !s.SimpleAura {
+	if !s.FogEnabled || !s.SimpleAura || !s.NoEffects {
 		t.Fatal("visual settings were not preserved")
 	}
 	if len(s.CharServers) != 2 || s.CharServerIndex != 1 || len(s.Characters) != 2 {
