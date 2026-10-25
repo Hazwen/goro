@@ -1211,7 +1211,7 @@ func (r *runner) drawUISync(screen *Frame, width, height int, deviceScale float6
 	if win == nil {
 		return nil
 	}
-	needsWork := !r.uiDrawnOnce || win.NeedsRedraw() || win.HasDirtyBoundaries() || win.NeedsAnimationFrame()
+	needsWork := !r.uiDrawnOnce || win.NeedsRedraw() || win.HasDirtyBoundaries() || win.HasDirtyOverlays() || win.NeedsAnimationFrame()
 	if needsWork {
 		r.lastUIWork = true
 		uiStart := time.Now()
@@ -1285,7 +1285,7 @@ func (r *runner) drawUIAsync(screen *Frame, width, height int, deviceScale float
 	}
 	r.updateUIRasterSurface(width, height, deviceScale)
 
-	needsWork := !r.uiDrawnOnce || win.NeedsRedraw() || win.HasDirtyBoundaries() || win.NeedsAnimationFrame()
+	needsWork := !r.uiDrawnOnce || win.NeedsRedraw() || win.HasDirtyBoundaries() || win.HasDirtyOverlays() || win.NeedsAnimationFrame()
 	if r.shouldRecordAsyncUI(needsWork) {
 		r.lastUIWork = true
 		uiStart := time.Now()

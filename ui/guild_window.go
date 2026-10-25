@@ -653,7 +653,8 @@ func (w *GuildWindow) guildMemberPositionCell(ctx Context, member session.GuildM
 		dropdown.New(
 			dropdown.ItemDefs(items),
 			dropdown.Selected(selected),
-			dropdown.MaxVisibleItems(5),
+			dropdown.MaxVisibleItems(8),
+			dropdown.ItemHeight(22),
 			dropdown.PainterOpt(rotheme.DropdownPainter{}),
 			dropdown.OnChange(func(_ int, value string) {
 				positionID, err := strconv.ParseUint(value, 10, 32)
