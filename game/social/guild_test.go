@@ -439,6 +439,31 @@ func TestGuildMemberOnlineUpdatesMaintainUserCount(t *testing.T) {
 	}
 }
 
+func TestGuildConnectionMessagesOnlyReportTransitions(t *testing.T) {
+	s := &session.Session{AccountID: 1, CharID: 2, Guild: session.Guild{ID: 9}}
+	ctx := client.Context{Session: s}
+	m := newTestSystem()
+	online := network.GuildMemberState{AccountID: 3, CharID: 4, State: 1}
+	m.HandleGuildMemberState(ctx, online)
+	ApplyLocalGuildMembers(ctx, []network.GuildMember{{AccountID: 3, CharID: 4, CharName: "Alice", CurrentState: 1}})
+	m.HandleGuildMemberState(ctx, online)
+	online.HasAppearance = true
+	online.HeadType = 2
+	m.HandleGuildMemberState(ctx, online)
+	if len(m.bindings.Console.Messages()) != 0 {
+		t.Fatal("initial/unchanged/appearance update produced a connection message")
+	}
+	offline := online
+	offline.State = 0
+	m.HandleGuildMemberState(ctx, offline)
+	m.HandleGuildMemberState(ctx, offline)
+	m.HandleGuildMemberState(ctx, online)
+	messages := m.bindings.Console.Messages()
+	if len(messages) != 2 || messages[0].Text != "Guild member Alice is now offline." || messages[1].Text != "Guild member Alice is now online." {
+		t.Fatalf("connection messages = %+v", messages)
+	}
+}
+
 func TestActorGuildEmblemRequestsFromUninitializedCache(t *testing.T) {
 	mode := newTestSystem()
 	ctx := client.Context{

@@ -749,7 +749,7 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if guildMemberState, ok, err := network.ParseGuildMemberState(pkt); err != nil {
 		glog.Errorf("parse guild member state 0x%04X: %v", pkt.ID, err)
 	} else if ok {
-		social.ApplyLocalGuildMemberState(ctx, guildMemberState)
+		m.social().HandleGuildMemberState(ctx, guildMemberState)
 		if guildMemberState.State == 0 {
 			m.ui.minimap.ApplyGuildMemberPosition(guildMemberState.AccountID, -1, -1)
 		}

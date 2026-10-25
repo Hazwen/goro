@@ -617,6 +617,25 @@ func ApplyLocalGuildRelationDeleted(ctx client.Context, deleted network.GuildRel
 	}
 }
 
+func (m *System) HandleGuildMemberState(ctx client.Context, state network.GuildMemberState) {
+	if ctx.Session != nil {
+		for _, member := range ctx.Session.Guild.Members {
+			if member.AccountID != state.AccountID || member.CharID != state.CharID {
+				continue
+			}
+			if member.Online() != (state.State != 0) && member.CharName != "" && (member.AccountID != ctx.Session.AccountID || member.CharID != ctx.Session.CharID) {
+				status := "offline"
+				if state.State != 0 {
+					status = "online"
+				}
+				m.bindings.Console.AddBlueMessage("Guild member %s is now %s.", member.CharName, status)
+			}
+			break
+		}
+	}
+	ApplyLocalGuildMemberState(ctx, state)
+}
+
 func ApplyLocalGuildMemberState(ctx client.Context, state network.GuildMemberState) bool {
 	if ctx.Session == nil {
 		return false
