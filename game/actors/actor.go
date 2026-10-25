@@ -521,6 +521,7 @@ func worldActorForSelectedCharacter(ctx client.Context) worldstate.Actor {
 		GuildID:       ctx.Session.GuildID,
 		EmblemVersion: ctx.Session.EmblemVersion,
 		GuildName:     ctx.Session.GuildName,
+		GuildTitle:    ctx.Session.GuildTitle,
 		HasObjectType: true,
 		ObjectType:    scene.ActorObjectTypePC,
 	}
@@ -542,6 +543,7 @@ func ApplyActorNameAck(ctx client.Context, ack network.ActorNameAck) {
 		ctx.World.Player.PartyName = partyName
 		if ack.HasGuildName || guildName != "" {
 			ctx.World.Player.GuildName = guildName
+			ctx.World.Player.GuildTitle = strings.TrimSpace(ack.Title)
 			if guildName == "" {
 				ctx.World.Player.GuildID = 0
 				ctx.World.Player.EmblemVersion = 0
@@ -550,6 +552,7 @@ func ApplyActorNameAck(ctx client.Context, ack network.ActorNameAck) {
 		if ctx.Session != nil {
 			if ack.HasGuildName || guildName != "" {
 				ctx.Session.GuildName = guildName
+				ctx.Session.GuildTitle = strings.TrimSpace(ack.Title)
 				if guildName == "" {
 					ctx.Session.GuildID = 0
 					ctx.Session.EmblemVersion = 0
@@ -569,7 +572,10 @@ func ApplyActorNameAck(ctx client.Context, ack network.ActorNameAck) {
 	}
 	actor.Name = name
 	actor.PartyName = partyName
-	actor.GuildName = guildName
+	if ack.HasGuildName || guildName != "" {
+		actor.GuildName = guildName
+		actor.GuildTitle = strings.TrimSpace(ack.Title)
+	}
 	if ack.HasGuildName && guildName == "" {
 		actor.GuildID = 0
 		actor.EmblemVersion = 0
@@ -879,13 +885,20 @@ func actorGuildDisplayName(ctx client.Context, actor worldstate.Actor, isPlayer 
 	if !actorCanDisplayGuildName(actor, isPlayer) {
 		return ""
 	}
-	if guildName := strings.TrimSpace(actor.GuildName); guildName != "" {
-		return guildName
-	}
+	guildName := strings.TrimSpace(actor.GuildName)
+	title := strings.TrimSpace(actor.GuildTitle)
 	if isPlayer && ctx.Session != nil {
-		return strings.TrimSpace(ctx.Session.GuildName)
+		if guildName == "" {
+			guildName = strings.TrimSpace(ctx.Session.GuildName)
+		}
+		if title == "" {
+			title = strings.TrimSpace(ctx.Session.GuildTitle)
+		}
 	}
-	return ""
+	if guildName != "" && title != "" {
+		return guildName + " [" + title + "]"
+	}
+	return guildName
 }
 
 func actorCanDisplayGuildName(actor worldstate.Actor, isPlayer bool) bool {

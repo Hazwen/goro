@@ -171,6 +171,40 @@ func TestActorDisplayLabelsIncludeGuildNameOnSecondLine(t *testing.T) {
 	}
 }
 
+func TestGuildRankTitleFollowsIdentityUpdates(t *testing.T) {
+	for _, local := range []bool{false, true} {
+		w := worldstate.New()
+		s := &session.Session{AccountID: 100, CharID: 200}
+		id := uint32(300)
+		if local {
+			id = s.AccountID
+		}
+		w.UpsertActor(worldstate.Actor{ID: id, HasObjectType: true, ObjectType: scene.ActorObjectTypePC})
+		ctx := client.Context{Session: s, World: w}
+		for _, title := range []string{"Leader", "Officer", ""} {
+			actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: id, Name: "Alice", GuildName: "Knights", Title: title, HasGuildName: true})
+			actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: id, Name: "Alice"})
+			w.UpsertActor(worldstate.Actor{ID: id, X: 42})
+			actor := w.Actors[id]
+			if local {
+				actor = w.Player
+			}
+			want := "Knights"
+			if title != "" {
+				want += " [" + title + "]"
+			}
+			labels := actors.ActorDisplayLabels(ctx, actor, local)
+			if len(labels) != 2 || labels[1] != want {
+				t.Fatalf("local=%t title=%q labels=%q, want %q", local, title, labels, want)
+			}
+		}
+		actors.ApplyActorNameAck(ctx, network.ActorNameAck{ID: id, Name: "Alice", HasGuildName: true})
+		if local && (w.Player.GuildTitle != "" || s.GuildTitle != "") || !local && w.Actors[id].GuildTitle != "" {
+			t.Fatal("leaving guild retained rank title")
+		}
+	}
+}
+
 func TestActorNameLabelColorUsesYellowForAdmin(t *testing.T) {
 	want := color.RGBA{R: 255, G: 255, B: 0, A: 255}
 	if got := actors.ActorNameLabelColor(worldstate.Actor{IsAdmin: true}, true); got != want {

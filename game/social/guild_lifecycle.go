@@ -176,6 +176,7 @@ func clearVisibleGuildMember(ctx client.Context, member session.GuildMember, nam
 		actor.GuildID = 0
 		actor.EmblemVersion = 0
 		actor.GuildName = ""
+		actor.GuildTitle = ""
 		ctx.World.Actors[id] = actor
 	}
 }
@@ -187,6 +188,7 @@ func (m *System) clearLocalGuildState(ctx client.Context, disbanded bool) {
 		ctx.Session.GuildID = 0
 		ctx.Session.EmblemVersion = 0
 		ctx.Session.GuildName = ""
+		ctx.Session.GuildTitle = ""
 		ctx.Session.Guild = session.Guild{}
 		ctx.Session.PendingGuildName = ""
 	}
@@ -194,6 +196,7 @@ func (m *System) clearLocalGuildState(ctx client.Context, disbanded bool) {
 		ctx.World.Player.GuildID = 0
 		ctx.World.Player.EmblemVersion = 0
 		ctx.World.Player.GuildName = ""
+		ctx.World.Player.GuildTitle = ""
 		if disbanded && oldGuildID != 0 {
 			for id, actor := range ctx.World.Actors {
 				if actor.GuildID != oldGuildID {
@@ -202,6 +205,7 @@ func (m *System) clearLocalGuildState(ctx client.Context, disbanded bool) {
 				actor.GuildID = 0
 				actor.EmblemVersion = 0
 				actor.GuildName = ""
+				actor.GuildTitle = ""
 				ctx.World.Actors[id] = actor
 			}
 		}

@@ -29,6 +29,7 @@ type Session struct {
 	GuildID              uint32
 	EmblemVersion        uint32
 	GuildName            string
+	GuildTitle           string
 	Guild                Guild
 	PendingGuildName     string
 	SnapTargets          bool
@@ -80,6 +81,7 @@ func (s *Session) SelectCharacter(character Character) {
 	s.GuildID = 0
 	s.EmblemVersion = 0
 	s.GuildName = ""
+	s.GuildTitle = ""
 	s.Guild = Guild{}
 	s.PendingGuildName = ""
 	s.Zone = ZoneServer{}
