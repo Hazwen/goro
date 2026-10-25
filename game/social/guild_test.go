@@ -128,6 +128,21 @@ func TestAcceptingGuildInvitationWaitsForBelonging(t *testing.T) {
 	}
 }
 
+func TestGuildBelongingLoadsDataWithoutOpeningWindow(t *testing.T) {
+	netClient, conn := testutil.NewConnection(t, 20080910)
+	ctx := client.Context{Network: netClient, Session: &session.Session{}, Config: config.Config{Headless: true}}
+	m := newTestSystem()
+	m.HandleGuildBelonging(ctx, network.GuildBelonging{GuildID: 9, GuildName: "Knights"})
+	var want []byte
+	for tab := uint32(0); tab <= 3; tab++ {
+		want = append(want, network.BuildGuildMenuRequestPacket(tab)...)
+	}
+	testutil.ReadPackets(t, conn, want)
+	if m.bindings.Windows.GuildWindow.IsOpen() {
+		t.Fatal("loading guild data opened the window")
+	}
+}
+
 func TestBuildGuildFlagEmblemTextureAddsTransparentMarginAndColorBleed(t *testing.T) {
 	source := image.NewNRGBA(image.Rect(0, 0, 2, 2))
 	source.SetNRGBA(0, 0, color.NRGBA{R: 240, G: 80, B: 40, A: 255})

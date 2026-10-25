@@ -460,7 +460,11 @@ func clearPendingGuildName(ctx client.Context) {
 
 func (m *System) HandleGuildBelonging(ctx client.Context, belonging network.GuildBelonging) {
 	applyLocalGuildBelonging(ctx, belonging)
-	m.RequestActorGuildEmblem(ctx, belonging.GuildID, belonging.EmblemVersion)
+	if belonging.GuildID != 0 && ctx.Network != nil {
+		for tab := uint32(0); tab <= 3; tab++ {
+			m.requestGuildWindowTab(ctx, tab)
+		}
+	}
 	if !m.GuildOpenPending || belonging.GuildID == 0 {
 		return
 	}
