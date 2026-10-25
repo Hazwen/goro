@@ -21,6 +21,7 @@ import (
 	"github.com/gogpu/gpucontext"
 	uiapp "github.com/gogpu/ui/app"
 	"github.com/gogpu/ui/geometry"
+	"github.com/gogpu/ui/gesture"
 	uirender "github.com/gogpu/ui/render"
 	"github.com/gogpu/ui/widget"
 	"github.com/kivutar/goro/client"
@@ -57,6 +58,18 @@ type keyboardInputPreparer interface {
 type uiAppBridge struct {
 	*uiapp.App
 	runner *runner
+	events *fanoutEventSource
+}
+
+func (b uiAppBridge) BlockInput() func() {
+	// Cancel presses and drags before suppressing their eventual release.
+	for _, fn := range b.events.focus {
+		fn(false)
+	}
+	// The UI's legacy mouse bridge uses pointer 1, including controller clicks.
+	b.App.Window().HandlePointerEvent(&gesture.PointerEvent{EventType: gesture.PointerCancel, PointerID: 1})
+	b.events.blocked = true
+	return func() { b.events.blocked = false }
 }
 
 func (b uiAppBridge) SetUIRoot(root widget.Widget) {
@@ -330,10 +343,12 @@ func Run(game Game, cfg config.WindowConfig, renderCfg config.RenderConfig) erro
 	uiTheme := rotheme.Default.AsTheme()
 	uiTheme.Colors.Background = widget.RGBA8(0, 0, 0, 0)
 	uiWindow := &uiWindowProvider{WindowProvider: gg}
+	// Keep physical input current while allowing the UI stream to be blocked.
+	uiEvents := newFanoutEventSource(events)
 	ui := uiapp.New(
 		uiapp.WithWindowProvider(uiWindow),
 		uiapp.WithPlatformProvider(roCursorPlatformProvider{PlatformProvider: gg}),
-		uiapp.WithEventSource(events),
+		uiapp.WithEventSource(uiEvents),
 		uiapp.WithTheme(uiTheme),
 		uiapp.WithRenderMode(uiapp.RenderModeFrameworkManaged),
 	)
@@ -360,7 +375,7 @@ func Run(game Game, cfg config.WindowConfig, renderCfg config.RenderConfig) erro
 		receiver.SetQuitFunc(gg.Quit)
 	}
 	if receiver, ok := game.(uiAppReceiver); ok {
-		receiver.SetUIApp(uiAppBridge{App: ui, runner: r})
+		receiver.SetUIApp(uiAppBridge{App: ui, runner: r, events: uiEvents})
 	}
 	game.Resize(cfg.Width, cfg.Height)
 	wireInput(events, game.InputState())
@@ -481,6 +496,7 @@ func graphicsAPI(name string) (gogputypes.GraphicsAPI, error) {
 }
 
 type fanoutEventSource struct {
+	blocked              bool
 	physicalMouse        map[gpucontext.MouseButton]bool
 	controllerMouse      map[gpucontext.MouseButton]bool
 	inputState           *input.State
@@ -505,6 +521,9 @@ type fanoutEventSource struct {
 // Text association stays in the physical event callback: a controller tap must
 // not change which physical key a later text event belongs to.
 func (f *fanoutEventSource) dispatchKeyPress(key gpucontext.Key, mods gpucontext.Modifiers) {
+	if f.blocked {
+		return
+	}
 	repeated := false
 	if f.inputState != nil {
 		repeated = f.inputState.KeyCodeDown(key)
@@ -530,6 +549,9 @@ func (f *fanoutEventSource) dispatchKeyPress(key gpucontext.Key, mods gpucontext
 }
 
 func (f *fanoutEventSource) dispatchKeyRelease(key gpucontext.Key, mods gpucontext.Modifiers) {
+	if f.blocked {
+		return
+	}
 	if f.inputState != nil {
 		f.inputState.SetKeyCode(key, false)
 	}
@@ -560,6 +582,9 @@ func newFanoutEventSource(source gpucontext.EventSource) *fanoutEventSource {
 		f.dispatchKeyRelease(key, mods)
 	})
 	source.OnTextInput(func(text string) {
+		if f.blocked {
+			return
+		}
 		if f.inputState != nil {
 			f.inputState.AddTextInput(text)
 		}
@@ -576,6 +601,9 @@ func newFanoutEventSource(source gpucontext.EventSource) *fanoutEventSource {
 		}
 	})
 	source.OnMouseMove(func(x, y float64) {
+		if f.blocked {
+			return
+		}
 		for _, fn := range f.mouseMove {
 			fn(x, y)
 		}
@@ -587,6 +615,9 @@ func newFanoutEventSource(source gpucontext.EventSource) *fanoutEventSource {
 		f.setMouseButton(false, button, false, x, y)
 	})
 	source.OnScroll(func(x, y float64) {
+		if f.blocked {
+			return
+		}
 		for _, fn := range f.scroll {
 			fn(x, y)
 		}
@@ -612,16 +643,25 @@ func newFanoutEventSource(source gpucontext.EventSource) *fanoutEventSource {
 		}
 	})
 	source.OnIMECompositionStart(func() {
+		if f.blocked {
+			return
+		}
 		for _, fn := range f.imeCompositionStart {
 			fn()
 		}
 	})
 	source.OnIMECompositionUpdate(func(state gpucontext.IMEState) {
+		if f.blocked {
+			return
+		}
 		for _, fn := range f.imeCompositionUpdate {
 			fn(state)
 		}
 	})
 	source.OnIMECompositionEnd(func(committed string) {
+		if f.blocked {
+			return
+		}
 		for _, fn := range f.imeCompositionEnd {
 			fn(committed)
 		}
@@ -1823,7 +1863,9 @@ func (r *runner) cachedTextLabelImage(provider gpucontext.DeviceProvider, label 
 	if _, err := canvas.Flush(); err != nil {
 		return cachedOverlayImage{}, fmt.Errorf("flush ui text overlay: %w", err)
 	}
-	cached := cachedOverlayImage{image: updateCanvasImage(canvas, nil), width: width, height: height}
+	// GG supplies premultiplied edges; the screen pipeline uses SrcAlpha.
+	img := NewImageFromStraightAlpha(canvas.Context().ResizeTarget().ImageView())
+	cached := cachedOverlayImage{image: img, width: width, height: height}
 	if r.uiTextCache == nil {
 		r.uiTextCache = make(map[string]cachedOverlayImage)
 	}

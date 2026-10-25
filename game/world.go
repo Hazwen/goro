@@ -82,6 +82,7 @@ type WorldMode struct {
 
 	ui              worldUI
 	mapFade         maps.Fade
+	loading         *maps.Loading
 	hoveredWalk     hoveredWalkCellCache
 	bot             *bot.Script
 	companionSystem companion.System
@@ -374,24 +375,7 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 		return nil
 	}
 
-	if gnd, _, err := maps.LoadGND(ctx.Resources, ctx.World.MapName); err == nil {
-		ctx.World.GND = gnd
-	} else {
-		ctx.World.GND = nil
-	}
-	if rsw, rswSource, err := maps.LoadRSW(ctx.Resources, ctx.World.MapName); err == nil {
-		ctx.World.RSW = rsw
-		ctx.World.RSM, ctx.World.RSMFail = maps.LoadRSMModels(ctx.Resources, rsw)
-		m.playMapBGM(ctx, rswSource)
-		m.mapScene.PreloadMapSounds(ctx)
-	} else {
-		ctx.World.RSW = nil
-		ctx.World.RSM = nil
-		ctx.World.RSMFail = 0
-		m.playMapBGM(ctx, ctx.World.MapName)
-	}
-	m.mapScene.PreloadTextures(ctx)
-	_ = ctx.Network.SendLoadEndAck()
+	m.loading = maps.NewLoading(ctx)
 	return nil
 }
 
@@ -455,6 +439,13 @@ func (m *WorldMode) playMapBGM(ctx client.Context, rswName string) {
 }
 
 func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
+	if m.loading != nil && !m.loading.Prepared() && m.mapFade.Phase == maps.FadePrewarm {
+		if m.loading.Advance(ctx, &m.mapScene) {
+			m.playMapBGM(ctx, m.loading.RSWSource)
+			_ = ctx.Network.SendLoadEndAck()
+		}
+		return nil, nil
+	}
 	if !ctx.Config.Headless {
 		defer m.SaveUISettings(ctx)
 	}
@@ -487,6 +478,10 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	m.mapFade.AdvancePrewarm(now, len(m.mapScene.Images.Uploads) != 0)
 	if m.mapFade.Phase == maps.FadeIn && m.mapFade.Elapsed(now) {
 		m.mapFade = maps.Fade{}
+		if m.loading != nil {
+			m.loading.Release()
+			m.loading = nil
+		}
 	}
 
 	if m.updateDisconnectDialog(ctx) {
@@ -547,7 +542,7 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	m.playDueScheduledSounds(ctx, now)
 
 	m.camera.Update(ctx, now)
-	if m.mapFade.Phase == maps.FadeHold || m.mapFade.Phase == maps.FadePrewarm {
+	if m.loading != nil || m.mapFade.Phase == maps.FadeHold || m.mapFade.Phase == maps.FadePrewarm {
 		return nil, nil
 	}
 	m.ui.console.UpdatePresentation(ctx)
@@ -1268,6 +1263,10 @@ func sameLoadedMap(ctx client.Context, mapName string) bool {
 }
 
 func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
+	if m.loading != nil && !m.loading.Prepared() {
+		maps.ClearWorldScene(screen, ctx.World.MapName)
+		return
+	}
 	if m.mapScene.Images.PrepareUploads(screen) {
 		maps.ClearWorldScene(screen, ctx.World.MapName)
 		return
@@ -1332,6 +1331,9 @@ func (m *WorldMode) Draw(ctx client.Context, screen *render.Frame) {
 }
 
 func (m *WorldMode) DrawOverlay(ctx client.Context, screen *render.Frame) {
+	if m.loading != nil && (m.mapFade.Phase == maps.FadePrewarm || m.mapFade.Phase == maps.FadeIn) {
+		return
+	}
 	width, height := screen.Bounds().Dx(), screen.Bounds().Dy()
 	now := time.Now()
 	projection := m.sceneProjection(ctx, width, height, now)
@@ -1344,6 +1346,10 @@ func (m *WorldMode) DrawOverlay(ctx client.Context, screen *render.Frame) {
 }
 
 func (m *WorldMode) FrameSubmitted() {
+	if m.loading != nil && !m.loading.Prepared() && m.mapFade.Phase == maps.FadePrewarm {
+		m.loading.Presented = true
+		return
+	}
 	if m.mapScene.Images.FrameSubmitted() {
 		return
 	}
@@ -1351,10 +1357,18 @@ func (m *WorldMode) FrameSubmitted() {
 }
 
 func (m *WorldMode) DrawUIOverlay(ctx client.Context, screen *render.Frame) {
-	if ctx.Config.Render.NoUI {
+	now := time.Now()
+	if m.loading != nil && (m.mapFade.Phase == maps.FadePrewarm || m.mapFade.Phase == maps.FadeIn) {
+		percent := m.loading.Percent(len(m.mapScene.Images.Uploads), m.mapFade.CoveredFrames)
+		if m.mapFade.Phase == maps.FadeIn {
+			percent = 100
+		}
+		m.loading.Draw(screen, percent, m.mapFade.Alpha(now))
 		return
 	}
-	now := time.Now()
+	if ctx.Config.Render.NoUI || m.loading != nil {
+		return
+	}
 	m.npc().DrawShowDigit(screen, ctx, now)
 	m.ui.announcement.Draw(screen, now)
 	m.drawPendingTargetBanner(screen, ctx)
@@ -1556,6 +1570,10 @@ func sortedSceneDrawEntries(actors []scene.ActorDrawEntry, items []sceneItemDraw
 }
 
 func (m *WorldMode) releaseMapTextures() {
+	if m.loading != nil {
+		m.loading.Release()
+		m.loading = nil
+	}
 	for id := range m.skillSystem.Graffiti {
 		m.skills().RemoveGraffiti(id)
 	}

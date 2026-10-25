@@ -891,7 +891,9 @@ func TestUseItemAckStatFoodSchedulesHealSound(t *testing.T) {
 
 func TestMapTextureUploadsWaitForSubmissionBeforeFade(t *testing.T) {
 	m, ctx := mapTextureFixture(t)
-	m.mapScene.PreloadTextures(ctx)
+	for _, load := range m.mapScene.TextureLoadTasks(ctx) {
+		load()
+	}
 	m.mapFade.StartPrewarm()
 	f := render.NewFrame(100, 100)
 	now := time.Now()
@@ -930,7 +932,9 @@ func TestMapTextureUploadsWaitForSubmissionBeforeFade(t *testing.T) {
 
 func TestLeavingWorldReleasesMapTextures(t *testing.T) {
 	m, ctx := mapTextureFixture(t)
-	m.mapScene.PreloadTextures(ctx)
+	for _, load := range m.mapScene.TextureLoadTasks(ctx) {
+		load()
+	}
 	old := append([]*render.Image(nil), m.mapScene.Images.Uploads...)
 	manager := &Manager{ctx: ctx, mode: m}
 	manager.enter(&mapTextureExitMode{})
