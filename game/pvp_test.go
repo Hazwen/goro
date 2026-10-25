@@ -96,6 +96,27 @@ func TestWoETargetingUsesGuildRelationship(t *testing.T) {
 	}
 }
 
+func TestWoETargetingFollowsAllianceChanges(t *testing.T) {
+	w := worldstate.New()
+	w.MapProperty = worldstate.MapPropertyAgitZone
+	s := &session.Session{Guild: session.Guild{ID: 10}}
+	ctx := client.Context{Session: s, World: w}
+	for _, kind := range []byte{scene.ActorObjectTypePC, scene.ActorObjectTypeHomunculus, scene.ActorObjectTypeMercenary} {
+		actor := worldstate.Actor{ID: 300, GuildID: 20, ObjectType: kind, HasObjectType: true}
+		for _, relation := range []uint32{session.GuildRelationAlliance, session.GuildRelationOpposition} {
+			s.Guild.Relations = []session.GuildRelation{{GuildID: 20, Relation: relation}}
+			want := relation == session.GuildRelationOpposition
+			if actors.ActorCanBeAttackClicked(ctx, actor) != want || actors.ActorCanBeSkillTargeted(ctx, session.Skill{Type: skills.SkillTargetEnemy}, actor) != want {
+				t.Fatalf("targeting kind=%d relation=%d, want enemy=%t", kind, relation, want)
+			}
+		}
+		s.Guild.Relations = nil
+		if !actors.ActorCanBeAttackClicked(ctx, actor) {
+			t.Fatal("former ally stayed protected after relation removal")
+		}
+	}
+}
+
 func TestWoETargetingIncludesEnemyCompanions(t *testing.T) {
 	world := worldstate.New()
 	world.MapProperty = worldstate.MapPropertyAgitZone

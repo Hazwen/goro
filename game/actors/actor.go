@@ -159,7 +159,7 @@ func actorCanBePlayerCombatTarget(ctx client.Context, actor worldstate.Actor) bo
 	if !ctx.World.MapProperty.IsGvG() {
 		return false
 	}
-	return actor.GuildID == 0 || localGuildID(ctx) == 0 || actor.GuildID != localGuildID(ctx)
+	return !guildIsFriendly(ctx, actor.GuildID)
 }
 
 func actorCanBeEnemyWoECompanion(ctx client.Context, actor worldstate.Actor) bool {
@@ -174,7 +174,22 @@ func actorCanBeEnemyWoECompanion(ctx client.Context, actor worldstate.Actor) boo
 			return false
 		}
 	}
-	return actor.GuildID == 0 || localGuildID(ctx) == 0 || actor.GuildID != localGuildID(ctx)
+	return !guildIsFriendly(ctx, actor.GuildID)
+}
+
+func guildIsFriendly(ctx client.Context, guildID uint32) bool {
+	if guildID == 0 || localGuildID(ctx) == 0 {
+		return false
+	}
+	if guildID == localGuildID(ctx) {
+		return true
+	}
+	for _, relation := range ctx.Session.Guild.Relations {
+		if relation.GuildID == guildID && relation.Relation == session.GuildRelationAlliance {
+			return true
+		}
+	}
+	return false
 }
 
 func localGuildID(ctx client.Context) uint32 {
