@@ -67,7 +67,8 @@ type ChatConsole struct {
 	lastMessageAt    time.Time
 	doriDoriTimes    [doriDoriTurns]time.Time
 
-	OnGuildWindow func()
+	OnGuildWindow    func()
+	OnInstanceWindow func()
 
 	ctx                       client.Context
 	window                    Window
@@ -424,6 +425,11 @@ func (c *ChatConsole) submitCommand(ctx client.Context, text string) bool {
 	}
 	command := strings.ToLower(strings.Fields(text)[0])
 	switch command {
+	case "/instance":
+		if c.OnInstanceWindow != nil {
+			c.OnInstanceWindow()
+		}
+		return true
 	case "/script":
 		c.submitScript(ctx, consoleCommandArgs(text))
 		return true

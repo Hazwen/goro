@@ -44,6 +44,7 @@ func (m *WorldMode) handleNetworkPackets(ctx client.Context, now time.Time) (Mod
 	}
 	networkErrors := ctx.Network.DrainErrors()
 	if login.HandleNetworkDisconnectErrors(ctx, &m.ui.disconnectDialog, networkErrors) {
+		m.resetInstance(ctx)
 		m.ui.npc.Cutin.Clear()
 		m.ui.social.MailWindow.CloseFromServer(ctx)
 		m.socialSystem.Mail = social.MailState{}
@@ -66,10 +67,14 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	if m.handleQuestPacket(ctx, pkt) {
 		return nil, false
 	}
+	if m.handleInstancePacket(ctx, pkt) {
+		return nil, false
+	}
 	if m.social().HandleMailPacket(ctx, pkt, now, m.ui.disconnectDialog.IsOpen()) {
 		return nil, false
 	}
 	if login.HandleDisconnectPacket(ctx, &m.ui.disconnectDialog, pkt) {
+		m.resetInstance(ctx)
 		m.ui.npc.Cutin.Clear()
 		m.ui.social.MailWindow.CloseFromServer(ctx)
 		m.socialSystem.Mail = social.MailState{}
@@ -897,6 +902,8 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 	} else if ok {
 		if !social.ApplyPartyMemberLeave(ctx, partyLeave) {
 			m.ui.console.AddErrorMessage("Cannot leave party on this map.")
+		} else if ctx.Session != nil && partyLeave.AccountID == ctx.Session.AccountID {
+			m.resetInstance(ctx)
 		}
 		return nil, false
 	}

@@ -53,6 +53,7 @@ type Session struct {
 	Skills               Skills
 	Hotkeys              Hotkeys
 	Quests               Quests
+	Instance             Instance
 	Statuses             Statuses
 	Friends              Friends
 	Whisper              WhisperSettings
@@ -96,6 +97,7 @@ func (s *Session) SelectCharacter(character Character) {
 	s.Skills = Skills{}
 	s.Hotkeys = Hotkeys{}
 	s.Quests = Quests{}
+	s.Instance = Instance{}
 	s.Statuses = Statuses{}
 	s.Friends = Friends{}
 	s.SuperNovicePrayer = SuperNovicePrayer{}

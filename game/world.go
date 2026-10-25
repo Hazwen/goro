@@ -127,6 +127,7 @@ type worldUI struct {
 	statsWindow     gameui.StatsWindow
 	skillWindow     gameui.SkillWindow
 	questWindow     gameui.QuestWindow
+	instanceWindow  gameui.InstanceWindow
 	worldMap        gameui.WorldMapWindow
 	emoteWindow     gameui.EmoteWindow
 	chatShortcuts   gameui.ChatShortcutsWindow
@@ -157,6 +158,7 @@ func (u *worldUI) nonConsoleKeyboardInputBlockedExcept(ctx client.Context, excep
 	}
 	open := func(w *gameui.Window) bool { return w != except && w.IsOpen() }
 	return u.npc.Dialog.IsOpen() ||
+		u.instanceWindow.Confirm.IsOpen() ||
 		!u.npcInputAvailable() ||
 		open(&u.settingsWindow.Window) ||
 		u.chatShortcuts.IsOpen() ||
@@ -193,6 +195,7 @@ func (u *worldUI) interactionModalOpen() bool {
 		return false
 	}
 	return u.teleportModal.IsOpen() ||
+		u.instanceWindow.Confirm.IsOpen() ||
 		u.social.MailWindow.ModalOpen() ||
 		u.battle.AutoSpell.IsOpen() ||
 		u.npc.StoragePassword.IsOpen() ||
@@ -395,6 +398,13 @@ func (m *WorldMode) Enter(ctx client.Context) Mode {
 func (m *WorldMode) rebindPersistentUI(ctx client.Context) {
 	m.ui.console.Rebind(ctx)
 	m.ui.console.OnGuildWindow = func() { m.social().ToggleGuildWindow(ctx) }
+	m.ui.console.OnInstanceWindow = func() {
+		if ctx.Session.Instance.Name == "" {
+			m.ui.console.AddSystemMessage("No memorial dungeon is reserved.")
+			return
+		}
+		m.ui.instanceWindow.Toggle(ctx)
+	}
 	m.ui.social.GuildWindow.EmblemImage = m.social().SessionGuildEmblemImage
 	m.social().SetGuildEmblemOptions(ctx)
 	m.ui.characterWindow.Rebind(ctx)
@@ -406,6 +416,7 @@ func (m *WorldMode) rebindPersistentUI(ctx client.Context) {
 	m.ui.statsWindow.Rebind(ctx)
 	m.ui.skillWindow.Rebind(ctx, m)
 	m.ui.questWindow.Rebind(ctx, func(id uint32, active bool) { m.setQuestActive(ctx, id, active) })
+	m.ui.instanceWindow.Rebind(ctx, func() { m.destroyInstance(ctx) })
 	m.ui.worldMap.Rebind(ctx)
 	m.ui.levelUpNotifications.Rebind(ctx)
 	m.ui.emoteWindow.OnSelect = m.ui.chatShortcuts.SelectEmotion
@@ -541,6 +552,10 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	}
 	m.ui.console.UpdatePresentation(ctx)
 	m.ui.questWindow.UpdatePresentation(ctx, now)
+	m.ui.instanceWindow.UpdatePresentation(ctx, now)
+	if m.ui.instanceWindow.Confirm.Update(ctx) {
+		return nil, nil
+	}
 	m.ui.worldMap.UpdatePresentation(ctx)
 	if progressBlocksActions {
 		return nil, nil
@@ -880,6 +895,9 @@ func (m *WorldMode) Update(ctx client.Context) (Mode, error) {
 	if m.ui.questWindow.Update(ctx) {
 		return nil, nil
 	}
+	if m.ui.instanceWindow.Update(ctx) {
+		return nil, nil
+	}
 	if m.ui.companions.HomunculusSkill.Update(ctx, &m.ui.shortcutBar, m) {
 		return nil, nil
 	}
@@ -1194,6 +1212,7 @@ func (m *WorldMode) nextWorldMode() *WorldMode {
 	next.ui.statsWindow = m.ui.statsWindow
 	next.ui.skillWindow = m.ui.skillWindow
 	next.ui.questWindow = m.ui.questWindow
+	next.ui.instanceWindow = m.ui.instanceWindow
 	next.ui.worldMap = m.ui.worldMap
 	next.ui.emoteWindow = m.ui.emoteWindow
 	next.ui.chatShortcuts = m.ui.chatShortcuts
@@ -1225,6 +1244,7 @@ func (m *WorldMode) nextCharacterSelectMode(ctx client.Context) *LoginMode {
 		ctx.Session.Playing = false
 		ctx.Session.Storage = session.Storage{}
 		ctx.Session.Cart = session.Cart{}
+		m.resetInstance(ctx)
 	}
 	next := NewCharacterSelectMode(ctx, m.ui.console)
 	return next
