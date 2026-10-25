@@ -573,7 +573,7 @@ var guildMemberTableColumns = []rotheme.TableViewColumn{
 func (w *GuildWindow) guildMemberTableCell(ctx Context, member session.GuildMember, positions []session.GuildPosition, isMaster bool, totalExp uint32, cell rotheme.TableViewCellContext) widget.Widget {
 	switch cell.Column.Key {
 	case "name":
-		return guildTableViewTextCell(guildText(member.CharName), cell.Width, guildTableRowH)
+		return w.guildMemberNameCell(member, cell.Width)
 	case "position":
 		return w.guildMemberPositionCell(ctx, member, positions, isMaster, cell.Width)
 	case "job":
@@ -589,6 +589,20 @@ func (w *GuildWindow) guildMemberTableCell(ctx Context, member session.GuildMemb
 	default:
 		return primitives.Box()
 	}
+}
+
+func (w *GuildWindow) guildMemberNameCell(member session.GuildMember, width float32) widget.Widget {
+	nameColor := rotheme.Default.Colors.MutedText
+	if member.Online() {
+		nameColor = rotheme.Default.Colors.Text
+	}
+	return primitives.HBox(
+		rotheme.Text(trimRunes(guildText(member.CharName), int(width/7))).Color(nameColor),
+	).
+		Width(width).
+		Height(guildTableRowH).
+		PaddingLeft(6).
+		CrossAlign(primitives.CrossAxisCenter)
 }
 
 func (w *GuildWindow) guildMemberPositionCell(ctx Context, member session.GuildMember, positions []session.GuildPosition, isMaster bool, width float32) widget.Widget {
