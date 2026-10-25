@@ -905,7 +905,11 @@ func (m *System) UpdateGuildWindow(ctx client.Context, shortcuts *gameui.Shortcu
 		} else if action.DeleteRelation != nil {
 			m.openDeleteGuildRelationConfirm(ctx, action.DeleteRelation.Relation)
 		} else if action.MemberAction != nil {
-			m.openGuildMemberPrompt(ctx, *action.MemberAction)
+			if action.MemberAction.Kind == gameui.GuildMemberActionWhisper {
+				m.bindings.Windows.WhisperWindows.Open(ctx, action.MemberAction.Member.CharName)
+			} else {
+				m.openGuildMemberPrompt(ctx, *action.MemberAction)
+			}
 		}
 		return true
 	}

@@ -877,3 +877,34 @@ func TestGuildWindowRefreshesMemberPortraitChanges(t *testing.T) {
 		}
 	}
 }
+
+func TestGuildMemberContextWhisperNeedsNoManagementRights(t *testing.T) {
+	ctx, _, app := newWindowInstanceTest()
+	ctx.Session = &session.Session{AccountID: 1, CharID: 2}
+	member := session.GuildMember{AccountID: 3, CharID: 4, CharName: "Alice Smith"}
+	w := &GuildWindow{}
+	for _, online := range []uint32{0, 1} {
+		member.CurrentState = online
+		if !w.handleGuildMemberRowEvent(ctx, session.Guild{}, []session.GuildMember{member}, 0,
+			event.NewMouseEvent(event.MousePress, event.ButtonRight, 0, geometry.Point{}, geometry.Pt(100, 100), 0)) {
+			t.Fatal("ordinary member could not open context menu")
+		}
+		app.Frame()
+		app.Window().DrawTo(&uitest.MockCanvas{})
+		x := float32(w.memberContext.x + 30)
+		y := float32(w.memberContext.y + contextMenuPadding + contextMenuRowH/2)
+		app.Window().HandleEvent(uitest.Click(x, y))
+		app.Window().HandleEvent(uitest.Release(x, y))
+		w.drainMemberContextAction()
+		action := w.PopAction().MemberAction
+		if action == nil || action.Kind != GuildMemberActionWhisper || action.Member.CharName != member.CharName || w.memberContext.IsOpen() {
+			t.Fatalf("whisper action = %+v", action)
+		}
+	}
+	if guildMemberContextMenuRows(true, true, true) != 0 || guildMemberContextMenuRows(false, true, false) != 1 {
+		t.Fatal("self context menu changed")
+	}
+	if guildMemberContextMenuRows(true, false, true) != 2 {
+		t.Fatal("guild master menu must offer both Whisper and Expel")
+	}
+}
