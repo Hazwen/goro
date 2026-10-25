@@ -26,7 +26,7 @@ func GuildCanInvitePlayer(s *session.Session, targetGuildID uint32) bool {
 	if guildID == 0 {
 		guildID = s.Guild.ID
 	}
-	return guildID != 0 && s.Guild.Right&guildPermissionInvite != 0
+	return guildID != 0 && s.GuildRights()&guildPermissionInvite != 0
 }
 
 func GuildCanManageRelations(s *session.Session, targetGuildID uint32) bool {
@@ -697,14 +697,16 @@ func ApplyLocalGuildPositions(ctx client.Context, positions []network.GuildPosit
 		index := guildPositionIndex(ctx.Session.Guild.Positions, position.PositionID)
 		if index < 0 {
 			ctx.Session.Guild.Positions = append(ctx.Session.Guild.Positions, session.GuildPosition{
-				PositionID: position.PositionID,
-				Right:      position.Right,
-				Ranking:    position.Ranking,
-				PayRate:    position.PayRate,
+				PositionID:     position.PositionID,
+				Right:          position.Right,
+				HasPermissions: true,
+				Ranking:        position.Ranking,
+				PayRate:        position.PayRate,
 			})
 			continue
 		}
 		ctx.Session.Guild.Positions[index].Right = position.Right
+		ctx.Session.Guild.Positions[index].HasPermissions = true
 		ctx.Session.Guild.Positions[index].Ranking = position.Ranking
 		ctx.Session.Guild.Positions[index].PayRate = position.PayRate
 	}

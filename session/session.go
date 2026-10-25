@@ -292,11 +292,30 @@ func (m GuildMember) Online() bool {
 }
 
 type GuildPosition struct {
-	PositionID uint32
-	Right      uint32
-	Ranking    uint32
-	PayRate    uint32
-	PosName    string
+	PositionID     uint32
+	Right          uint32
+	HasPermissions bool
+	Ranking        uint32
+	PayRate        uint32
+	PosName        string
+}
+
+func (s *Session) GuildRights() uint32 {
+	if s == nil {
+		return 0
+	}
+	for _, member := range s.Guild.Members {
+		if member.AccountID != s.AccountID || member.CharID != s.CharID {
+			continue
+		}
+		for _, position := range s.Guild.Positions {
+			if position.PositionID == member.PositionID && position.HasPermissions {
+				return position.Right
+			}
+		}
+		break
+	}
+	return s.Guild.Right
 }
 
 type GuildExpelHistory struct {

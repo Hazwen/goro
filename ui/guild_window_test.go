@@ -251,6 +251,19 @@ func TestGuildWindowSnapshotIncludesLocalRights(t *testing.T) {
 	}
 }
 
+func TestGuildWindowRefreshesWhenRankPermissionsArrive(t *testing.T) {
+	s := &session.Session{AccountID: 10, CharID: 11, Guild: session.Guild{
+		Right:     0x11,
+		Members:   []session.GuildMember{{AccountID: 10, CharID: 11, PositionID: 1}},
+		Positions: []session.GuildPosition{{PositionID: 1, PosName: "Member"}},
+	}}
+	before := guildWindowSnapshot(s)
+	s.Guild.Positions[0].HasPermissions = true
+	if guildSessionInfo(s).Right != 0 || guildWindowSnapshot(s) == before {
+		t.Fatal("server-confirmed zero permissions did not refresh the window")
+	}
+}
+
 func TestGuildWindowSnapshotIncludesMenuAccess(t *testing.T) {
 	s := &session.Session{Guild: session.Guild{MenuAccess: 0x57}}
 	before := guildWindowSnapshot(s)

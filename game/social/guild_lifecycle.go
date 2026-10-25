@@ -39,7 +39,7 @@ func guildMemberActionAllowed(s *session.Session, action gameui.GuildMemberActio
 	case gameui.GuildMemberActionLeave:
 		return isSelf && !s.Guild.IsMaster
 	case gameui.GuildMemberActionExpel:
-		return !isSelf && (s.Guild.IsMaster || s.Guild.Right&guildPermissionExpel != 0)
+		return !isSelf && (s.Guild.IsMaster || s.GuildRights()&guildPermissionExpel != 0)
 	default:
 		return false
 	}

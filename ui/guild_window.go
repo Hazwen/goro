@@ -1747,7 +1747,7 @@ func guildWindowSnapshot(s *session.Session) string {
 		s.EmblemVersion,
 		s.GuildName,
 		boolSnapshot(s.Guild.IsMaster),
-		s.Guild.Right,
+		s.GuildRights(),
 		s.Guild.MenuAccess,
 		s.Guild.Level,
 		s.Guild.UserNum,
@@ -1785,6 +1785,7 @@ func guildSessionInfo(s *session.Session) session.Guild {
 		return session.Guild{Name: "-"}
 	}
 	guild := s.Guild
+	guild.Right = s.GuildRights()
 	if guild.ID == 0 {
 		guild.ID = s.GuildID
 	}

@@ -282,6 +282,31 @@ func TestGuildMemberLifecyclePermissionsMatchClassicClient(t *testing.T) {
 	}
 }
 
+func TestGuildPermissionsFollowRankUpdates(t *testing.T) {
+	s := &session.Session{AccountID: 10, CharID: 11, GuildID: 1, Guild: session.Guild{Right: 0x11}}
+	ctx := client.Context{Session: s}
+	ApplyLocalGuildPositionNames(ctx, []network.GuildPosition{{PositionID: 1, PosName: "Officer"}, {PositionID: 19, PosName: "Member"}})
+	ApplyLocalGuildMembers(ctx, []network.GuildMember{{AccountID: 10, CharID: 11, PositionID: 1}})
+	if s.GuildRights() != 0x11 {
+		t.Fatal("names-only rank list overrode membership permissions")
+	}
+	ApplyLocalGuildPositions(ctx, []network.GuildPosition{{PositionID: 1, Right: 0x11}, {PositionID: 19}})
+	other := gameui.GuildMemberAction{Kind: gameui.GuildMemberActionExpel, Member: session.GuildMember{AccountID: 20, CharID: 21}}
+	check := func(want bool) {
+		t.Helper()
+		if GuildCanInvitePlayer(s, 0) != want || guildMemberActionAllowed(s, other) != want {
+			t.Fatalf("invite/expel permissions did not update: rights=%x, want allowed=%t", s.GuildRights(), want)
+		}
+	}
+	check(true)
+	ApplyLocalGuildMemberPositions(ctx, []network.GuildMemberPosition{{AccountID: 10, CharID: 11, PositionID: 19}})
+	check(false)
+	ApplyLocalGuildMemberPositions(ctx, []network.GuildMemberPosition{{AccountID: 10, CharID: 11, PositionID: 1}})
+	check(true)
+	ApplyLocalGuildPositions(ctx, []network.GuildPosition{{PositionID: 1}})
+	check(false)
+}
+
 func TestGuildDepartureRemovesRemoteMemberWithoutClearingLocalGuild(t *testing.T) {
 	s := &session.Session{
 		AccountID: 1,
