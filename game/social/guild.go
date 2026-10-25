@@ -255,20 +255,12 @@ func (m *System) uploadGuildEmblem(ctx client.Context, path string) {
 		m.bindings.Console.AddErrorMessage("Guild emblem upload failed: %s", err)
 		return
 	}
-	if len(data) < 2 || data[0] != 'B' || data[1] != 'M' {
-		m.bindings.Console.AddErrorMessage("Guild emblem upload failed: expected BMP file.")
-		return
-	}
-	if len(data) > 1783 {
-		m.bindings.Console.AddErrorMessage("Guild emblem upload failed: BMP is too large.")
-		return
-	}
 	if err := ctx.Network.SendGuildEmblem(data); err != nil {
-		m.bindings.Console.AddErrorMessage("Guild emblem upload failed.")
+		m.bindings.Console.AddErrorMessage("Guild emblem upload failed: %s", err)
 		glog.Warnf("guild emblem upload failed path=%q: %v", path, err)
 		return
 	}
-	m.bindings.Console.AddSystemMessage("Guild emblem uploaded.")
+	m.bindings.Console.AddSystemMessage("Guild emblem sent.")
 }
 
 func (m *System) changeGuildMemberPositions(ctx client.Context, updates []gameui.GuildMemberPositionUpdate) {

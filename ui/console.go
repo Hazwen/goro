@@ -737,24 +737,20 @@ func (c *ChatConsole) submitGuildEmblem(ctx client.Context, text string) {
 		c.AddErrorMessage("send failed: not connected")
 		return
 	}
+	if ctx.Session == nil || !ctx.Session.Guild.IsMaster {
+		c.AddErrorMessage("Guild emblem upload failed: guild master only.")
+		return
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		c.AddErrorMessage("emblem failed: %s", err)
-		return
-	}
-	if len(data) < 2 || data[0] != 'B' || data[1] != 'M' {
-		c.AddErrorMessage("emblem failed: expected BMP file")
-		return
-	}
-	if len(data) > 1783 {
-		c.AddErrorMessage("emblem failed: BMP is too large")
 		return
 	}
 	if err := ctx.Network.SendGuildEmblem(data); err != nil {
 		c.AddErrorMessage("send failed: %s", err)
 		return
 	}
-	c.AddSystemMessage("Guild emblem uploaded.")
+	c.AddSystemMessage("Guild emblem sent.")
 }
 
 func (c *ChatConsole) submitLeaveParty(ctx client.Context) {

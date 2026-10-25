@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/image/bmp"
+
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/config"
 	"github.com/kivutar/goro/game/internal/testutil"
@@ -33,7 +35,11 @@ func TestGuildEmblemUploadUsesSelectedClientFolder(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(root, "Emblem", "directory.bmp"), 0755); err != nil {
 				t.Fatal(err)
 			}
-			bmp := []byte("BMtest-emblem")
+			var encoded bytes.Buffer
+			if err := bmp.Encode(&encoded, image.NewGray(image.Rect(0, 0, 24, 24))); err != nil {
+				t.Fatal(err)
+			}
+			bmp := encoded.Bytes()
 			for name, content := range map[string][]byte{"Guild.BMP": bmp, "ignore.txt": []byte("ignored")} {
 				if err := os.WriteFile(filepath.Join(root, "Emblem", name), content, 0600); err != nil {
 					t.Fatal(err)
