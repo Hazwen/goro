@@ -570,7 +570,7 @@ var guildMemberTableColumns = []rotheme.TableViewColumn{
 	{Key: "fill", Flex: 1},
 }
 
-func (w *GuildWindow) guildMemberTableCell(ctx Context, member session.GuildMember, positions []session.GuildPosition, isMaster bool, totalExp uint32, cell rotheme.TableViewCellContext) widget.Widget {
+func (w *GuildWindow) guildMemberTableCell(ctx Context, member session.GuildMember, positions []session.GuildPosition, isMaster bool, totalExp uint64, cell rotheme.TableViewCellContext) widget.Widget {
 	switch cell.Column.Key {
 	case "name":
 		return w.guildMemberNameCell(member, cell.Width)
@@ -649,15 +649,15 @@ func (w *GuildWindow) guildMemberPositionCell(ctx Context, member session.GuildM
 	)
 }
 
-func guildMembersTotalExp(members []session.GuildMember) uint32 {
-	var total uint32
+func guildMembersTotalExp(members []session.GuildMember) uint64 {
+	var total uint64
 	for _, member := range members {
-		total += member.MemberExp
+		total += uint64(member.MemberExp)
 	}
 	return total
 }
 
-func guildMemberDevotion(memberExp, totalExp uint32) string {
+func guildMemberDevotion(memberExp uint32, totalExp uint64) string {
 	if memberExp == 0 || totalExp == 0 {
 		return "0 %"
 	}

@@ -806,3 +806,19 @@ func TestGuildSkillDragUsesLearnedRatherThanPendingLevel(t *testing.T) {
 		t.Fatalf("dragged guild skill = %+v, want learned level 1", window.dragSkill)
 	}
 }
+
+func TestGuildMemberContributionsDoNotOverflow(t *testing.T) {
+	members := []session.GuildMember{{MemberExp: 3_000_000_000}, {MemberExp: 2_000_000_000}}
+	total := guildMembersTotalExp(members)
+	if total != 5_000_000_000 {
+		t.Fatalf("total = %d, want 5000000000", total)
+	}
+	for i, want := range []string{"60 %", "40 %"} {
+		if got := guildMemberDevotion(members[i].MemberExp, total); got != want {
+			t.Fatalf("member %d devotion = %q, want %q", i, got, want)
+		}
+	}
+	if got := guildMemberDevotion(0, 0); got != "0 %" {
+		t.Fatalf("empty guild devotion = %q", got)
+	}
+}
