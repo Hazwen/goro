@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/kivutar/goro/client"
+	"github.com/kivutar/goro/db"
 	"github.com/kivutar/goro/game/scene"
 	"github.com/kivutar/goro/glog"
 	"github.com/kivutar/goro/network"
@@ -140,15 +141,19 @@ func applySkillInfoUpdate(ctx client.Context, update network.SkillInfoUpdate) {
 }
 
 func upsertSessionSkill(s *session.Session, skill session.Skill) {
-	for i := range s.Skills.List {
-		if s.Skills.List[i].ID != skill.ID {
+	list := &s.Skills.List
+	if skill.ID >= db.SkillGdApproval && skill.ID < db.SkillGdLast {
+		list = &s.Guild.Skills
+	}
+	for i := range *list {
+		if (*list)[i].ID != skill.ID {
 			continue
 		}
-		skill = mergeSessionSkillUpdate(s.Skills.List[i], skill)
-		s.Skills.List[i] = skill
+		skill = mergeSessionSkillUpdate((*list)[i], skill)
+		(*list)[i] = skill
 		return
 	}
-	s.Skills.List = append(s.Skills.List, skill)
+	*list = append(*list, skill)
 }
 
 func mergeSessionSkillUpdate(existing, update session.Skill) session.Skill {

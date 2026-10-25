@@ -75,3 +75,22 @@ func TestSkillInfoUpdatePreservesExistingTargetMetadata(t *testing.T) {
 		t.Fatalf("skill sp cost = %d, want updated cost", got.SPCost)
 	}
 }
+
+func TestGuildSkillUpgradeStaysInGuildSkillList(t *testing.T) {
+	for _, loaded := range []bool{false, true} {
+		s := &session.Session{Skills: session.Skills{List: []session.Skill{{ID: db.SkillALHeal, Level: 5}}}}
+		if loaded {
+			s.Guild.Skills = []session.Skill{{ID: db.SkillGdRegeneration, Level: 1, Type: skills.SkillTargetSelf, Name: "Regeneration"}}
+		}
+		applySkillInfoUpdate(client.Context{Session: s}, network.SkillInfoUpdate{Skill: network.SkillInfo{ID: db.SkillGdRegeneration, Level: 2}})
+		if len(s.Skills.List) != 1 || s.Skills.List[0].ID != db.SkillALHeal {
+			t.Fatal("guild skill appeared in the character skill list")
+		}
+		if len(s.Guild.Skills) != 1 || s.Guild.Skills[0].Level != 2 {
+			t.Fatalf("guild skill update = %+v", s.Guild.Skills)
+		}
+		if loaded && (s.Guild.Skills[0].Type != skills.SkillTargetSelf || s.Guild.Skills[0].Name != "Regeneration") {
+			t.Fatal("guild upgrade lost targeting metadata")
+		}
+	}
+}
