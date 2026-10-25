@@ -866,3 +866,14 @@ func TestGuildTableBoundsRespectFooterAndTabGap(t *testing.T) {
 		t.Fatalf("footer height = %d", height-masterHeight)
 	}
 }
+
+func TestGuildWindowRefreshesMemberPortraitChanges(t *testing.T) {
+	s := &session.Session{Guild: session.Guild{Members: []session.GuildMember{{HeadType: 1, Sex: 1, CurrentState: 1}}}}
+	for _, field := range []*uint16{&s.Guild.Members[0].HeadType, &s.Guild.Members[0].HeadPalette, &s.Guild.Members[0].Sex} {
+		before := guildWindowSnapshot(s)
+		*field++
+		if guildWindowSnapshot(s) == before {
+			t.Fatal("appearance change did not refresh member list")
+		}
+	}
+}

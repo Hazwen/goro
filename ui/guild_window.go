@@ -53,6 +53,7 @@ type GuildWindow struct {
 	snapshot        string
 	action          GuildWindowAction
 	EmblemImage     func(Context) image.Image
+	MemberPortrait  func(Context, session.GuildMember) image.Image
 	emblemOptions   []GuildEmblemOption
 	memberScrollY   state.Signal[float32]
 	memberDraft     map[guildMemberKey]uint32
@@ -571,6 +572,7 @@ func (w *GuildWindow) drainMemberContextAction() bool {
 }
 
 var guildMemberTableColumns = []rotheme.TableViewColumn{
+	{Key: "portrait", Width: 28},
 	{Key: "name", Title: "Name", Width: 78},
 	{Key: "position", Title: "Position", Width: 62},
 	{Key: "job", Title: "Job", Width: 52},
@@ -583,6 +585,12 @@ var guildMemberTableColumns = []rotheme.TableViewColumn{
 
 func (w *GuildWindow) guildMemberTableCell(ctx Context, member session.GuildMember, positions []session.GuildPosition, isMaster bool, totalExp uint64, cell rotheme.TableViewCellContext) widget.Widget {
 	switch cell.Column.Key {
+	case "portrait":
+		var img image.Image
+		if w.MemberPortrait != nil {
+			img = w.MemberPortrait(ctx, member)
+		}
+		return primitives.HBox(newStaticImageWidget(img, 24, 24)).Width(cell.Width).Height(guildTableRowH).PaddingLeft(2).CrossAlign(primitives.CrossAxisCenter)
 	case "name":
 		return w.guildMemberNameCell(member, cell.Width)
 	case "position":
@@ -1778,7 +1786,7 @@ func guildWindowSnapshot(s *session.Session) string {
 	}
 	memberSnapshot := strings.Builder{}
 	for _, member := range s.Guild.Members {
-		fmt.Fprintf(&memberSnapshot, "|%d:%d:%d:%d:%d:%d:%d:%s:%s",
+		fmt.Fprintf(&memberSnapshot, "|%d:%d:%d:%d:%d:%d:%d:%s:%s:%d:%d:%d",
 			member.AccountID,
 			member.CharID,
 			member.Job,
@@ -1788,6 +1796,9 @@ func guildWindowSnapshot(s *session.Session) string {
 			member.PositionID,
 			member.CharName,
 			member.Memo,
+			member.HeadType,
+			member.HeadPalette,
+			member.Sex,
 		)
 	}
 	positionSnapshot := strings.Builder{}

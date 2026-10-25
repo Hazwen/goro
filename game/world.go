@@ -390,6 +390,7 @@ func (m *WorldMode) rebindPersistentUI(ctx client.Context) {
 		m.ui.instanceWindow.Toggle(ctx)
 	}
 	m.ui.social.GuildWindow.EmblemImage = m.social().SessionGuildEmblemImage
+	m.ui.social.GuildWindow.MemberPortrait = m.social().GuildMemberPortrait
 	m.social().SetGuildEmblemOptions(ctx)
 	m.ui.characterWindow.Rebind(ctx)
 	m.ui.basicMenu.Rebind(ctx, m.basicMenuCallbacks(ctx))

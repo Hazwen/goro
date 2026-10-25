@@ -47,8 +47,9 @@ type System struct {
 	pendingChatRoomID uint32
 	PendingTradeName  string
 
-	guildEmblems map[uint32]guildEmblem
-	bindings     Bindings
+	guildEmblems   map[uint32]guildEmblem
+	guildPortraits guildPortraitCache
+	bindings       Bindings
 }
 
 func (s *System) Bind(bindings Bindings) { s.bindings = bindings }
