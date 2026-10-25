@@ -1,7 +1,9 @@
 package game
 
 import (
+	"encoding/binary"
 	"testing"
+	"time"
 
 	"github.com/kivutar/goro/client"
 	"github.com/kivutar/goro/db"
@@ -9,6 +11,30 @@ import (
 	"github.com/kivutar/goro/network"
 	"github.com/kivutar/goro/session"
 )
+
+func TestGuildPositionPacketsUpdateNamesOnlyWhenPresent(t *testing.T) {
+	s := &session.Session{Guild: session.Guild{ID: 1, Positions: []session.GuildPosition{{PositionID: 2, PosName: "Old rank"}}}}
+	ctx := client.Context{Session: s}
+	m := NewWorldMode()
+	for _, name := range []string{"New rank", ""} {
+		data := make([]byte, 44)
+		binary.LittleEndian.PutUint16(data, network.PacketZCAckGuildPosInfo)
+		binary.LittleEndian.PutUint16(data[2:], uint16(len(data)))
+		binary.LittleEndian.PutUint32(data[4:], 2)
+		copy(data[20:], name)
+		m.handleNetworkPacket(ctx, network.Packet{ID: network.PacketZCAckGuildPosInfo, Data: data}, time.Now())
+		if got := s.Guild.Positions[0].PosName; got != name {
+			t.Fatalf("rank name = %q, want %q", got, name)
+		}
+		data = data[:20]
+		binary.LittleEndian.PutUint16(data, network.PacketZCGuildPositions)
+		binary.LittleEndian.PutUint16(data[2:], uint16(len(data)))
+		m.handleNetworkPacket(ctx, network.Packet{ID: network.PacketZCGuildPositions, Data: data}, time.Now())
+		if s.Guild.Positions[0].PosName != name {
+			t.Fatal("permissions-only packet cleared rank name")
+		}
+	}
+}
 
 func TestSkillInfoUpdatePreservesExistingTargetMetadata(t *testing.T) {
 	sessionState := &session.Session{

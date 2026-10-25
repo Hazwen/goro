@@ -779,6 +779,9 @@ func (m *WorldMode) handleNetworkPacket(ctx client.Context, pkt network.Packet, 
 		glog.Errorf("parse guild positions 0x%04X: %v", pkt.ID, err)
 	} else if ok {
 		social.ApplyLocalGuildPositions(ctx, guildPositions)
+		if pkt.ID == network.PacketZCAckGuildPosInfo {
+			social.ApplyLocalGuildPositionNames(ctx, guildPositions)
+		}
 		return nil, false
 	}
 	if guildPositionNames, ok, err := network.ParseGuildPositionNames(pkt); err != nil {
