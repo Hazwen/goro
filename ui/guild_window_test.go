@@ -35,7 +35,7 @@ func TestGuildSkillTooltipHidesWhenCursorLeavesTable(t *testing.T) {
 	window.EnsureWindow(guildWindowWidth, guildWindowHeight)
 	window.showSkillTooltip(Context{}, session.Skill{ID: db.SkillGdApproval, Name: "Approval", Level: 1}, 100, 120)
 
-	window.updateSkillTooltipHover(Context{Input: &input.State{MouseX: window.x - 10, MouseY: window.y - 10}})
+	window.updateTooltipHover(Context{Input: &input.State{MouseX: window.x - 10, MouseY: window.y - 10}})
 
 	if window.tooltip.Open() {
 		t.Fatal("tooltip should close when cursor leaves the guild skills table")
@@ -820,5 +820,49 @@ func TestGuildMemberContributionsDoNotOverflow(t *testing.T) {
 	}
 	if got := guildMemberDevotion(0, 0); got != "0 %" {
 		t.Fatalf("empty guild devotion = %q", got)
+	}
+}
+
+func TestGuildMemberTooltipShowsUnabridgedDetails(t *testing.T) {
+	member := session.GuildMember{CharName: "A very long member name", PositionID: 1, Job: 1, Level: 80, MemberExp: 123456789, Memo: "A full note"}
+	guild := session.Guild{Positions: []session.GuildPosition{{PositionID: 1, PosName: "A very long rank title"}}, Members: []session.GuildMember{member}}
+	w := &GuildWindow{tab: guildWindowTabMembers}
+	w.EnsureWindow(guildWindowWidth, guildWindowHeight)
+	w.ensureGuildMemberScrollSignal()
+	x, y, _, _ := w.guildTableBounds(Context{})
+	ctx := Context{Input: &input.State{MouseX: x + 10, MouseY: y + guildTableHeaderH + 4}}
+	w.handleGuildMemberRowEvent(ctx, guild, guild.Members, 0, event.NewMouseEvent(event.MouseMove, event.ButtonNone, 0, geometry.Pt(10, 4), geometry.Pt(10, 4), 0))
+	for _, want := range []string{member.CharName, "A very long rank title", "Swordman", "123456789", member.Memo} {
+		if !strings.Contains(w.tooltip.Text(), want) {
+			t.Fatalf("tooltip = %q, missing %q", w.tooltip.Text(), want)
+		}
+	}
+	w.updateTooltipHover(ctx)
+	if !w.tooltip.Open() {
+		t.Fatal("tooltip disappeared over member")
+	}
+	ctx.Input.MouseY += guildTableRowH
+	w.updateTooltipHover(ctx)
+	if w.tooltip.Open() {
+		t.Fatal("tooltip remained over empty table space")
+	}
+	w.handleRowTooltip(ctx, "details", 1, event.NewMouseEvent(event.MouseMove, event.ButtonNone, 0, geometry.Point{}, geometry.Point{}, 0))
+	w.memberScrollY.Set(1)
+	w.updateTooltipHover(ctx)
+	if w.tooltip.Open() {
+		t.Fatal("tooltip retained stale row after scrolling")
+	}
+}
+
+func TestGuildTableBoundsRespectFooterAndTabGap(t *testing.T) {
+	w := &GuildWindow{tab: guildWindowTabMembers}
+	w.EnsureWindow(guildWindowWidth, guildWindowHeight)
+	_, y, _, height := w.guildTableBounds(Context{})
+	if y != w.y+ROWindowTitleHeight+guildWindowTabHeight+2 || y+height != w.y+w.height {
+		t.Fatalf("table y=%d height=%d", y, height)
+	}
+	_, _, _, masterHeight := w.guildTableBounds(Context{Session: &session.Session{Guild: session.Guild{IsMaster: true}}})
+	if height-masterHeight != ROWindowFooterHeight {
+		t.Fatalf("footer height = %d", height-masterHeight)
 	}
 }
